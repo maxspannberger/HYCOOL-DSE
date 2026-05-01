@@ -6,11 +6,11 @@ from CoolProp.HumidAirProp import HAPropsSI
 fluid = 'hydrogen'
 # See http://www.coolprop.org/coolprop/HighLevelAPI.html#table-of-string-inputs-to-propssi-function for a list of inputs to high-level interface
 print("*********** HIGH LEVEL INTERFACE *****************")
-print("Critical temperature of hydrogen:", PropsSI("Tcrit", "Hydrogen"), "K")
-print("Boiling temperature of hydrogen at 101325 Pa:", PropsSI("T", "P", 101325, "Q", 0, "Hydrogen"), "K")
-print("Phase of hydrogen at 101325 Pa and 300 K:", PhaseSI("P", 101325, "T", 300, "Hydrogen"))
-print("c_p of hydrogen at 101325 Pa and 300 K:", PropsSI("C", "P", 101325, "T", 300, "Hydrogen"), "J/kg/K")
-print("c_p of hydrogen (using derivatives) at 101325 Pa and 300 K:", PropsSI("d(H)/d(T)|P", "P", 101325, "T", 300, "Hydrogen"), "J/kg/K")
+print("Critical temperature of hydrogen:", PropsSI("Tcrit", fluid), "K")
+print("Boiling temperature of hydrogen at 101325 Pa:", PropsSI("T", "P", 101325, "Q", 0, fluid), "K")
+print("Phase of hydrogen at 101325 Pa and 300 K:", PhaseSI("P", 101325, "T", 300, fluid))
+print("c_p of hydrogen at 101325 Pa and 300 K:", PropsSI("C", "P", 101325, "T", 300, fluid), "J/kg/K")
+print("c_p of hydrogen (using derivatives) at 101325 Pa and 300 K:", PropsSI("d(H)/d(T)|P", "P", 101325, "T", 300, fluid), "J/kg/K")
 print("*********** HUMID AIR PROPERTIES *****************")
 print("Humidity ratio of 50% rel. hum. air at 300 K, 101325 Pa:", HAPropsSI("W", "T", 300, "P", 101325, "R", 0.5), "kg_w/kg_da")
 print("Relative humidity from last calculation:", HAPropsSI("R", "T", 300, "P", 101325, "W", HAPropsSI("W", "T", 300, "P", 101325, "R", 0.5)), "(fractional)")
