@@ -1,0 +1,13 @@
+# Python bytecode
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Editor configuration
+.spyproject/
+.idea/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+__pycache__/
