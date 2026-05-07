@@ -71,58 +71,19 @@ class MatchingDiagram:
         # 3. Landing Distance Requirement (TORENBEEK 171)
         W_S_land = (1 / (self.W_land/self.W_TO)) * ((self.S_land/(self.f_land * self.h_land)) - 10) * ((self.h_land * atm.dens * self.g * self.lift_coefficients['CL_max_L'])/(1.52/self.a_g + 1.69))
 
-        # 4. Minimum Speed Requirement
+        # 4. Minimum Speed Requirement (TORENBEEK 166)
         W_S_min = 0.5 * atm.dens * self.lift_coefficients['CL_max_L'] * np.square(self.Vapp / 1.23)
 
-        # 5. Climb Gradient Requirement (OEI)
+        # 5. Climb Gradient Requirement (OEI) (TORENBEEK 161)
         T_W_climb = self.g_climb + (0.5 * self.g_climb * np.square(self.MCR) * self.CD0) / (self.W_S / atm.pressure) + (self.W_S / atm.pressure) * (1 / (0.5 * self.g_climb * np.square(self.MCR) * np.pi * self.A * self.e))
-        
-
-        #alpha_T_TO = None # Placeholder for thrust lapse ratio during take-off
-        #T_W = (1 / alpha_T_TO) * (1.15 * np.sqrt((self.Ne/(self.Ne - 1))*(self.W_S/(self.LTO*self.kT*))) + (self.Ne/(self.Ne - 1)) * (4 * self.h2)/(self.LTO))
-
-        # 3. Landing Distance Requirement
-        #W_S_land = (1 / self.beta) * (self.rho / 2) * (self.LFL / self.CLFL) * self.lift_coefficients["CL_max_L"]
-
-        # 4. Climb Rate Requirement (OEI)
-        #alpha_T_climb = None # Placeholder for thrust lapse ratio during climb
-        #T_W_climb = (self.Ne / (self.Ne - 1)) * (self.beta / alpha_T_climb) * (np.sqrt((np.square(self.c)/(self.beta * self.W_S * np.sqrt(self.CD0 * np.pi * self.A * self.e)))*(self.rho / 2)) + np.sqrt((4 * self.CD0) / (np.pi * self.A * self.e)))
-
-        # 5. Climb gradient requirement
-        #alpha_T_climb_gradient = None # Placeholder for thrust lapse ratio during climb gradient
-        #T_W_climb_gradient = (self.Ne / (self.Ne - 1)) * (self.beta / alpha_T_climb_gradient) * (self.G *
-
-        # 1. Minimum Speed Requirement
-        W_S_min = (1 / self.beta) * (atm.rho / 2) * np.square(self.Vapp / 1.23) * self.lift_coefficients["CL_max_L"]
-        
-        # 2. Take-off Distance Requirement
-
-        
-
-        # 3. Landing Distance Requirement
-        W_S_land = (1 / self.beta) * (self.rho / 2) * (self.LFL / self.CLFL) * self.lift_coefficients["CL_max_L"]
-
-        # 4. Climb Rate Requirement (OEI)
-        alpha_T_climb = None # Placeholder for thrust lapse ratio during climb
-        T_W_climb = (self.Ne / (self.Ne - 1)) * (self.beta / alpha_T_climb) * (np.sqrt((np.square(self.c)/(self.beta * self.W_S * np.sqrt(self.CD0 * np.pi * self.A * self.e)))*(self.rho / 2)) + np.sqrt((4 * self.CD0) / (np.pi * self.A * self.e)))
-
-        # 5. Climb gradient requirement
-        alpha_T_climb_gradient = None # Placeholder for thrust lapse ratio during climb gradient
-        T_W_climb_gradient = (self.Ne / (self.Ne - 1)) * (self.beta / alpha_T_climb_gradient) * (self.G * 2 * np.sqrt(self.CD0/(np.pi * self.A * self.e)))
-
-        # 6. Maneuvering Requirements
-
-
-        # 7. Cruise Speed Requirements 
 
         # Put all of the curves together in a dictionary
         matching_curves = {
-                "minimum_speed_curve": W_S_min, # Placeholder for minimum speed curve
-                "takeoff_distance_curve": None,  # Placeholder for take-off distance curve
-                "landing_distance_curve": W_S_land,  # Placeholder for landing distance curve
-                "climb_performance_curve": None,  # Placeholder for climb performance curve
-                "maneuvering_performance_curve": None,  # Placeholder for maneuvering performance curve
-                "cruise_performance_curve": None  # Placeholder for cruise performance curve
+                "Cruise Speed Requirement": T_W_cruise,
+                "Take-off Distance Requirement": T_W_TO,
+                "Landing Distance Requirement": W_S_land,
+                "Minimum Speed Requirement": W_S_min,
+                "Climb Gradient Requirement": T_W_climb
         }
 
         return matching_curves
