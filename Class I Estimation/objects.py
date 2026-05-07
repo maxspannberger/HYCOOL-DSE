@@ -23,7 +23,19 @@ class MatchingDiagram:
         self.h2 = 18 # Obstacle height [ft]
         self.kT = 0.85 # Take-off thrust parameter [-]
         self.W_S = np.array([])
+        self.g = 9.81
         self.lift_coefficients = lift_coefficients
+
+        # Take-off Requirements
+        self.h_to = 10.7  # [m]
+        self.mu_prime = .010 * lift_coefficients['CL_max_TO'] + .02
+        self.CL_2 = .694 * lift_coefficients['CL_max_TO']
+        self.T_mean = None
+        self.Delta_gamma_2 = None
+        self.gamma_2 = None
+        self.gamma_2_min = .024  # .024, .027, .030 for Ne = 2, 3, or 4 respectively
+        self.BFL = 1800 # Balanced field length [m]
+        self.Delta_S_TO = 200 # [m]
 
         # Requirements
         self.Vs0 = Vs0 # Stall speed 
@@ -34,13 +46,54 @@ class MatchingDiagram:
         self.G = G # Climb Gradient
         self.LTO = TO_field_length  # Take-off field length
 
+        # Landing Requirements
+        self.W_land = 25000  # [kg]
+        self.S_land = 2200 # [m]
+        self.W_TO = 32000 # [kg]
+        self.f_land = 1.67  # CS 25
+        self.h_land = 15.3  # CS 25 [m]
+        self.a_g = 0.4  # CHECK TORENBEEK 170
+
+        # Climb Requirements
+        self.g_climb = 0.024  # Minimum climb gradient for OEI (2.4% for twin-engine aircraft)
+
     
-    def calculate_matching(self):
+    def calculate_matching(self, atm: Atmosphere):
         """
         Calculate the matching diagram curves.
         """
+        # 1. Cruise Speed Requirement (TORENBEEK 156)
+        T_W_cruise = (0.5 * self.gamma * np.square(self.MCR) * self.Cd0) / (self.W_S / atm.pressure) + (self.W_S / atm.pressure) * (1 / (0.5 * self.gamma * np.square(self.MCR) * self.A * self.e))
+        
+        # 2. Take-off Distance Requirement (TORENBEEK 169)
+        T_W_TO = self.mu_prime + 1 / ((1.159*(self.BFL - (self.Delta_S_TO/np.sqrt(atm.dens/self.rho))))/(self.W_S/(atm.dens*self.g*self.CL_2)+ self.h_to) - 2.7)
+        
+        # 3. Landing Distance Requirement (TORENBEEK 171)
+        W_S_land = (1 / (self.W_land/self.W_TO)) * ((self.S_land/(self.f_land * self.h_land)) - 10) * ((self.h_land * atm.dens * self.g * self.lift_coefficients['CL_max_L'])/(1.52/self.a_g + 1.69))
+
+        # 4. Minimum Speed Requirement
+        W_S_min = 0.5 * atm.dens * self.lift_coefficients['CL_max_L'] * np.square(self.Vapp / 1.23)
+
+        # 5. Climb Gradient Requirement (OEI)
+        T_W_climb = self.g_climb + (0.5 * self.g_climb * np.square(self.MCR) * self.CD0) / (self.W_S / atm.pressure) + (self.W_S / atm.pressure) * (1 / (0.5 * self.g_climb * np.square(self.MCR) * np.pi * self.A * self.e))
+        
+
+        #alpha_T_TO = None # Placeholder for thrust lapse ratio during take-off
+        #T_W = (1 / alpha_T_TO) * (1.15 * np.sqrt((self.Ne/(self.Ne - 1))*(self.W_S/(self.LTO*self.kT*))) + (self.Ne/(self.Ne - 1)) * (4 * self.h2)/(self.LTO))
+
+        # 3. Landing Distance Requirement
+        #W_S_land = (1 / self.beta) * (self.rho / 2) * (self.LFL / self.CLFL) * self.lift_coefficients["CL_max_L"]
+
+        # 4. Climb Rate Requirement (OEI)
+        #alpha_T_climb = None # Placeholder for thrust lapse ratio during climb
+        #T_W_climb = (self.Ne / (self.Ne - 1)) * (self.beta / alpha_T_climb) * (np.sqrt((np.square(self.c)/(self.beta * self.W_S * np.sqrt(self.CD0 * np.pi * self.A * self.e)))*(self.rho / 2)) + np.sqrt((4 * self.CD0) / (np.pi * self.A * self.e)))
+
+        # 5. Climb gradient requirement
+        #alpha_T_climb_gradient = None # Placeholder for thrust lapse ratio during climb gradient
+        #T_W_climb_gradient = (self.Ne / (self.Ne - 1)) * (self.beta / alpha_T_climb_gradient) * (self.G *
+
         # 1. Minimum Speed Requirement
-        W_S_min = (1 / self.beta) * (self.rho / 2) * np.square(self.Vapp / 1.23) * self.lift_coefficients["CL_max_L"]
+        W_S_min = (1 / self.beta) * (atm.rho / 2) * np.square(self.Vapp / 1.23) * self.lift_coefficients["CL_max_L"]
         
         # 2. Take-off Distance Requirement
 
@@ -175,11 +228,8 @@ class Atmosphere:
         self.kinematic_viscosity = self.dynamic_viscosity / self.density
 
     def set_altitude(self, new_altitude_m):
-        if new_altitude_m == self.altitude:
-            print("No change in altitude. Atmospheric state remains the same.")
-        else:
-            self.altitude = new_altitude_m
-            self._calculate_state()
+        self.altitude = new_altitude_m
+        self._calculate_state()
 
     def __repr__(self):
         return (f"<Atmosphere @ {self.altitude}m | "
