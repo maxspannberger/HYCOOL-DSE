@@ -175,8 +175,11 @@ class Atmosphere:
         self.kinematic_viscosity = self.dynamic_viscosity / self.density
 
     def set_altitude(self, new_altitude_m):
-        self.altitude = new_altitude_m
-        self._calculate_state()
+        if new_altitude_m == self.altitude:
+            print("No change in altitude. Atmospheric state remains the same.")
+        else:
+            self.altitude = new_altitude_m
+            self._calculate_state()
 
     def __repr__(self):
         return (f"<Atmosphere @ {self.altitude}m | "
