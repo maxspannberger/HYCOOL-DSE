@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 Cd0 = 0.02 # -
-e = 0.85 # -
+e = 0.75 # -
 W = 31000 # kg
 rho = 1.225 # kg/m^3
 S = 64 # m^2
