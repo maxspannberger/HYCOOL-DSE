@@ -1,12 +1,13 @@
 import numpy as np
 import scipy as sp
+import math
 import matplotlib.pyplot as plt
 from parameters import lift_coefficients
 
 # this file will contain all the classes that are used in this Class I estimation
 
 class MatchingDiagram:
-    def __init__(self, Vs0, Vapp, LFL, c, G, TO_field_length):
+    def __init__(self, Vs0=0, Vapp=0, LFL=0, c=0, G=0, TO_field_length=0):
         
         # Parameters
         self.Ne = 2 # Number of engines [-]
@@ -77,7 +78,6 @@ class MatchingDiagram:
         """
         Generate the matching diagram based on the calculated performance parameters.
         """
-
         # Loop through the matching curves and plot them against the W_S values
         for curve_name, curve_data in matching_curves.items():
             # Plot the curve (this is a placeholder, actual plotting code will depend on the data structure of curve_data)
@@ -96,11 +96,95 @@ class MatchingDiagram:
 
         return 
 
+class Atmosphere:
+    """
+    International Standard Atmosphere (ISA) model.
+    Calculates atmospheric properties up to 20,000 meters.
+    Example:
+    cruise_std = Atmosphere(altitude)
+    temp = cruise_std.temperature
+    press = cruise_std.pressure
+    dens = cruise_std.density
+    sos = cruise_std.speed_of_sound
+    """
+    # Universal Constants
+    G = 9.80665          # Gravity (m/s^2)
+    R = 287.0528         # Specific gas constant for dry air (J/(kg·K))
+    GAMMA = 1.4          # Specific heat ratio for air
+    
+    # Sutherland's Law Constants (for dynamic viscosity)
+    S = 110.4            # Sutherland's temperature (K)
+    MU_REF = 1.716e-5    # Reference dynamic viscosity (kg/(m·s))
+    T_REF = 273.15       # Reference temperature (K)
+
+    def __init__(self, altitude_m, isa_offset_c=0.0):
+        """
+        Initialize the atmospheric state.
+        
+        Args:
+            altitude_m (float): Altitude above sea level in meters.
+            isa_offset_c (float): Temperature deviation from standard day in Celsius/Kelvin.
+                                  e.g., isa_offset_c=15 represents an ISA+15 Hot Day.
+        """
+        if altitude_m < 0:
+            raise ValueError("Altitude must be zero or positive.")
+            
+        self.altitude = altitude_m
+        self.isa_offset = isa_offset_c
+        
+        # Calculate standard properties upon initialization
+        self._calculate_state()
+
+    def _calculate_state(self):
+        # --- Layer 0: Troposphere (0 to 11,000 m) ---
+        if self.altitude <= 11000.0:
+            Tb = 288.15
+            Pb = 101325.0
+            a = -0.0065
+            
+            self.temperature = Tb + a * self.altitude
+            self.pressure = Pb * (self.temperature / Tb) ** (-self.G / (a * self.R))
+            
+        # --- Layer 1: Tropopause (11,000 m to 20,000 m) ---
+        elif self.altitude <= 20000.0:
+            Tb = 216.65
+            Pb = 22632.1
+            hb = 11000.0
+            
+            self.temperature = Tb
+            self.pressure = Pb * math.exp(-self.G * (self.altitude - hb) / (self.R * Tb))
+            
+        else:
+            raise NotImplementedError("Model only supports altitudes up to 20,000 meters.")
+            
+        # Apply the non-standard temperature offset (if any)
+        self.temperature += self.isa_offset
+        
+        # --- Derived Properties ---
+        
+        # 1. Density (Ideal Gas Law)
+        self.density = self.pressure / (self.R * self.temperature)
+        
+        # 2. Speed of Sound
+        self.speed_of_sound = math.sqrt(self.GAMMA * self.R * self.temperature)
+        
+        # 3. Dynamic Viscosity (Sutherland's Law)
+        self.dynamic_viscosity = (self.MU_REF * ((self.temperature / self.T_REF) ** 1.5) * ((self.T_REF + self.S) / (self.temperature + self.S)))
+                                 
+        # 4. Kinematic Viscosity (Dynamic viscosity / density)
+        self.kinematic_viscosity = self.dynamic_viscosity / self.density
+
+    def set_altitude(self, new_altitude_m):
+        self.altitude = new_altitude_m
+        self._calculate_state()
+
+    def __repr__(self):
+        return (f"<Atmosphere @ {self.altitude}m | "
+                f"T: {self.temperature:.2f} K | "
+                f"P: {self.pressure:.1f} Pa | "
+                f"rho: {self.density:.4f} kg/m³>")
 
 if __name__ == "__main__":
     TO_field_length = None
     diagram = MatchingDiagram(TO_field_length)
-    diagram.generate_diagram(TO_field_length)
-    
-
-
+    diagram.generate_diagram(TO_field_length)    

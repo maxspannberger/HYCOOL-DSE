@@ -33,8 +33,10 @@ def plot_dat_thang(W, rho, S, Cd0, e, A, V_lst):
         D_lst.append(D)
     plt.figure()
     plt.plot(V_lst, D_lst)
+    plt.title("Drag vs Velocity")
     plt.figure()
     plt.plot(Cd_lst, Cl_lst)
+    plt.title("Drag Polar")
     plt.show()
 
 plot_dat_thang(W, rho, S, Cd0, e, A, V_lst)
