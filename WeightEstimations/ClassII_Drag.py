@@ -282,43 +282,43 @@ if __name__ == "__main__":
     d_f     = (2.69 + 2.80) / 2    # m, equivalent diameter
 
     geo = ClassII_Drag_Input(
-        S_ref           = 63.1,
+        S_ref           = 63.1,                                     # Need
 
         # Wing
-        tc              = 0.15,
-        lambda_half     = np.deg2rad(20),
-        lambda_tc       = np.deg2rad(20),
-        MAC             = 2.49,
-        AR              = 12.78,
-        S_wet_w         = 2 * 1.02 * (63.1 - b_f * c_root / 2),
-        K_A             = 0.935,
-        e_theo          = 0.93,
+        tc              = 0.15,                                     # Need
+        lambda_half     = np.deg2rad(20),                           # Need
+        lambda_tc       = np.deg2rad(20),                           # Need
+        MAC             = 2.49,                                     # Need
+        AR              = 12.78,                                    # Need
+        S_wet_w         = 2 * 1.02 * (63.1 - b_f * c_root / 2),     # Need
+        K_A             = 0.935,                                    # Do not need
+        e_theo          = 0.93,                                     # Do not need
 
         # Horizontal tail
-        tc_h            = 0.12,
-        lambda_h        = np.deg2rad(10.0),
-        lambda_tc_h     = np.deg2rad(8.0),
-        MAC_h           = 2.80,         # corrected: S_h/b_h with AR_h~4.5
-        S_wet_h         = 2 * 1.02 * (13.94 - d_f * 2.80 / 2),
+        tc_h            = 0.12,                                     # Need
+        lambda_h        = np.deg2rad(10.0),                         # Need
+        lambda_tc_h     = np.deg2rad(8.0),                          # Need
+        MAC_h           = 2.80,         # corrected: S_h/b_h with AR_h~4.5, Need
+        S_wet_h         = 2 * 1.02 * (13.94 - d_f * 2.80 / 2),      # Need
 
         # Vertical tail
-        tc_v            = 0.12,
-        lambda_v        = np.deg2rad(35.0),
-        lambda_tc_v     = np.deg2rad(33.0),
-        MAC_v           = 3.02,         # S_v / b_v = 14.8 / 4.9
-        S_wet_v         = 2 * 1.02 * (14.8 - d_f * 3.02 / 4),
+        tc_v            = 0.12,                                     # Need
+        lambda_v        = np.deg2rad(35.0),                         # Need      
+        lambda_tc_v     = np.deg2rad(33.0),                         # Need
+        MAC_v           = 3.02,         # S_v / b_v = 14.8 / 4.9, Need
+        S_wet_v         = 2 * 1.02 * (14.8 - d_f * 3.02 / 4),       # Need
 
         # Fuselage
-        l_f             = 32.8,
-        d_f             = d_f,
-        S_wet_f         = 240.0,
+        l_f             = 32.8,                                     # Need
+        d_f             = d_f,                                      # Need
+        S_wet_f         = 240.0,                                    # Need
 
         # Flight condition
-        altitude        = 7_620,
-        M_cruise        = 0.7,
-        W_cruise        = 0.95 * 28_604 * 9.80665,
+        altitude        = 7_620,                                    # Do not need
+        M_cruise        = 0.7,                                      # Do not need
+        W_cruise        = 0.95 * 28_604 * 9.80665,                  # Need
 
-        CD_misc         = 0.0003,
+        CD_misc         = 0.0003,                                   # Do not need
     )
 
     est = DragEstimation(geo)

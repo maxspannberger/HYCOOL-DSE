@@ -295,42 +295,42 @@ if __name__ == "__main__":
 
     geo = ClassII_Input(
         # Weights (initial guess for iteration)
-        MTOW  = 31_237,
-        MZFW  = 30_000,
-        n_ult = 3.75,
+        MTOW  = 31_237,                                                 # Need
+        MZFW  = 30_000,                                                 # Need
+        n_ult = 3.75,                                                   # Do not need
  
         # Wing
-        b          = 28.4,
-        S_w        = 63.15,
-        sweep_half = np.deg2rad(12.5),
-        t_r        = 0.18 * 2.54,        # (t/c)_root * c_root  [m]
+        b          = 28.4,                                              # Need
+        S_w        = 63.15,                                             # Need
+        sweep_half = np.deg2rad(20),                                    # Need
+        t_r        = 0.18 * 2.54,        # (t/c)_root * c_root  [m]     # Need
  
         # Horizontal tail
-        S_h     = 13.94, 
-        sweep_h = np.deg2rad(10),
+        S_h     = 13.94,                                                # Need
+        sweep_h = np.deg2rad(10),                                       # Need
  
         # Vertical tail
-        S_v     = 14.8,
-        sweep_v = np.deg2rad(35.0),
-        b_v     = 4.9,
-        t_tail  = True,
+        S_v     = 14.8,                                                 # Need
+        sweep_v = np.deg2rad(35.0),                                     # Need
+        b_v     = 4.9,                                                  # Need
+        t_tail  = True,                                                 # Need, depends on config
  
         # Fuselage
-        b_f  = 2.69,
-        h_f  = 2.80,
-        l_f  = 32.8,
-        l_t  = 15.5,
-        k_wf = 0.23,
+        b_f  = 2.69,                                                    # Need
+        h_f  = 2.80,                                                    # Need
+        l_f  = 32.8,                                                    # Need
+        l_t  = 15.5,                                                    # Need
+        k_wf = 0.23,                                                    # Need
  
         # Speed
-        V_dive = 213.5,     # m/s EAS
+        V_dive = 213.5,     # m/s EAS                                   # Need
  
         # LG / controls
-        high_wing     = True,
-        has_flap_slat = True,
+        high_wing     = True,                                           # Need, depends on config
+        has_flap_slat = True,                                           # Need
  
         # Propulsion
-        W_Propulsion  = 2500 # kg
+        W_Propulsion  = 2500 # kg                                       # Need
 
     )
 
