@@ -7,80 +7,64 @@ import numpy as np
 
 # the quarter chord sweep angle can be assumed to be 0 for Mach 0.7
 class WingDesign:
-    """
-    Class I estimation for a wing geometry based on MTOW, wing loading, and planform parameters.
-    """
-    def __init__(self, W=31000, w=500, b=30, lambda_=0.4, Lambda_LE_deg=0.0):
-        """
-        Initialize the wing parameters and calculate the geometry.
+    """Class I estimation for wing geometry."""
+    
+    def __init__(self, W=31000, w=500, A=10, M_cr=0.7):
+        self.W = W
+        self.w = w
+        self.A = A
+        self.M_cr = M_cr
         
-        Args:
-            W (float): Maximum takeoff weight [kg]
-            w (float): Wing loading [kg/m^2]
-            b (float): Wingspan [m]
-            lambda_ (float): Taper ratio [-]
-            Lambda_LE_deg (float): Leading edge sweep angle [deg]
-        """
-        # Primary Inputs
-        self.W = W                   
-        self.w = w                   
-        self.b = b                   
-        self.lambda_ = lambda_       
-        self.Lambda_LE_deg = Lambda_LE_deg 
-        
-        # Convert sweep to radians for trigonometric functions
-        self.Lambda_LE = np.deg2rad(self.Lambda_LE_deg)
-        
-        # Execute the geometric calculations
         self._calculate_wing_geometry()
 
     def _calculate_wing_geometry(self):
-        """Calculates derived wing parameters."""
-        # 1. Area and Aspect Ratio
-        self.S = self.W / self.w                         # [m^2] Wing area
-        self.A = self.b ** 2 / self.S                    # [-] Aspect ratio
+        # 1. Area and Span
+        self.S = self.W / self.w
+        self.b = np.sqrt(self.A * self.S)
         
-        # 2. Chords
-        self.C_r = 2 * self.S / ((1 + self.lambda_) * self.b)  # [m] Root chord
-        self.C_t = self.lambda_ * self.C_r                     # [m] Tip chord
+        # 2. Sweep Angles & Taper Ratio
+        self.Lambda_c4_rad = np.arccos(1.16 / (self.M_cr + 0.5))
+        self.Lambda_c4_deg = np.rad2deg(self.Lambda_c4_rad)
         
-        # 3. Sweep
-        # Quarter chord sweep angle [rad]
-        self.Lambda_c4 = np.atan(np.tan(self.Lambda_LE) + self.C_r * (self.lambda_ - 1) / (2 * self.b)) 
-        self.Lambda_c4_deg = np.rad2deg(self.Lambda_c4)        # [deg]
+        # Taper Ratio (Standard formula uses radians)
+        self.lambda_ = 0.2 * (2 - self.Lambda_c4_rad)
         
-        # 4. Mean Aerodynamic & Geometric Chords
-        self.MAC = (2 / 3) * self.C_r * (1 + self.lambda_ + self.lambda_ ** 2) / (1 + self.lambda_) # [m]
+        # Leading Edge Sweep
+        tan_LE = np.tan(self.Lambda_c4_rad) + (1 - self.lambda_) / (self.A * (1 + self.lambda_))
+        self.Lambda_LE_rad = np.arctan(tan_LE)
+        self.Lambda_LE_deg = np.rad2deg(self.Lambda_LE_rad)
         
-        # Location of the mean geometric chord
-        self.y_MGC = (self.b / 6) * (1 + 2 * self.lambda_) / (1 + self.lambda_)                     # [m]
-        self.x_MGC = np.tan(self.Lambda_LE) * self.y_MGC                                            # [m]
+        # Half Chord Sweep
+        tan_c2 = np.tan(self.Lambda_c4_rad) - (1 - self.lambda_) / (self.A * (1 + self.lambda_))
+        self.Lambda_c2_rad = np.arctan(tan_c2)
+        self.Lambda_c2_deg = np.rad2deg(self.Lambda_c2_rad)
+        
+        # 3. Chords
+        self.C_r = 2 * self.S / ((1 + self.lambda_) * self.b)
+        self.C_t = self.lambda_ * self.C_r
+        self.MAC = (2 / 3) * self.C_r * (1 + self.lambda_ + self.lambda_ ** 2) / (1 + self.lambda_)
+        
+        # 4. Mean Geometric Chord Location
+        self.y_MGC = (self.b / 6) * (1 + 2 * self.lambda_) / (1 + self.lambda_)
+        self.x_MGC = np.tan(self.Lambda_LE_rad) * self.y_MGC
 
-    def update_and_check(self, W=None, w=None, b=None, lambda_=None, Lambda_LE_deg=None):
-        """
-        Updates wing parameters and checks if they are identical to the old ones.
-        Returns True if parameters remained the same, False if they changed.
-        """
-        old_params = (self.W, self.w, self.b, self.lambda_, self.Lambda_LE_deg)
+    def update_and_check(self, W=None, w=None, A=None, M_cr=None):
+        old_params = (self.W, self.w, self.A, self.M_cr)
         
         self.W = W if W is not None else self.W
         self.w = w if w is not None else self.w
-        self.b = b if b is not None else self.b
-        self.lambda_ = lambda_ if lambda_ is not None else self.lambda_
-        self.Lambda_LE_deg = Lambda_LE_deg if Lambda_LE_deg is not None else self.Lambda_LE_deg
+        self.A = A if A is not None else self.A
+        self.M_cr = M_cr if M_cr is not None else self.M_cr
         
-        new_params = (self.W, self.w, self.b, self.lambda_, self.Lambda_LE_deg)
+        new_params = (self.W, self.w, self.A, self.M_cr)
         
         if old_params == new_params:
             return True
-        
-        # Recalculate if parameters changed
-        self.Lambda_LE = np.deg2rad(self.Lambda_LE_deg)
+            
         self._calculate_wing_geometry()
         return False
 
     def __repr__(self):
-        """Provides a clean printed summary of the wing design."""
         return (f"--- Wing Class I Geometry ---\n"
                 f"W (MTOW)      = {self.W} kg\n"
                 f"S (Area)      = {self.S:.2f} m^2\n"
@@ -92,6 +76,7 @@ class WingDesign:
                 f"MAC           = {self.MAC:.2f} m\n"
                 f"Sweep (LE)    = {self.Lambda_LE_deg:.2f} deg\n"
                 f"Sweep (c/4)   = {self.Lambda_c4_deg:.2f} deg\n"
+                f"Sweep (c/2)   = {self.Lambda_c2_deg:.2f} deg\n"
                 f"x_MGC         = {self.x_MGC:.2f} m\n"
                 f"y_MGC         = {self.y_MGC:.2f} m")
     
