@@ -75,13 +75,13 @@ table = {
             "weight": 3,
             "stblty": 2,
             "safety": 3,
-            "therml": 2
+            "therml": 3
         },
         "FC-BAT-02": {
             "weight": 5,
             "stblty": 2,
             "safety": 5,
-            "therml": 4
+            "therml": 5
         },
         "FC-BAT-03": {
             "weight": 5,
@@ -176,13 +176,13 @@ table = {
             "weight": 3,
             "stblty": 1,
             "safety": 2,
-            "therml": 3
+            "therml": 4
         },
         "GT-FC-02": {
             "weight": 4,
             "stblty": 1,
             "safety": 3,
-            "therml": 3
+            "therml": 4
         },
         "GT-FC-03": {
             "weight": 4,
@@ -266,7 +266,7 @@ def generate_adjusted_weights(weights, noise=0.0, n_runs=1):
     for _ in range(n_runs):
         new_weights = {}
         for criterion in weights:
-            new_weights[criterion] = weights[criterion] * (1 + noise*np.random.randn())
+            new_weights[criterion] = weights[criterion] * max(0.0, 1+noise*np.random.randn())
 
         weights_magnitude = 0.0
         for criterion in new_weights:
@@ -312,12 +312,16 @@ def plot_winner_distribution(all_winners, n_winners=1, n_runs=1):
     axs = axs.reshape(-1)
 
     for ax, design in zip(axs, list(all_winners.keys())):
+        design_scores = dict(sorted(all_winners[design].items(), key=lambda item: item[0]))
+        ax.bar(design_scores.keys(), np.array(list(design_scores.values()))/n_runs)
+
         ax.set_title(design)
-        ax.bar(all_winners[design].keys(), np.array(list(all_winners[design].values()))/n_runs)
         ax.set_xlabel("Configuration")
         ax.set_ylabel(f"Occurance fraction in top {n_winners}")
         ax.set_ylim(0, 1)
         ax.tick_params("x", rotation=60)
+        ax.set_yticks(np.arange(0.0, 1.1, 0.1))
+        # ax.grid()
 
     plt.savefig(f"Tradeoff_config_sensitivity_top_{n_winners}.png")
     plt.show()
