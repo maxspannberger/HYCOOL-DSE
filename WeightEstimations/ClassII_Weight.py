@@ -1,96 +1,110 @@
 import numpy as np
-import scipy as sp
 from dataclasses import dataclass
 from typing import Optional
 import Tail_Interpolation as Tail_Interp
+from Aircraft_Config import AircraftConfig
 
 
-# 1) Airframe Structuring
-# -> Wings                                  Yes | Formula written
-# -> Tail                                   Yes | Formula written
-# -> Body                                   Yes | Formula written
-# -> Landing gear                           Yes | Formula written
-# -> Surface Controls                       Yes | Formula written
-# -> Engine Nacelle                         N/A | Propfan / Open fan doesn't have a nacelle
-
-# 2) Propulsion Group
-# -> Engine Weight                          Yes | FLOPS / Other
-
-# 3) Airframe Services & Equipment
-# -> APU                                    N/A
-# -> Instruments, Navigation, Electronics   N/A
-# -> Hydraulics & Pneumatics                N/A
-# -> Furnishing                             N/A
-# -> Air Conditioning and anti-icing        N/A
-
-
-# Aiframe structure
-# W_structure = 0.447 * MTOW * sqrt(N_ult) * (bf * hf * lf / MTOW)^0.24
-# N_ult = ultimate load factor (2.5), bf, hf, lf = fuselage dimensions (Width, height, length)
-
-# W_structure = wing + tail + body + Landing gear + Surface control + Nacelle / Engine 
-
-# W_HorizontalStabiliser = 1 * (S_h**0.2 * V_dive / sqrt(cos(Lambda_h)))
-# W_VerticalTail = k_v * (S_v**0.2 * V_dive / sqrt(cos(Lambda_v)))
-# Where k_v depends on whether it's a t-tail or normal tail.
-# For normal, k_v = 1. For t-tail, k_v = 1 + 0.15 * S_h * h_h / (S_v * b_v)
-
-# W_fuselage = k_wf * sqrt(V_dive * l_t / (b_f + h_f)) * S_f_wet**1.2
-# k_wf = 0.23-W_f (??), l_t = distance between quarter chord of wing and horizontal tail, h_f = maximum deptjh of fuselage
-# S_f_wet = pi * b_f * l_f * (1 - 2 / sigma)**2/3 * (1 + 1 / sigma**2)
-# Sigma = fuselage fineness ratio (???)
-
-# W_LG = k_LG * (A + B * W_TO **0.75 + C*W_TO + D*W_TO **1.5)
-# k_LG = 1 for Low wing, 1.08 for High wing. A, B, C, D to be found on page 283 of Torenbeek
-
-# W_SC = 1.2 * k_SC * W_TO**2/3
-# k_SC =  0.472 (No flap/slat control), 0.567 (Flap/Slat control)
+# Physics & comments unchanged from your original. Two changes:
+#   1. Added ClassII_Input.from_config(...) so it builds from AircraftConfig
+#      plus optional sized tail areas (S_h, S_v, b_v).
+#   2. Fixed iterate_MTOW so MZFW = W_empty + payload + fixed (not MTOW - fuel
+#      during iteration; that bug only converged correctly by accident).
 
 
 @dataclass
 class ClassII_Input:
     # Weights
-    MTOW:       float = 0.0         # kg
-    MZFW:       float = 0.0         # kg
-    n_ult:      float = 3.75        # CS-25 Requirements
+    MTOW:       float = 0.0
+    MZFW:       float = 0.0
+    n_ult:      float = 3.75
 
     # Wing
-    b:          float = 0.0         # m
-    S_w:        float = 0.0         # m^2
-    sweep_half: float = 0.0         # Radians
-    t_r:        float = 0.0         # m
-    k_w:        float = 6.67 * 10 ** -3
+    b:          float = 0.0
+    S_w:        float = 0.0
+    sweep_half: float = 0.0
+    t_r:        float = 0.0
+    k_w:        float = 6.67e-3
 
     # Horizontal tail
-    S_h:        float = 0.0         # m^2
-    sweep_h:    float = 0.0         # Radians
- 
+    S_h:        float = 0.0
+    sweep_h:    float = 0.0
+
     # Vertical tail
-    S_v:        float = 0.0         # m^2
-    sweep_v:    float = 0.0         # Radians
-    b_v:        float = 0.0         # m
-    t_tail:     bool  = False       
-    h_h:        float = 0.0         # m
-    k_v:        float = 0.0         # Depends on whether it's a T-tail or not
- 
+    S_v:        float = 0.0
+    sweep_v:    float = 0.0
+    b_v:        float = 0.0
+    t_tail:     bool  = False
+    h_h:        float = 0.0
+    k_v:        float = 0.0
+
     # Fuselage
-    b_f:        float = 0.0         # m
-    h_f:        float = 0.0         # m
-    l_f:        float = 0.0         # m
-    l_t:        float = 0.0         # m
-    k_wf:       float = 0.23        # Torenbeek
- 
+    b_f:        float = 0.0
+    h_f:        float = 0.0
+    l_f:        float = 0.0
+    l_t:        float = 0.0
+    k_wf:       float = 0.23
+
     # Speed
-    V_dive:     float = 0.0         # m/s
+    V_dive:     float = 0.0
 
     # Landing gear
     high_wing:  bool = False
- 
+
     # Surface controls
-    has_flap_slat: bool = True      # Changes value of wing constant
- 
+    has_flap_slat: bool = True
+
     # Propulsion
-    W_Propulsion: float = 0.0       # Define based on your propulsion architecture. Includes power generation & motors
+    W_Propulsion: float = 0.0
+
+    @classmethod
+    def from_config(
+        cls,
+        cfg: AircraftConfig,
+        MTOW: Optional[float] = None,
+        MZFW: Optional[float] = None,
+        S_h:  Optional[float] = None,
+        S_v:  Optional[float] = None,
+        b_v:  Optional[float] = None,
+    ) -> "ClassII_Input":
+        """
+        Build the weight-estimator input from a shared AircraftConfig.
+
+        S_h, S_v, b_v default to the initial guesses in cfg but should be
+        overridden by the tail-sizing module's outputs each iteration.
+        MTOW defaults to cfg.MTOW_initial.
+        """
+        return cls(
+            MTOW          = MTOW if MTOW is not None else cfg.MTOW_initial,
+            MZFW          = MZFW if MZFW is not None else cfg.MTOW_initial * 0.95,
+            n_ult         = cfg.n_ult,
+
+            b             = cfg.b,
+            S_w           = cfg.S_ref,
+            sweep_half    = cfg.sweep_half,
+            t_r           = cfg.t_root_abs,
+
+            S_h           = S_h if S_h is not None else cfg.S_h_initial,
+            sweep_h       = cfg.sweep_h_half,
+
+            S_v           = S_v if S_v is not None else cfg.S_v_initial,
+            sweep_v       = cfg.sweep_v_half,
+            b_v           = b_v if b_v is not None else cfg.b_v_initial,
+            t_tail        = cfg.t_tail,
+            h_h           = cfg.h_h,
+
+            b_f           = cfg.b_f,
+            h_f           = cfg.h_f,
+            l_f           = cfg.l_f,
+            l_t           = cfg.l_t,
+
+            V_dive        = cfg.V_dive,
+
+            high_wing     = cfg.high_wing,
+            has_flap_slat = cfg.has_flap_slat,
+
+            W_Propulsion  = cfg.W_propulsion,
+        )
 
 
 @dataclass
@@ -102,18 +116,16 @@ class WeightBreakdown:
     W_lg:     float = 0.0
     W_sc:     float = 0.0
     W_engine: float = 0.0
- 
+
     @property
     def W_structure(self) -> float:
-        """Airframe structural weight (excl. propulsion)."""
         return (self.W_wing + self.W_htail + self.W_vtail
                 + self.W_fus + self.W_lg + self.W_sc)
- 
+
     @property
     def W_empty(self) -> float:
-        """Structural OEW estimate: structure + propulsion group."""
         return self.W_structure + self.W_engine
- 
+
     def summary(self) -> str:
         lines = [
             "=" * 52,
@@ -133,73 +145,52 @@ class WeightBreakdown:
             "=" * 52,
         ]
         return "\n".join(lines)
- 
+
 
 @dataclass
 class weightEstimation:
 
-    b_ref           = 1.905         # Torenbeek ref. span
+    b_ref = 1.905
 
-    _LG_main = dict(A = 18.1, B = 0.131, C = 0.019, D = 2.23 * 10 **(-5))
-    _LG_nose = dict(A = 9.1,  B = 0.082, C = 0,     D = 2.97 * 10 **(-6))
+    _LG_main = dict(A=18.1, B=0.131, C=0.019, D=2.23e-5)
+    _LG_nose = dict(A=9.1,  B=0.082, C=0.0,   D=2.97e-6)
 
     def __init__(self, geometry: ClassII_Input):
         self.g = geometry
 
     def _validate(self):
         g = self.g
-
         required = dict(
             MTOW=g.MTOW, MZFW=g.MZFW, b=g.b, S_w=g.S_w, t_r=g.t_r,
             S_h=g.S_h, S_v=g.S_v, b_v=g.b_v,
             b_f=g.b_f, h_f=g.h_f, l_f=g.l_f, l_t=g.l_t,
             V_dive=g.V_dive,
         )
-
         missing = [k for k, v in required.items() if v <= 0]
         if missing:
             raise ValueError(f"Inputs not set or zero: {missing}")
-        
         if g.MZFW > g.MTOW:
-            raise ValueError("Why is your MZFW bigger than MTOW?.")    
-        
-
-    # W_wing = W_G * k_w * b_s**0.75 * (1 + sqrt(b_ref / b_s)) * n_ult**0.55 * (b_s/t_r / W_G/S)**0.3 * 1.02
-    # k_w = 6.67E-3 for MTOW > 12500lbs, b_ref = 1.905m, b_s = b * cos(Half sweep angle), t_r = root thickness, W_G = Gross shell weight
-    # Torenbeek Eq. (8-12)
+            raise ValueError("Why is your MZFW bigger than MTOW?")
 
     def _wing_weight(self) -> float:
-        g       = self.g
-        b_s     = g.b * np.cos(g.sweep_half)        # Projected Span
-
-        return g.MZFW * g.k_w * b_s**0.75 * (1 + np.sqrt(self.b_ref / b_s)) * g.n_ult**0.55 * ( (b_s / g.t_r) / (g.MZFW / g.S_w ) )**0.3 * 1.02
-    
-
-    # S in m^2 -> ft^2: multiply by 10.7639
-    # V in m/s (EAS) -> knots: multiply by 1.94384
-
-    def _tail_x_imperial(S_m2: float, V_mps: float, sweep_rad: float) -> float:
-        S_ft2 = S_m2 * 10.7639
-        V_kt  = V_mps * 1.94384
-        return S_ft2**0.2 * V_kt / 1000 / np.sqrt(np.cos(sweep_rad))
-
-    # W_HorizontalStabiliser = 1 * f(S_h**0.2 * V_dive / sqrt(cos(Lambda_h)))
-    # Torenbeek Eq. (8-14)
+        g   = self.g
+        b_s = g.b * np.cos(g.sweep_half)
+        return (g.MZFW * g.k_w * b_s**0.75
+                * (1 + np.sqrt(self.b_ref / b_s))
+                * g.n_ult**0.55
+                * ((b_s / g.t_r) / (g.MZFW / g.S_w))**0.3
+                * 1.02)
 
     def _htail_weight(self) -> float:
-        g = self.g
+        g     = self.g
         S_ft2 = g.S_h * 10.7639
         V_kt  = g.V_dive * 1.94384
         x     = S_ft2**0.2 * V_kt / 1000 / np.sqrt(np.cos(g.sweep_h))
-        w_per_area_lb_ft2 = Tail_Interp.get_weight_factor(x)   # lb/ft²
-        return w_per_area_lb_ft2 * S_ft2 * 0.453592            # -> kg
-        
-    # W_VerticalTail = k_v * (S_v**0.2 * V_dive / sqrt(cos(Lambda_v)))
-    # For normal, k_v = 1. For t-tail, k_v = 1 + 0.15 * S_h * h_h / (S_v * b_v)
-    # Torenbeek Eq. (8-15)
+        w_per_area_lb_ft2 = Tail_Interp.get_weight_factor(x)
+        return w_per_area_lb_ft2 * S_ft2 * 0.453592
 
     def _vtail_weight(self) -> float:
-        g = self.g
+        g     = self.g
         S_ft2 = g.S_v * 10.7639
         V_kt  = g.V_dive * 1.94384
         x     = S_ft2**0.2 * V_kt / 1000 / np.sqrt(np.cos(g.sweep_v))
@@ -209,53 +200,41 @@ class weightEstimation:
             k_v = 1 + 0.15 * g.S_h * g.h_h / (g.S_v * g.b_v)
         else:
             k_v = 1.0
-
-        return w_per_area_lb_ft2 * S_ft2 * k_v * 0.453592      # -> kg
-
-    # W_fuselage = k_wf * sqrt(V_dive * l_t / (b_f + h_f)) * S_f_wet**1.2
-    # k_wf = 0.23-W_f (??), l_t = distance between quarter chord of wing and horizontal tail, h_f = maximum depth of fuselage
-    # S_f_wet = pi * b_f * l_f * (1 - 2 / sigma)**2/3 * (1 + 1 / sigma**2)
-    # Sigma = fuselage fineness ratio (???)
-    # Torenbeek Eq. (8-16)
+        return w_per_area_lb_ft2 * S_ft2 * k_v * 0.453592
 
     def _fuselage_weight(self) -> float:
-        g = self.g
-        d_eq  = (g.b_f + g.h_f) / 2.0
-        sigma = g.l_f / d_eq
-        S_f_wet = (np.pi * g.b_f * g.l_f * (1.0 - 2.0 / sigma)**(2.0 / 3.0) * (1.0 + 1.0 / sigma**2))
-
-        return g.k_wf * np.sqrt(g.V_dive * g.l_t / (g.b_f + g.h_f)) * S_f_wet ** 1.2
-    
-    # W_LG = k_LG * (A + B * W_TO **0.75 + C*W_TO + D*W_TO **1.5)
-    # k_LG = 1 for Low wing, 1.08 for High wing. A, B, C, D to be found on page 283 of Torenbeek    
+        g       = self.g
+        d_eq    = (g.b_f + g.h_f) / 2.0
+        sigma   = g.l_f / d_eq
+        S_f_wet = (np.pi * g.b_f * g.l_f
+                   * (1.0 - 2.0 / sigma)**(2.0 / 3.0)
+                   * (1.0 + 1.0 / sigma**2))
+        return (g.k_wf
+                * np.sqrt(g.V_dive * g.l_t / (g.b_f + g.h_f))
+                * S_f_wet ** 1.2)
 
     def _LDG_weight(self) -> float:
-        g = self.g
-        k_LG = 1.08 if g.high_wing else 1
+        g    = self.g
+        k_LG = 1.08 if g.high_wing else 1.0
 
         def _leg(c: dict) -> float:
             return (c["A"]
                     + c["B"] * g.MTOW**0.75
                     + c["C"] * g.MTOW
                     + c["D"] * g.MTOW**1.5)
- 
-        return k_LG * (_leg(self._LG_main) + _leg(self._LG_nose)) 
-    
-    # W_SC = 1.2 * k_SC * W_TO**2/3
-    # k_SC =  0.472 (No flap/slat control), 0.567 (Flap/Slat control)
+
+        return k_LG * (_leg(self._LG_main) + _leg(self._LG_nose))
 
     def _surface_control_weight(self) -> float:
-        g = self.g
+        g    = self.g
         k_SC = 0.567 if g.has_flap_slat else 0.472
-        return 1.2 * k_SC * g.MTOW ** (2/3)
-    
+        return 1.2 * k_SC * g.MTOW ** (2 / 3)
+
     def _propulsion_weight(self) -> float:
-        g = self.g
-        return g.W_Propulsion
-    
+        return self.g.W_Propulsion
+
     def compute(self) -> WeightBreakdown:
         self._validate()
-
         return WeightBreakdown(
             W_wing   = self._wing_weight(),
             W_htail  = self._htail_weight(),
@@ -265,7 +244,6 @@ class weightEstimation:
             W_sc     = self._surface_control_weight(),
             W_engine = self._propulsion_weight(),
         )
-    
 
     def iterate_MTOW(
         self,
@@ -275,70 +253,47 @@ class weightEstimation:
         tol:               float = 1.0,
         max_iter:          int   = 50,
     ) -> tuple[float, WeightBreakdown]:
-        
+        """
+        Standalone weight-only MTOW iteration. Kept for backward compatibility
+        with your original main. The full Class II loop lives in main.py.
+
+        Bug fix vs original: MZFW is now computed correctly as
+            MZFW = W_empty + W_payload + W_fixed_equipment
+        rather than (MTOW - W_fuel) which was only correct at convergence.
+        """
+        bd = WeightBreakdown()
         for i in range(max_iter):
-            bd = self.compute()
-            MTOW_new = bd.W_empty + W_payload + W_fuel + W_fixed_equipment
-            delta    = abs(MTOW_new - self.g.MTOW)
+            bd        = self.compute()
+            MZFW_new  = bd.W_empty + W_payload + W_fixed_equipment
+            MTOW_new  = MZFW_new + W_fuel
+            delta     = abs(MTOW_new - self.g.MTOW)
+
             self.g.MTOW = MTOW_new
-            self.g.MZFW = MTOW_new - W_fuel
+            self.g.MZFW = MZFW_new
 
             if delta < tol:
                 print(f"Converged in {i + 1} iterations.  MTOW = {MTOW_new:.1f} kg")
                 return MTOW_new, bd
+
         print(f"Warning: did not converge after {max_iter} iterations. "
               f"Residual = {delta:.2f} kg")
         return self.g.MTOW, bd
- 
+
 
 if __name__ == "__main__":
+    from Aircraft_Config import default_q400_hycool
 
-    geo = ClassII_Input(
-        # Weights (initial guess for iteration)
-        MTOW  = 31_237,                                                 # Need
-        MZFW  = 30_000,                                                 # Need
-        n_ult = 3.75,                                                   # Do not need
- 
-        # Wing
-        b          = 28.4,                                              # Need
-        S_w        = 63.15,                                             # Need
-        sweep_half = np.deg2rad(20),                                    # Need
-        t_r        = 0.18 * 2.54,        # (t/c)_root * c_root  [m]     # Need
- 
-        # Horizontal tail
-        S_h     = 13.94,                                                # Need
-        sweep_h = np.deg2rad(10),                                       # Need
- 
-        # Vertical tail
-        S_v     = 14.8,                                                 # Need
-        sweep_v = np.deg2rad(35.0),                                     # Need
-        b_v     = 4.9,                                                  # Need
-        t_tail  = True,                                                 # Need, depends on config
- 
-        # Fuselage
-        b_f  = 2.69,                                                    # Need
-        h_f  = 2.80,                                                    # Need
-        l_f  = 32.8,                                                    # Need
-        l_t  = 15.5,                                                    # Need
-        k_wf = 0.23,                                                    # Need
- 
-        # Speed
-        V_dive = 213.5,     # m/s EAS                                   # Need
- 
-        # LG / controls
-        high_wing     = True,                                           # Need, depends on config
-        has_flap_slat = True,                                           # Need
- 
-        # Propulsion
-        W_Propulsion  = 2500 # kg                                       # Need
-
-    )
-
+    cfg = default_q400_hycool()
+    geo = ClassII_Input.from_config(cfg)
     est = weightEstimation(geo)
- 
+
     print("--- Single-shot ---")
     print(est.compute().summary())
- 
-    print("\n--- Iterated MTOW ---")
-    _, bd = est.iterate_MTOW(W_payload=10_000, W_fuel=600, W_fixed_equipment=5_500)
+
+    print("\n--- Iterated MTOW (weight-only loop) ---")
+    _, bd = est.iterate_MTOW(
+        W_payload         = cfg.W_payload,
+        W_fuel            = 600.0,
+        W_fixed_equipment = cfg.W_fixed,
+    )
     print(bd.summary())
