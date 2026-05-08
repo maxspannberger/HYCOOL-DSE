@@ -1,4 +1,5 @@
 import numpy as np
+from matplotlib import pyplot as plt
 
 table = {
     "GT-BAT": {
@@ -305,9 +306,23 @@ def get_winner_distribution(all_new_weights, n_winners=1):
     return all_winners
 
 
-def plot_winner_distribution(all_winners):
-    # TODO
-    pass
+def plot_winner_distribution(all_winners, n_winners=1, n_runs=1):
+    fig, axs = plt.subplots(2, 2, figsize=(12.8, 7.2))
+    fig.subplots_adjust(hspace=1.0, bottom=0.2)
+    axs = axs.reshape(-1)
+
+    for ax, design in zip(axs, list(all_winners.keys())):
+        ax.set_title(design)
+        ax.bar(all_winners[design].keys(), np.array(list(all_winners[design].values()))/n_runs)
+        ax.set_xlabel("Configuration")
+        ax.set_ylabel(f"Occurance fraction in top {n_winners}")
+        ax.set_ylim(0, 1)
+        ax.tick_params("x", rotation=60)
+
+    plt.savefig(f"Tradeoff_config_sensitivity_top_{n_winners}.png")
+    plt.show()
+
+    
 
 
 
@@ -319,17 +334,10 @@ if __name__ == "__main__":
         "therml": 0.1
     }
 
-    # tradeoff_results = tradeoff(weights=weights)
-    # print(tradeoff_results)
-
-    # winner_init = get_winner(weights=weights, n_winners=3)
-    # print(winner_init)
-
-    noise = 0.2
-    n_runs = 100
+    noise = 0.7
+    n_runs = 1000
+    n_winners = 3
 
     all_new_weights = generate_adjusted_weights(weights, noise, n_runs)
-    # print(all_new_weights)
-
-    all_winners = get_winner_distribution(all_new_weights, n_winners=3)
-    print(all_winners)
+    all_winners = get_winner_distribution(all_new_weights, n_winners=n_winners)
+    plot_winner_distribution(all_winners, n_winners=n_winners, n_runs=n_runs)
