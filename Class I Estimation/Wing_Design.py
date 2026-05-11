@@ -5,59 +5,47 @@ import numpy as np
 # limitation in takeoff safety speed can be translated into a wing loading requirement:
 # W_to / S = 0.5 * rho * V_2 ** 2 * C_L_max * (V_s / V_2) ** 2 where V_s / V_2 is mentioned in the regulations
 
-# the quarter chord sweep angle can be assumed to be 0 for Mach 0.7
 class WingDesign:
     """Class I estimation for wing geometry."""
-    
     def __init__(self, W=31000, w=500, A=10, M_cr=0.7):
         self.W = W
         self.w = w
         self.A = A
         self.M_cr = M_cr
-        
         self._calculate_wing_geometry()
 
     def _calculate_wing_geometry(self):
-        # 1. Area and Span
         self.S = self.W / self.w
         self.b = np.sqrt(self.A * self.S)
         
-        # 2. Sweep Angles & Taper Ratio
         self.Lambda_c4_rad = np.arccos(1.16 / (self.M_cr + 0.5))
         self.Lambda_c4_deg = np.rad2deg(self.Lambda_c4_rad)
         
-        # Taper Ratio (Standard formula uses radians)
         self.lambda_ = 0.2 * (2 - self.Lambda_c4_rad)
         
-        # Leading Edge Sweep
         tan_LE = np.tan(self.Lambda_c4_rad) + (1 - self.lambda_) / (self.A * (1 + self.lambda_))
         self.Lambda_LE_rad = np.arctan(tan_LE)
         self.Lambda_LE_deg = np.rad2deg(self.Lambda_LE_rad)
         
-        # Half Chord Sweep
         tan_c2 = np.tan(self.Lambda_c4_rad) - (1 - self.lambda_) / (self.A * (1 + self.lambda_))
         self.Lambda_c2_rad = np.arctan(tan_c2)
         self.Lambda_c2_deg = np.rad2deg(self.Lambda_c2_rad)
         
-        # 3. Chords
         self.C_r = 2 * self.S / ((1 + self.lambda_) * self.b)
         self.C_t = self.lambda_ * self.C_r
         self.MAC = (2 / 3) * self.C_r * (1 + self.lambda_ + self.lambda_ ** 2) / (1 + self.lambda_)
         
-        # 4. Mean Geometric Chord Location
         self.y_MGC = (self.b / 6) * (1 + 2 * self.lambda_) / (1 + self.lambda_)
         self.x_MGC = np.tan(self.Lambda_LE_rad) * self.y_MGC
 
     def update_and_check(self, W=None, w=None, A=None, M_cr=None):
         old_params = (self.W, self.w, self.A, self.M_cr)
-        
         self.W = W if W is not None else self.W
         self.w = w if w is not None else self.w
         self.A = A if A is not None else self.A
         self.M_cr = M_cr if M_cr is not None else self.M_cr
         
         new_params = (self.W, self.w, self.A, self.M_cr)
-        
         if old_params == new_params:
             return True
             
@@ -66,7 +54,7 @@ class WingDesign:
 
     def __repr__(self):
         return (f"--- Wing Class I Geometry ---\n"
-                f"W (MTOW)      = {self.W} kg\n"
+                f"W (MTOW)      = {self.W:.2f} kg\n"
                 f"S (Area)      = {self.S:.2f} m^2\n"
                 f"b (Span)      = {self.b:.2f} m\n"
                 f"Aspect Ratio  = {self.A:.2f}\n"
@@ -79,6 +67,3 @@ class WingDesign:
                 f"Sweep (c/2)   = {self.Lambda_c2_deg:.2f} deg\n"
                 f"x_MGC         = {self.x_MGC:.2f} m\n"
                 f"y_MGC         = {self.y_MGC:.2f} m")
-    
-wing1 = WingDesign()
-print(wing1)
