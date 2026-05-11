@@ -7,6 +7,7 @@ from parameters import lift_coefficients
 from parameters import propulsion_parameters
 from parameters import aerodynamic_parameters
 from parameters import flight_parameters
+from parameters import beta_dict
 
 # this file will contain all the classes that are used in this Class I estimation
 
@@ -118,6 +119,7 @@ class MatchingDiagram:
         self.MCR = self.flight_parameters['MCR']  # Cruise Mach number
         self.hcr = self.flight_parameters['Cruise_altitude'] # Cruise altitude [m]
         self.eta_prop = self.propulsion_parameters["eta_prop"]  # Propulsive efficiency [-]
+        self.beta = beta_dict
 
         # Atmospheric Parameters
         self.gamma = Atmosphere.GAMMA
@@ -127,22 +129,33 @@ class MatchingDiagram:
         self.MU_REF = Atmosphere.MU_REF
         self.T_REF = Atmosphere.T_REF
 
-        
-        self.beta = 0.7 # Mass Ratio [-]
+    
         self.CLFL = 0.45 # Landing field length coefficient [-] (0.45 for CS25, 0.6 for CS23)
         self.h2 = 18 # Obstacle height [ft]
         self.kT = 0.85 # Take-off thrust parameter [-]
 
         # Take-off Requirements
-        self.h_to = 10.7  # [m]
+        self.h2 = 11  # [m]
+        self.TO = 1800 # Take-off field length [m]
+        self.kT = 0.85  # Take-off thrust parameter [-]
+        
+        """
         self.mu_prime = .010 * lift_coefficients['CL_max_TO'] + .02
         self.CL_2 = .694 * lift_coefficients['CL_max_TO']
         self.T_mean = None
         self.Delta_gamma_2 = None
         self.gamma_2 = None
         self.gamma_2_min = .024  # .024, .027, .030 for Ne = 2, 3, or 4 respectively
-        self.BFL = 1800 # Balanced field length [m]
-        self.Delta_S_TO = 200 # [m]
+        """
+
+        #self.Delta_S_TO = 200 # [m]
+
+
+        # Sea Level Properties
+        self.density_SLS = Atmosphere(0).density  # Sea level density [kg/m^3])
+        print(self.density_SLS)
+        self.pressure_SLS = Atmosphere(0).pressure  # Sea level pressure [Pa]
+        self.temperature_SLS = Atmosphere(0).temperature  # Sea level temperature [K]
 
         # Atmospheric Properties
         self.density_cruise = Atmosphere(self.flight_parameters['Cruise_altitude']).density
@@ -151,10 +164,11 @@ class MatchingDiagram:
 
         # Requirements
         self.Vs0 = 55.0 # Stall speed 
-        self.Vapp = Vapp # Approach speed
-        self.LFL = LFL # Landing field length
+        self.Vapp = 60.0 # Approach speed
+        self.LFL = 1800 # Landing field length
         
         self.V_cr = self.MCR * Atmosphere(self.flight_parameters['Cruise_altitude']).speed_of_sound  # Cruise speed
+        print("Cruise Speed (m/s):", self.V_cr)
         self.c = c # Climb rate
         self.G = G # Climb Gradient
         self.LTO = self.flight_parameters['TO_field_length']  # Take-off field length
@@ -163,7 +177,7 @@ class MatchingDiagram:
 
         # Landing Requirements
         self.W_land = 25000  # [kg]
-        self.S_land = 2200 # [m]
+        self.S_land = 1800 # [m]
         self.W_TO = 32000 # [kg]
         self.f_land = 1.67  # CS 25
         self.h_land = 15.3  # CS 25 [m]
@@ -181,31 +195,30 @@ class MatchingDiagram:
         """
         # FREEZE SEARCH 1. Cruise Speed Requirement (TORENBEEK 156 5-37)
         # T_W_cruise = (0.5 * self.gamma * np.square(self.MCR) * self.CD0) / (self.W_S / atm.pressure) + (self.W_S / atm.pressure) * (1 / (0.5 * self.gamma * np.square(self.MCR) * self.A * self.e))
-        # q_cruise = 0.5 * atm.density * np.square(self.V_cr)
-        P_W_cruise = self.eta_prop * (1 / self.beta) * np.float_power(((self.CD0 * 0.5 * self.density_cruise * np.power(self.V_cr, 3))/(self.beta * self.W_S)) + ((self.beta * (self.W_S)) / (np.pi * self.A * self.e * 0.5 * self.density_cruise * self.V_cr)), -1)
-        W_P_cruise = 1 / P_W_cruise
-        print("Cruise Speed Requirement (W/P):", W_P_cruise)
+        W_P_cruise = (self.eta_prop / self.beta['beta_cruise']) / (((self.CD0 * 0.5 * self.density_cruise * np.power(self.V_cr, 3))/(self.beta['beta_cruise'] * self.W_S)) + ((self.beta['beta_cruise'] * (self.W_S)) / (np.pi * self.A * self.e * 0.5 * self.density_cruise * self.V_cr)))
 
         # 2. FREEZE Take-off Distance Requirement (TORENBEEK 169)
         #T_W_TO = self.mu_prime + 1 / ((1.159*(self.BFL - (self.Delta_S_TO/np.sqrt(atm.density/self.rho))))/(self.W_S/(atm.density*self.g*self.CL_2)+ self.h_to) - 2.7)
-        P_W_TO = (1 / np.float_power(self.kP, 1.5)) * np.sqrt(self.MTOW / (self.sigma * self.Ne * np.square(self.Dp))) * (self.mu_prime + 1 / ((1.159*(self.BFL - (self.Delta_S_TO/np.sqrt(self.sigma))))/(self.W_S/(atm.density*self.g*self.CL_2)+ self.h_to) - 2.7))
+        #P_W_TO = (1 / np.float_power(self.kP, 1.5)) * np.sqrt(self.MTOW / (self.sigma * self.Ne * np.square(self.Dp))) * (self.mu_prime + 1 / ((1.159*(self.BFL - (self.Delta_S_TO/np.sqrt(self.sigma))))/(self.W_S/(atm.density*self.g*self.CL_2)+ self.h_to) - 2.7))
         #print(P_W_TO)
-        W_P_TO = 1 / P_W_TO 
+        #W_P_TO = 1 / P_W_TO 
+        self.CL2 = 0.694 * self.lift_coefficients['CL_max_TO']
+        W_P_TO = (1 / (1.15 * np.sqrt((self.Ne / (self.Ne - 1)) * (self.W_S / (self.TO * self.density_cruise * self.kT * self.g * self.A * self.e))) + (self.Ne / (self.Ne - 1)) * (4 * self.h2 / self.LTO))) * np.sqrt((self.CL2 / self.W_S) * (self.density_SLS / 2))
 
         # 3. FREEZE Landing Distance Requirement (TORENBEEK 171)
         W_S_land = (1 / (self.W_land/self.W_TO)) * ((self.S_land/(self.f_land * self.h_land)) - 10) * ((self.h_land * atm.density * self.g * self.lift_coefficients['CL_max_L'])/(1.52/self.a_g + 1.69))
-
+    
         # 4. FREEZE Minimum Speed Requirement (TORENBEEK 166)
-        W_S_min = 0.5 * atm.density * self.lift_coefficients['CL_max_L'] * np.square(self.Vs0)
+        W_S_min = (1 / self.beta['beta_landing']) * 0.5 * self.density_SLS * self.lift_coefficients['CL_max_L'] * np.square(self.Vapp / 1.23)
         
         # 5. Climb Gradient Requirement (OEI) (TORENBEEK 161)
         #T_W_climb = self.g_climb + (0.5 * self.gamma * np.square(self.MCR) * self.CD0) / (self.W_S / atm.pressure) + (self.W_S / atm.pressure) * (1 / (0.5 * self.gamma * np.square(self.MCR) * np.pi * self.A * self.e))
         #T_W_climb_min = self.g_climb + 2 * np.sqrt(self.CD0 / (np.pi * self.A * self.e))  
         # Generate an array the same size as W_S for the climb gradient requirement, where all values are equal to T_W_climb_min
         #T_W_climb = np.full_like(self.W_S, T_W_climb_min)  
-        CD = self.CD0 + self.CL_2 / (np.pi * self.A * self.e) 
-        CL = self.CL_2
-        W_P_climb = ((self.Ne - 1)/self.Ne) * self.eta_prop * (1 / self.beta) * (1 / (self.g_climb + (CD / CL))) * np.sqrt((self.density_cruise / 2)*(CL / (self.beta * self.W_S)))  # Power loading for climb gradient requirement
+        CD = self.CD0 + self.CL2 / (np.pi * self.A * self.e) 
+        CL = self.CL2
+        W_P_climb = ((self.Ne - 1)/self.Ne) * self.eta_prop * (1 / self.beta['beta_climb']) * (1 / (self.g_climb + (CD / CL))) * np.sqrt((self.density_cruise / 2)*(CL / (self.beta['beta_climb'] * self.W_S)))  # Power loading for climb gradient requirement
     
         # Put all of the curves together in a dictionary
         W_P_Curves = {
@@ -230,11 +243,18 @@ class MatchingDiagram:
             # Plot the curve (this is a placeholder, actual plotting code will depend on the data structure of curve_data)
             plt.plot(self.W_S, curve_data, label=curve_name)
             pass
-    
+        
+        print(W_S_Curves['Minimum Speed Requirement'])
+        print(W_S_Curves['Landing Distance Requirement'])
+        """
         for curve_name, curve_data in W_S_Curves.items():
             # Plot the curve (this is a placeholder, actual plotting code will depend on the data structure of curve_data)
             plt.vlines(curve_data, ymin=0, ymax=max(W_P_Curves["Cruise Speed Requirement"]), label=curve_name, linestyles='dashed')
             pass
+        """
+
+        plt.vlines(W_S_Curves['Minimum Speed Requirement'], ymin=0, ymax=W_S_Curves['Minimum Speed Requirement'], label='Minimum Speed Requirement', colors='red')
+        plt.vlines(W_S_Curves['Landing Distance Requirement'], ymin=0, ymax=W_S_Curves['Landing Distance Requirement'], label='Landing Distance Requirement', colors='purple')
         
         # Set the labels and title for the diagram
         plt.xlabel('Wing Loading (W/S)')
@@ -244,7 +264,7 @@ class MatchingDiagram:
         plt.grid()
         
         # Restrict the y axis limit at 1 for better visualization
-        plt.ylim(0, 1)
+        plt.ylim(0, 0.4)
 
 
         figures_dir = os.path.join(os.path.dirname(__file__), 'Class_I_Figures')
@@ -260,6 +280,4 @@ if __name__ == "__main__":
 
     diagram = MatchingDiagram()
     W_P_Curves, W_S_Curves = diagram.calculate_matching(atmosphere)
-    #print("W/P Curves:", W_P_Curves)
-    #print("W/S Curves:", W_S_Curves)
     diagram.generate_diagram(W_P_Curves, W_S_Curves)

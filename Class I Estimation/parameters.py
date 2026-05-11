@@ -5,9 +5,9 @@ import numpy as np
 
 # 1. Lift coefficients 
 lift_coefficients = {
-    "CL_max_cruise": 1.4,  # Lift coefficient during cruise
-    "CL_max_TO": 1.8,  # Maximum lift coefficient during take-off
-    "CL_max_L": 2.4  # Maximum lift coefficient during landing
+    "CL_max_cruise": 1.7,  # Lift coefficient during cruise
+    "CL_max_TO": 1.9,  # Maximum lift coefficient during take-off
+    "CL_max_L": 2.2  # Maximum lift coefficient during landing
 }
 
 # 2. Propulsion system parameters 
@@ -21,7 +21,7 @@ propulsion_parameters = {
 # 3. Aerodynamic parameters 
 aerodynamic_parameters = {
     "CD0": 0.02,  # Zero-lift drag coefficient
-    "e": 0.8,  # Oswald efficiency factor
+    "e": 1.,  # Oswald efficiency factor
     "A": 10.0  # Aspect ratio
 }
 
@@ -72,7 +72,8 @@ def calculate_beta(mass_fractions, phase_string, loiter=False):
     float: The mass fraction (beta) for the specified phase.
     float: The overall mass fraction (beta) for the mission.
     """
-    mass_lst = mass_fractions
+    
+    mass_list = mass_fractions  # Create a copy of the mass fractions dictionary to modify
     # Define the order of phases in the mission
     phases = ["Mf_1", "Mf_2", "Mf_3", "Mf_4", "Mf_5", "Mf_6", "Mf_7", "Mf_8"]
 
@@ -82,23 +83,27 @@ def calculate_beta(mass_fractions, phase_string, loiter=False):
 
     phases = phases[:phases.index(phase_string) + 1]  # Include only phases up to the specified phase_string
     
-    
     beta_phase = 1.0
     # Calculate the mass fraction for the specified phase
     for feiz in phases:
-        beta_phase *= mass_lst[feiz]
+        beta_phase *= mass_list[feiz]
 
     return beta_phase
 
-beta_taxi = calculate_beta(mass_fractions, "Mf_2")
-beta_cruise = calculate_beta(mass_fractions, "Mf_5")
-beta_landing = calculate_beta(mass_fractions, "Mf_8", loiter=True)
+beta_dict = {
+    'beta_engine_start': calculate_beta(mass_fractions, "Mf_1"),
+    'beta_taxi': calculate_beta(mass_fractions, "Mf_2"),
+    'beta_takeoff': calculate_beta(mass_fractions, "Mf_3"),
+    'beta_climb': calculate_beta(mass_fractions, "Mf_4"),
+    'beta_cruise': calculate_beta(mass_fractions, "Mf_5"),
+    'beta_loiter': calculate_beta(mass_fractions, "Mf_6", loiter=True),
+    'beta_descent': calculate_beta(mass_fractions, "Mf_7"), 
+    'beta_descent_loiter': calculate_beta(mass_fractions, "Mf_7", loiter=True), 
+    'beta_landing': calculate_beta(mass_fractions, "Mf_8"),
+    'beta_landing_loiter': calculate_beta(mass_fractions, "Mf_8", loiter=True)
+}
 
-print(beta_taxi)
-print(beta_cruise)
-print(beta_landing)
-
-
+print(beta_dict)
 """
 # Multiply all mass fractions to get the fuel mass fraction for the mission
 Mff = 1.0
