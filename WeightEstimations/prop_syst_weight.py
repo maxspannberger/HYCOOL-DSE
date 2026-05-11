@@ -36,3 +36,15 @@ ED_BATT     =   c["bt"].energy_density  #kWh/kg Energy density of battery
 PD_CABLE    =   c["cable"].power_density  #kW/kg Power density of electrical cables
 
 #--------------------- CALCULATIONS -------------------------
+#pipe lengths:
+#design A: 82 meters of pipe
+#design B: 34 meters of pipe
+#design C: 34 meters of pipe
+#design D: 48 meters of pipe
+
+
+#possibly add reserve OEI if required
+P_bat_climb = P_climb - P_cruise
+P_bat_OEI = P_TO_OEI
+P_bat_req = max(P_bat_climb, P_bat_OEI)
+
