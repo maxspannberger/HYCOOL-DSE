@@ -27,7 +27,7 @@ aerodynamic_parameters = {
 
 # 4. Flight parameters
 flight_parameters = {
-    "Cruise_altitude": 6096.0,  # Cruise altitude [m]
+    "Cruise_altitude": 7620,  # Cruise altitude [m] (FL250)
     "MCR": 0.7,  # Cruise Mach number
     "TO_field_length": 1000,  # Take-off field length [m]
     "MTOW": 28000.0,  # Maximum take-off weight [kg]

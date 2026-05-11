@@ -256,7 +256,7 @@ class MatchingDiagram:
 
 if __name__ == "__main__":
 
-    atmosphere = Atmosphere(6096.0)  # Example altitude of 20,000 ft (6096 m)
+    atmosphere = Atmosphere(7620.0)  # Example altitude of 25,000 ft (7620 m)
 
     diagram = MatchingDiagram()
     W_P_Curves, W_S_Curves = diagram.calculate_matching(atmosphere)
