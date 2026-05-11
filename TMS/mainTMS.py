@@ -295,6 +295,24 @@ def compute_piping_losses(state_keys, states, design: str, flight_condition: str
         total_heat_w += pipe_module.run_pipe_analysis(m_dot_fc, extra_length, 0)["total_heat_input_w"]
     return total_heat_w / 1000.0
 
+def thermal_ratio_score(ratio):
+    if not np.isfinite(ratio):
+        return 0
+
+    margin = abs(ratio - 1)
+
+    if margin <= 0.2:
+        return 5
+    elif margin <= 0.4:
+        return 4
+    elif margin <= 0.6:
+        return 3
+    elif margin <= 0.8:
+        return 2
+    elif margin <= 1.0:
+        return 1
+    else:
+        return 0
 
 def design_phase_table() -> 'pd.DataFrame':
     import pandas as pd
@@ -458,6 +476,7 @@ def design_phase_table() -> 'pd.DataFrame':
         total_heat_kw = heat_total_kw + pipe_loss_kw
         # Ratio of heat to reject to heat absorbed; infinite if no absorption available
         ratio_rej_abs = (heat_total_kw / heat_abs_total_kw) if heat_abs_total_kw > 0 else float('inf')
+        thermal_score = thermal_ratio_score(ratio_rej_abs)
         # Net heat is positive if there is still heat left to reject after hydrogen has absorbed all it can
         net_heat_kw = total_heat_kw - heat_abs_total_kw
         # Determine heat status: positive means there is still heat left to reject,
@@ -473,18 +492,70 @@ def design_phase_table() -> 'pd.DataFrame':
             # "PipingLoss_kW": pipe_loss_kw,
             "HeatAbsorbed_KW": heat_abs_total_kw,
             "RatioRejAbs": ratio_rej_abs,
+            "ThermalScore": thermal_score,
             "NetHeat_kW": net_heat_kw,
             "HeatStatus": heat_status,
         })
     df = pd.DataFrame(rows)
     return df
 
+def design_score_table(df=None):
+    import pandas as pd
+
+    if df is None:
+        df = design_phase_table()
+
+    weights = {
+        "Cruise": 0.4,
+        "Climb": 0.4,
+        "OEI": 0.2,
+    }
+
+    rows = []
+
+    for design in sorted(df["Design"].unique()):
+        design_df = df[df["Design"] == design]
+
+        cruise_score = design_df.loc[
+            design_df["FlightCondition"] == "Cruise", "ThermalScore"
+        ].iloc[0]
+
+        climb_score = design_df.loc[
+            design_df["FlightCondition"] == "Climb", "ThermalScore"
+        ].iloc[0]
+
+        oei_scores = design_df.loc[
+            design_df["FlightCondition"].str.contains("OEI"), "ThermalScore"
+        ]
+
+        oei_score = oei_scores.min()
+
+        final_score = (
+            weights["Cruise"] * cruise_score
+            + weights["Climb"] * climb_score
+            + weights["OEI"] * oei_score
+        )
+
+        rows.append({
+            "Design": design,
+            "CruiseScore": cruise_score,
+            "ClimbScore": climb_score,
+            "OEIScore": oei_score,
+            "FinalThermalScore": final_score,
+        })
+
+    return pd.DataFrame(rows)
 
 if __name__ == "__main__":
     # When run as a script, compute and display the state table. This allows
     # quick testing from the command line (e.g. `python mainTMS.py`).
     import pandas as pd
     table = design_phase_table()
-    # Display the table in a readable format without scientific notation
-    with pd.option_context('display.float_format', '{:,.2f}'.format):
+    scores = design_score_table(table)
+
+    with pd.option_context("display.float_format", "{:,.2f}".format):
+        print("\nDetailed thermal table:")
         print(table.to_string(index=False))
+
+        print("\nDesign thermal scores:")
+        print(scores.to_string(index=False))
