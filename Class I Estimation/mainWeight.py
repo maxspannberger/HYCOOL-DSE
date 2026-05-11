@@ -16,7 +16,7 @@ M_ff = (                                        # fuel fraction
     param.mass_fractions["Mf_1"] * param.mass_fractions["Mf_2"] *
     param.mass_fractions["Mf_3"] * param.mass_fractions["Mf_4"] *
     param.mass_fractions["Mf_5"] * param.mass_fractions["Mf_7"] *
-    param.mass_fractions["Mf_6"] * param.mass_fractions["Mf_8"]
+    param.mass_fractions["Mf_8"] * param.mass_fractions["Mf_6"]
 )
 
 def run_class_1_sizing():

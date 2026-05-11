@@ -97,11 +97,11 @@ class MatchingDiagram:
         # Cruise speed calculated using speed of sound
         self.V_cr = self.MCR * Atmosphere(self.flight_parameters['Cruise_altitude']).speed_of_sound 
         
-        # Landing Requirements
-        self.S_land = 2100 
-        self.f_land = 1.67  
-        self.h_land = 15.3  
-        self.a_g = 0.4  
+         # Landing Requirements
+        self.S_land = 2100 # [m]
+        self.f_land = 1.67  # CS 25
+        self.h_land = 15.3  # CS 25 [m]
+        self.a_g = 0.4  # CHECK TORENBEEK 170
 
         # Climb Requirements
         self.g_climb = 0.024  
@@ -120,7 +120,7 @@ class MatchingDiagram:
         W_P_TO = (1 / (1.15 * np.sqrt((self.Ne / (self.Ne - 1)) * (self.W_S / (self.TO * self.density_cruise * self.kT * self.g * self.A * self.e))) + (self.Ne / (self.Ne - 1)) * (4 * self.h2 / self.TO))) * np.sqrt((self.CL2 / self.W_S) * (self.density_SLS / 2))
 
         # 3. Landing Distance Requirement (TORENBEEK 171)
-        W_S_land = (1 / (self.beta['beta_landing'])) * ((self.S_land/(self.f_land * self.h_land)) - 10) * ((self.h_land * atm.density * self.g * self.lift_coefficients['CL_max_L'])/(1.52/self.a_g + 1.69))
+        W_S_land = (1 / (self.beta['beta_landing'])) * ((self.S_land/(self.f_land * self.h_land)) - 10) * ((self.h_land * self.density_SLS * self.g * self.lift_coefficients['CL_max_L'])/(1.52/self.a_g + 1.69))
 
         # 4. Minimum Speed Requirement (TORENBEEK 166)
         W_S_min = (1 / self.beta['beta_landing']) * 0.5 * self.density_SLS * self.lift_coefficients['CL_max_L'] * np.square(self.Vapp / 1.23)
