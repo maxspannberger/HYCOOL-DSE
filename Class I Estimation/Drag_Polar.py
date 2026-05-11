@@ -79,10 +79,10 @@ class DragPolarEstimator:
         
         plt.show()
 
-V_lst = np.linspace(20, 180, 100)
+V_lst = np.linspace(110, 450, 200)
     
 # 2. Instantiate the aircraft
-my_aircraft = DragPolarEstimator(W_kg=31000, S=64, b=28.4, Cd0=0.02, e=0.75)
+my_aircraft = DragPolarEstimator(W_kg=31000, S=64, b=28.4, Cd0=0.018, e=1.)
     
 # 3. Calculate and Plot
 my_aircraft.calculate_performance(V_lst)
