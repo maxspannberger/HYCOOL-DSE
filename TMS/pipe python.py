@@ -80,7 +80,3 @@ def run_pipe_analysis(
         "r_o_foam": r_o_foam,
         "r_o_al": r_o_al,
     }
-
-config_1 = run_pipe_analysis(0.053, 16, 4)
-
-print(config_1)

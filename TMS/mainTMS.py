@@ -13,34 +13,478 @@ P_OEI = 3100
 P_rem_1 = P_OEI - (P_ch / 2)
 P_rem_2 = P_OEI - (P_cr / 2)
 
-def hydrogen_mass_flow(power, sp_work=48000):
-    m_dot_h2 = power / sp_work  # [kg/s]
-    return m_dot_h2
+sp_work = 48
 
-def hydrogen_heat_absorption(power, system_type, sp_work=48000):
-    # Temperatures [K]
-    T_start = 20
-    T_boil = 20.3
-    T_use_fc = 433
-    T_use_gt = 318.9
+T_start = 20
+T_use_fc = 433
+T_use_gt = 318.9
 
-    # Hydrogen properties
-    h_vap = 446       # [kJ/kg]
-    cp_gas = 14.3     # [kJ/kg/K]
+###############################################################################
+# Cooling and piping parameters
+###############################################################################
 
-    # Hydrogen mass flow
-    m_dot_h2 = hydrogen_mass_flow(power, sp_work)
+# Hydrogen thermodynamic properties for coolant calculations.  The latent heat
+# of vaporisation and approximate specific heat capacity of gaseous hydrogen
+# are used to estimate how much thermal energy a kilogram of liquid
+# hydrogen can absorb when warmed from cryogenic conditions up to the
+# component inlet temperature.  Values are in kJ/kg and kJ/kg/K.
+H_VAP = 446         # latent heat of vaporisation of LH2 [kJ/kg]
+CP_GAS = 14.3       # specific heat of gaseous hydrogen [kJ/kg/K]
+T_BOIL = 20.3       # approximate boiling temperature of LH2 [K]
 
-    if system_type == "GT":
-        T_use = T_use_gt
-    elif system_type == "FC":
-        T_use = T_use_fc
+# Internal cache for the piping analysis module.  Loading the module
+# containing the pipe analysis functions triggers a print of example
+# output on import, so we load it only once.  See `_get_pipe_module()`.
+_PIPE_MODULE = None
+
+def _get_pipe_module():
+    global _PIPE_MODULE
+    if _PIPE_MODULE is None:
+        from importlib.machinery import SourceFileLoader
+        # Compute the path to the pipe analysis file relative to this file
+        import os
+        this_dir = os.path.dirname(__file__)
+        pipe_path = os.path.join(this_dir, 'pipe python.py')
+        _PIPE_MODULE = SourceFileLoader('pipe_module', pipe_path).load_module()
+    return _PIPE_MODULE
+
+
+###############################################################################
+# Thermal management system calculations
+###############################################################################
+
+# Heat rejection fractions for each power source.  These values represent the
+# fraction of the output power that must be rejected as waste heat.  While
+# thermodynamic efficiency would suggest a larger waste fraction (e.g. a
+# 60 % efficient fuel cell would reject 66.7 % of its output as heat), the
+# user explicitly provided these fractions for sizing the cooling system.
+
+HEAT_REJECTION_FRACTION = {
+    "fc": 0.40,  # fuel cell: 40 % of input power is rejected as heat
+    "bat": 0.10,  # battery: 10 % of input power is rejected as heat
+    "gt": 0.089,  # gas turbine: 8.9 % of input power is rejected as heat
+}
+
+# Mapping of prime mover efficiencies.  These values represent the
+# electrical/shaft efficiency of each device, not including additional
+# electrical system losses.  For example, a gas turbine delivering power to
+# an electric generator is roughly 39.5 % efficient, a fuel cell 60 %
+# efficient and a battery 90 % efficient.  These are used to back‑calculate
+# the upstream power requirement from the given output power.
+EFFICIENCY_MAP = {
+    "gt": 0.395,
+    "fc": 0.60,
+    "bat": 0.90,
+}
+
+# Electrical system loss fractions by source.  When electrical power is
+# transmitted, a fraction of the power is lost as heat.  Gas turbine‑derived
+# power incurs a 3.13 % penalty, whereas fuel cell or battery power incurs
+# only a 1.83 % penalty.  When both gas turbines and other sources are
+# present, the penalty applies per source (i.e. gas turbine output is
+# penalised at 3.13 % and the remainder at 1.83 %).
+PENALTY_MAP = {
+    "gt": 0.0313,
+    "fc": 0.0183,
+    "bat": 0.0183,
+}
+
+
+def heat_rejection(power_kw: float, system: str) -> float:
+    if system not in HEAT_REJECTION_FRACTION:
+        raise ValueError(f"Unknown system '{system}'. Must be one of {list(HEAT_REJECTION_FRACTION.keys())}.")
+    fraction = HEAT_REJECTION_FRACTION[system]
+    return power_kw * fraction
+
+
+def compute_states() -> dict:
+    states = {}
+    # 1. p_ch from gt
+    states["p_ch_gt"] = {
+        "power_kw": P_ch,
+        "system": "gt",
+    }
+    # 2. p_extra from bat
+    states["p_extra_bat"] = {
+        "power_kw": P_extra_1,
+        "system": "bat",
+    }
+    # 3. p_res from gt
+    states["p_res_gt"] = {
+        "power_kw": P_res,
+        "system": "gt",
+    }
+    # 4. p_oei from gt
+    states["p_oei_gt"] = {
+        "power_kw": P_OEI,
+        "system": "gt",
+    }
+    # 5. p_oei from bat
+    states["p_oei_bat"] = {
+        "power_kw": P_OEI,
+        "system": "bat",
+    }
+    # 6. p_ch from fc
+    states["p_ch_fc"] = {
+        "power_kw": P_ch,
+        "system": "fc",
+    }
+    # 7. p_res from fc
+    states["p_res_fc"] = {
+        "power_kw": P_res,
+        "system": "fc",
+    }
+    # 8. p_oei from fc
+    states["p_oei_fc"] = {
+        "power_kw": P_OEI,
+        "system": "fc",
+    }
+    # 9. p_ch/2 for fc
+    states["p_ch_half_fc"] = {
+        "power_kw": P_ch / 2.0,
+        "system": "fc",
+    }
+    # 10. p_rem for bat
+    states["p_rem_bat"] = {
+        "power_kw": P_rem_1,
+        "system": "bat",
+    }
+    # 11. p_cr for gt
+    states["p_cr_gt"] = {
+        "power_kw": P_cr,
+        "system": "gt",
+    }
+    # 12. p_cl for gt
+    states["p_cl_gt"] = {
+        "power_kw": P_cl,
+        "system": "gt",
+    }
+    # 13. p_extra from fc
+    states["p_extra_fc"] = {
+        "power_kw": P_extra_2,
+        "system": "fc",
+    }
+    # 14. p_cr/2 for gt
+    states["p_cr_half_gt"] = {
+        "power_kw": P_cr / 2.0,
+        "system": "gt",
+    }
+    # 15. p_rem for fc
+    states["p_rem_fc"] = {
+        "power_kw": P_rem_2,
+        "system": "fc",
+    }
+    # Compute heat rejection for each state
+    for key, vals in states.items():
+        power_kw = vals["power_kw"]
+        system = vals["system"]
+        vals["heat_kw"] = heat_rejection(power_kw, system)
+    return states
+
+
+def heat_absorption(power_kw: float, system: str, sp_work_mj_per_kg: float = sp_work) -> float:
+    # Batteries do not consume hydrogen fuel, so they provide no cooling
+    # capacity.  Their heat must be handled entirely by the available
+    # coolant mass flow from other sources.
+    if system == "bat":
+        return 0.0
+    # Convert specific work from MJ/kg to kJ/kg for consistency with the
+    # enthalpy values (kJ/kg).  1 MJ = 1000 kJ.
+    sp_kj_per_kg = sp_work_mj_per_kg * 1000.0
+    # Determine efficiencies and electrical penalty for this system.  Use
+    # defaults from the global maps; if the system is unknown, assume no
+    # cooling capacity.
+    eff = EFFICIENCY_MAP.get(system)
+    penalty = PENALTY_MAP.get(system)
+    if eff is None or penalty is None:
+        return 0.0
+    # Compute the chemical power required to deliver the desired output.
+    # First account for electrical losses (1 - penalty), then for the prime
+    # mover efficiency.  Example: for a gas turbine producing 1 kW of
+    # useful power with 3.13 % electrical losses and 39.5 % efficiency, the
+    # chemical power required is 1/(0.395*(1-0.0313)).
+    power_input_kw = power_kw / (eff * (1.0 - penalty))
+    # Mass flow rate of hydrogen (kg/s) needed to supply the required power.
+    # 1 kW = 1 kJ/s, so dividing by sp_kj_per_kg gives kg/s.
+    m_dot = power_input_kw / sp_kj_per_kg
+    # Determine the enthalpy rise per kilogram based on the component type.
+    if system == "gt":
+        delta_h = H_VAP + CP_GAS * (T_use_gt - T_start)
+    elif system == "fc":
+        delta_h = H_VAP + CP_GAS * (T_use_fc - T_start)
     else:
-        raise ValueError("system_type must be either 'GT' or 'FC'")
+        # Unknown system: no cooling capacity
+        return 0.0
+    # Heat absorbed = mass flow (kg/s) * enthalpy rise (kJ/kg) = kJ/s = kW
+    return m_dot * delta_h
 
-    # Heat absorbed per kg of hydrogen
-    delta_h = h_vap + cp_gas * (T_use - T_boil)  # [kJ/kg]
-    # Total heat absorption
-    Q_abs = m_dot_h2 * delta_h  # [kW]
 
-    return Q_abs, delta_h, m_dot_h2
+def compute_piping_losses(state_keys, states, design: str, flight_condition: str, sp_work_mj_per_kg: float = sp_work) -> float:
+    # Convert specific work to kJ/kg
+    sp_kj_per_kg = sp_work_mj_per_kg * 1000.0
+    # Determine the power contributions from gas turbine and fuel cell
+    # as well as their upstream power requirements.  Battery power does
+    # not contribute to hydrogen mass flow.  Each output power is
+    # back‑calculated to the chemical input power using the appropriate
+    # efficiency and electrical penalty.
+    power_gt_kw = 0.0
+    power_fc_kw = 0.0
+    power_input_gt_kw = 0.0
+    power_input_fc_kw = 0.0
+    for key in state_keys:
+        sys = states[key]["system"]
+        p_kw = states[key]["power_kw"]
+        if sys == "gt":
+            power_gt_kw += p_kw
+            # Convert to chemical input power: account for
+            # electrical losses and prime mover efficiency
+            eff = EFFICIENCY_MAP["gt"]
+            penalty = PENALTY_MAP["gt"]
+            power_input_gt_kw += p_kw / (eff * (1.0 - penalty))
+        elif sys == "fc":
+            power_fc_kw += p_kw
+            eff = EFFICIENCY_MAP["fc"]
+            penalty = PENALTY_MAP["fc"]
+            power_input_fc_kw += p_kw / (eff * (1.0 - penalty))
+        # battery contributions do not affect hydrogen mass flow
+    # Compute mass flow rates using input power (chemical) rather than output power
+    m_dot_gt = power_input_gt_kw / sp_kj_per_kg
+    m_dot_fc = power_input_fc_kw / sp_kj_per_kg
+    # Determine the full and half flow lengths for this design
+    if design == "A":
+        full_length = 18.0
+        half_length = 64.0
+        extra_length = 0.0
+    elif design == "B":
+        full_length = 18.0
+        half_length = 16.0
+        extra_length = 0.0
+    elif design == "C":
+        full_length = 18.0
+        half_length = 16.0
+        extra_length = 0.0
+    elif design == "D":
+        # Full and half lengths for design D are fixed
+        full_length = 18.0
+        half_length = 16.0
+        # Additional segment (14 m) carries fuel cell mass flow in climb and OEI
+        extra_length = 14.0 if flight_condition in ("Climb", "OEI") else 0.0
+    else:
+        # Unknown design: no piping losses
+        return 0.0
+    # Load the piping analysis module once; the import prints example
+    # output on first call.  See `_get_pipe_module()` for details.
+    pipe_module = _get_pipe_module()
+    total_heat_w = 0.0
+    # Determine which mass flow should be applied to the primary piping network.
+    # Designs A and C use gas turbines as the primary source; design B uses
+    # fuel cells; design D uses gas turbines primarily and fuel cells only on
+    # the additional short segment.
+    if design == "B":
+        m_dot_primary = m_dot_fc
+    else:
+        m_dot_primary = m_dot_gt
+    # Full flow segment: hydrogen flows at full primary mass flow
+    if m_dot_primary > 0.0 and full_length > 0.0:
+        total_heat_w += pipe_module.run_pipe_analysis(m_dot_primary, full_length, 0)["total_heat_input_w"]
+    # Half flow segment: carries half of the primary mass flow
+    if m_dot_primary > 0.0 and half_length > 0.0:
+        total_heat_w += pipe_module.run_pipe_analysis(m_dot_primary / 2.0, half_length, 0)["total_heat_input_w"]
+    # Extra segment for design D when FC is present
+    if extra_length > 0.0 and m_dot_fc > 0.0:
+        total_heat_w += pipe_module.run_pipe_analysis(m_dot_fc, extra_length, 0)["total_heat_input_w"]
+    return total_heat_w / 1000.0
+
+
+def design_phase_table() -> 'pd.DataFrame':
+    import pandas as pd
+
+    states = compute_states()
+
+    # Placeholder for piping losses (kW). Modify this later when data is
+    # available for each design or flight condition.
+    piping_losses_kw = 0.0
+
+    # Define the composition of each design and flight condition in terms of
+    # the states computed above. Each entry is a list of state keys to sum.
+    design_conditions = []
+
+    # Design A
+    design_conditions.append({
+        "design": "A",
+        "flight_condition": "Cruise",
+        "states": ["p_ch_gt"],
+    })
+    design_conditions.append({
+        "design": "A",
+        "flight_condition": "Climb",
+        "states": ["p_ch_gt", "p_extra_bat"],
+    })
+    design_conditions.append({
+        "design": "A",
+        "flight_condition": "Reserve",
+        "states": ["p_res_gt"],
+    })
+    # For OEI in design A we assume the remaining gas turbine continues to
+    # supply power. If desired, change 'p_oei_gt' to 'p_oei_bat' to model
+    # battery‑only operation.
+    design_conditions.append({
+        "design": "A",
+        "flight_condition": "OEI",
+        "states": ["p_oei_gt"],
+    })
+    design_conditions.append({
+        "design": "A",
+        "flight_condition": "OEI_bat",
+        "states": ["p_oei_bat"],
+    })
+
+    # Design B
+    design_conditions.append({
+        "design": "B",
+        "flight_condition": "Cruise",
+        "states": ["p_ch_fc"],
+    })
+    design_conditions.append({
+        "design": "B",
+        "flight_condition": "Climb",
+        "states": ["p_ch_fc", "p_extra_bat"],
+    })
+    design_conditions.append({
+        "design": "B",
+        "flight_condition": "Reserve",
+        "states": ["p_res_fc"],
+    })
+    # For OEI in design B, we split the power between the fuel cell (half of
+    # the charging cruise power) and the battery supplying the remainder.
+    design_conditions.append({
+        "design": "B",
+        "flight_condition": "OEI",
+        "states": ["p_ch_half_fc", "p_rem_bat"],
+    })
+    design_conditions.append({
+        "design": "B",
+        "flight_condition": "OEI_fc",
+        "states": ["p_oei_fc"],
+    })
+
+    # Design C (two gas turbines)
+    design_conditions.append({
+        "design": "C",
+        "flight_condition": "Cruise",
+        "states": ["p_cr_gt"],
+    })
+    design_conditions.append({
+        "design": "C",
+        "flight_condition": "Climb",
+        "states": ["p_cl_gt"],
+    })
+    design_conditions.append({
+        "design": "C",
+        "flight_condition": "Reserve",
+        "states": ["p_res_gt"],
+    })
+    # For OEI in design C, one gas turbine remains, therefore the power
+    # corresponds to the OEI condition for GT. It uses the state
+    # 'p_oei_gt'.
+    design_conditions.append({
+        "design": "C",
+        "flight_condition": "OEI",
+        "states": ["p_oei_gt"],
+    })
+
+    # Design D (two gas turbines plus fuel cell)
+    design_conditions.append({
+        "design": "D",
+        "flight_condition": "Cruise",
+        "states": ["p_cr_gt"],
+    })
+    design_conditions.append({
+        "design": "D",
+        "flight_condition": "Climb",
+        "states": ["p_cr_gt", "p_extra_fc"],
+    })
+    design_conditions.append({
+        "design": "D",
+        "flight_condition": "Reserve",
+        "states": ["p_res_gt"],
+    })
+    # For OEI in design D, half of the charging cruise power comes from
+    # the surviving gas turbine and the remainder from the fuel cell. This is
+    # modelled by states 'p_cr_half_gt' (half of P_ch) and 'p_rem_fc'.
+    design_conditions.append({
+        "design": "D",
+        "flight_condition": "OEI",
+        "states": ["p_cr_half_gt", "p_rem_fc"],
+    })
+    design_conditions.append({
+        "design": "D",
+        "flight_condition": "OEI_gt",
+        "states": ["p_oei_gt"],
+    })
+    
+    # Build the results table
+    rows = []
+    for cond in design_conditions:
+        power_total_kw = 0.0
+        heat_total_kw = 0.0
+        heat_abs_total_kw = 0.0
+        power_gt_kw = 0.0
+        power_other_kw = 0.0
+        # Accumulate values over all states composing this flight condition
+        for state_key in cond["states"]:
+            state = states[state_key]
+            system = state["system"]
+            p_kw = state["power_kw"]
+            # Sum the output power and heat rejection contributions
+            power_total_kw += p_kw
+            heat_total_kw += state["heat_kw"]
+            # Tally power for electrical penalty calculation
+            if system == "gt":
+                power_gt_kw += p_kw
+            else:
+                power_other_kw += p_kw
+            # Compute heat absorbed by hydrogen for this state
+            heat_abs_total_kw += heat_absorption(p_kw, system)
+        # Electrical system thermal contribution: apply 3.13 % to gas turbine power
+        # and 1.83 % to all other power sources.  This heat adds to the component
+        # heat that must be rejected.
+        heat_elec_kw = power_gt_kw * PENALTY_MAP["gt"] + power_other_kw * PENALTY_MAP["fc"]
+        # Add electrical heat into the total heat to reject from components
+        heat_total_kw += heat_elec_kw
+        # Compute piping losses (kW) based on the component mass flows, design and flight condition
+        pipe_loss_kw = compute_piping_losses(cond["states"], states, cond["design"], cond["flight_condition"])
+        # Sum heat rejection (including electrical contributions) and piping losses
+        total_heat_kw = heat_total_kw + pipe_loss_kw
+        # Ratio of heat to reject to heat absorbed; infinite if no absorption available
+        ratio_rej_abs = (heat_total_kw / heat_abs_total_kw) if heat_abs_total_kw > 0 else float('inf')
+        # Net heat is positive if there is still heat left to reject after hydrogen has absorbed all it can
+        net_heat_kw = total_heat_kw - heat_abs_total_kw
+        # Determine heat status: positive means there is still heat left to reject,
+        # negative means the hydrogen cooling capacity exceeds the heat load.
+        heat_status = "Positive" if net_heat_kw > 0 else "Negative"
+        rows.append({
+            "Design": cond["design"],
+            "FlightCondition": cond["flight_condition"],
+            # "States": "+".join(cond["states"]),
+            "TotalPower_kW": power_total_kw,
+            # "HeatElec_kW": heat_elec_kw,
+            "HeatToReject_kW": heat_total_kw,
+            # "PipingLoss_kW": pipe_loss_kw,
+            "HeatAbsorbed_KW": heat_abs_total_kw,
+            "RatioRejAbs": ratio_rej_abs,
+            "NetHeat_kW": net_heat_kw,
+            "HeatStatus": heat_status,
+        })
+    df = pd.DataFrame(rows)
+    return df
+
+
+if __name__ == "__main__":
+    # When run as a script, compute and display the state table. This allows
+    # quick testing from the command line (e.g. `python mainTMS.py`).
+    import pandas as pd
+    table = design_phase_table()
+    # Display the table in a readable format without scientific notation
+    with pd.option_context('display.float_format', '{:,.2f}'.format):
+        print(table.to_string(index=False))
