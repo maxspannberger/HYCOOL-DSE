@@ -72,7 +72,7 @@ def calculate_beta(mass_fractions, phase_string, loiter=False):
     float: The mass fraction (beta) for the specified phase.
     float: The overall mass fraction (beta) for the mission.
     """
-    
+    mass_lst = mass_fractions
     # Define the order of phases in the mission
     phases = ["Mf_1", "Mf_2", "Mf_3", "Mf_4", "Mf_5", "Mf_6", "Mf_7", "Mf_8"]
 
@@ -85,8 +85,8 @@ def calculate_beta(mass_fractions, phase_string, loiter=False):
     
     beta_phase = 1.0
     # Calculate the mass fraction for the specified phase
-    for feiz in mass_fractions:
-        beta_phase *= mass_fractions[feiz]
+    for feiz in phases:
+        beta_phase *= mass_lst[feiz]
 
     return beta_phase
 
@@ -95,6 +95,8 @@ beta_cruise = calculate_beta(mass_fractions, "Mf_5")
 beta_landing = calculate_beta(mass_fractions, "Mf_8", loiter=True)
 
 print(beta_taxi)
+print(beta_cruise)
+print(beta_landing)
 
 
 """
