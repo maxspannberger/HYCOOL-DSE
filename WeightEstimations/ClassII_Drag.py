@@ -5,15 +5,8 @@ from typing import Optional
 from ISA import isa
 from Aircraft_Config import AircraftConfig
 
-# Physics unchanged from your original. Only addition is from_config(),
-# which builds the input from a shared AircraftConfig and accepts optional
-# tail-area overrides from the tail-sizing module.
-#
-# Wetted-area conventions matching your original:
-#   S_wet_w = 2 * 1.02 * (S_ref - b_f * c_root / 2)
-#   S_wet_h = 2 * 1.02 * (S_h - d_f * MAC_h / 2)
-#   S_wet_v = 2 * 1.02 * (S_v - d_f * MAC_v / 4)
-# These are reapplied automatically when S_h or S_v change.
+from rich.table import Table
+
 
 
 @dataclass
@@ -56,7 +49,7 @@ class ClassII_Drag_Input:
     W_cruise:       float = 0.0
 
     # Misc
-    CD_misc:        float = 0.0003
+    CD_misc:        float = 1.06
 
     @classmethod
     def from_config(
@@ -79,7 +72,7 @@ class ClassII_Drag_Input:
         S_h_use  = S_h  if S_h  is not None else cfg.S_h_initial
         S_v_use  = S_v  if S_v  is not None else cfg.S_v_initial
 
-        # Wetted areas (same formulas as your original main):
+        # Wetted areas:
         S_wet_w = 2 * 1.02 * (cfg.S_ref - cfg.b_f * cfg.c_root / 2.0)
         S_wet_h = 2 * 1.02 * (S_h_use   - cfg.d_f * cfg.MAC_h   / 2.0)
         S_wet_v = 2 * 1.02 * (S_v_use   - cfg.d_f * cfg.MAC_v   / 4.0)
@@ -134,7 +127,7 @@ class DragBreakdown:
 
     @property
     def CD0(self) -> float:
-        return self.CD0_wing + self.CD0_htail + self.CD0_vtail + self.CD0_fus + self.CD_misc
+        return (self.CD0_wing + self.CD0_htail + self.CD0_vtail + self.CD0_fus)*self.CD_misc
 
     @property
     def CD_lift_dep(self) -> float:
@@ -150,29 +143,23 @@ class DragBreakdown:
             return 0.0
         return self.CL_cruise / self.CD_total
 
-    def summary(self) -> str:
-        lines = [
-            "=" * 52,
-            "  Class II Drag Breakdown  (Torenbeek, metric)",
-            "=" * 52,
-            f"  CD0  wing           {self.CD0_wing:.5f}  ({self.CD0_wing*1e4:.1f} cts)",
-            f"  CD0  h-tail         {self.CD0_htail:.5f}  ({self.CD0_htail*1e4:.1f} cts)",
-            f"  CD0  v-tail         {self.CD0_vtail:.5f}  ({self.CD0_vtail*1e4:.1f} cts)",
-            f"  CD0  fuselage       {self.CD0_fus:.5f}  ({self.CD0_fus*1e4:.1f} cts)",
-            f"  CD0  misc           {self.CD_misc:.5f}  ({self.CD_misc*1e4:.1f} cts)",
-            "-" * 52,
-            f"  CD0  total          {self.CD0:.5f}  ({self.CD0*1e4:.1f} cts)",
-            f"  CD_i (induced)      {self.CD_i:.5f}  ({self.CD_i*1e4:.1f} cts)",
-            f"  CD_wL (lift wave)   {self.CD_wL:.5f}  ({self.CD_wL*1e4:.1f} cts)",
-            f"  CD_wave (0-lift)    {self.CD_wave:.5f}  ({self.CD_wave*1e4:.1f} cts)",
-            "=" * 52,
-            f"  CD_total            {self.CD_total:.5f}  ({self.CD_total*1e4:.1f} cts)",
-            f"  CL  cruise          {self.CL_cruise:.4f}",
-            f"  L/D cruise          {self.L_over_D:.2f}",
-            f"  Oswald e            {self.e:.4f}",
-            "=" * 52,
-        ]
-        return "\n".join(lines)
+    def summary(self):
+        table = Table(title="Class II Drag Breakdown (Cruise)", show_header=True, header_style="bold blue")
+        table.add_column("Component")
+        table.add_column("CD0 (counts)", justify="right")
+        table.add_row("Wing", f"{self.CD0_wing*1e4:.1f}")
+        table.add_row("Horizontal Tail", f"{self.CD0_htail*1e4:.1f}")
+        table.add_row("Vertical Tail", f"{self.CD0_vtail*1e4:.1f}")
+        table.add_row("Fuselage", f"{self.CD0_fus*1e4:.1f}")
+        table.add_row("Miscellaneous", f"{(self.CD0_wing + self.CD0_htail + self.CD0_vtail + self.CD0_fus)*(self.CD_misc-1)*1e4:.1f}")
+        table.add_section()
+        table.add_row("[bold]Total CD0[/bold]", f"[bold underline]{self.CD0*1e4:.1f}[/bold underline]")
+        table.add_row("Induced Drag (CDi)", f"{self.CD_i*1e4:.1f}")
+        table.add_row("Wave Drag", f"{(self.CD_wL + self.CD_wave)*1e4:.1f}")
+        table.add_section()
+        table.add_row("[bold green]Total CD[/bold green]", f"[bold green]{self.CD_total*1e4:.1f}[/bold green]")
+        table.add_row("Cruise L/D", f"[bold yellow]{self.L_over_D:.2f}[/bold yellow]")
+        return table
 
 
 class DragEstimation:

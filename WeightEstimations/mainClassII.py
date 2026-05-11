@@ -36,6 +36,10 @@ from ClassII_Weight import ClassII_Input,      weightEstimation,    WeightBreakd
 from Mission_Power     import MissionPower,       MissionFuelBreakdown
 from Power_Sizing      import PowerSizing,        PowerSizingBreakdown
 
+from rich import print
+from rich.console import Console
+from rich.panel import Panel
+from rich.columns import Columns
 
 G = 9.80665
 
@@ -61,29 +65,28 @@ class ClassIIResult:
     power:       PowerSizingBreakdown
     tail_rechecked: TailSizingBreakdown    # rerun with computed T_TO
 
-    def summary(self) -> str:
-        status = "CONVERGED" if self.converged else "NOT CONVERGED"
-        lines = [
-            "#" * 60,
-            "  Class II Integrated Sizing Result  --  " + status,
-            "#" * 60,
-            f"  Iterations         {self.iterations}",
-            f"  MTOW               {self.MTOW:>10.1f} kg",
-            f"  MZFW               {self.MZFW:>10.1f} kg",
-            f"  OEW (W_empty)      {self.W_empty:>10.1f} kg",
-            f"  Payload            {self.W_payload:>10.1f} kg",
-            f"  Fuel (LH2)         {self.W_fuel:>10.1f} kg",
-            f"  Fixed equipment    {self.W_fixed:>10.1f} kg",
-            f"  CL cruise          {self.CL_cruise:>10.4f}",
-            f"  L/D cruise         {self.L_over_D:>10.2f}",
-            f"  P_cruise (shaft)   {self.mission.P_cruise_shaft/1000:>10.1f} kW",
-            f"  P_climb  (shaft)   {self.mission.P_climb_shaft/1000:>10.1f} kW",
-            f"  P_max    (shaft)   {self.mission.P_max/1000:>10.1f} kW",
-            f"  P_TO required      {self.power.P_TO_total/1000:>10.1f} kW  ({self.power.driving_case})",
-            f"  T_static per eng   {self.power.T_static_per_engine/1000:>10.2f} kN",
-            "#" * 60,
-        ]
-        return "\n".join(lines)
+    def summary(self):
+        status_color = "green" if self.converged else "red"
+        main_info = (
+            f"MTOW: {self.MTOW/1000:.2f} t\n"
+            f"OEW:  {self.W_empty/1000:.2f} t\n"
+            f"Fuel: {self.W_fuel:.1f} kg\n"
+            f"Payload: {self.W_payload/1000:.1f} t\n"
+            f"Iterations: {self.iterations}"
+        )
+        
+        perf_info = (
+            f"Cruise L/D: [bold]{self.L_over_D:.2f}[/bold]\n"
+            f"Climb Shaft Power: {self.mission.P_max/1000000:.2f} MW\n"
+            f"Max Shaft Power: {self.power.P_from_CS25_121/1000000:.2f} MW\n"
+            f"Static Thrust/Eng: {self.power.T_static_per_engine/1000:.2f} kN"
+        )
+
+        return Panel(
+            Columns([main_info, perf_info]),
+            title=f"[bold {status_color}]Class II Integrated Sizing Result[/bold {status_color}]",
+            border_style=status_color
+        )
 
 
 def run_class_ii(
@@ -127,6 +130,11 @@ def run_class_ii(
         # Mission power -> LH2 fuel mass
         mis_bd = MissionPower(cfg, drag_bd, MTOW).compute()
         W_fuel = mis_bd.m_LH2_total
+        P_max_kw = mis_bd.P_max / 1000
+
+        # Performance & CS-25 Requirements
+        pwr_bd = PowerSizing(cfg, mis_bd, MTOW).compute()
+        P_TO_kW = pwr_bd.P_TO_total / 1000.0
 
         # Weight at current MTOW with sized tails
         wt_inp = ClassII_Input.from_config(
@@ -136,6 +144,9 @@ def run_class_ii(
             S_h  = tail_bd.S_h,
             S_v  = tail_bd.S_v,
             b_v  = tail_bd.b_v,
+            P_TO_KW = P_TO_kW,
+            P_max_KW = P_max_kw,
+            W_fuel = W_fuel
         )
         wt_bd = weightEstimation(wt_inp).compute()
 

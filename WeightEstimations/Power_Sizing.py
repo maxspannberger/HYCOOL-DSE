@@ -43,6 +43,9 @@ from dataclasses import dataclass
 from Aircraft_Config import AircraftConfig
 from Mission_Power   import MissionFuelBreakdown
 
+from rich.table import Table
+from rich.panel import Panel
+from rich.console import Group
 
 G        = 9.80665
 RHO_SL   = 1.225
@@ -70,31 +73,30 @@ class PowerSizingBreakdown:
     T_static_total:    float = 0.0     # Whole aircraft static thrust [N]
     T_static_per_engine: float = 0.0   # [N]
 
-    def summary(self) -> str:
-        kw = lambda p: p / 1000.0
-        kn = lambda t: t / 1000.0
-        lines = [
-            "=" * 60,
-            "  Power & Takeoff Thrust Sizing",
-            "=" * 60,
-            f"  Driving case:           {self.driving_case}",
-            f"  P_climb (mission):      {kw(self.P_from_climb):>10.1f} kW",
-            f"  P_CS-25.121 (2nd seg):  {kw(self.P_from_CS25_121):>10.1f} kW",
-            "  " + "-" * 58,
-            f"  Required P_TO total:    {kw(self.P_TO_total):>10.1f} kW",
-            f"  Required P_TO/engine:   {kw(self.P_TO_per_engine):>10.1f} kW",
-            "  " + "-" * 58,
-            f"  CS-25.121 details:",
-            f"    V_2                   {self.V_2:>10.2f} m/s",
-            f"    gamma_min             {self.gamma_min*100:>10.2f} %",
-            f"    (L/D)_TO              {self.LD_takeoff:>10.2f}",
-            f"    T per engine at V_2   {kn(self.T_per_engine_V2):>10.2f} kN",
-            "  " + "-" * 58,
-            f"  Static thrust total:    {kn(self.T_static_total):>10.2f} kN",
-            f"  Static thrust per eng:  {kn(self.T_static_per_engine):>10.2f} kN",
-            "=" * 60,
-        ]
-        return "\n".join(lines)
+    def summary(self):
+        table = Table(title="Power & Takeoff Thrust Sizing", show_header=False, box=None)
+        table.add_row("Driving Case", f"[bold cyan]{self.driving_case}[/bold cyan]")
+        table.add_row("P_climb (mission)", f"{self.P_from_climb/1000:>10.1f} kW")
+        table.add_row("P_CS-25.121 (2nd seg)", f"{self.P_from_CS25_121/1000:>10.1f} kW")
+        table.add_section()
+        table.add_row("[bold]Required P_TO total[/bold]", f"[bold green]{self.P_TO_total/1000:>10.1f} kW[/bold green]")
+        table.add_row("Required P_TO/engine", f"{self.P_TO_per_engine/1000:>10.1f} kW")
+        
+        detail_table = Table(title="CS-25.121 Details", show_header=True, header_style="bold magenta")
+        detail_table.add_column("Parameter", style="dim")
+        detail_table.add_column("Value", justify="right")
+        detail_table.add_row("V_2 Speed", f"{self.V_2:.2f} m/s")
+        detail_table.add_row("gamma_min", f"{self.gamma_min*100:.2f} %")
+        detail_table.add_row("(L/D)_TO", f"{self.LD_takeoff:.2f}")
+        detail_table.add_row("T per engine @ V_2", f"{self.T_per_engine_V2/1000:.2f} kN")
+
+        thrust_panel = Panel(
+            f"Static Thrust Total: [bold yellow]{self.T_static_total/1000:.2f} kN[/bold yellow]\n"
+            f"Static Thrust / Eng: [bold yellow]{self.T_static_per_engine/1000:.2f} kN[/bold yellow]",
+            title="Static Performance", border_style="yellow"
+        )
+
+        return Group(table, detail_table, thrust_panel)
 
 
 class PowerSizing:

@@ -33,6 +33,8 @@ from ISA import isa
 from Aircraft_Config   import AircraftConfig
 from ClassII_Drag   import DragBreakdown
 
+from rich.table import Table
+
 
 G        = 9.80665          # m/s^2
 LHV_LH2  = 120e6            # J/kg, lower heating value of liquid hydrogen
@@ -84,31 +86,27 @@ class MissionFuelBreakdown:
         """Largest required shaft power across phases (excludes TO)."""
         return max(self.P_cruise_shaft, self.P_reserve_shaft, self.P_climb_shaft)
 
-    def summary(self) -> str:
-        def kw(p): return p / 1000.0
-        lines = [
-            "=" * 60,
-            "  Mission Power & Fuel Breakdown  (LH2)",
-            "=" * 60,
-            f"  Phase         Power [kW]   m_dot [g/s]    Time [s]   Fuel [kg]",
-            "  " + "-" * 58,
-            f"  Cruise        {kw(self.P_cruise_shaft):>9.1f}    {self.mdot_cruise*1000:>9.2f}   {self.t_cruise:>8.0f}   {self.m_LH2_cruise:>8.2f}",
-            f"  Climb         {kw(self.P_climb_shaft):>9.1f}    {self.mdot_climb*1000:>9.2f}   {self.t_climb:>8.0f}   {self.m_LH2_climb:>8.2f}",
-            f"  Reserve       {kw(self.P_reserve_shaft):>9.1f}    {self.mdot_reserve*1000:>9.2f}   {self.t_reserve:>8.0f}   {self.m_LH2_reserve:>8.2f}",
-            f"  TO+Taxi       {'-':>9}    {'-':>9}   {'-':>8}   {self.m_LH2_TO_taxi:>8.2f}",
-            "  " + "-" * 58,
-            f"  Total LH2 fuel:                                    {self.m_LH2_total:>8.2f} kg",
-            "  " + "-" * 58,
-            f"  P_TO_shaft (reference): {kw(self.P_TO_shaft):.1f} kW",
-            f"  P_max     (cruise/climb/reserve): {kw(self.P_max):.1f} kW",
-            "  " + "-" * 58,
-            f"  Aerodynamic state:",
-            f"    cruise:   CL = {self.CL_cruise:.3f}   L/D = {self.LD_cruise:.2f}",
-            f"    climb:    CL = {self.CL_climb:.3f}   L/D = {self.LD_climb:.2f}   V = {self.V_climb_TAS:.1f} m/s TAS",
-            f"    reserve:  CL = {self.CL_reserve:.3f}   L/D = {self.LD_reserve:.2f}   V = {self.V_reserve_TAS:.1f} m/s TAS",
-            "=" * 60,
+    def summary(self):
+        table = Table(title="Mission Power & Fuel Breakdown (LH2)", show_header=True)
+        table.add_column("Phase", style="bold")
+        table.add_column("Power (kW)", justify="right")
+        table.add_column("m_dot (g/s)", justify="right")
+        table.add_column("Time (min)", justify="right")
+        table.add_column("Fuel (kg)", justify="right")
+
+        phases = [
+            ("Cruise", self.P_cruise_shaft, self.mdot_cruise, self.t_cruise/60, self.m_LH2_cruise),
+            ("Climb", self.P_climb_shaft, self.mdot_climb, self.t_climb/60, self.m_LH2_climb),
+            ("Reserve", self.P_reserve_shaft, self.mdot_reserve, self.t_reserve/60, self.m_LH2_reserve)
         ]
-        return "\n".join(lines)
+
+        for name, p, mdot, t, m in phases:
+            table.add_row(name, f"{p/1000:.1f}", f"{mdot*1000:.2f}", f"{t:.1f}", f"{m:.2f}")
+
+        table.add_section()
+        table.add_row("TO + Taxi Allowance", "-", "-", "-", f"{self.m_LH2_TO_taxi:.2f}")
+        table.add_row("[bold yellow]Total LH2 Fuel[/bold yellow]", "", "", "", f"[bold yellow]{self.m_LH2_total:.2f}[/bold yellow]")
+        return table
 
 
 class MissionPower:

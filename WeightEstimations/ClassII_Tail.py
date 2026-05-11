@@ -3,7 +3,7 @@ Tail_Sizing.py
 
 Class II control surface sizing.
 
-Sizing logic (the change vs. the previous version):
+Sizing logic:
 
     S_h = max( volume-coefficient stability sizing , elevator-trim sizing )
     S_v = max( volume-coefficient stability sizing , OEI rudder-control sizing )
@@ -32,6 +32,10 @@ from typing import Optional
 from ISA import isa
 from Aircraft_Config import AircraftConfig
 
+from rich.table import Table
+from rich.console import Group
+from rich.text import Text
+from rich import print
 
 @dataclass
 class TailSizing_Input:
@@ -65,19 +69,19 @@ class TailSizing_Input:
     # OEI / rudder
     T_TO:           float = 0.0           # Per-engine thrust at V_MC [N]
     y_engine:       float = 0.0
-    V_MC_factor:    float = 1.2
-    delta_r_max:    float = np.deg2rad(25)
+    V_MC_factor:    float = 1.13
+    delta_r_max:    float = np.deg2rad(35)
 
     # Aileron / roll
     phi_req:        float = 30.0
     t_roll:         float = 7.0
     C_l_p:          float = -0.45
     delta_a_max:    float = np.deg2rad(20)
-    eta_i:          float = 0.60
-    eta_o:          float = 0.95
+    eta_i:          float = 0.80
+    eta_o:          float = 0.90
     tau_a:          float = 0.42
 
-    # Surface-area fraction limits
+    # Surface-area fraction limits, empirical data
     Se_Sh_min:      float = 0.22
     Se_Sh_max:      float = 0.40
     Sr_Sv_min:      float = 0.25
@@ -151,45 +155,45 @@ class TailSizingBreakdown:
     p_required:     float = 0.0
     roll_ok:        bool  = False
 
-    def summary(self) -> str:
-        def ok(b): return "OK" if b else "FAIL"
-        lines = [
-            "=" * 62,
-            "  Class II Control Surface Sizing  (Torenbeek Ch. 9)",
-            "=" * 62,
-            f"  HT area    S_h = {self.S_h:5.2f} m^2   b_h = {self.b_h:.2f} m   "
-            f"[driver: {self.S_h_driver}]",
-            f"    stability sizing  S_h = {self.S_h_stability:5.2f} m^2",
-            f"    control   sizing  S_h = {self.S_h_control:5.2f} m^2",
-            f"  VT area    S_v = {self.S_v:5.2f} m^2   b_v = {self.b_v:.2f} m   "
-            f"[driver: {self.S_v_driver}]",
-            f"    stability sizing  S_v = {self.S_v_stability:5.2f} m^2",
-            f"    control   sizing  S_v = {self.S_v_control:5.2f} m^2",
-            "-" * 62,
-            f"  V_h achieved = {self.V_h:.3f}   [{ok(self.V_h_ok)} vs target band]",
-            f"  V_v achieved = {self.V_v:.3f}   [{ok(self.V_v_ok)} vs target band]",
-            "-" * 62,
-            f"  Elevator   S_e = {self.S_elevator:5.2f} m^2   "
-            f"S_e/S_h = {self.Se_Sh:.3f}",
-            "-" * 62,
-            f"  OEI yaw moment       M_eng = {self.M_engine:>10.1f} Nm",
-            f"  Rudder restoring max M_rud = {self.M_rudder:>10.1f} Nm",
-            f"  Rudder     S_r = {self.S_rudder:5.2f} m^2   "
-            f"S_r/S_v = {self.Sr_Sv:.3f}   [{ok(self.OEI_ok)}]",
-            "-" * 62,
-            f"  Roll rate required  {np.rad2deg(self.p_required):.2f} deg/s",
-            f"  Roll rate achieved  {np.rad2deg(self.p_achieved):.2f} deg/s",
-            f"  Aileron    S_a = {self.S_aileron:5.2f} m^2   "
-            f"S_a/S_ref = {self.Sa_Sref:.3f}   [{ok(self.roll_ok)}]",
-            "=" * 62,
-        ]
-        return "\n".join(lines)
+    def summary(self):
+        def get_status(b):
+            return Text("OK", style="bold green") if b else Text("FAIL", style="bold red")
+
+        # Horizontal Tail Table
+        ht_table = Table(title=f"Horizontal Tail (Driver: {self.S_h_driver})", show_header=True)
+        ht_table.add_column("Parameter")
+        ht_table.add_column("Area (m^2)", justify="right")
+        ht_table.add_column("V_h / Ratio", justify="right")
+        ht_table.add_row("Stability Requisite", f"{self.S_h_stability:.2f}", f"Target: 1.00")
+        ht_table.add_row("Control Requisite", f"{self.S_h_control:.2f}", f"S_e/S_h: {self.Se_Sh:.3f}")
+        ht_table.add_row("[bold]Final S_h[/bold]", f"[bold cyan]{self.S_h:.2f}[/bold cyan]", f"Achieved V_h: {self.V_h:.3f}", end_section=True)
+        ht_table.add_row("Status", "", get_status(self.V_h_ok))
+
+        # Vertical Tail Table
+        vt_table = Table(title=f"Vertical Tail (Driver: {self.S_v_driver})", show_header=True)
+        vt_table.add_column("Parameter")
+        vt_table.add_column("Value", justify="right")
+        vt_table.add_column("Status", justify="center")
+        vt_table.add_row("Stability (V_v)", f"S_v = {self.S_v_stability:.2f} m^2", get_status(self.V_v_ok))
+        vt_table.add_row("OEI Rudder Moment", f"{self.M_rudder/1000:.1f} kNm", get_status(self.OEI_ok))
+        vt_table.add_row("[bold]Final S_v[/bold]", f"[bold cyan]{self.S_v:.2f} m^2[/bold cyan]", "")
+
+        # Roll Table
+        roll_table = Table(title="Roll Control (Ailerons)", show_header=True)
+        roll_table.add_column("Requirement")
+        roll_table.add_column("Achieved")
+        roll_table.add_column("Status")
+        roll_table.add_row(f"{np.rad2deg(self.p_required):.1f}°/s", f"{np.rad2deg(self.p_achieved):.1f}°/s", get_status(self.roll_ok))
+
+        return Group(ht_table, vt_table, roll_table)
 
 
 class TailSizingEstimator:
 
     g  = 9.80665
-    k_r = 0.8           # Torenbeek rudder effectiveness
+    CL_alpha_v  = 3.5
+    tau_r       = 0.6
+    k_r = CL_alpha_v * tau_r           # Torenbeek rudder effectiveness
     rho_SL = 1.225
 
     def __init__(self, inputs: TailSizing_Input):
@@ -230,15 +234,17 @@ class TailSizingEstimator:
         Numbers: C_L_alpha_h ~ 4.5 /rad (untwisted), tau_e ~ 0.5
         (elevator effectiveness for c_e/c ~ 0.30), delta_e_max = 25 deg.
 
-        This is *much* coarser than a proper scissor-plot analysis but
+        This is much coarser than a proper scissor-plot analysis but
         gives a sanity-check lower bound on S_h.
         """
-        d                  = self.i
-        dCM_required       = 0.05
-        C_L_alpha_h        = 4.5
-        tau_e              = 0.5
-        delta_e_max        = np.deg2rad(25)
-        V_h_min            = dCM_required / (C_L_alpha_h * tau_e * delta_e_max)
+        d               = self.i
+        CL_approach     = d.MTOW * 9.80665 / (0.5 * 1.225 * d.V_stall**2 * d.S_ref)
+        delta_CG        = 0.10                  # 10% MAC CG range
+        dCM_required    = CL_approach * delta_CG
+        C_L_alpha_h     = 4.5                   # /rad, reasonable for unswept HT
+        tau_e           = 0.50                  # c_e/c ~ 0.30 (Torenbeek Fig 9)
+        delta_e_max     = np.deg2rad(25)
+        V_h_min         = dCM_required / (C_L_alpha_h * tau_e * delta_e_max)
         return V_h_min * d.S_ref * d.MAC / d.l_h
 
     # ------------------------------------------------------------------
@@ -252,7 +258,7 @@ class TailSizingEstimator:
         """
         OEI rudder sizing per CS-25.149 / Torenbeek.
 
-        At V_MC = 1.2 V_stall, the working engine produces an asymmetric
+        At V_MC = 1.13 V_stall, the working engine produces an asymmetric
         yaw moment M_engine = T_TO * y_engine. The vertical tail with
         rudder must restore this moment at maximum rudder deflection.
 
@@ -312,7 +318,7 @@ class TailSizingEstimator:
         d      = self.i
         p_req  = np.deg2rad(d.phi_req) / d.t_roll
         C_l_da = (np.pi / 4) * (d.eta_o**2 - d.eta_i**2) * d.tau_a
-        p_achieved = (C_l_da * d.delta_a_max / (-d.C_l_p)) * (2 * d.V_cruise / d.b)
+        p_achieved = (C_l_da * d.delta_a_max / (-d.C_l_p)) * (2 * d.V_stall*1.2 / d.b)
 
         c_mean = d.S_ref / d.b
         c_a    = 0.27 * c_mean

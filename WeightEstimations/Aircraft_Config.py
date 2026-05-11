@@ -1,7 +1,7 @@
 """
 Aircraft_Config.py
 
-Single source of truth for all "Need" parameters that flow between Class II
+SSoT for all "Need" parameters that flow between Class II
 modules. Everything that more than one module reads lives here.
 
 Convention:
@@ -87,8 +87,15 @@ class AircraftConfig:
     eta_prop_V2:      float = 0.70
     LD_takeoff:       float = 11.0
 
+    # --- Propulsion Densities -------------------------------------------
+    rho_hts_motor:     float = 40
+    rho_turbine_core:  float = 10
+    turbine_penalty:   float = 1.4
+    cryo_penalty:      float = 1.15
+    grav_density:      float = 0.64
+
     # --- Tail sizing targets -------------------------------------------
-    V_h_target:       float = 1.00   # HT volume coefficient (jet/turboprop)
+    V_h_target:       float = 0.95   # HT volume coefficient (jet/turboprop)
     V_v_target:       float = 0.10   # VT volume coefficient (propfan ~0.10-0.12)
     AR_h:             float = 4.5    # HT aspect ratio (drives b_h from S_h)
     AR_v:             float = 1.7    # VT aspect ratio (drives b_v from S_v)
@@ -123,53 +130,53 @@ class AircraftConfig:
 
 
 def default_q400_hycool() -> AircraftConfig:
-    c_root      = 2.54
-    b_v_initial = 8.3
-    MAC_v       = 3.02
+    c_root      = 4.97
+    b_v_initial = 5.5
+    MAC_v       = 3.5
     return AircraftConfig(
         # Wing
-        S_ref            = 63.1,
-        b                = 28.4,
-        AR               = 12.78,
-        MAC              = 2.49,
+        S_ref            = 92.5,        # E190 Reference
+        b                = 28.72,       # E190 Reference
+        AR               = 8.91,        # E190 Reference
+        MAC              = 3.35,
         c_root           = c_root,
-        tc_root          = 0.18,
-        tc_mean          = 0.15,
-        sweep_half       = np.deg2rad(20.0),
-        sweep_tc         = np.deg2rad(20.0),
+        tc_root          = 0.12,
+        tc_mean          = 0.11,
+        sweep_half       = np.deg2rad(23.0),
+        sweep_tc         = np.deg2rad(24.0),
 
         # Horizontal tail
-        S_h_initial      = 13.94,
-        MAC_h            = 2.80,
+        S_h_initial      = 24,
+        MAC_h            = 2.10,
         tc_h             = 0.12,
-        sweep_h_half     = np.deg2rad(10.0),
-        sweep_h_tc       = np.deg2rad(8.0),
-        l_h              = 15.5,
+        sweep_h_half     = np.deg2rad(22.0),
+        sweep_h_tc       = np.deg2rad(20.0),
+        l_h              = 17.5,
 
         # Vertical tail
         MAC_v            = MAC_v,
         tc_v             = 0.12,
-        sweep_v_half     = np.deg2rad(35.0),
-        sweep_v_tc       = np.deg2rad(33.0),
-        l_v              = 15.0,
+        sweep_v_half     = np.deg2rad(33.0),
+        sweep_v_tc       = np.deg2rad(35.0),
+        l_v              = 17.5,
         b_v_initial      = b_v_initial,
-        t_tail           = True,
+        t_tail           = False,
         h_h              = b_v_initial,
         S_v_initial      = MAC_v * b_v_initial,
 
         # Fuselage
-        l_f              = 32.8,
-        b_f              = 2.69,
-        h_f              = 2.80,
-        S_wet_f          = 240.0,
-        l_t              = 15.5,
+        l_f              = 36.24,
+        b_f              = 2.74,
+        h_f              = 2.74,
+        S_wet_f          = 280,
+        l_t              = 17.5,
 
         # Flight envelope
         altitude_cruise  = 7_620,
         M_cruise         = 0.7,
         V_cruise         = 0.7 * 296.0,
         V_dive           = 213.5,
-        V_stall          = 55.0,
+        V_stall          = 60.0,
 
         # Mission
         range_m          = 1_000_000.0,
@@ -194,14 +201,21 @@ def default_q400_hycool() -> AircraftConfig:
         eta_prop_V2      = 0.70,
         LD_takeoff       = 11.0,
 
+        # Propulsion Densities
+        rho_hts_motor    = 20,
+        rho_turbine_core = 10,
+        turbine_penalty  = 1.4,
+        cryo_penalty     = 1.15,
+        grav_density     = 0.64,
+
         # Tail sizing targets (propfan: V_v bumped from 0.085 to 0.10)
-        V_h_target       = 1.00,
+        V_h_target       = 0.95,
         V_v_target       = 0.10,
         AR_h             = 4.5,
         AR_v             = 1.7,
 
         # Config
-        high_wing        = True,
+        high_wing        = False,
         has_flap_slat    = True,
 
         # Loads

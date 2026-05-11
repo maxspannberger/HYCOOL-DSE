@@ -4,12 +4,8 @@ from typing import Optional
 import Tail_Interpolation as Tail_Interp
 from Aircraft_Config import AircraftConfig
 
+from rich.table import Table
 
-# Physics & comments unchanged from your original. Two changes:
-#   1. Added ClassII_Input.from_config(...) so it builds from AircraftConfig
-#      plus optional sized tail areas (S_h, S_v, b_v).
-#   2. Fixed iterate_MTOW so MZFW = W_empty + payload + fixed (not MTOW - fuel
-#      during iteration; that bug only converged correctly by accident).
 
 
 @dataclass
@@ -55,7 +51,12 @@ class ClassII_Input:
     has_flap_slat: bool = True
 
     # Propulsion
-    W_Propulsion: float = 0.0
+    rho_turb:    float = 0.0
+    rho_HTS:     float = 0.0
+    P_TO_KW:     float = 0.0
+    P_max_KW:    float = 0.0
+    W_fuel:      float = 0.0
+    grav_density:float = 0.64
 
     @classmethod
     def from_config(
@@ -66,6 +67,9 @@ class ClassII_Input:
         S_h:  Optional[float] = None,
         S_v:  Optional[float] = None,
         b_v:  Optional[float] = None,
+        P_TO_KW:  float = 0.0,
+        P_max_KW: float = 0.0,
+        W_fuel:   float = 0.0,
     ) -> "ClassII_Input":
         """
         Build the weight-estimator input from a shared AircraftConfig.
@@ -103,7 +107,13 @@ class ClassII_Input:
             high_wing     = cfg.high_wing,
             has_flap_slat = cfg.has_flap_slat,
 
-            W_Propulsion  = cfg.W_propulsion,
+            rho_turb      = cfg.rho_turbine_core / cfg.turbine_penalty,
+            rho_HTS       = cfg.rho_hts_motor / cfg.cryo_penalty,
+            grav_density  = cfg.grav_density,
+            
+            P_TO_KW       = P_TO_KW,
+            P_max_KW      = P_max_KW,
+            W_fuel        = W_fuel
         )
 
 
@@ -117,6 +127,19 @@ class WeightBreakdown:
     W_sc:     float = 0.0
     W_engine: float = 0.0
 
+    # Propulsion breakdown (populated by weightEstimation.compute)
+    W_turbine:   float = 0.0
+    W_generator: float = 0.0
+    W_motor:     float = 0.0
+    W_h2_tank:   float = 0.0
+
+    # Power densities and factors stored for display
+    rho_turb:      float = 0.0
+    rho_HTS:       float = 0.0
+    grav_density:  float = 0.0
+    P_TO_KW:       float = 0.0
+    W_fuel:        float = 0.0
+
     @property
     def W_structure(self) -> float:
         return (self.W_wing + self.W_htail + self.W_vtail
@@ -126,25 +149,69 @@ class WeightBreakdown:
     def W_empty(self) -> float:
         return self.W_structure + self.W_engine
 
-    def summary(self) -> str:
-        lines = [
-            "=" * 52,
-            "  Class II Weight Breakdown  (Torenbeek, metric)",
-            "=" * 52,
-            f"  Wing              {self.W_wing:>10.1f} kg",
-            f"  Horizontal tail   {self.W_htail:>10.1f} kg",
-            f"  Vertical tail     {self.W_vtail:>10.1f} kg",
-            f"  Fuselage          {self.W_fus:>10.1f} kg",
-            f"  Landing gear      {self.W_lg:>10.1f} kg",
-            f"  Surface controls  {self.W_sc:>10.1f} kg",
-            "-" * 52,
-            f"  W_structure       {self.W_structure:>10.1f} kg",
-            f"  Propulsion        {self.W_engine:>10.1f} kg",
-            "=" * 52,
-            f"  W_empty (OEW)     {self.W_empty:>10.1f} kg",
-            "=" * 52,
+    def summary(self):
+        table = Table(title="Class II Weight Breakdown", show_header=True)
+        table.add_column("Group", style="dim")
+        table.add_column("Weight (kg)", justify="right")
+        table.add_column("Factor / Density", justify="right")
+
+        struct_items = [
+            ("Wing",           self.W_wing),
+            ("Fuselage",       self.W_fus),
+            ("Vertical Tail",  self.W_vtail),
+            ("Horizontal Tail",self.W_htail),
+            ("Landing Gear",   self.W_lg),
+            ("Surface Controls", self.W_sc),
         ]
-        return "\n".join(lines)
+
+        for name, weight in struct_items:
+            table.add_row(name, f"{weight:.1f}", "")
+
+        table.add_section()
+        table.add_row("Total Structure", f"[bold]{self.W_structure:.1f}[/bold]", "")
+
+        table.add_section()
+        # Propulsion breakdown
+        prop_items = [
+            (
+                "  Turbine Core",
+                self.W_turbine,
+                f"{self.rho_turb:.1f} kW/kg  (P_TO = {self.P_TO_KW:.1f} kW)",
+            ),
+            (
+                "  Generator (HTS)",
+                self.W_generator,
+                f"{self.rho_HTS:.1f} kW/kg  (P_TO = {self.P_TO_KW:.1f} kW)",
+            ),
+            (
+                "  Motors (HTS)",
+                self.W_motor,
+                f"{self.rho_HTS:.1f} kW/kg  (P_TO = {self.P_TO_KW:.1f} kW)",
+            ),
+            (
+                "  H2 Tank",
+                self.W_h2_tank,
+                (f"grav. density = {self.grav_density:.2f}  "
+                 f"(W_fuel = {self.W_fuel:.1f} kg)"),
+            ),
+        ]
+
+        for name, weight, note in prop_items:
+            table.add_row(name, f"{weight:.1f}", note)
+
+        table.add_section()
+        table.add_row(
+            "Propulsion System (total)",
+            f"[bold]{self.W_engine:.1f}[/bold]",
+            "",
+        )
+        table.add_section()
+        table.add_row(
+            "[bold green]OEW (Empty Weight)[/bold green]",
+            f"[bold green]{self.W_empty:.1f}[/bold green]",
+            "",
+        )
+        return table
 
 
 @dataclass
@@ -231,10 +298,25 @@ class weightEstimation:
         return 1.2 * k_SC * g.MTOW ** (2 / 3)
 
     def _propulsion_weight(self) -> float:
-        return self.g.W_Propulsion
+        g     = self.g
+        turbine_weight  = g.P_TO_KW / g.rho_turb
+        generator_weight = g.P_TO_KW / g.rho_HTS
+        motor_weight = g.P_TO_KW / g.rho_HTS
+        return turbine_weight + generator_weight + motor_weight
+    
+    def _h2_tank_weight(self) -> float:
+        return self.g.W_fuel * (1 / self.g.grav_density - 1)
 
     def compute(self) -> WeightBreakdown:
         self._validate()
+        g = self.g
+
+        turbine_weight   = g.P_TO_KW / g.rho_turb
+        generator_weight = g.P_TO_KW / g.rho_HTS
+        motor_weight     = g.P_TO_KW / g.rho_HTS
+        h2_tank_weight   = self._h2_tank_weight()
+        W_engine_total   = turbine_weight + generator_weight + motor_weight + h2_tank_weight
+
         return WeightBreakdown(
             W_wing   = self._wing_weight(),
             W_htail  = self._htail_weight(),
@@ -242,8 +324,22 @@ class weightEstimation:
             W_fus    = self._fuselage_weight(),
             W_lg     = self._LDG_weight(),
             W_sc     = self._surface_control_weight(),
-            W_engine = self._propulsion_weight(),
+            W_engine = W_engine_total,
+
+            # Propulsion detail
+            W_turbine   = turbine_weight,
+            W_generator = generator_weight,
+            W_motor     = motor_weight,
+            W_h2_tank   = h2_tank_weight,
+
+            # For display in summary
+            rho_turb     = g.rho_turb,
+            rho_HTS      = g.rho_HTS,
+            grav_density = g.grav_density,
+            P_TO_KW      = g.P_TO_KW,
+            W_fuel       = g.W_fuel,
         )
+
 
     def iterate_MTOW(
         self,
