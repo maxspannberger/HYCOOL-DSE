@@ -147,7 +147,7 @@ class MatchingDiagram:
         # Requirements
         self.Vs0 = 55.0 # Stall speed 
         self.Vapp = 60.0 # Approach speed
-        self.LFL = 2100 # Landing field length
+        self.LFL = 1050 # Landing field length
         self.CLFL = 0.5 # Landing field length coefficient [-] (0.45 for CS25, 0.6 for CS23)        
         self.V_cr = self.MCR * Atmosphere(self.flight_parameters['Cruise_altitude']).speed_of_sound  # Cruise speed
 
@@ -175,15 +175,13 @@ class MatchingDiagram:
         W_P_TO = (1 / (1.15 * np.sqrt((self.Ne / (self.Ne - 1)) * (self.W_S / (self.TO * self.density_cruise * self.kT * self.g * self.A * self.e))) + (self.Ne / (self.Ne - 1)) * (4 * self.h2 / self.TO))) * np.sqrt((self.CL2 / self.W_S) * (self.density_SLS / 2))
 
         # 3. Landing Distance Requirement (TORENBEEK 171)
-        W_S_land = (1 / (self.beta['beta_landing'])) * ((self.S_land/(self.f_land * self.h_land)) - 10) * ((self.h_land * atm.density * self.g * self.lift_coefficients['CL_max_L'])/(1.52/self.a_g + 1.69))
-        #W_S_land = (1 / self.beta['beta_landing']) * (self.LFL/self.CLFL) * (self.density_SLS / 2) * self.lift_coefficients['CL_max_L']# Adjust for landing beta factor
+        #W_S_land = (1 / (self.beta['beta_landing'])) * ((self.S_land/(self.f_land * self.h_land)) - 10) * ((self.h_land * self.density_SLS * self.g * self.lift_coefficients['CL_max_L'])/(1.52/self.a_g + 1.69))
+        W_S_land = (1 / self.beta['beta_landing']) * (self.LFL/self.CLFL) * (self.density_SLS / 2) * self.lift_coefficients['CL_max_L']# Adjust for landing beta factor
 
         # 4. Minimum Speed Requirement (TORENBEEK 166)
         W_S_min = (1 / self.beta['beta_landing']) * 0.5 * self.density_SLS * self.lift_coefficients['CL_max_L'] * np.square(self.Vapp / 1.23)
         
-        # 5. Climb Gradient Requirement (OEI) (TORENBEEK 161)
-        #T_W_climb = self.g_climb + (0.5 * self.gamma * np.square(self.MCR) * self.CD0) / (self.W_S / atm.pressure) + (self.W_S / atm.pressure) * (1 / (0.5 * self.gamma * np.square(self.MCR) * np.pi * self.A * self.e))
-        #T_W_climb_min = self.g_climb + 2 * np.sqrt(self.CD0 / (np.pi * self.A * self.e))  
+        # 5. Climb Gradient Requirement (OEI) (TORENBEEK 161) 
         # Generate an array the same size as W_S for the climb gradient requirement, where all values are equal to T_W_climb_min
         #T_W_climb = np.full_like(self.W_S, T_W_climb_min)  
         CD = self.CD0 + self.CL2 / (np.pi * self.A * self.e) 
@@ -247,7 +245,7 @@ class MatchingDiagram:
 
 if __name__ == "__main__":
 
-    atmosphere = Atmosphere(6096.0)  # Example altitude of 20,000 ft (6096 m)
+    atmosphere = Atmosphere(7620.0)  # Example altitude of 20,000 ft (6096 m)
 
     diagram = MatchingDiagram()
     W_P_Curves, W_S_Curves = diagram.calculate_matching(atmosphere)
