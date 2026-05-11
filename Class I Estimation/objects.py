@@ -115,6 +115,9 @@ class MatchingDiagram:
         self.CD0 = self.aerodynamic_parameters["CD0"]  # Zero-lift drag coefficient [-]
         self.kP = self.propulsion_parameters["kP"]
         self.MTOW = self.flight_parameters["MTOW"]  # Maximum take-off weight [kg]
+        self.MCR = self.flight_parameters['MCR']  # Cruise Mach number
+        self.hcr = self.flight_parameters['Cruise_altitude'] # Cruise altitude [m]
+        self.eta_prop = self.propulsion_parameters["eta_prop"]  # Propulsive efficiency [-]
 
         # Atmospheric Parameters
         self.gamma = Atmosphere.GAMMA
@@ -124,7 +127,7 @@ class MatchingDiagram:
         self.MU_REF = Atmosphere.MU_REF
         self.T_REF = Atmosphere.T_REF
 
-        self.hcr = self.flight_parameters['Cruise_altitude'] # Cruise altitude [ft]
+        
         self.beta = 0.7 # Mass Ratio [-]
         self.CLFL = 0.45 # Landing field length coefficient [-] (0.45 for CS25, 0.6 for CS23)
         self.h2 = 18 # Obstacle height [ft]
@@ -150,7 +153,7 @@ class MatchingDiagram:
         self.Vs0 = 55.0 # Stall speed 
         self.Vapp = Vapp # Approach speed
         self.LFL = LFL # Landing field length
-        self.MCR = self.flight_parameters['MCR']  # Cruise Mach number
+        
         self.V_cr = self.MCR * Atmosphere(self.flight_parameters['Cruise_altitude']).speed_of_sound  # Cruise speed
         self.c = c # Climb rate
         self.G = G # Climb Gradient
@@ -166,31 +169,27 @@ class MatchingDiagram:
         self.h_land = 15.3  # CS 25 [m]
         self.a_g = 0.4  # CHECK TORENBEEK 170
 
-        # Propulsion
-        self.eta_prop = self.propulsion_parameters["eta_prop"]  # Propulsive efficiency [-]
-        self.kW = None  # To be calculated based on the propulsion system and performance requirements
-
         # Climb Requirements
         self.g_climb = 0.024  # Minimum climb gradient for OEI (2.4% for twin-engine aircraft)
 
         # Arrays for PLotting
-        self.W_S = np.linspace(100, 4000, 100)  # Example range for wing loading
+        self.W_S = np.linspace(1, 5000, 1000)  # Example range for wing loading
 
     def calculate_matching(self, atm: Atmosphere):
         """
         Calculate the matching diagram curves.
         """
         # FREEZE SEARCH 1. Cruise Speed Requirement (TORENBEEK 156 5-37)
-
         # T_W_cruise = (0.5 * self.gamma * np.square(self.MCR) * self.CD0) / (self.W_S / atm.pressure) + (self.W_S / atm.pressure) * (1 / (0.5 * self.gamma * np.square(self.MCR) * self.A * self.e))
         # q_cruise = 0.5 * atm.density * np.square(self.V_cr)
         P_W_cruise = self.eta_prop * (1 / self.beta) * np.float_power(((self.CD0 * 0.5 * self.density_cruise * np.power(self.V_cr, 3))/(self.beta * self.W_S)) + ((self.beta * (self.W_S)) / (np.pi * self.A * self.e * 0.5 * self.density_cruise * self.V_cr)), -1)
         W_P_cruise = 1 / P_W_cruise
+        print("Cruise Speed Requirement (W/P):", W_P_cruise)
 
         # 2. FREEZE Take-off Distance Requirement (TORENBEEK 169)
         #T_W_TO = self.mu_prime + 1 / ((1.159*(self.BFL - (self.Delta_S_TO/np.sqrt(atm.density/self.rho))))/(self.W_S/(atm.density*self.g*self.CL_2)+ self.h_to) - 2.7)
         P_W_TO = (1 / np.float_power(self.kP, 1.5)) * np.sqrt(self.MTOW / (self.sigma * self.Ne * np.square(self.Dp))) * (self.mu_prime + 1 / ((1.159*(self.BFL - (self.Delta_S_TO/np.sqrt(self.sigma))))/(self.W_S/(atm.density*self.g*self.CL_2)+ self.h_to) - 2.7))
-        print(P_W_TO)
+        #print(P_W_TO)
         W_P_TO = 1 / P_W_TO 
 
         # 3. FREEZE Landing Distance Requirement (TORENBEEK 171)
@@ -207,7 +206,7 @@ class MatchingDiagram:
         CD = self.CD0 + self.CL_2 / (np.pi * self.A * self.e) 
         CL = self.CL_2
         W_P_climb = ((self.Ne - 1)/self.Ne) * self.eta_prop * (1 / self.beta) * (1 / (self.g_climb + (CD / CL))) * np.sqrt((self.density_cruise / 2)*(CL / (self.beta * self.W_S)))  # Power loading for climb gradient requirement
-        
+    
         # Put all of the curves together in a dictionary
         W_P_Curves = {
                 "Cruise Speed Requirement": W_P_cruise,
@@ -243,6 +242,10 @@ class MatchingDiagram:
         plt.title('HYCOOL Matching Diagram')
         plt.legend()
         plt.grid()
+        
+        # Restrict the y axis limit at 1 for better visualization
+        plt.ylim(0, 1)
+
 
         figures_dir = os.path.join(os.path.dirname(__file__), 'Class_I_Figures')
         os.makedirs(figures_dir, exist_ok=True)
@@ -257,6 +260,6 @@ if __name__ == "__main__":
 
     diagram = MatchingDiagram()
     W_P_Curves, W_S_Curves = diagram.calculate_matching(atmosphere)
-    print("W/P Curves:", W_P_Curves)
-    print("W/S Curves:", W_S_Curves)
+    #print("W/P Curves:", W_P_Curves)
+    #print("W/S Curves:", W_S_Curves)
     diagram.generate_diagram(W_P_Curves, W_S_Curves)
