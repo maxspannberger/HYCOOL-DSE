@@ -147,12 +147,12 @@ class MatchingDiagram:
         # Requirements
         self.Vs0 = 55.0 # Stall speed 
         self.Vapp = 60.0 # Approach speed
-        self.LFL = 2200 # Landing field length
+        self.LFL = 2100 # Landing field length
         self.CLFL = 0.5 # Landing field length coefficient [-] (0.45 for CS25, 0.6 for CS23)        
         self.V_cr = self.MCR * Atmosphere(self.flight_parameters['Cruise_altitude']).speed_of_sound  # Cruise speed
 
         # Landing Requirements
-        self.S_land = 2050 # [m]
+        self.S_land = 2100 # [m]
         self.f_land = 1.67  # CS 25
         self.h_land = 15.3  # CS 25 [m]
         self.a_g = 0.4  # CHECK TORENBEEK 170
