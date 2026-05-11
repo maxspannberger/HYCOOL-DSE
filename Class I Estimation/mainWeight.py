@@ -8,7 +8,7 @@ PAYLOAD_KG = param.weight_parameters["payload_kg"]
 C_OE       = param.weight_parameters["C_OE_guess"]
 
 # ==============================================================================
-# EXACT FUEL CALCULATION (Equations 2.13, 2.14, 2.15)
+# EXACT FUEL CALCULATION
 # ==============================================================================
 M_end_M_TO = (
     param.mass_fractions["Mf_1"] * param.mass_fractions["Mf_2"] *
@@ -61,15 +61,13 @@ if __name__ == "__main__":
     
     # 1. Size Weight
     converged_MTOW = run_class_1_sizing()
-    
-    # Update global parameter dictionary strictly for reference
     param.flight_parameters["MTOW"] = converged_MTOW
     
     # 2. Match Performance
     print(">>> OPTIMIZING MATCHING DIAGRAM...")
     atm = Atmosphere(param.flight_parameters["Cruise_altitude"])
     
-    # Explicitly pass the converged weight into the MatchingDiagram!
+    # Explicitly pass MTOW to the diagram
     diagram = MatchingDiagram(MTOW=converged_MTOW)
     
     W_P_Curves, W_S_Curves = diagram.calculate_matching(atm)

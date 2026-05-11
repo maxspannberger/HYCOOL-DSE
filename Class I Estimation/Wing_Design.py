@@ -16,7 +16,7 @@ class WingDesign:
         self._calculate_wing_geometry()
 
     def _calculate_wing_geometry(self):
-        # W is in kg. w is in N/m^2. Multiply W by gravity to get N.
+        # W is in kg. w is in N/m^2. Multiply W by gravity to get N to calculate area (S).
         self.S = (self.W * 9.80665) / self.w
         self.b = np.sqrt(self.A * self.S)
         

@@ -1,4 +1,5 @@
 import numpy as np
+import scipy as sp
 import math
 import os
 import matplotlib.pyplot as plt
@@ -32,6 +33,8 @@ class Atmosphere:
             hb = 11000.0
             self.temperature = Tb
             self.pressure = Pb * math.exp(-self.G * (self.altitude - hb) / (self.R * Tb))
+        else:
+            raise NotImplementedError("Model only supports altitudes up to 20,000 meters.")
             
         self.temperature += self.isa_offset
         self.density = self.pressure / (self.R * self.temperature)
@@ -39,11 +42,20 @@ class Atmosphere:
         self.dynamic_viscosity = (self.MU_REF * ((self.temperature / self.T_REF) ** 1.5) * ((self.T_REF + self.S) / (self.temperature + self.S)))
         self.kinematic_viscosity = self.dynamic_viscosity / self.density
 
+    def set_altitude(self, new_altitude_m):
+        self.altitude = new_altitude_m
+        self._calculate_state()
+
+    def __repr__(self):
+        return (f"<Atmosphere @ {self.altitude}m | "
+                f"T: {self.temperature:.2f} K | "
+                f"P: {self.pressure:.1f} Pa | "
+                f"rho: {self.density:.4f} kg/m³>")
+
 class MatchingDiagram:
-    # Explicitly require MTOW. Removed all hardcoded fallbacks!
-    def __init__(self, MTOW, Vs0=55.0, Vapp=60.0, LFL=1800, c=0, G=0.0024, TO_field_length=1000):
-        self.MTOW = MTOW 
+    def __init__(self, MTOW, Vs0=55.0, Vapp=60.0, LFL=2200, c=0, G=0.0024, TO_field_length=1000):
         
+        self.MTOW = MTOW # Passed dynamically from mainWeight
         self.lift_coefficients = lift_coefficients
         self.propulsion_parameters = propulsion_parameters
         self.aerodynamic_parameters = aerodynamic_parameters
@@ -55,24 +67,33 @@ class MatchingDiagram:
         self.CD0 = self.aerodynamic_parameters["CD0"]  
         self.kP = self.propulsion_parameters["kP"]
         self.MCR = self.flight_parameters['MCR']  
+        self.hcr = self.flight_parameters['Cruise_altitude'] 
         self.eta_prop = self.propulsion_parameters["eta_prop"]  
         self.beta = beta_dict
 
         self.gamma = Atmosphere.GAMMA
         self.R = Atmosphere.R
         self.g = Atmosphere.G
+        self.S = Atmosphere.S
+        self.MU_REF = Atmosphere.MU_REF
+        self.T_REF = Atmosphere.T_REF
 
-        self.CLFL = 0.45 
-        self.h2 = 11 
-        self.TO = 1800 
-        self.kT = 0.85 
+        self.h2 = 11  
+        self.TO = 2500 
+        self.kT = 0.9  
 
         self.density_SLS = Atmosphere(0).density  
+        self.pressure_SLS = Atmosphere(0).pressure  
+        self.temperature_SLS = Atmosphere(0).temperature  
+
         self.density_cruise = Atmosphere(self.flight_parameters['Cruise_altitude']).density
-        
+        self.pressure_cruise = Atmosphere(self.flight_parameters['Cruise_altitude']).pressure
+        self.temperature_cruise = Atmosphere(self.flight_parameters['Cruise_altitude']).temperature
+
         self.Vs0 = Vs0 
         self.Vapp = Vapp 
         self.LFL = LFL 
+        self.CLFL = 0.5 
         
         self.V_cr = self.MCR * Atmosphere(self.flight_parameters['Cruise_altitude']).speed_of_sound 
         self.c = c 
@@ -81,27 +102,26 @@ class MatchingDiagram:
         self.sigma = self.density_cruise / Atmosphere(0).density 
         self.Dp = 4.0 
 
-        # Landing parameters (Distance and safety factors only, no masses)
+        # Landing Parameters 
         self.S_land = 1800 
         self.f_land = 1.67  
         self.h_land = 15.3  
         self.a_g = 0.4  
 
         self.g_climb = 0.024  
-        self.W_S = np.linspace(100, 8000, 1000)
+        self.W_S = np.linspace(100, 8000, 1000) # [N/m^2]
 
     def calculate_matching(self, atm: Atmosphere):
         # 1. Cruise Speed 
-        W_P_cruise = (self.eta_prop / self.beta['beta_cruise']) / (((self.CD0 * 0.5 * self.density_cruise * np.power(self.V_cr, 3))/(self.beta['beta_cruise'] * self.W_S)) + ((self.beta['beta_cruise'] * self.W_S) / (np.pi * self.A * self.e * 0.5 * self.density_cruise * self.V_cr)))
+        W_P_cruise = (self.eta_prop / self.beta['beta_cruise']) / (((self.CD0 * 0.5 * self.density_cruise * np.power(self.V_cr, 3))/(self.beta['beta_cruise'] * self.W_S)) + ((self.beta['beta_cruise'] * (self.W_S)) / (np.pi * self.A * self.e * 0.5 * self.density_cruise * self.V_cr)))
 
         # 2. Take-off Distance 
         self.CL2 = 0.694 * self.lift_coefficients['CL_max_TO']
         W_P_TO = (1 / (1.15 * np.sqrt((self.Ne / (self.Ne - 1)) * (self.W_S / (self.TO * self.density_cruise * self.kT * self.g * self.A * self.e))) + (self.Ne / (self.Ne - 1)) * (4 * self.h2 / self.LTO))) * np.sqrt((self.CL2 / self.W_S) * (self.density_SLS / 2))
 
-        # 3. Landing Distance 
-        landing_weight_fraction = self.beta['beta_landing']
-        W_S_land = (1 / landing_weight_fraction) * ((self.S_land/(self.f_land * self.h_land)) - 10) * ((self.h_land * atm.density * self.g * self.lift_coefficients['CL_max_L'])/(1.52/self.a_g + 1.69))
-
+        # 3. Landing Distance (Using beta fraction dynamically)
+        W_S_land = (1 / self.beta['beta_landing']) * ((self.S_land/(self.f_land * self.h_land)) - 10) * ((self.h_land * atm.density * self.g * self.lift_coefficients['CL_max_L'])/(1.52/self.a_g + 1.69))
+    
         # 4. Minimum Speed 
         W_S_min = (1 / self.beta['beta_landing']) * 0.5 * self.density_SLS * self.lift_coefficients['CL_max_L'] * np.square(self.Vapp / 1.23)
         
@@ -109,7 +129,7 @@ class MatchingDiagram:
         CD = self.CD0 + self.CL2 / (np.pi * self.A * self.e) 
         CL = self.CL2
         W_P_climb = ((self.Ne - 1)/self.Ne) * self.eta_prop * (1 / self.beta['beta_climb']) * (1 / (self.g_climb + (CD / CL))) * np.sqrt((self.density_cruise / 2)*(CL / (self.beta['beta_climb'] * self.W_S)))  
-
+    
         W_P_Curves = {
                 "Cruise Speed Requirement": W_P_cruise,
                 "Take-off Distance Requirement": W_P_TO,
@@ -134,9 +154,9 @@ class MatchingDiagram:
         plt.figure(figsize=(10, 6))
         for curve_name, curve_data in W_P_Curves.items():
             plt.plot(self.W_S, curve_data, label=curve_name)
-    
-        plt.vlines(W_S_Curves['Minimum Speed Requirement'], ymin=0, ymax=0.4, label='Minimum Speed Requirement', colors='red', linestyles='dashed')
-        plt.vlines(W_S_Curves['Landing Distance Requirement'], ymin=0, ymax=0.4, label='Landing Distance Requirement', colors='purple', linestyles='dashed')
+
+        plt.vlines(W_S_Curves['Minimum Speed Requirement'], ymin=0, ymax=0.2, label='Minimum Speed Requirement', colors='red', linestyles='dashed')
+        plt.vlines(W_S_Curves['Landing Distance Requirement'], ymin=0, ymax=0.2, label='Landing Distance Requirement', colors='purple', linestyles='dashed')
         
         if design_point:
             opt_WS, opt_WP = design_point
@@ -148,8 +168,8 @@ class MatchingDiagram:
         plt.title('HYCOOL Matching Diagram')
         plt.legend(loc='lower left', fontsize='small')
         plt.grid()
-        plt.ylim(0, 0.4) 
-        
+        plt.ylim(0, 0.2) 
+
         figures_dir = os.path.join(os.path.dirname(__file__), 'Class_I_Figures')
         os.makedirs(figures_dir, exist_ok=True)
         plt.savefig(os.path.join(figures_dir, 'matching_diagram.png'))

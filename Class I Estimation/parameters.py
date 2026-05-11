@@ -7,7 +7,7 @@ import numpy as np
 lift_coefficients = {
     "CL_max_cruise": 1.7,  
     "CL_max_TO": 1.9,  
-    "CL_max_L": 2.2  
+    "CL_max_L": 2.3 # Updated
 }
 
 # 2. Propulsion system parameters 
@@ -20,18 +20,18 @@ propulsion_parameters = {
 
 # 3. Aerodynamic parameters 
 aerodynamic_parameters = {
-    "CD0": 0.02,  
-    "e": 0.85,
-    "A": 10.0,
+    "CD0": 0.018, # Updated
+    "e": 1.0,  
+    "A": 10.0,  # Updated
     "W_S_guess": 3500.0  # Initial wing loading guess [N/m^2]
 }
 
 # 4. Flight parameters
 flight_parameters = {
     "Cruise_altitude": 7620,  
-    "MCR": 0.7,
+    "MCR": 0.7,  
     "TO_field_length": 1000,  
-    "MTOW": 28000.0,  # This is purely the starting guess for the loop
+    "MTOW": 28000.0,  # Starting guess for the iteration loop
     "cruise_range": 1000.0,  
     "endurance_ltr": 0.75,  
     "velocity_loiter": 65 * 1.3  
@@ -59,9 +59,9 @@ mass_fractions = {
 
 # 7. Weight and Sizing Parameters 
 weight_parameters = {
-    "payload_kg": 10000.0,
+    "payload_kg": 10000,
     "C_OE_guess": 0.58,  
-    "contingency_margin": 0.05 
+    "contingency_margin": 0.0
 }
 
 def calculate_beta(mass_fractions, phase_string, loiter=False):
