@@ -22,7 +22,7 @@ propulsion_parameters = {
 aerodynamic_parameters = {
     "CD0": 0.018,  # Zero-lift drag coefficient
     "e": 1.,  # Oswald efficiency factor
-    "A": 13.0  # Aspect ratio
+    "A": 10.0  # Aspect ratio
 }
 
 # 4. Flight parameters
@@ -36,9 +36,7 @@ flight_parameters = {
     "velocity_loiter": 65 * 1.3  # Loiter velocity [m/s] #65 chosen for a landing or take-off 
 }
 
-
-
-# 6. Breguet
+# 5. Breguet
 breguet_parameters = {
     "L_D_Cruise": 12.0,  # Lift-to-drag ratio during cruise
     "cp_Cruise": 0.5,  # Specific fuel consumption [kg/(N·s)]
@@ -46,7 +44,7 @@ breguet_parameters = {
     "cp_ltr": 0.6,  # Specific fuel consumption during take-off [kg/(N·s)]
 }
 
-# 5. Mass Fractions (beta)
+# 6. Mass Fractions (beta)
 mass_fractions = { # ROSKAM
      
     "Mf_1": 0.99,  # Engine Start, Warm-up
