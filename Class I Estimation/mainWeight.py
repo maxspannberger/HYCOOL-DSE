@@ -12,20 +12,12 @@ C_OE       = param.weight_parameters["C_OE_guess"]
 # EXACT FUEL CALCULATION (Per Roskam Class I Equations)
 # ==============================================================================
 # 1. Product of all nominal mission phases (Excluding loiter reserves)
-M_end_M_TO = (
+M_ff = (                                        # fuel fraction
     param.mass_fractions["Mf_1"] * param.mass_fractions["Mf_2"] *
     param.mass_fractions["Mf_3"] * param.mass_fractions["Mf_4"] *
     param.mass_fractions["Mf_5"] * param.mass_fractions["Mf_7"] *
-    param.mass_fractions["Mf_8"]
+    param.mass_fractions["Mf_6"] * param.mass_fractions["Mf_8"]
 )
-
-# 2. Calculate individual fuel fractions for mission and reserves
-M_ff_m = 1.0 - M_end_M_TO
-M_loiter_M_end = param.mass_fractions["Mf_6"]
-M_ff_res = (1.0 - M_loiter_M_end) * M_end_M_TO + (param.weight_parameters["contingency_margin"] * M_ff_m)
-
-# Total fuel fraction required for the aircraft
-M_ff = M_ff_m + M_ff_res
 
 def run_class_1_sizing():
     """Iteratively converges MTOW based on fuel and payload requirements."""
@@ -41,9 +33,7 @@ def run_class_1_sizing():
     while error > tolerance:
         # Calculate constituent weights
         W_OE = C_OE * MTOW
-        W_F_used = M_ff_m * MTOW
-        W_F_res_kg = M_ff_res * MTOW
-        W_F = W_F_used + W_F_res_kg
+        W_F = (1 - M_ff) * MTOW
         
         # Calculate new take-off weight
         MTOW_calc = W_OE + W_F + PAYLOAD_KG
@@ -63,8 +53,7 @@ def run_class_1_sizing():
     print("="*50)
     print(f"Final MTOW:    {MTOW:.2f} kg")
     print(f"Final OEW:     {W_OE:.2f} kg")
-    print(f"Fuel Used:     {W_F_used:.2f} kg")
-    print(f"Reserve Fuel:  {W_F_res_kg:.2f} kg")
+    print(f"Total fuel (including reserves):     {W_F:.2f} kg")
     print("=" * 50 + "\n")
     return MTOW
 

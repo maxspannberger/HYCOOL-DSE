@@ -32,7 +32,7 @@ flight_parameters = {
     "Cruise_altitude": 7620,     # Cruise altitude [m] (FL250)
     "MCR": 0.7,                  # Cruise Mach number
     "TO_field_length": 1000,     # Take-off field length [m]
-    "MTOW": 28000.0,             # Maximum take-off weight [kg] (INITIAL GUESS)
+    "MTOW": 30000.0,             # Maximum take-off weight [kg] (INITIAL GUESS)
     "cruise_range": 1000.0,      # Cruise range [km]
     "endurance_ltr": 0.75,       # Endurance [hours]
     "velocity_loiter": 65 * 1.3  # Loiter velocity [m/s]
