@@ -272,8 +272,9 @@ def generate_adjusted_weights(weights, noise=0.0, n_runs=1):
         for criterion in new_weights:
             weights_magnitude += new_weights[criterion]
 
-        for criterion in new_weights:
-            new_weights[criterion] = round(new_weights[criterion]/weights_magnitude, 3)
+        if not np.isclose(weights_magnitude, 0.0):
+            for criterion in new_weights:
+                new_weights[criterion] = round(new_weights[criterion]/weights_magnitude, 3)
         all_new_weights.append(new_weights.copy())
 
     return all_new_weights
@@ -293,16 +294,18 @@ def get_winner(weights, n_winners=1):
 
 def get_winner_distribution(all_new_weights, n_winners=1):
     all_winners = {}
+
+    # initialize all_winners configurations
+    for design in table:
+        all_winners[design] = {}
+        for configuration in table[design]:
+            all_winners[design][configuration] = 0
+
     for weights in all_new_weights:
         winners = get_winner(weights, n_winners=n_winners)
         for design in winners:
             for place in winners[design]:
-                if design not in all_winners:
-                    all_winners[design] = {}
-                if winners[design][place] in all_winners[design]:
-                    all_winners[design][winners[design][place]] += 1
-                else:
-                    all_winners[design][winners[design][place]] = 1
+                all_winners[design][winners[design][place]] += 1
     return all_winners
 
 
@@ -312,15 +315,24 @@ def plot_winner_distribution(all_winners, n_winners=1, n_runs=1):
     axs = axs.reshape(-1)
 
     for ax, design in zip(axs, list(all_winners.keys())):
-        design_scores = dict(sorted(all_winners[design].items(), key=lambda item: item[0]))
-        ax.bar(design_scores.keys(), np.array(list(design_scores.values()))/n_runs)
-
+        ordered_per_name = dict(sorted(all_winners[design].items(), key=lambda item: item[0]))
+        ordered_per_score = dict(sorted(all_winners[design].items(), key=lambda item: item[1], reverse=True))
+        
+        colors = ['blue'] * len(ordered_per_name)
+        i = 0
+        for configuration in ordered_per_score:
+            if i < n_winners:
+                colors[int(configuration[-2:])-1] = 'green'
+                i += 1
+        
+        ax.bar(ordered_per_name.keys(), np.array(list(ordered_per_name.values()))/n_runs, color=colors)
         ax.set_title(design)
         ax.set_xlabel("Configuration")
         ax.set_ylabel(f"Occurance fraction in top {n_winners}")
         ax.set_ylim(0, 1)
         ax.tick_params("x", rotation=60)
         ax.set_yticks(np.arange(0.0, 1.1, 0.1))
+        ax.legend()
         # ax.grid()
 
     plt.savefig(f"Tradeoff_config_sensitivity_top_{n_winners}.png")
