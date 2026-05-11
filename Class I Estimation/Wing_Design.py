@@ -7,7 +7,9 @@ import numpy as np
 
 class WingDesign:
     """Class I estimation for wing geometry."""
-    def __init__(self, W=31000, w=500, A=10, M_cr=0.7):
+    
+    # Removed the hardcoded defaults!
+    def __init__(self, W, w, A, M_cr):
         self.W = W
         self.w = w
         self.A = A
@@ -20,7 +22,6 @@ class WingDesign:
         
         self.Lambda_c4_rad = np.arccos(1.16 / (self.M_cr + 0.5))
         self.Lambda_c4_deg = np.rad2deg(self.Lambda_c4_rad)
-        
         self.lambda_ = 0.2 * (2 - self.Lambda_c4_rad)
         
         tan_LE = np.tan(self.Lambda_c4_rad) + (1 - self.lambda_) / (self.A * (1 + self.lambda_))
@@ -48,7 +49,6 @@ class WingDesign:
         new_params = (self.W, self.w, self.A, self.M_cr)
         if old_params == new_params:
             return True
-            
         self._calculate_wing_geometry()
         return False
 

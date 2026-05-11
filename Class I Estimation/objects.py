@@ -1,12 +1,8 @@
 import numpy as np
-import scipy as sp
 import math
 import os
 import matplotlib.pyplot as plt
-from parameters import lift_coefficients
-from parameters import propulsion_parameters
-from parameters import aerodynamic_parameters
-from parameters import flight_parameters
+from parameters import lift_coefficients, propulsion_parameters, aerodynamic_parameters, flight_parameters, beta_dict
 
 class Atmosphere:
     G = 9.80665          
@@ -36,8 +32,6 @@ class Atmosphere:
             hb = 11000.0
             self.temperature = Tb
             self.pressure = Pb * math.exp(-self.G * (self.altitude - hb) / (self.R * Tb))
-        else:
-            raise NotImplementedError("Model only supports altitudes up to 20,000 meters.")
             
         self.temperature += self.isa_offset
         self.density = self.pressure / (self.R * self.temperature)
@@ -45,12 +39,8 @@ class Atmosphere:
         self.dynamic_viscosity = (self.MU_REF * ((self.temperature / self.T_REF) ** 1.5) * ((self.T_REF + self.S) / (self.temperature + self.S)))
         self.kinematic_viscosity = self.dynamic_viscosity / self.density
 
-    def set_altitude(self, new_altitude_m):
-        self.altitude = new_altitude_m
-        self._calculate_state()
-    
 class MatchingDiagram:
-    def __init__(self, Vs0=55.0, Vapp=57, LFL=1500, c=0, G=0.0024, TO_field_length=1000):
+    def __init__(self, Vs0=55.0, Vapp=60.0, LFL=1800, c=0, G=0.0024, TO_field_length=1000):
         self.lift_coefficients = lift_coefficients
         self.propulsion_parameters = propulsion_parameters
         self.aerodynamic_parameters = aerodynamic_parameters
@@ -61,34 +51,24 @@ class MatchingDiagram:
         self.e = self.aerodynamic_parameters["e"]  
         self.CD0 = self.aerodynamic_parameters["CD0"]  
         self.kP = self.propulsion_parameters["kP"]
-        self.MTOW = self.flight_parameters["MTOW"]  
+        self.MTOW = self.flight_parameters["MTOW"]  # This gets updated dynamically by mainWeight.py!
         self.MCR = self.flight_parameters['MCR']  
-        self.hcr = self.flight_parameters['Cruise_altitude'] 
         self.eta_prop = self.propulsion_parameters["eta_prop"]  
+        self.beta = beta_dict
 
         self.gamma = Atmosphere.GAMMA
         self.R = Atmosphere.R
         self.g = Atmosphere.G
-        self.S = Atmosphere.S
-        self.MU_REF = Atmosphere.MU_REF
-        self.T_REF = Atmosphere.T_REF
 
-        self.beta = 0.7 
         self.CLFL = 0.45 
-        self.h2 = 18 
+        self.h2 = 11 
+        self.TO = 1800 
         self.kT = 0.85 
 
-        self.h_to = 10.7  
-        self.mu_prime = .010 * lift_coefficients['CL_max_TO'] + .02
-        self.CL_2 = .694 * lift_coefficients['CL_max_TO']
-        self.BFL = 1800 
-        self.Delta_S_TO = 200 
-
+        self.density_SLS = Atmosphere(0).density  
         self.density_cruise = Atmosphere(self.flight_parameters['Cruise_altitude']).density
-        self.pressure_cruise = Atmosphere(self.flight_parameters['Cruise_altitude']).pressure
-        self.temperature_cruise = Atmosphere(self.flight_parameters['Cruise_altitude']).temperature
-
-        self.Vs0 = 55.0 
+        
+        self.Vs0 = Vs0 
         self.Vapp = Vapp 
         self.LFL = LFL 
         
@@ -99,84 +79,83 @@ class MatchingDiagram:
         self.sigma = self.density_cruise / Atmosphere(0).density 
         self.Dp = 4.0 
 
-        self.W_land = 25000  
-        self.S_land = 2200 
-        self.W_TO = 32000 
+        # Landing Requirements (No hardcoded weights!)
+        self.S_land = 1800 
         self.f_land = 1.67  
         self.h_land = 15.3  
         self.a_g = 0.4  
 
         self.g_climb = 0.024  
-        self.W_S = np.linspace(1, 5000, 1000) 
+        self.W_S = np.linspace(10, 800, 1000) # [kg/m^2]
 
     def calculate_matching(self, atm: Atmosphere):
-        P_W_cruise = self.eta_prop * (1 / self.beta) * np.float_power(((self.CD0 * 0.5 * self.density_cruise * np.power(self.V_cr, 3))/(self.beta * self.W_S)) + ((self.beta * (self.W_S)) / (np.pi * self.A * self.e * 0.5 * self.density_cruise * self.V_cr)), -1)
-        W_P_cruise = 1 / P_W_cruise
-
-        P_W_TO = (1 / np.float_power(self.kP, 1.5)) * np.sqrt(self.MTOW / (self.sigma * self.Ne * np.square(self.Dp))) * (self.mu_prime + 1 / ((1.159*(self.BFL - (self.Delta_S_TO/np.sqrt(self.sigma))))/(self.W_S/(atm.density*self.g*self.CL_2)+ self.h_to) - 2.7))
-        W_P_TO = 1 / P_W_TO 
-
-        W_S_land = (1 / (self.W_land/self.W_TO)) * ((self.S_land/(self.f_land * self.h_land)) - 10) * ((self.h_land * atm.density * self.g * self.lift_coefficients['CL_max_L'])/(1.52/self.a_g + 1.69))
-        W_S_min = 0.5 * atm.density * self.lift_coefficients['CL_max_L'] * np.square(self.Vs0)
+        # Convert W_S to Newtons for physical drag equations
+        W_S_N = self.W_S * self.g 
         
-        CD = self.CD0 + self.CL_2 / (np.pi * self.A * self.e) 
-        CL = self.CL_2
-        W_P_climb = ((self.Ne - 1)/self.Ne) * self.eta_prop * (1 / self.beta) * (1 / (self.g_climb + (CD / CL))) * np.sqrt((self.density_cruise / 2)*(CL / (self.beta * self.W_S)))  
-    
+        # 1. Cruise Speed 
+        W_P_cruise_NW = (self.eta_prop / self.beta['beta_cruise']) / (((self.CD0 * 0.5 * self.density_cruise * np.power(self.V_cr, 3))/(self.beta['beta_cruise'] * W_S_N)) + ((self.beta['beta_cruise'] * W_S_N) / (np.pi * self.A * self.e * 0.5 * self.density_cruise * self.V_cr)))
+        W_P_cruise = W_P_cruise_NW * (1000.0 / self.g) # Convert N/W to kg/kW
+
+        # 2. Take-off Distance 
+        self.CL2 = 0.694 * self.lift_coefficients['CL_max_TO']
+        W_P_TO_NW = (1 / (1.15 * np.sqrt((self.Ne / (self.Ne - 1)) * (W_S_N / (self.TO * self.density_cruise * self.kT * self.g * self.A * self.e))) + (self.Ne / (self.Ne - 1)) * (4 * self.h2 / self.LTO))) * np.sqrt((self.CL2 / W_S_N) * (self.density_SLS / 2))
+        W_P_TO = W_P_TO_NW * (1000.0 / self.g)
+
+        # 3. Landing Distance (Using beta_landing fraction instead of hardcoded numbers!)
+        landing_weight_fraction = self.beta['beta_landing']
+        W_S_land_N = (1 / landing_weight_fraction) * ((self.S_land/(self.f_land * self.h_land)) - 10) * ((self.h_land * atm.density * self.g * self.lift_coefficients['CL_max_L'])/(1.52/self.a_g + 1.69))
+        W_S_land = W_S_land_N / self.g # Convert N/m^2 back to kg/m^2
+
+        # 4. Minimum Speed 
+        W_S_min_N = (1 / self.beta['beta_landing']) * 0.5 * self.density_SLS * self.lift_coefficients['CL_max_L'] * np.square(self.Vapp / 1.23)
+        W_S_min = W_S_min_N / self.g # Convert N/m^2 back to kg/m^2
+        
+        # 5. Climb Gradient 
+        CD = self.CD0 + self.CL2 / (np.pi * self.A * self.e) 
+        CL = self.CL2
+        W_P_climb_NW = ((self.Ne - 1)/self.Ne) * self.eta_prop * (1 / self.beta['beta_climb']) * (1 / (self.g_climb + (CD / CL))) * np.sqrt((self.density_cruise / 2)*(CL / (self.beta['beta_climb'] * W_S_N)))  
+        W_P_climb = W_P_climb_NW * (1000.0 / self.g)
+
         W_P_Curves = {
-                "Cruise Speed": W_P_cruise,
-                "Take-off Distance": W_P_TO,
-                "Climb Gradient": W_P_climb
+                "Cruise Speed Requirement": W_P_cruise,
+                "Take-off Distance Requirement": W_P_TO,
+                "Climb Gradient Requirement": W_P_climb
         }
         W_S_Curves = {
-                "Landing Distance": W_S_land,
-                "Minimum Speed": W_S_min
+                "Landing Distance Requirement": W_S_land,
+                "Minimum Speed Requirement": W_S_min
         }
         return W_P_Curves, W_S_Curves
-        
+    
     def get_design_point(self, W_P_Curves, W_S_Curves):
-        """
-        Mathematically finds the optimum W/S and W/P.
-        """
-        # --- ERROR CATCHER ---
-        # If the arguments were accidentally swapped in mainWeight.py, W_S_Curves 
-        # will contain arrays. This swaps them back automatically to prevent crashes!
         if any(isinstance(v, np.ndarray) and v.size > 1 for v in W_S_Curves.values()):
             W_P_Curves, W_S_Curves = W_S_Curves, W_P_Curves
-        
-        # 1. The maximum allowable Wing Loading is the strictest (smallest) vertical limit.
-        # We wrap them in float() to guarantee no numpy-array comparison errors.
-        valid_W_S_limits = [float(v) for v in W_S_Curves.values()]
-        optimum_W_S = min(valid_W_S_limits)
-        
-        # 2. Find the index in our W_S array closest to this optimum_W_S
+            
+        optimum_W_S = min([float(v) for v in W_S_Curves.values()])
         idx = (np.abs(self.W_S - optimum_W_S)).argmin()
-        
-        # 3. The maximum allowable Power Loading is the strictest (lowest) performance curve
         optimum_W_P = min(float(curve[idx]) for curve in W_P_Curves.values())
-        
         return optimum_W_S, optimum_W_P
-    
+        
     def generate_diagram(self, W_P_Curves, W_S_Curves, design_point=None):
         plt.figure(figsize=(10, 6))
         for curve_name, curve_data in W_P_Curves.items():
             plt.plot(self.W_S, curve_data, label=curve_name)
     
-        for curve_name, curve_data in W_S_Curves.items():
-            plt.vlines(curve_data, ymin=0, ymax=1.0, label=curve_name, linestyles='dashed')
-            
+        plt.vlines(W_S_Curves['Minimum Speed Requirement'], ymin=0, ymax=10.0, label='Minimum Speed Requirement', colors='red', linestyles='dashed')
+        plt.vlines(W_S_Curves['Landing Distance Requirement'], ymin=0, ymax=10.0, label='Landing Distance Requirement', colors='purple', linestyles='dashed')
+        
         if design_point:
             opt_WS, opt_WP = design_point
             plt.plot(opt_WS, opt_WP, marker='*', color='red', markersize=15, 
-                     label=f'Design Point (W/S={opt_WS:.1f}, W/P={opt_WP:.3f})')
+                     label=f'Design Point (W/S={opt_WS:.0f}, W/P={opt_WP:.2f})')
         
-        plt.xlabel('Wing Loading (W/S)')
-        plt.ylabel('Power Loading (W/P)')
-        plt.title('Constraint / Matching Diagram')
+        plt.xlabel('Wing Loading (W/S) [kg/m²]')
+        plt.ylabel('Power Loading (W/P) [kg/kW]')
+        plt.title('HYCOOL Matching Diagram')
         plt.legend(loc='lower left', fontsize='small')
         plt.grid()
-        plt.ylim(0, 1)
-
+        plt.ylim(0, 10) 
+        
         figures_dir = os.path.join(os.path.dirname(__file__), 'Class_I_Figures')
         os.makedirs(figures_dir, exist_ok=True)
         plt.savefig(os.path.join(figures_dir, 'matching_diagram.png'))
