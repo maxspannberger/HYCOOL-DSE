@@ -1,32 +1,39 @@
 import numpy as np
-import scipy as sp
 import math
 import os
 import matplotlib.pyplot as plt
 from parameters import lift_coefficients, propulsion_parameters, aerodynamic_parameters, flight_parameters, beta_dict
 
 class Atmosphere:
-    G = 9.80665          
-    R = 287.0528         
-    GAMMA = 1.4          
-    S = 110.4            
-    MU_REF = 1.716e-5    
-    T_REF = 273.15       
+    """
+    International Standard Atmosphere (ISA) model.
+    Calculates atmospheric properties up to 20,000 meters.
+    """
+    G = 9.80665          # Gravity (m/s^2)
+    R = 287.0528         # Specific gas constant for dry air (J/(kg·K))
+    GAMMA = 1.4          # Specific heat ratio for air
+    S = 110.4            # Sutherland's temperature (K)
+    MU_REF = 1.716e-5    # Reference dynamic viscosity (kg/(m·s))
+    T_REF = 273.15       # Reference temperature (K)
 
     def __init__(self, altitude_m, isa_offset_c=0.0):
         if altitude_m < 0:
             raise ValueError("Altitude must be zero or positive.")
+            
         self.altitude = altitude_m
         self.isa_offset = isa_offset_c
         self._calculate_state()
 
     def _calculate_state(self):
+        # --- Layer 0: Troposphere (0 to 11,000 m) ---
         if self.altitude <= 11000.0:
             Tb = 288.15
             Pb = 101325.0
             a = -0.0065
             self.temperature = Tb + a * self.altitude
             self.pressure = Pb * (self.temperature / Tb) ** (-self.G / (a * self.R))
+            
+        # --- Layer 1: Tropopause (11,000 m to 20,000 m) ---
         elif self.altitude <= 20000.0:
             Tb = 216.65
             Pb = 22632.1
@@ -42,94 +49,88 @@ class Atmosphere:
         self.dynamic_viscosity = (self.MU_REF * ((self.temperature / self.T_REF) ** 1.5) * ((self.T_REF + self.S) / (self.temperature + self.S)))
         self.kinematic_viscosity = self.dynamic_viscosity / self.density
 
-    def set_altitude(self, new_altitude_m):
-        self.altitude = new_altitude_m
-        self._calculate_state()
-
-    def __repr__(self):
-        return (f"<Atmosphere @ {self.altitude}m | "
-                f"T: {self.temperature:.2f} K | "
-                f"P: {self.pressure:.1f} Pa | "
-                f"rho: {self.density:.4f} kg/m³>")
-
 class MatchingDiagram:
-    def __init__(self, MTOW, Vs0=55.0, Vapp=60.0, LFL=2200, c=0, G=0.0024, TO_field_length=1000):
+    """Calculates performance constraint curves and optimal W/S & W/P points."""
+    
+    def __init__(self, MTOW, Vs0=55.0, Vapp=60.0, LFL=2100, c=0, G=0.0024):
         
-        self.MTOW = MTOW # Passed dynamically from mainWeight
+        self.MTOW = MTOW # dynamically passed from main script
+        
+        # Assign Parameter Dictionaries
         self.lift_coefficients = lift_coefficients
         self.propulsion_parameters = propulsion_parameters
         self.aerodynamic_parameters = aerodynamic_parameters
         self.flight_parameters = flight_parameters
+        self.beta = beta_dict
 
+        # Core Aircraft Data
         self.Ne = self.propulsion_parameters["Ne"]  
         self.A = self.aerodynamic_parameters["A"]  
         self.e = self.aerodynamic_parameters["e"]  
         self.CD0 = self.aerodynamic_parameters["CD0"]  
         self.kP = self.propulsion_parameters["kP"]
         self.MCR = self.flight_parameters['MCR']  
-        self.hcr = self.flight_parameters['Cruise_altitude'] 
         self.eta_prop = self.propulsion_parameters["eta_prop"]  
-        self.beta = beta_dict
 
+        # Constants
         self.gamma = Atmosphere.GAMMA
         self.R = Atmosphere.R
         self.g = Atmosphere.G
-        self.S = Atmosphere.S
-        self.MU_REF = Atmosphere.MU_REF
-        self.T_REF = Atmosphere.T_REF
 
-        self.h2 = 11  
-        self.TO = 2500 
-        self.kT = 0.9  
-
+        # Take-off Requirements
+        self.h2 = 11      # [m]
+        self.TO = 2500    # Take-off field length [m]
+        self.kT = 0.9     # Take-off thrust parameter [-]
+        
+        # Sea Level Properties
         self.density_SLS = Atmosphere(0).density  
-        self.pressure_SLS = Atmosphere(0).pressure  
-        self.temperature_SLS = Atmosphere(0).temperature  
-
+        
+        # Atmospheric Cruise Properties
         self.density_cruise = Atmosphere(self.flight_parameters['Cruise_altitude']).density
-        self.pressure_cruise = Atmosphere(self.flight_parameters['Cruise_altitude']).pressure
-        self.temperature_cruise = Atmosphere(self.flight_parameters['Cruise_altitude']).temperature
-
+        
+        # Speed Requirements
         self.Vs0 = Vs0 
         self.Vapp = Vapp 
         self.LFL = LFL 
         self.CLFL = 0.5 
         
+        # Cruise speed calculated using speed of sound
         self.V_cr = self.MCR * Atmosphere(self.flight_parameters['Cruise_altitude']).speed_of_sound 
-        self.c = c 
-        self.G = G 
-        self.LTO = self.flight_parameters['TO_field_length'] 
-        self.sigma = self.density_cruise / Atmosphere(0).density 
-        self.Dp = 4.0 
-
-        # Landing Parameters 
-        self.S_land = 1800 
+        
+        # Landing Requirements
+        self.S_land = 2100 
         self.f_land = 1.67  
         self.h_land = 15.3  
         self.a_g = 0.4  
 
+        # Climb Requirements
         self.g_climb = 0.024  
-        self.W_S = np.linspace(100, 8000, 1000) # [N/m^2]
+
+        # Array for Plotting Wing Loading [N/m^2]
+        self.W_S = np.linspace(100, 8000, 1000)
 
     def calculate_matching(self, atm: Atmosphere):
-        # 1. Cruise Speed 
+        """Calculates Torenbeek matching diagram curves based on physics."""
+        
+        # 1. Cruise Speed Requirement (TORENBEEK 156)
         W_P_cruise = (self.eta_prop / self.beta['beta_cruise']) / (((self.CD0 * 0.5 * self.density_cruise * np.power(self.V_cr, 3))/(self.beta['beta_cruise'] * self.W_S)) + ((self.beta['beta_cruise'] * (self.W_S)) / (np.pi * self.A * self.e * 0.5 * self.density_cruise * self.V_cr)))
 
-        # 2. Take-off Distance 
+        # 2. Take-off Distance Requirement (TORENBEEK 169)
         self.CL2 = 0.694 * self.lift_coefficients['CL_max_TO']
-        W_P_TO = (1 / (1.15 * np.sqrt((self.Ne / (self.Ne - 1)) * (self.W_S / (self.TO * self.density_cruise * self.kT * self.g * self.A * self.e))) + (self.Ne / (self.Ne - 1)) * (4 * self.h2 / self.LTO))) * np.sqrt((self.CL2 / self.W_S) * (self.density_SLS / 2))
+        W_P_TO = (1 / (1.15 * np.sqrt((self.Ne / (self.Ne - 1)) * (self.W_S / (self.TO * self.density_cruise * self.kT * self.g * self.A * self.e))) + (self.Ne / (self.Ne - 1)) * (4 * self.h2 / self.TO))) * np.sqrt((self.CL2 / self.W_S) * (self.density_SLS / 2))
 
-        # 3. Landing Distance (Using beta fraction dynamically)
-        W_S_land = (1 / self.beta['beta_landing']) * ((self.S_land/(self.f_land * self.h_land)) - 10) * ((self.h_land * atm.density * self.g * self.lift_coefficients['CL_max_L'])/(1.52/self.a_g + 1.69))
-    
-        # 4. Minimum Speed 
+        # 3. Landing Distance Requirement (TORENBEEK 171)
+        W_S_land = (1 / (self.beta['beta_landing'])) * ((self.S_land/(self.f_land * self.h_land)) - 10) * ((self.h_land * atm.density * self.g * self.lift_coefficients['CL_max_L'])/(1.52/self.a_g + 1.69))
+
+        # 4. Minimum Speed Requirement (TORENBEEK 166)
         W_S_min = (1 / self.beta['beta_landing']) * 0.5 * self.density_SLS * self.lift_coefficients['CL_max_L'] * np.square(self.Vapp / 1.23)
         
-        # 5. Climb Gradient 
+        # 5. Climb Gradient Requirement (OEI) (TORENBEEK 161)
         CD = self.CD0 + self.CL2 / (np.pi * self.A * self.e) 
         CL = self.CL2
         W_P_climb = ((self.Ne - 1)/self.Ne) * self.eta_prop * (1 / self.beta['beta_climb']) * (1 / (self.g_climb + (CD / CL))) * np.sqrt((self.density_cruise / 2)*(CL / (self.beta['beta_climb'] * self.W_S)))  
     
+        # Store constraints
         W_P_Curves = {
                 "Cruise Speed Requirement": W_P_cruise,
                 "Take-off Distance Requirement": W_P_TO,
@@ -142,22 +143,32 @@ class MatchingDiagram:
         return W_P_Curves, W_S_Curves
     
     def get_design_point(self, W_P_Curves, W_S_Curves):
+        """Mathematically scans arrays to find the highest legal W/S and W/P."""
+        # Safety catch in case arguments are swapped
         if any(isinstance(v, np.ndarray) and v.size > 1 for v in W_S_Curves.values()):
             W_P_Curves, W_S_Curves = W_S_Curves, W_P_Curves
             
+        # The strictest boundary constraint determines Wing Loading
         optimum_W_S = min([float(v) for v in W_S_Curves.values()])
         idx = (np.abs(self.W_S - optimum_W_S)).argmin()
+        
+        # The lowest thrust curve at that W/S determines Engine size
         optimum_W_P = min(float(curve[idx]) for curve in W_P_Curves.values())
         return optimum_W_S, optimum_W_P
         
     def generate_diagram(self, W_P_Curves, W_S_Curves, design_point=None):
+        """Generates visual representation of the Design Space."""
         plt.figure(figsize=(10, 6))
+        
+        # Plot continuous constraint curves
         for curve_name, curve_data in W_P_Curves.items():
             plt.plot(self.W_S, curve_data, label=curve_name)
-
+        
+        # Plot hard vertical boundaries. Ymax restricted to 0.2 per user setup.
         plt.vlines(W_S_Curves['Minimum Speed Requirement'], ymin=0, ymax=0.2, label='Minimum Speed Requirement', colors='red', linestyles='dashed')
         plt.vlines(W_S_Curves['Landing Distance Requirement'], ymin=0, ymax=0.2, label='Landing Distance Requirement', colors='purple', linestyles='dashed')
         
+        # Mark Optimal Design Point
         if design_point:
             opt_WS, opt_WP = design_point
             plt.plot(opt_WS, opt_WP, marker='*', color='red', markersize=15, 
@@ -169,7 +180,7 @@ class MatchingDiagram:
         plt.legend(loc='lower left', fontsize='small')
         plt.grid()
         plt.ylim(0, 0.2) 
-
+        
         figures_dir = os.path.join(os.path.dirname(__file__), 'Class_I_Figures')
         os.makedirs(figures_dir, exist_ok=True)
         plt.savefig(os.path.join(figures_dir, 'matching_diagram.png'))
