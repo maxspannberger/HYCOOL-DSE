@@ -8,7 +8,6 @@ import numpy as np
 class WingDesign:
     """Class I estimation for wing geometry."""
     
-    # Removed the hardcoded defaults!
     def __init__(self, W, w, A, M_cr):
         self.W = W
         self.w = w
@@ -17,7 +16,8 @@ class WingDesign:
         self._calculate_wing_geometry()
 
     def _calculate_wing_geometry(self):
-        self.S = self.W / self.w
+        # W is in kg. w is in N/m^2. Multiply W by gravity to get N.
+        self.S = (self.W * 9.80665) / self.w
         self.b = np.sqrt(self.A * self.S)
         
         self.Lambda_c4_rad = np.arccos(1.16 / (self.M_cr + 0.5))
@@ -55,7 +55,7 @@ class WingDesign:
     def __repr__(self):
         return (f"--- Wing Class I Geometry ---\n"
                 f"W (MTOW)      = {self.W:.2f} kg\n"
-                f"S (Area)      = {self.S:.2f} m^2\n"
+                f"S (Area)      = {self.S:.2f} m²\n"
                 f"b (Span)      = {self.b:.2f} m\n"
                 f"Aspect Ratio  = {self.A:.2f}\n"
                 f"Taper Ratio   = {self.lambda_:.2f}\n"

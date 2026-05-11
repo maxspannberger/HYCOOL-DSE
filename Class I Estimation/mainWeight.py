@@ -10,7 +10,6 @@ C_OE       = param.weight_parameters["C_OE_guess"]
 # ==============================================================================
 # EXACT FUEL CALCULATION (Equations 2.13, 2.14, 2.15)
 # ==============================================================================
-# Product of all phases EXCEPT loiter
 M_end_M_TO = (
     param.mass_fractions["Mf_1"] * param.mass_fractions["Mf_2"] *
     param.mass_fractions["Mf_3"] * param.mass_fractions["Mf_4"] *
@@ -62,24 +61,27 @@ if __name__ == "__main__":
     
     # 1. Size Weight
     converged_MTOW = run_class_1_sizing()
+    
+    # Update global parameter dictionary strictly for reference
     param.flight_parameters["MTOW"] = converged_MTOW
     
     # 2. Match Performance
     print(">>> OPTIMIZING MATCHING DIAGRAM...")
     atm = Atmosphere(param.flight_parameters["Cruise_altitude"])
-    diagram = MatchingDiagram()
+    
+    # Explicitly pass the converged weight into the MatchingDiagram!
+    diagram = MatchingDiagram(MTOW=converged_MTOW)
     
     W_P_Curves, W_S_Curves = diagram.calculate_matching(atm)
     optimal_W_S, optimal_W_P = diagram.get_design_point(W_P_Curves, W_S_Curves)
     
-    # --- NEW: CALCULATE PEAK POWER REQUIREMENT ---
-    # Power = Weight / (Weight/Power)
-    total_peak_power_kw = converged_MTOW / optimal_W_P
+    # PEAK POWER CALCULATION WITH N/W
+    total_peak_power_kw = ((converged_MTOW * 9.80665) / optimal_W_P) / 1000.0
     power_per_engine_kw = total_peak_power_kw / param.propulsion_parameters["Ne"]
     
     print(f"AUTOMATED DESIGN POINT FOUND:")
-    print(f" -> Optimum Wing Loading (W/S):  {optimal_W_S:.2f} kg/m²")
-    print(f" -> Optimum Power Loading (W/P): {optimal_W_P:.2f} kg/kW")
+    print(f" -> Optimum Wing Loading (W/S):  {optimal_W_S:.0f} N/m²")
+    print(f" -> Optimum Power Loading (W/P): {optimal_W_P:.4f} N/W")
     print(f" -> Total Peak Power Req:        {total_peak_power_kw:.2f} kW")
     print(f" -> Peak Power per Engine:       {power_per_engine_kw:.2f} kW\n")
     

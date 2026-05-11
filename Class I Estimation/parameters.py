@@ -21,17 +21,17 @@ propulsion_parameters = {
 # 3. Aerodynamic parameters 
 aerodynamic_parameters = {
     "CD0": 0.02,  
-    "e": 1.0,  
+    "e": 0.85,
     "A": 10.0,
-    "W_S_guess": 350.0 
+    "W_S_guess": 3500.0  # Initial wing loading guess [N/m^2]
 }
 
 # 4. Flight parameters
 flight_parameters = {
     "Cruise_altitude": 7620,  
-    "MCR": 0.7,  
+    "MCR": 0.7,
     "TO_field_length": 1000,  
-    "MTOW": 28000.0,  
+    "MTOW": 28000.0,  # This is purely the starting guess for the loop
     "cruise_range": 1000.0,  
     "endurance_ltr": 0.75,  
     "velocity_loiter": 65 * 1.3  
@@ -40,9 +40,9 @@ flight_parameters = {
 # 5. Breguet
 breguet_parameters = {
     "L_D_Cruise": 12.0,  
-    "cp_Cruise": 0.5,  
+    "cp_Cruise": 0.5,  # [lbs/(hp*hr)]
     "L_D_ltr": 15.0, 
-    "cp_ltr": 0.6,     
+    "cp_ltr": 0.6,     # [lbs/(hp*hr)]
 }
 
 # 6. Mass Fractions (beta)
