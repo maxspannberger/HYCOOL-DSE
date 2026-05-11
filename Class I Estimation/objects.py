@@ -129,15 +129,10 @@ class MatchingDiagram:
         self.MU_REF = Atmosphere.MU_REF
         self.T_REF = Atmosphere.T_REF
 
-    
-        self.CLFL = 0.45 # Landing field length coefficient [-] (0.45 for CS25, 0.6 for CS23)
-        self.h2 = 18 # Obstacle height [ft]
-        self.kT = 0.85 # Take-off thrust parameter [-]
-
         # Take-off Requirements
         self.h2 = 11  # [m]
-        self.TO = 1800 # Take-off field length [m]
-        self.kT = 0.85  # Take-off thrust parameter [-]
+        self.TO = 2500 # Take-off field length [m]
+        self.kT = 0.9  # Take-off thrust parameter [-]
         
         """
         self.mu_prime = .010 * lift_coefficients['CL_max_TO'] + .02
@@ -153,7 +148,6 @@ class MatchingDiagram:
 
         # Sea Level Properties
         self.density_SLS = Atmosphere(0).density  # Sea level density [kg/m^3])
-        print(self.density_SLS)
         self.pressure_SLS = Atmosphere(0).pressure  # Sea level pressure [Pa]
         self.temperature_SLS = Atmosphere(0).temperature  # Sea level temperature [K]
 
@@ -165,10 +159,11 @@ class MatchingDiagram:
         # Requirements
         self.Vs0 = 55.0 # Stall speed 
         self.Vapp = 60.0 # Approach speed
-        self.LFL = 1800 # Landing field length
+        self.LFL = 2200 # Landing field length
+        self.CLFL = 0.5 # Landing field length coefficient [-] (0.45 for CS25, 0.6 for CS23)
         
         self.V_cr = self.MCR * Atmosphere(self.flight_parameters['Cruise_altitude']).speed_of_sound  # Cruise speed
-        print("Cruise Speed (m/s):", self.V_cr)
+        print("Cruise -Speed (m/s):", self.V_cr)
         self.c = c # Climb rate
         self.G = G # Climb Gradient
         self.LTO = self.flight_parameters['TO_field_length']  # Take-off field length
@@ -264,13 +259,14 @@ class MatchingDiagram:
         plt.grid()
         
         # Restrict the y axis limit at 1 for better visualization
-        plt.ylim(0, 0.4)
+        plt.ylim(0, 0.2)
 
 
         figures_dir = os.path.join(os.path.dirname(__file__), 'Class_I_Figures')
         os.makedirs(figures_dir, exist_ok=True)
         plt.savefig(os.path.join(figures_dir, 'matching_diagram.png'))
         plt.show()
+        
 
         return 
 

@@ -7,7 +7,7 @@ import numpy as np
 lift_coefficients = {
     "CL_max_cruise": 1.7,  # Lift coefficient during cruise
     "CL_max_TO": 1.9,  # Maximum lift coefficient during take-off
-    "CL_max_L": 2.2  # Maximum lift coefficient during landing
+    "CL_max_L": 2.3 # Maximum lift coefficient during landing
 }
 
 # 2. Propulsion system parameters 
@@ -20,9 +20,9 @@ propulsion_parameters = {
 
 # 3. Aerodynamic parameters 
 aerodynamic_parameters = {
-    "CD0": 0.02,  # Zero-lift drag coefficient
+    "CD0": 0.018,  # Zero-lift drag coefficient
     "e": 1.,  # Oswald efficiency factor
-    "A": 10.0  # Aspect ratio
+    "A": 13.0  # Aspect ratio
 }
 
 # 4. Flight parameters
