@@ -1,6 +1,6 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from math import pi
+
+import pipe_python
 
 P_cl = 5099.5
 P_cr = 3792
@@ -31,23 +31,6 @@ T_use_gt = 318.9
 H_VAP = 446         # latent heat of vaporisation of LH2 [kJ/kg]
 CP_GAS = 14.3       # specific heat of gaseous hydrogen [kJ/kg/K]
 T_BOIL = 20.3       # approximate boiling temperature of LH2 [K]
-
-# Internal cache for the piping analysis module.  Loading the module
-# containing the pipe analysis functions triggers a print of example
-# output on import, so we load it only once.  See `_get_pipe_module()`.
-_PIPE_MODULE = None
-
-def _get_pipe_module():
-    global _PIPE_MODULE
-    if _PIPE_MODULE is None:
-        from importlib.machinery import SourceFileLoader
-        # Compute the path to the pipe analysis file relative to this file
-        import os
-        this_dir = os.path.dirname(__file__)
-        pipe_path = os.path.join(this_dir, 'pipe python.py')
-        _PIPE_MODULE = SourceFileLoader('pipe_module', pipe_path).load_module()
-    return _PIPE_MODULE
-
 
 ###############################################################################
 # Thermal management system calculations
@@ -227,22 +210,18 @@ def compute_piping_losses(state_keys, states, design: str, flight_condition: str
     # not contribute to hydrogen mass flow.  Each output power is
     # back‑calculated to the chemical input power using the appropriate
     # efficiency and electrical penalty.
-    power_gt_kw = 0.0
-    power_fc_kw = 0.0
     power_input_gt_kw = 0.0
     power_input_fc_kw = 0.0
     for key in state_keys:
         sys = states[key]["system"]
         p_kw = states[key]["power_kw"]
         if sys == "gt":
-            power_gt_kw += p_kw
             # Convert to chemical input power: account for
             # electrical losses and prime mover efficiency
             eff = EFFICIENCY_MAP["gt"]
             penalty = PENALTY_MAP["gt"]
             power_input_gt_kw += p_kw / (eff * (1.0 - penalty))
         elif sys == "fc":
-            power_fc_kw += p_kw
             eff = EFFICIENCY_MAP["fc"]
             penalty = PENALTY_MAP["fc"]
             power_input_fc_kw += p_kw / (eff * (1.0 - penalty))
@@ -272,9 +251,6 @@ def compute_piping_losses(state_keys, states, design: str, flight_condition: str
     else:
         # Unknown design: no piping losses
         return 0.0
-    # Load the piping analysis module once; the import prints example
-    # output on first call.  See `_get_pipe_module()` for details.
-    pipe_module = _get_pipe_module()
     total_heat_w = 0.0
     # Determine which mass flow should be applied to the primary piping network.
     # Designs A and C use gas turbines as the primary source; design B uses
@@ -286,13 +262,13 @@ def compute_piping_losses(state_keys, states, design: str, flight_condition: str
         m_dot_primary = m_dot_gt
     # Full flow segment: hydrogen flows at full primary mass flow
     if m_dot_primary > 0.0 and full_length > 0.0:
-        total_heat_w += pipe_module.run_pipe_analysis(m_dot_primary, full_length, 0)["total_heat_input_w"]
+        total_heat_w += pipe_python.run_pipe_analysis(m_dot_primary, full_length, 0)["total_heat_input_w"]
     # Half flow segment: carries half of the primary mass flow
     if m_dot_primary > 0.0 and half_length > 0.0:
-        total_heat_w += pipe_module.run_pipe_analysis(m_dot_primary / 2.0, half_length, 0)["total_heat_input_w"]
+        total_heat_w += pipe_python.run_pipe_analysis(m_dot_primary / 2.0, half_length, 0)["total_heat_input_w"]
     # Extra segment for design D when FC is present
     if extra_length > 0.0 and m_dot_fc > 0.0:
-        total_heat_w += pipe_module.run_pipe_analysis(m_dot_fc, extra_length, 0)["total_heat_input_w"]
+        total_heat_w += pipe_python.run_pipe_analysis(m_dot_fc, extra_length, 0)["total_heat_input_w"]
     return total_heat_w / 1000.0
 
 def thermal_ratio_score(ratio):
