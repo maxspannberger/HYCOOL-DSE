@@ -1,8 +1,12 @@
 import pandas as pd
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
+from pathlib import Path
 
-data = pd.read_csv('WeightEstimations\Torenbeek_Htail_Vtail.csv')
+DATA_DIR = Path(__file__).resolve().parent
+csv_path = DATA_DIR / "Torenbeek_Htail_Vtail.csv"
+
+data = pd.read_csv(csv_path)
 x_data = data['x'].values
 y_data = data['y'].values
 
