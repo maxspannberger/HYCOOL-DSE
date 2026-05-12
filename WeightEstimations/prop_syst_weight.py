@@ -133,7 +133,7 @@ def calculate_power_unit_weight(
             elif comp_key == "dc_dc":
                 mass = P_req_secondary / pd
             elif comp_key == "dc_ac": 
-
+                mass=2
             
 
 
