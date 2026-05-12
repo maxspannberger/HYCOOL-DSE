@@ -45,11 +45,12 @@ class HeatExchangeComponent(Component):
 component_params = {
     # Power Components
     "gt": PowerComponent("Gas Turbine", 10, 35, 5),
-    "fc": PowerComponent("Fuel Cell", 3, 60, 3),
+    "fc_with_hex": PowerComponent("Fuel Cell", 2.83, 51, 3),
     "hts_gen": PowerComponent("HTS Motor", 20, 99.9, 4),
     "hts_pow": PowerComponent("HTS Motor", 20, 99.9, 4),
     "gt_hex": PowerComponent("Gas Turbine + HEX ", 9.62, 39.5, 3),
-    "dc_dc": PowerComponent("DC-DC Converter", 17, 99.47, 3),
+    "dc_dc_1": PowerComponent("DC-DC Converter 1", 17, 99.47, 3),
+    "dc_dc_2": PowerComponent("DC-DC Converter 2", 17, 99.47, 3),
     "ac_dc": PowerComponent("AC-DC Rectifier", 21.1, 98.9, 3),
     "dc_ac": PowerComponent("DC-AC Inverter", 21.1, 98.9, 3),
 

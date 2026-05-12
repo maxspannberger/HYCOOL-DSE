@@ -389,14 +389,14 @@ class weightEstimation:
             1: ["gt_hex", "bt", "hts_gen", "ac_dc", "dc_dc", "dc_ac",
                 "hts_pow", "hts_pow", "cable", "pipe"],
 
-            2: ["fc", "hex_fc", "bt", "dc_dc", "dc_dc", "dc_ac",
+            2: ["fc_with_hex", "hex_fc", "bt", "dc_dc_1", "dc_dc_2", "dc_ac",
                 "hts_pow", "hts_pow", "cable", "pipe"],
 
             3: ["gt_hex", "gt_hex", "hts_gen", "hts_gen", "ac_dc", "ac_dc",
                 "dc_ac", "dc_ac", "hts_pow", "hts_pow", "cable", "pipe"],
 
-            4: ["gt_hex", "gt_hex", "hts_gen", "hts_gen", "fc", "ac_dc", "ac_dc",
-                "dc_dc", "dc_ac", "dc_ac", "hts_pow", "hts_pow", "cable", "pipe"],
+            4: ["gt_hex", "gt_hex", "hts_gen", "hts_gen", "fc_with_hex", "ac_dc", "ac_dc",
+                "dc_dc_2", "dc_ac", "dc_ac", "hts_pow", "hts_pow", "cable", "pipe"],
         }
 
         if config not in component_lists:
@@ -431,26 +431,59 @@ class weightEstimation:
                     mass = max(energy_required_kWh / ed, P_req_secondary / pd)
                 elif comp_key == "dc_dc":
                     mass = P_req_secondary / pd
-                #elif comp_key == "dc_ac": 
+                elif comp_key == "dc_ac" or comp_key == "hts_pow":
+                    mass = P_req_tot / pd
                                  
+                total_mass += mass
 
+            elif config == 2:
+                # Similar logic for config 2 but with fuel cell instead of gas turbine
+                # 5% of cruise power but put this in some input file!
+                bt_charging_ratio = 0.05 
+                pd = comp[comp_key].power_density
+                # maximum power that flows to the motors (most likely takeoff)
+                P_req_tot = max((g.P_cruise_KW*(1+bt_charging_ratio)), g.P_climb_KW, g.P_reserve_KW, g.P_TO_KW)
+                # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
+                P_req_primary = max(g.P_cruise_KW*(1+bt_charging_ratio), g.P_TO_OEI_KW)
+                # secondary power source requirement is to sustain TO 
+                P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
+                if comp_key == "fc_with_hex" or comp_key == "dc_dc_1":
+                    mass = P_req_primary / pd
+                elif comp_key == "bt":
+                    energy_required_kWh = P_req_secondary * (g.t_climb / 3600)  # Convert seconds to hours
+                    ed = comp[comp_key].energy_density
+                    mass = max(energy_required_kWh / ed, P_req_secondary / pd)
+                elif comp_key == "dc_dc_2":
+                    mass = P_req_secondary / pd
+                elif comp_key == "dc_ac" or comp_key == "hts_pow":
+                    mass = P_req_tot / pd
+                total_mass += mass
 
+            
+            elif config == 3:
+                # Similar logic for config 3 but with different component assignments
+                # 5% of cruise power but put this in some input file!
+                bt_charging_ratio = 0.05 
+                pd = comp[comp_key].power_density
+                # maximum power that flows to the motors (most likely takeoff)
+                P_req_tot = max((g.P_cruise_KW*(1+bt_charging_ratio)), g.P_climb_KW, g.P_reserve_KW, g.P_TO_KW)
+                # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
+                P_req_primary = max(g.P_cruise_KW*(1+bt_charging_ratio), g.P_TO_OEI_KW)
+                # secondary power source requirement is to sustain TO 
+                P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
+                if comp_key == "fc_with_hex" or comp_key == "dc_dc_1":
+                    mass = P_req_primary / pd
+                elif comp_key == "bt":
+                    energy_required_kWh = P_req_secondary * (g.t_climb / 3600)  # Convert seconds to hours
+                    ed = comp[comp_key].energy_density
+                    mass = max(energy_required_kWh / ed, P_req_secondary / pd)
+                elif comp_key == "dc_dc_2":
+                    mass = P_req_secondary / pd
+                elif comp_key == "dc_ac":
+                    mass = P_req_tot / pd
+                total_mass += mass
 
-            pd = comp[comp_key].power_density
-            total_mass += mass
-
-        if config == 1:
-            # GT + electric drive
-            turbine_weight  = g.P_TO_KW / g.rho_turb
-            generator_weight = g.P_TO_KW / g.rho_HTS_gen
-            motor_weight = g.P_TO_KW / g.rho_HTS_pow
-            total
-        elif config == 2:
-            # Fuel cell + electric drive
-            turbine_weight  = g.P_TO_KW / g.rho_turb
-            generator_weight = g.P_TO_KW / g.rho_HTS
-            motor_weight = g.P_TO_KW / g.rho_HTS
-        return turbine_weight + generator_weight + motor_weight
+        return total_mass
     
     def _h2_tank_weight(self) -> float:
         return self.g.W_fuel * (1 / self.g.grav_density - 1)
