@@ -139,6 +139,8 @@ def run_class_ii(
         pwr_bd = PowerSizing(cfg, mis_bd, MTOW).compute()
         P_TO_kW = pwr_bd.P_TO_total / 1000.0
 
+        config = int(input("Enter config for power unit weight estimation (1-4): "))
+
         # Weight at current MTOW with sized tails
         wt_inp = ClassII_Input.from_config(
             cfg,
