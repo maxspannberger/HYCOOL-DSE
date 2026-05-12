@@ -81,6 +81,7 @@ class ClassII_Input:
     configuration: int = 1
     cable_lentgh: float = 0.0
     pipe_length:  float = 0.0
+    N_engines: float = 0.0
 
     #flight phase times
     t_cruise: float = 0.0
@@ -110,6 +111,7 @@ class ClassII_Input:
         t_cruise: float = 0.0,
         t_climb: float = 0.0,
         t_reserve: float = 0.0,
+        N_engines: float = 0.0,
     ) -> "ClassII_Input":
         """
         Build the weight-estimator input from a shared AircraftConfig.
@@ -174,6 +176,7 @@ class ClassII_Input:
             t_cruise  = t_cruise,
             t_climb   = t_climb,
             t_reserve = t_reserve,
+            N_engines = N_engines,
         )
 
 
@@ -417,10 +420,13 @@ class weightEstimation:
                 # 5% of cruise power but put this in some input file!
                 bt_charging_ratio = 0.05 
                 pd = comp[comp_key].power_density
+
                 # maximum power that flows to the motors (most likely takeoff)
                 P_req_tot = max((g.P_cruise_KW*(1+bt_charging_ratio)), g.P_climb_KW, g.P_reserve_KW, g.P_TO_KW)
+
                 # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
                 P_req_primary = max(g.P_cruise_KW*(1+bt_charging_ratio), g.P_TO_OEI_KW)
+                
                 # secondary power source requirement is to sustain TO 
                 P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
                 if comp_key == "gt_hex" or comp_key == "hts_gen" or comp_key == "ac_dc":
@@ -431,7 +437,10 @@ class weightEstimation:
                     mass = max(energy_required_kWh / ed, P_req_secondary / pd)
                 elif comp_key == "dc_dc":
                     mass = P_req_secondary / pd
-                #elif comp_key == "dc_ac": 
+                elif comp_key == "dc_ac":
+                    mass = P_req_tot / pd
+                elif comp_key == "hts_pow": 
+                    mass = (P_req_tot) / pd
                                  
 
 
