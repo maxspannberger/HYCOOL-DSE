@@ -68,6 +68,7 @@ class PowerSizingBreakdown:
     V_2:               float = 0.0     # CS-25 reference climb speed
     LD_takeoff:        float = 0.0     # L/D in TO config used in calc
     gamma_min:         float = 0.0     # Minimum gradient
+    P_total_OEI:       float = 0.0     # Total power required in OEI case
 
     # Static thrust output
     T_static_total:    float = 0.0     # Whole aircraft static thrust [N]
@@ -126,19 +127,22 @@ class PowerSizing:
         V_2 = 1.2 * cfg.V_stall
 
         # Working-engine thrust requirement at V_2 (per CS-25.121)
-        # required thrust for whole ac in OEI condition
+        # required thrust for whole ac in OEI condition follows from climb gradient eqn.
+        # required thrust per engine is total required thrust divided by N_engines-1
         W = self.MTOW * G
-        T_per_engine_V2 = W * (1.0 / cfg.LD_takeoff + gamma_min)
+        T_total_OEI = W * (1.0 / cfg.LD_takeoff + gamma_min)
+        T_per_engine_V2 = T_total_OEI / (cfg.N_engines - 1) 
 
         # Convert to shaft power for the one working engine
-        # This is the power that all remaining engines combined must be able to provide
         P_per_engine = T_per_engine_V2 * V_2 / cfg.eta_prop_V2
+        # This is the power that all remaining engines combined must be able to provide in the OEI case
+        P_total_OEI = P_per_engine * (cfg.N_engines-1)  
 
         # Total aircraft power = N_engines * per-engine capability,
         # since every engine must be sized to handle the failure case
         P_total = cfg.N_engines * P_per_engine
 
-        return P_total, T_per_engine_V2, V_2, gamma_min
+        return P_total, P_total_OEI, T_per_engine_V2, V_2, gamma_min
 
     def _static_thrust(self, P_per_engine: float) -> float:
         """
@@ -154,7 +158,7 @@ class PowerSizing:
         cfg = self.cfg
 
         P_climb_total       = self.mission.P_climb_shaft
-        P_cs_total, T_v2, V_2, gamma_min = self._cs25_121_power()
+        P_cs_total, P_total_OEI, T_v2, V_2, gamma_min = self._cs25_121_power()
 
         if P_cs_total >= P_climb_total:
             P_total = P_cs_total
@@ -170,6 +174,7 @@ class PowerSizing:
         return PowerSizingBreakdown(
             P_TO_total          = P_total,
             P_TO_per_engine     = P_per_eng,
+            P_total_OEI         = P_total_OEI,
             P_from_climb        = P_climb_total,
             P_from_CS25_121     = P_cs_total,
             driving_case        = driver,
