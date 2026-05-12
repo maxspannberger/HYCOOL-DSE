@@ -359,6 +359,53 @@ class weightEstimation:
         config = g.configuration
 
         if config == 1:
+            component_list = ["gt_hex", "bt", "hts_gen", "ac_dc","dc_dc", "dc_ac","hts_pow","hts_pow", "cable","pipe"]
+        elif config == 2:
+            component_list = ["fc","hex_fc", "bt", "dc_dc", "dc_dc", "dc_ac", "hts_pow","hts_pow", "cable","pipe"]
+        elif config == 3:
+            component_list = ["gt_hex", "gt_hex", "hts_gen", "hts_gen", "ac_dc","ac_dc", "dc_ac","dc_ac","hts_pow","hts_pow", "cable","pipe"]
+        elif config == 4:
+            component_list = ["gt_hex", "gt_hex", "hts_gen", "hts_gen", "fc", "ac_dc", "ac_dc", "dc_dc", "dc_ac", "dc_ac", "hts_pow","hts_pow", "cable","pipe"]
+        else:
+            raise ValueError(f"Unknown configuration: {config}")
+
+        # Compute total mass: convert P (MW) -> kW, mass = P_kW / power_density (kW/kg)
+        # P_req_MW = cfg.mission.P_climb_shaft / 1e6
+        # P_req_kW = P_req_MW * 1000.0
+
+        total_mass = 0.0
+
+        for comp_key in component_list:
+            if comp_key not in comp:
+                raise ValueError(f"Component '{comp_key}' not found in component dict")
+            elif config == 1:
+                # 5% of cruise power but put this in some input file!
+                bt_charging_ratio = 0.05 
+                pd = comp[comp_key].power_density
+                # maximum power that flows to the motors (most likely takeoff)
+                P_req_tot = max((P_cruise*(1+bt_charging_ratio)), P_climb, P_reserve, P_TO)
+                # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
+                P_req_primary = max(P_cruise*(1+bt_charging_ratio), P_TO_OEI)
+                # secondary power source requirement is to sustain TO 
+                P_req_secondary = max((P_TO - P_req_primary), P_TO_OEI)
+                if comp_key == "gt_hex" or comp_key == "hts_gen" or comp_key == "ac_dc":
+                    mass = P_req_primary / pd
+                elif comp_key == "bt":
+                    energy_required_kWh = P_req_secondary * (t_climb / 3600)  # Convert seconds to hours
+                    ed = comp[comp_key].energy_density
+                    mass = max(energy_required_kWh / ed, P_req_secondary / pd)
+                elif comp_key == "dc_dc":
+                    mass = P_req_secondary / pd
+                elif comp_key == "dc_ac": 
+                    mass=2
+                
+
+
+
+            pd = comp[comp_key].power_density
+            total_mass += mass
+
+        if config == 1:
             # GT + electric drive
             turbine_weight  = g.P_TO_KW / g.rho_turb
             generator_weight = g.P_TO_KW / g.rho_HTS_gen

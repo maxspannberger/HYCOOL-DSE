@@ -61,8 +61,8 @@ def calculate_power_unit_weight(
     P_cruise = cfg.mission.P_cruise_shaft / 1e3     # kW
     P_climb = cfg.mission.P_climb_shaft / 1e3        # kW
     P_reserve = cfg.mission.P_reserve_shaft / 1e3    # kW
-    P_TO_OEI = cfg.power.P_TO_per_engine / 1e3       # kW
-    P_TO = cfg.power.P_TO_total / 1e3                      # kW
+    P_TO_OEI = cfg.power.P_total_OEI / 1e3       # kW
+    P_TO = cfg.power.P_TO_total / 1e3                # kW
 
     #Compute time requirements based on Class II results
     t_cruise = cfg.mission.t_cruise  # s
@@ -116,14 +116,15 @@ def calculate_power_unit_weight(
         if comp_key not in comp:
             raise ValueError(f"Component '{comp_key}' not found in component dict")
         elif config == 1:
-            #5% of cruise power but put this in some input file!
+            # 5% of cruise power but put this in some input file!
             bt_charging_ratio = 0.05 
             pd = comp[comp_key].power_density
-            #maximum power that flows to the motors (most likely takeoff)
+            # maximum power that flows to the motors (most likely takeoff)
             P_req_tot = max((P_cruise*(1+bt_charging_ratio)), P_climb, P_reserve, P_TO)
-            #primary power generator power requirement is cruise power plus some margin for battery charging
-            P_req_primary = P_cruise*(1+bt_charging_ratio)  
-            P_req_secondary = max((P_climb - P_req_primary), P_TO_OEI)
+            # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
+            P_req_primary = max(P_cruise*(1+bt_charging_ratio), P_TO_OEI)
+            # secondary power source requirement is to sustain TO 
+            P_req_secondary = max((P_TO - P_req_primary), P_TO_OEI)
             if comp_key == "gt_hex" or comp_key == "hts_gen" or comp_key == "ac_dc":
                 mass = P_req_primary / pd
             elif comp_key == "bt":
