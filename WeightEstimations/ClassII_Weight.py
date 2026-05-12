@@ -79,6 +79,15 @@ class ClassII_Input:
     W_fuel:      float = 0.0
     grav_density:float = 0.64
     configuration: int = 1
+    cable_lentgh: float = 0.0
+    pipe_length:  float = 0.0
+
+    #flight phase times
+    t_cruise: float = 0.0
+    t_climb: float = 0.0
+    t_reserve: float = 0.0
+
+
 
     @classmethod
     def from_config(
@@ -94,6 +103,13 @@ class ClassII_Input:
         P_max_KW: float = 0.0,
         W_fuel:   float = 0.0,
         configuration: int = 1,
+        P_cruise_KW: float = 0.0,
+        P_climb_KW: float = 0.0,
+        P_reserve_KW: float = 0.0,
+        P_TO_OEI_KW: float = 0.0,
+        t_cruise: float = 0.0,
+        t_climb: float = 0.0,
+        t_reserve: float = 0.0,
     ) -> "ClassII_Input":
         """
         Build the weight-estimator input from a shared AircraftConfig.
@@ -149,6 +165,15 @@ class ClassII_Input:
             P_max_KW      = P_max_KW,
             W_fuel        = W_fuel,
             configuration = configuration,
+
+            P_cruise_KW  = P_cruise_KW,
+            P_climb_KW   = P_climb_KW,
+            P_reserve_KW = P_reserve_KW,
+            P_TO_OEI_KW  = P_TO_OEI_KW,
+
+            t_cruise  = t_cruise,
+            t_climb   = t_climb,
+            t_reserve = t_reserve,
         )
 
 
@@ -279,8 +304,9 @@ class weightEstimation:
     _LG_main = dict(A=18.1, B=0.131, C=0.019, D=2.23e-5)
     _LG_nose = dict(A=9.1,  B=0.082, C=0.0,   D=2.97e-6)
 
-    def __init__(self, geometry: ClassII_Input):
+    def __init__(self, geometry: ClassII_Input, comp: dict = comp_params):
         self.g = geometry
+        self.comp = comp
 
     def _validate(self):
         g = self.g
@@ -356,22 +382,31 @@ class weightEstimation:
 
     def _propulsion_weight(self) -> float:
         g     = self.g
+        comp = self.comp
         config = g.configuration
 
-        if config == 1:
-            component_list = ["gt_hex", "bt", "hts_gen", "ac_dc","dc_dc", "dc_ac","hts_pow","hts_pow", "cable","pipe"]
-        elif config == 2:
-            component_list = ["fc","hex_fc", "bt", "dc_dc", "dc_dc", "dc_ac", "hts_pow","hts_pow", "cable","pipe"]
-        elif config == 3:
-            component_list = ["gt_hex", "gt_hex", "hts_gen", "hts_gen", "ac_dc","ac_dc", "dc_ac","dc_ac","hts_pow","hts_pow", "cable","pipe"]
-        elif config == 4:
-            component_list = ["gt_hex", "gt_hex", "hts_gen", "hts_gen", "fc", "ac_dc", "ac_dc", "dc_dc", "dc_ac", "dc_ac", "hts_pow","hts_pow", "cable","pipe"]
-        else:
-            raise ValueError(f"Unknown configuration: {config}")
+        component_lists = {
+            1: ["gt_hex", "bt", "hts_gen", "ac_dc", "dc_dc", "dc_ac",
+                "hts_pow", "hts_pow", "cable", "pipe"],
 
-        # Compute total mass: convert P (MW) -> kW, mass = P_kW / power_density (kW/kg)
-        # P_req_MW = cfg.mission.P_climb_shaft / 1e6
-        # P_req_kW = P_req_MW * 1000.0
+            2: ["fc", "hex_fc", "bt", "dc_dc", "dc_dc", "dc_ac",
+                "hts_pow", "hts_pow", "cable", "pipe"],
+
+            3: ["gt_hex", "gt_hex", "hts_gen", "hts_gen", "ac_dc", "ac_dc",
+                "dc_ac", "dc_ac", "hts_pow", "hts_pow", "cable", "pipe"],
+
+            4: ["gt_hex", "gt_hex", "hts_gen", "hts_gen", "fc", "ac_dc", "ac_dc",
+                "dc_dc", "dc_ac", "dc_ac", "hts_pow", "hts_pow", "cable", "pipe"],
+        }
+
+        if config not in component_lists:
+            raise ValueError(f"Unknown configuration: {config}")
+        
+            # Compute total mass: convert P (MW) -> kW, mass = P_kW / power_density (kW/kg)
+            # P_req_MW = cfg.mission.P_climb_shaft / 1e6
+            # P_req_kW = P_req_MW * 1000.0
+
+        component_list = component_lists[config]
 
         total_mass = 0.0
 
@@ -383,22 +418,21 @@ class weightEstimation:
                 bt_charging_ratio = 0.05 
                 pd = comp[comp_key].power_density
                 # maximum power that flows to the motors (most likely takeoff)
-                P_req_tot = max((P_cruise*(1+bt_charging_ratio)), P_climb, P_reserve, P_TO)
+                P_req_tot = max((g.P_cruise_KW*(1+bt_charging_ratio)), g.P_climb_KW, g.P_reserve_KW, g.P_TO_KW)
                 # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
-                P_req_primary = max(P_cruise*(1+bt_charging_ratio), P_TO_OEI)
+                P_req_primary = max(g.P_cruise_KW*(1+bt_charging_ratio), g.P_TO_OEI_KW)
                 # secondary power source requirement is to sustain TO 
-                P_req_secondary = max((P_TO - P_req_primary), P_TO_OEI)
+                P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
                 if comp_key == "gt_hex" or comp_key == "hts_gen" or comp_key == "ac_dc":
                     mass = P_req_primary / pd
                 elif comp_key == "bt":
-                    energy_required_kWh = P_req_secondary * (t_climb / 3600)  # Convert seconds to hours
+                    energy_required_kWh = P_req_secondary * (g.t_climb / 3600)  # Convert seconds to hours
                     ed = comp[comp_key].energy_density
                     mass = max(energy_required_kWh / ed, P_req_secondary / pd)
                 elif comp_key == "dc_dc":
                     mass = P_req_secondary / pd
-                elif comp_key == "dc_ac": 
-                    mass=2
-                
+                #elif comp_key == "dc_ac": 
+                                 
 
 
 
@@ -493,8 +527,9 @@ class weightEstimation:
 if __name__ == "__main__":
     from Aircraft_Config import default_q400_hycool
 
+    comp = comp_params
     cfg = default_q400_hycool()
-    geo = ClassII_Input.from_config(cfg)
+    geo = ClassII_Input.from_config(cfg, comp)
     est = weightEstimation(geo)
 
     print("--- Single-shot ---")
