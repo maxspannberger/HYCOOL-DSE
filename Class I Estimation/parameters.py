@@ -103,3 +103,22 @@ beta_dict = {
     'beta_cruise': 0.95, 
     'beta_landing': 0.85,
 }
+
+
+def calculate_mass_fraction(eta_prop=propulsion_parameters["eta_prop"], Vloit = flight_parameters["velocity_loiter"], hcr=flight_parameters["Cruise_altitude"], L_D_cr=breguet_parameters["L_D_Cruise"], Mcr=flight_parameters["MCR"], Rcr=flight_parameters["cruise_range"]*1000):
+    ef =  43.0 * 10**6                 # specific energy of fuel [J/kg]
+    psfc = (6.58 * 10 ** (-8)) * 1.2   # power specific fuel consumption, taken from paper, [kg/(Ws)], with extra margin of 20 percent
+    Tcr = 238.62                       # cruise temperature [K]
+    f_con = 0.05                       # continghency margin, 5% according to adsee book is common
+
+    Vcr = np.sqrt(1.4*287*Tcr) * Mcr
+    R_lost = 1/0.7 * L_D_cr * (hcr + Vcr**2 / (2 * 9.81))
+    R_loit = 45*60 * Vloit
+    R_eq = (Rcr + R_lost)*(1 + f_con) + R_loit 
+
+    eta_eng = 1/(psfc * ef)
+
+    mff = 1 - np.exp(-R_eq/(eta_eng * eta_prop * ef/9.81 * L_D_cr))
+
+    return 1 - mff
+

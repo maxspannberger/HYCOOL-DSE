@@ -12,12 +12,15 @@ C_OE       = param.weight_parameters["C_OE_guess"]
 # EXACT FUEL CALCULATION (Per Roskam Class I Equations)
 # ==============================================================================
 # 1. Product of all nominal mission phases (including loiter reserves)
-M_ff = (                                        # fuel fraction
-    param.mass_fractions["Mf_1"] * param.mass_fractions["Mf_2"] *
-    param.mass_fractions["Mf_3"] * param.mass_fractions["Mf_4"] *
-    param.mass_fractions["Mf_5"] * param.mass_fractions["Mf_7"] *
-    param.mass_fractions["Mf_8"] * param.mass_fractions["Mf_6"]
-)
+# M_ff = (                                        # fuel fraction
+#     param.mass_fractions["Mf_1"] * param.mass_fractions["Mf_2"] *
+#     param.mass_fractions["Mf_3"] * param.mass_fractions["Mf_4"] *
+#     param.mass_fractions["Mf_5"] * param.mass_fractions["Mf_7"] *
+#     param.mass_fractions["Mf_8"] * param.mass_fractions["Mf_6"]
+# )
+
+M_ff = param.calculate_mass_fraction()
+print(M_ff)
 
 def run_class_1_sizing():
     """Iteratively converges MTOW based on fuel and payload requirements."""
