@@ -111,18 +111,21 @@ def calculate_power_unit_weight(
         if comp_key not in comp:
             raise ValueError(f"Component '{comp_key}' not found in component dict")
         elif config == 1:
+            bt_charging_ratio = 0.05 #5% of cruise power but put this in some input file!
             pd = comp[comp_key].power_density
             P_req_tot = max(P_cruise, P_climb, P_reserve, P_TO_OEI)
-            P_req_primary = P_cruise
+            #primary power generator power requirement is cruise power plus some margin for battery charging
+            P_req_primary = P_cruise*(1+bt_charging_ratio)  
             P_req_secondary = max((P_climb - P_req_primary), P_TO_OEI)
-            if comp_key == "gt_hex":
+            if comp_key == "gt_hex" or comp_key == "hts_gen" or comp_key == "ac_dc":
                 mass = P_req_primary / pd
             elif comp_key == "bt":
                 energy_required_kWh = P_req_secondary * (t_climb / 3600)  # Convert seconds to hours
                 ed = comp[comp_key].energy_density
                 mass = max(energy_required_kWh / ed, P_req_secondary / pd)
-            elif comp_key == "hts":
-                
+            elif comp_key == "dc_dc":
+                mass = P_req_secondary / pd
+
 
 
 
