@@ -83,7 +83,7 @@ class DragPolarEstimator:
 
 # Protection block: only runs if Drag_Polar.py is executed directly.
 if __name__ == "__main__":
-    V_lst = np.linspace(20, 180, 100)
+    V_lst = np.linspace(120, 400, 100)
     
     # Instantiate the aircraft with dummy values for testing
     my_aircraft = DragPolarEstimator(W_kg=31000, S=64, b=28.4, Cd0=0.02, e=0.75)
