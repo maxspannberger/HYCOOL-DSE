@@ -22,6 +22,7 @@ class PropulsionUnitWeight:
     P_cruise:        float
     P_climb:     float
     P_reserve:      float
+    P_TO:       float
     P_TO_OEI:   float
     W_power:     float
     iterations:  int
@@ -35,10 +36,11 @@ class PropulsionUnitWeight:
         status_color = "green" if self.converged else "red"
         main_info = (
             f"MTOW: {self.MTOW/1000:.2f} t\n"
-            f"Cruise Power:  {self.P_cruise:.2f} MW\n"
-            f"Climb Power: {self.P_climb:.2f} MW\n"
-            f"Reserve Power: {self.P_reserve:.2f} MW\n"
-            f"TO/OEI Power: {self.P_TO_OEI:.2f} MW\n"
+            f"Cruise Power:  {self.P_cruise/1000:.2f} MW\n"
+            f"Climb Power: {self.P_climb/1000:.2f} MW\n"
+            f"Reserve Power: {self.P_reserve/1000:.2f} MW\n"
+            f"Take off Power: {self.P_TO/1000:.2f} MW\n"
+            f"TO/OEI Power: {self.P_TO_OEI/1000:.2f} MW\n"
             f"Power Unit Mass: {self.W_power:.2f} kg\n"
             f"Iterations: {self.iterations}"
         )
@@ -60,6 +62,7 @@ def calculate_power_unit_weight(
     P_climb = cfg.mission.P_climb_shaft / 1e3        # kW
     P_reserve = cfg.mission.P_reserve_shaft / 1e3    # kW
     P_TO_OEI = cfg.power.P_TO_per_engine / 1e3       # kW
+    P_TO = cfg.power.P_TO_total / 1e3                      # kW
 
     #Compute time requirements based on Class II results
     t_cruise = cfg.mission.t_cruise  # s
@@ -86,7 +89,7 @@ def calculate_power_unit_weight(
     #cable lengths:             #approximated by fuselage length of about 35 meters and wing span of about 28 meters,
                                 #with HTS placed at quarter span
     
-    #design A: 29 meters of cryo cable      #cable from GT to wing = 1/2 fuselage length + 1/4 wing span, cable from wing to HTS = 1/4 wing span, Battery distance to HTS with 5 meters in total estimated for routing and connections
+    #design A: 36.5 meters of cryo cable      #cable from GT to wing = 1/2 fuselage length + 1/4 wing span + 1/4 wing span, cable from wing to HTS = 1/4 wing span, Battery distance to HTS with 5 meters in total estimated for routing and connections
     #design B: 19 meters of cryo cable      #cable from Battery to wing = 1/4 wing span + 1/4 wing span, Fuel cell distance to HTS with 5 meters in total estimated for routing and connections
     #design C: 5 meters of cryo cable     #Turbine distance to HTS with 5 meters in total estimated for routing and connections
     #design D: 19 meters of cryo cable     #cable from Fuel Cell to wing = 1/4 wing span + 1/4 wing span, Turbine distance to HTS with 5 meters in total estimated for routing and connections
@@ -124,20 +127,17 @@ def calculate_power_unit_weight(
                 ed = comp[comp_key].energy_density
                 mass = max(energy_required_kWh / ed, P_req_secondary / pd)
             elif comp_key == "hts":
-                
-
-
-
-        pd = comp[comp_key].power_density
+                mass = P_req_secondary / pd
         total_mass += mass
 
     # Build and return a PropulsionUnitWeight
     return PropulsionUnitWeight(
         MTOW=cfg.MTOW,
-        P_cruise=cfg.mission.P_cruise_shaft/1e6,
-        P_climb=cfg.mission.P_climb_shaft/1e6,
-        P_reserve=cfg.mission.P_reserve_shaft/1e6,
-        P_TO_OEI=cfg.power.P_TO_per_engine/1e6,
+        P_cruise=P_cruise/1e3,  # MW
+        P_climb=P_climb/1e3,    # MW
+        P_reserve=P_reserve/1e3,
+        P_TO_OEI=P_TO_OEI/1e3,
+        P_TO=P_TO/1e3,  # MW
         W_power=total_mass,
         iterations=0,
         converged=True,
@@ -148,12 +148,12 @@ def calculate_power_unit_weight(
 def run_Power_sizing(
     cfg:      AircraftConfig,
     comp:     dict,
-    tol:      float = 1.0,
+    tol:      float = 50,
     max_iter: int   = 10,
     verbose:  bool  = True,
 ) -> PropulsionUnitWeight:
 
-    # Iterative loop: run Class II, size power unit, inject propulsion mass
+    # Run Class II, then size power unit, and update propulsion mass
     # into cfg.W_fixed and repeat until propulsion mass change < tol (kg).
     base_W_fixed = cfg.W_fixed
     prev_W_power = None
