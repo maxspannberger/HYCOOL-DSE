@@ -17,6 +17,10 @@ P_cruise    =   class_ii_result.mission.P_cruise_shaft/ 1e6  #MW
 P_climb     =   class_ii_result.mission.P_climb_shaft/ 1e6  #MW
 P_reserve   =   class_ii_result.mission.P_reserve_shaft/ 1e6  #MW
 
+t_cruise    =   class_ii_result.mission.t_cruise #s
+t_climb     =   class_ii_result.mission.t_climb  #s
+t_reserve   =   class_ii_result.mission.t_reserve #s
+
 # Use per-engine takeoff power (watts) and compute OEI power in MW
 P_TO_OEI =  class_ii_result.power.P_TO_per_engine/ 1e6  # MW
 print(f"Per-engine takeoff power: {P_TO_OEI:.2f} MW")
