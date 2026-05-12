@@ -11,7 +11,7 @@ C_OE       = param.weight_parameters["C_OE_guess"]
 # ==============================================================================
 # EXACT FUEL CALCULATION (Per Roskam Class I Equations)
 # ==============================================================================
-# 1. Product of all nominal mission phases (Excluding loiter reserves)
+# 1. Product of all nominal mission phases (including loiter reserves)
 M_ff = (                                        # fuel fraction
     param.mass_fractions["Mf_1"] * param.mass_fractions["Mf_2"] *
     param.mass_fractions["Mf_3"] * param.mass_fractions["Mf_4"] *

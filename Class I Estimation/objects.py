@@ -52,7 +52,7 @@ class Atmosphere:
 class MatchingDiagram:
     """Calculates performance constraint curves and optimal W/S & W/P points."""
     
-    def __init__(self, MTOW, Vs0=55.0, Vapp=60.0, LFL=2100, c=0, G=0.0024):
+    def __init__(self, MTOW, Vs0=55.0, Vapp=60.0, LFL=1050, c=0, G=0.0024):
         
         self.MTOW = MTOW # dynamically passed from main script
         
