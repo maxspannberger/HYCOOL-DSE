@@ -56,10 +56,10 @@ def calculate_power_unit_weight(
 ) -> PropulsionUnitWeight:
     
     # Compute power requirements based on Class II results
-    P_cruise = cfg.mission.P_cruise_shaft / 1e6  # MW
-    P_climb = cfg.mission.P_climb_shaft / 1e6    # MW
-    P_reserve = cfg.mission.P_reserve_shaft / 1e6  # MW
-    P_TO_OEI = cfg.power.P_TO_per_engine / 1e6   # MW
+    P_cruise = cfg.mission.P_cruise_shaft / 1e3     # kW
+    P_climb = cfg.mission.P_climb_shaft / 1e3        # kW
+    P_reserve = cfg.mission.P_reserve_shaft / 1e3    # kW
+    P_TO_OEI = cfg.power.P_TO_per_engine / 1e3       # kW
 
     #Compute time requirements based on Class II results
     t_cruise = cfg.mission.t_cruise  # s
@@ -102,12 +102,31 @@ def calculate_power_unit_weight(
         raise ValueError(f"Unknown configuration: {config}")
 
     # Compute total mass: convert P (MW) -> kW, mass = P_kW / power_density (kW/kg)
-    P_req_MW = cfg.mission.P_climb_shaft / 1e6
-    P_req_kW = P_req_MW * 1000.0
+    # P_req_MW = cfg.mission.P_climb_shaft / 1e6
+    # P_req_kW = P_req_MW * 1000.0
+
     total_mass = 0.0
+
     for comp_key in component_list:
         if comp_key not in comp:
             raise ValueError(f"Component '{comp_key}' not found in component dict")
+        elif config == 1:
+            pd = comp[comp_key].power_density
+            P_req_tot = max(P_cruise, P_climb, P_reserve, P_TO_OEI)
+            P_req_primary = P_cruise
+            P_req_secondary = max((P_climb - P_req_primary), P_TO_OEI)
+            if comp_key == "gt":
+                mass = P_req_primary / pd
+            elif comp_key == "bt":
+                energy_required_kWh = P_req_secondary * (t_climb / 3600)  # Convert seconds to hours
+                ed = comp[comp_key].energy_density
+                mass = max(energy_required_kWh / ed, P_req_secondary / pd)
+            
+            
+            
+            P_req_kW = P_TO_OEI
+
+
         pd = comp[comp_key].power_density
         total_mass += P_req_kW / pd
 
