@@ -79,9 +79,10 @@ class MatchingDiagram:
 
         # Take-off Requirements
         self.h2 = 11      # [m]
-        self.TO = 2500    # Take-off field length [m]
+        self.TO = 1263.314    # Take-off field length [m]
         self.kT = 0.9     # Take-off thrust parameter [-]
-        self.alpha_p = 1.0
+        self.density_TO = Atmosphere(610).density 
+        # self.alpha_p = 1.0
         
         # Sea Level Properties
         self.density_SLS = Atmosphere(0).density  
@@ -92,17 +93,17 @@ class MatchingDiagram:
         # Speed Requirements
         self.Vs0 = Vs0 
         self.Vapp = Vapp 
-        self.LFL = LFL 
-        self.CLFL = 0.45 
+        self.LFL = 915 # [m], same as ATR72-600 at max landing weight 
+        self.CLFL = 0.45 # taken from ADSEE, 
         
         # Cruise speed calculated using speed of sound
         self.V_cr = self.MCR * Atmosphere(self.flight_parameters['Cruise_altitude']).speed_of_sound 
         
-         # Landing Requirements
-        self.S_land = 2100 # [m]
-        self.f_land = 1.67  # CS 25
-        self.h_land = 15.3  # CS 25 [m]
-        self.a_g = 0.4  # CHECK TORENBEEK 170
+        # Landing Requirements
+        #self.S_land = 2100 # [m]
+        #self.f_land = 1.67  # CS 25
+        #self.h_land = 15.3  # CS 25 [m]
+        # self.a_g = 0.4  # CHECK TORENBEEK 170
 
         # Climb Requirements
         self.g_climb = 0.024  
@@ -112,23 +113,23 @@ class MatchingDiagram:
 
     def calculate_matching(self, atm: Atmosphere):
         
-        # 1. Cruise Speed Requirement (TORENBEEK 154)
+        # 1. Cruise Speed Requirement (ADSEE 154)
         #W_P_cruise = (self.eta_prop / self.beta['beta_cruise']) / (((self.CD0 * 0.5 * self.density_cruise * np.power(self.V_cr, 3))/(self.beta['beta_cruise'] * self.W_S)) + ((self.beta['beta_cruise'] * (self.W_S)) / (np.pi * self.A * self.e * 0.5 * self.density_cruise * self.V_cr)))
         W_P_cruise = self.eta_prop * ((self.density_cruise/self.density_SLS)**(3/4) / self.beta['beta_cruise']) * ((self.CD0 * 0.5 * self.density_cruise * (self.V_cr ** 3))/(self.beta['beta_cruise'] * self.W_S) + (self.beta['beta_cruise'] * self.W_S) / (np.pi * self.A * self.e * 0.5 * self.density_cruise * self.V_cr))**(-1)
 
-        # 2. Take-off Distance Requirement (TORENBEEK 176)
+        # 2. Take-off Distance Requirement (ADSEE 176)
         self.CL2 = 0.694 * self.lift_coefficients['CL_max_TO']
         #W_P_TO = (1 / (1.15 * np.sqrt((self.Ne / (self.Ne - 1)) * (self.W_S / (self.TO * self.density_cruise * self.kT * self.g * self.A * self.e))) + (self.Ne / (self.Ne - 1)) * (4 * self.h2 / self.TO))) * np.sqrt((self.CL2 / self.W_S) * (self.density_SLS / 2))
-        W_P_TO = (1.15 * np.sqrt(self.Ne/(self.Ne - 1) * self.W_S / (self.TO * self.kT * 1.0 * self.g * np.pi * self.A * self.e)) + self.Ne/(self.Ne - 1) * 4 * self.h2/self.TO)**(-1) * np.sqrt(self.CL2 / self.W_S * 1.0 / 2)
+        W_P_TO = (1.15 * np.sqrt(self.Ne/(self.Ne - 1) * self.W_S / (self.TO * self.kT * self.density_TO * self.g * np.pi * self.A * self.e)) + self.Ne/(self.Ne - 1) * 4 * self.h2/self.TO)**(-1) * np.sqrt(self.CL2 / self.W_S * self.density_TO / 2)
 
-        # 3. Landing Distance Requirement (TORENBEEK 152)
+        # 3. Landing Distance Requirement (ADSEE 152)
         #W_S_land = (1 / self.beta['beta_landing']) * (self.LFL/self.CLFL) * (self.density_SLS / 2) * self.lift_coefficients['CL_max_L']# Adjust for landing beta factor
         W_S_land = (1 / self.beta['beta_landing']) * (self.LFL/self.CLFL) * (self.density_SLS * self.lift_coefficients['CL_max_L']) / 2
 
-        # 4. Minimum Speed Requirement (TORENBEEK 166)
+        # 4. Minimum Speed Requirement (ADSEE 166)
         W_S_min = (1 / self.beta['beta_landing']) * 0.5 * self.density_SLS * self.lift_coefficients['CL_max_L'] * np.square(self.Vapp / 1.23)
     
-        # 5. Climb Gradient Requirement (OEI) (TORENBEEK 161)
+        # 5. Climb Gradient Requirement (OEI) (ADSEE 161)
         CD = self.CD0 + self.CL2 / (np.pi * self.A * self.e) 
         CL = self.CL2
         W_P_climb = ((self.Ne - 1)/self.Ne) * self.eta_prop * (1 / self.beta['beta_climb']) * (1 / (self.g_climb + (CD / CL))) * np.sqrt((self.density_cruise / 2)*(CL / (self.beta['beta_climb'] * self.W_S)))  

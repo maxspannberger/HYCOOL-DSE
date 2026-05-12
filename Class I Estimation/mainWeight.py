@@ -22,7 +22,7 @@ M_ff = (                                        # fuel fraction
 def run_class_1_sizing():
     """Iteratively converges MTOW based on fuel and payload requirements."""
     MTOW = param.flight_parameters["MTOW"] 
-    tolerance = 0.1
+    tolerance = 0.01
     error = 1e6
     iteration = 1
     

@@ -8,7 +8,7 @@ import numpy as np
 lift_coefficients = {
     "CL_max_cruise": 1.7,  # Lift coefficient during cruise
     "CL_max_TO": 1.9,      # Maximum lift coefficient during take-off
-    "CL_max_L": 2.3        # Maximum lift coefficient during landing
+    "CL_max_L": 2.6        # Maximum lift coefficient during landing, taken from Roskam, average of the range for regional turboprops
 }
 
 # 2. Propulsion system parameters 
@@ -32,7 +32,7 @@ flight_parameters = {
     "Cruise_altitude": 7620,     # Cruise altitude [m] (FL250)
     "MCR": 0.7,                  # Cruise Mach number
     "TO_field_length": 1000,     # Take-off field length [m]
-    "MTOW": 30000.0,             # Maximum take-off weight [kg] (INITIAL GUESS)
+    "MTOW": 30000,               # Maximum take-off weight [kg] (INITIAL GUESS)
     "cruise_range": 1000.0,      # Cruise range [km]
     "endurance_ltr": 0.75,       # Endurance [hours]
     "velocity_loiter": 65 * 1.3  # Loiter velocity [m/s]
@@ -89,14 +89,7 @@ def calculate_beta(mass_fractions, phase_string, loiter=False):
 
 # Calculate the precise weight fractions remaining at each phase of the flight
 beta_dict = {
-    'beta_engine_start': calculate_beta(mass_fractions, "Mf_1"),
-    'beta_taxi': calculate_beta(mass_fractions, "Mf_2"),
-    'beta_takeoff': calculate_beta(mass_fractions, "Mf_3"),
-    'beta_climb': calculate_beta(mass_fractions, "Mf_4"),
-    'beta_cruise': calculate_beta(mass_fractions, "Mf_5"),
-    'beta_loiter': calculate_beta(mass_fractions, "Mf_6", loiter=True),
-    'beta_descent': calculate_beta(mass_fractions, "Mf_7"), 
-    'beta_descent_loiter': calculate_beta(mass_fractions, "Mf_7", loiter=True), 
+    'beta_climb': 1.0,
+    'beta_cruise': 0.95, 
     'beta_landing': 0.85,
-    'beta_landing_loiter': calculate_beta(mass_fractions, "Mf_8", loiter=True)
 }
