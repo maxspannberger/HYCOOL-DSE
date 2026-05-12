@@ -1,8 +1,16 @@
 import numpy as np
 from dataclasses import dataclass
 from typing import Optional
+import sys
+from pathlib import Path
+
+# Add parent directory to path so General module can be imported
+root = Path(__file__).resolve().parent.parent
+sys.path.append(str(root))
+
 import Tail_Interpolation as Tail_Interp
 from Aircraft_Config import AircraftConfig
+from General.component_parameters import component_params as comp_params
 
 from rich.table import Table
 
@@ -52,16 +60,31 @@ class ClassII_Input:
 
     # Propulsion
     rho_turb:    float = 0.0
-    rho_HTS:     float = 0.0
+    rho_bat:     float = 0.0
+    rho_fc:      float = 0.0
+    rho_HTS_gen: float = 0.0
+    rho_HTS_pow: float = 0.0
+    rho_ac_dc:    float = 0.0
+    rho_dc_dc:    float = 0.0
+    rho_dc_ac:    float = 0.0
+    rho_cable:    float = 0.0
+    rho_cable:    float = 0.0
+    rho_pipe:     float = 0.0
     P_TO_KW:     float = 0.0
     P_max_KW:    float = 0.0
+    P_cruise_KW: float = 0.0
+    P_TO_OEI_KW: float = 0.0
+    P_climb_KW:  float = 0.0
+    P_reserve_KW: float = 0.0
     W_fuel:      float = 0.0
     grav_density:float = 0.64
+    configuration: int = 1
 
     @classmethod
     def from_config(
         cls,
         cfg: AircraftConfig,
+        comp: dict,
         MTOW: Optional[float] = None,
         MZFW: Optional[float] = None,
         S_h:  Optional[float] = None,
@@ -70,6 +93,7 @@ class ClassII_Input:
         P_TO_KW:  float = 0.0,
         P_max_KW: float = 0.0,
         W_fuel:   float = 0.0,
+        configuration: int = 1,
     ) -> "ClassII_Input":
         """
         Build the weight-estimator input from a shared AircraftConfig.
@@ -107,13 +131,24 @@ class ClassII_Input:
             high_wing     = cfg.high_wing,
             has_flap_slat = cfg.has_flap_slat,
 
-            rho_turb      = cfg.rho_turbine_core / cfg.turbine_penalty,
-            rho_HTS       = cfg.rho_hts_motor / cfg.cryo_penalty,
+            rho_bat     =   comp["bt"].energy_density,  #kWh/kg Energy density of battery
+            rho_fc      =   comp["fc"].power_density,  #kW/kg Power density of fuel cell system
+            rho_ac_dc   =   comp["ac_dc"].power_density,  #kW/kg Power density of AC/DC rectifier
+            rho_dc_dc   =   comp["dc_dc"].power_density,  #kW/kg Power density of DC/DC converter
+            rho_dc_ac   =   comp["dc_ac"].power_density,  #kW/kg Power density of DC/AC inverter
+            rho_cable   =   comp["cable"].power_density,  #kW/kg Power density of electrical cables
+            rho_pipe    =   comp["pipe"].mass_per_length,  #kg/m Mass per length of piping
+
+
+            rho_turb      = comp["gt_hex"].power_density / cfg.turbine_penalty,     #kW/kg Power density of gas turbine
+            rho_HTS_gen       = comp["hts_gen"].power_density / cfg.cryo_penalty,           #kW/kg Power density of HTS generator
+            rho_HTS_pow       = comp["hts_pow"].power_density / cfg.cryo_penalty,           #kW/kg Power density of HTS motor
             grav_density  = cfg.grav_density,
             
             P_TO_KW       = P_TO_KW,
             P_max_KW      = P_max_KW,
-            W_fuel        = W_fuel
+            W_fuel        = W_fuel,
+            configuration = configuration,
         )
 
 
@@ -129,16 +164,38 @@ class WeightBreakdown:
 
     # Propulsion breakdown (populated by weightEstimation.compute)
     W_turbine:   float = 0.0
+    W_battery:   float = 0.0
+    W_fc:        float = 0.0
+    W_ac_dc:     float = 0.0
+    W_dc_dc:     float = 0.0
+    W_dc_ac:     float = 0.0
     W_generator: float = 0.0
     W_motor:     float = 0.0
+    W_cable:     float = 0.0
+    W_pipe:      float = 0.0
     W_h2_tank:   float = 0.0
 
     # Power densities and factors stored for display
-    rho_turb:      float = 0.0
-    rho_HTS:       float = 0.0
-    grav_density:  float = 0.0
-    P_TO_KW:       float = 0.0
-    W_fuel:        float = 0.0
+    rho_turb:    float = 0.0
+    rho_bat:     float = 0.0
+    rho_fc:      float = 0.0
+    rho_HTS_gen: float = 0.0
+    rho_HTS_pow: float = 0.0
+    rho_ac_dc:    float = 0.0
+    rho_dc_dc:    float = 0.0
+    rho_dc_ac:    float = 0.0
+    rho_cable:    float = 0.0
+    rho_pipe:     float = 0.0
+    P_TO_KW:     float = 0.0
+    P_max_KW:    float = 0.0
+    P_cruise_KW: float = 0.0
+    P_TO_OEI_KW: float = 0.0
+    P_climb_KW:  float = 0.0
+    P_reserve_KW: float = 0.0
+    W_fuel:      float = 0.0
+    grav_density:float = 0.64
+    configuration: int = 1
+
 
     @property
     def W_structure(self) -> float:
@@ -181,12 +238,12 @@ class WeightBreakdown:
             (
                 "  Generator (HTS)",
                 self.W_generator,
-                f"{self.rho_HTS:.1f} kW/kg  (P_TO = {self.P_TO_KW:.1f} kW)",
+                f"{self.rho_HTS_gen:.1f} kW/kg  (P_TO = {self.P_TO_KW:.1f} kW)",
             ),
             (
                 "  Motors (HTS)",
                 self.W_motor,
-                f"{self.rho_HTS:.1f} kW/kg  (P_TO = {self.P_TO_KW:.1f} kW)",
+                f"{self.rho_HTS_pow:.1f} kW/kg  (P_TO = {self.P_TO_KW:.1f} kW)",
             ),
             (
                 "  H2 Tank",
@@ -299,9 +356,19 @@ class weightEstimation:
 
     def _propulsion_weight(self) -> float:
         g     = self.g
-        turbine_weight  = g.P_TO_KW / g.rho_turb
-        generator_weight = g.P_TO_KW / g.rho_HTS
-        motor_weight = g.P_TO_KW / g.rho_HTS
+        config = g.configuration
+
+        if config == 1:
+            # GT + electric drive
+            turbine_weight  = g.P_TO_KW / g.rho_turb
+            generator_weight = g.P_TO_KW / g.rho_HTS_gen
+            motor_weight = g.P_TO_KW / g.rho_HTS_pow
+            total
+        elif config == 2:
+            # Fuel cell + electric drive
+            turbine_weight  = g.P_TO_KW / g.rho_turb
+            generator_weight = g.P_TO_KW / g.rho_HTS
+            motor_weight = g.P_TO_KW / g.rho_HTS
         return turbine_weight + generator_weight + motor_weight
     
     def _h2_tank_weight(self) -> float:

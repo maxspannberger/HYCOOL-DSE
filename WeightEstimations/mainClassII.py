@@ -28,6 +28,12 @@ Structure:
 
 import numpy as np
 from dataclasses import dataclass
+import sys
+from pathlib import Path
+
+# Add parent directory to path so General module can be imported
+root = Path(__file__).resolve().parent.parent
+sys.path.append(str(root))
 
 from Aircraft_Config   import AircraftConfig, default_q400_hycool
 from ClassII_Tail       import TailSizing_Input,  TailSizingEstimator, TailSizingBreakdown
@@ -36,6 +42,8 @@ from ClassII_Weight import ClassII_Input,      weightEstimation,    WeightBreakd
 from Mission_Power     import MissionPower,       MissionFuelBreakdown
 from Power_Sizing      import PowerSizing,        PowerSizingBreakdown
 from Export_Results    import export_results
+from General.component_parameters import component_params as comp_params
+
 
 from rich import print
 from rich.console import Console
@@ -140,10 +148,12 @@ def run_class_ii(
         P_TO_kW = pwr_bd.P_TO_total / 1000.0
 
         config = int(input("Enter config for power unit weight estimation (1-4): "))
+        comp=comp_params
 
         # Weight at current MTOW with sized tails
         wt_inp = ClassII_Input.from_config(
             cfg,
+            comp=comp,
             MTOW = MTOW,
             MZFW = MTOW - W_fuel,
             S_h  = tail_bd.S_h,

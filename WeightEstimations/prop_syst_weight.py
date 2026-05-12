@@ -98,7 +98,7 @@ def calculate_power_unit_weight(
     if config == 1:
         component_list = ["gt_hex", "bt", "hts_gen", "ac_dc","dc_dc", "dc_ac","hts_pow","hts_pow", "cable","pipe"]
     elif config == 2:
-        component_list = ["fc", "bt", "dc_dc", "dc_dc", "dc_ac", "hts_pow","hts_pow", "cable","pipe"]
+        component_list = ["fc","hex_fc", "bt", "dc_dc", "dc_dc", "dc_ac", "hts_pow","hts_pow", "cable","pipe"]
     elif config == 3:
         component_list = ["gt_hex", "gt_hex", "hts_gen", "hts_gen", "ac_dc","ac_dc", "dc_ac","dc_ac","hts_pow","hts_pow", "cable","pipe"]
     elif config == 4:
