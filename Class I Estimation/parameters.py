@@ -67,6 +67,16 @@ mass_fractions = {
     "Mf_8": 0.995,  # Landing
 }
 
+# 8. Climb gradient requirements (from CS 25.119 and CS.25.121)
+climb_gradients = {
+    "Landing" : 0.032,  # 3.2% climb gradient during landing CS 25.119
+    "Take-Off_LG_Extended": 0.0,  # Positive climb gradient during take-off with landing gear extended CS 25.121(a)
+    "Take-Off_LG_Retracted": 0.024,  # 2.4% climb gradient during take-off with landing gear retracted CS 25.121(b)
+    "Approach": 0.021  # 2.1% climb gradient during approach CS 25.121(d)
+}
+
+# 9. Calculate the accumulated weight fractions (beta) at each phase of the flight
+
 def calculate_beta(mass_fractions, phase_string, loiter=False):
     """
     Calculates the accumulated weight fraction at a specific mission phase.

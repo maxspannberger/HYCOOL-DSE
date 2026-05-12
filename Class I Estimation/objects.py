@@ -2,7 +2,7 @@ import numpy as np
 import math
 import os
 import matplotlib.pyplot as plt
-from parameters import lift_coefficients, propulsion_parameters, aerodynamic_parameters, flight_parameters, beta_dict
+from parameters import lift_coefficients, propulsion_parameters, aerodynamic_parameters, flight_parameters, climb_gradients, beta_dict
 
 class Atmosphere:
     """
@@ -62,6 +62,7 @@ class MatchingDiagram:
         self.aerodynamic_parameters = aerodynamic_parameters
         self.flight_parameters = flight_parameters
         self.beta = beta_dict
+        self.climb_gradients = climb_gradients
 
         # Core Aircraft Data
         self.Ne = self.propulsion_parameters["Ne"]  
@@ -99,15 +100,6 @@ class MatchingDiagram:
         # Cruise speed calculated using speed of sound
         self.V_cr = self.MCR * Atmosphere(self.flight_parameters['Cruise_altitude']).speed_of_sound 
         
-        # Landing Requirements
-        #self.S_land = 2100 # [m]
-        #self.f_land = 1.67  # CS 25
-        #self.h_land = 15.3  # CS 25 [m]
-        # self.a_g = 0.4  # CHECK TORENBEEK 170
-
-        # Climb Requirements
-        self.g_climb = 0.024  
-
         # Array for Plotting Wing Loading [N/m^2]
         self.W_S = np.linspace(100, 8000, 1000)
 
@@ -130,16 +122,33 @@ class MatchingDiagram:
         W_S_min = (1 / self.beta['beta_landing']) * 0.5 * self.density_SLS * self.lift_coefficients['CL_max_L'] * np.square(self.Vapp / 1.23)
     
         # 5. Climb Gradient Requirement (OEI) (ADSEE 161)
-        CD = self.CD0 + self.CL2 / (np.pi * self.A * self.e) 
-        CL = self.CL2
-        W_P_climb = ((self.Ne - 1)/self.Ne) * self.eta_prop * (1 / self.beta['beta_climb']) * (1 / (self.g_climb + (CD / CL))) * np.sqrt((self.density_cruise / 2)*(CL / (self.beta['beta_climb'] * self.W_S)))  
-    
+
+        CL_climb_landing = self.lift_coefficients['CL_max_L']
+        CL_climb_TO_LG_extended = self.lift_coefficients['CL_max_TO']
+        CL_climb_TO_LG_retracted = self.lift_coefficients['CL_max_TO']
+        CL_climb_approach = self.lift_coefficients['CL_max_L']
+
+        CD_climb_landing = self.CD0 + CL_climb_landing**2 / (np.pi * self.A * self.e) 
+        CD_climb_TO_LG_extended = self.CD0 + CL_climb_TO_LG_extended**2 / (np.pi * self.A * self.e) 
+        CD_climb_TO_LG_retracted = self.CD0 + CL_climb_TO_LG_retracted**2 / (np.pi * self.A * self.e) 
+        CD_climb_approach = self.CD0 + CL_climb_approach**2 / (np.pi * self.A * self.e) 
+
+        # Climb Gradient Requirement for Landing CS 25.119
+        W_P_climb_landing = ((self.Ne - 1)/self.Ne) * self.eta_prop * (1 / self.beta['beta_climb']) * (1 / (self.climb_gradients['Landing'] + (CD_climb_landing / CL_climb_landing))) * np.sqrt((self.density_TO / 2)*(CL_climb_landing / (self.beta['beta_climb'] * self.W_S)))  
+        W_P_climb_TO_LG_extended = ((self.Ne - 1)/self.Ne) * self.eta_prop * (1 / self.beta['beta_climb']) * (1 / (self.climb_gradients['Take-Off_LG_Extended'] + (CD_climb_TO_LG_extended / CL_climb_TO_LG_extended))) * np.sqrt((self.density_TO / 2)*(CL_climb_TO_LG_extended / (self.beta['beta_climb'] * self.W_S)))
+        W_P_climb_TO_LG_retracted = ((self.Ne - 1)/self.Ne) * self.eta_prop * (1 / self.beta['beta_climb']) * (1 / (self.climb_gradients['Take-Off_LG_Retracted'] + (CD_climb_TO_LG_retracted / CL_climb_TO_LG_retracted))) * np.sqrt((self.density_TO / 2)*(CL_climb_TO_LG_retracted / (self.beta['beta_climb'] * self.W_S)))
+        W_P_climb_approach = ((self.Ne - 1)/self.Ne) * self.eta_prop * (1 / self.beta['beta_climb']) * (1 / (self.climb_gradients['Approach'] + (CD_climb_approach / CL_climb_approach))) * np.sqrt((self.density_TO / 2)*(CL_climb_approach / (self.beta['beta_climb'] * self.W_S)))
+
         # Store constraints
         W_P_Curves = {
                 "Cruise Speed Requirement": W_P_cruise,
                 "Take-off Distance Requirement": W_P_TO,
-                "Climb Gradient Requirement": W_P_climb
+                "Climb Gradient Requirement Landing Configuration": W_P_climb_landing,
+                "Climb Gradient Requirement TO Configuration with LG Extended": W_P_climb_TO_LG_extended,
+                "Climb Gradient Requirement TO Configuration with LG Retracted": W_P_climb_TO_LG_retracted,
+                "Climb Gradient Requirement Approach Configuration": W_P_climb_approach
         }
+
         W_S_Curves = {
                 "Landing Distance Requirement": W_S_land,
                 "Minimum Speed Requirement": W_S_min
@@ -169,7 +178,7 @@ class MatchingDiagram:
             plt.plot(self.W_S, curve_data, label=curve_name)
         
         # Plot hard vertical boundaries. Ymax restricted to 0.2 per user setup.
-        plt.vlines(W_S_Curves['Minimum Speed Requirement'], ymin=0, ymax=0.2, label='Minimum Speed Requirement', colors='red', linestyles='dashed')
+        plt.vlines(W_S_Curves['Minimum Speed Requirement'], ymin=0, ymax=0.2, label='Minimum Speed Requirement', colors='black', linestyles='dashed')
         plt.vlines(W_S_Curves['Landing Distance Requirement'], ymin=0, ymax=0.2, label='Landing Distance Requirement', colors='purple', linestyles='dashed')
         
         # Mark Optimal Design Point
@@ -181,7 +190,7 @@ class MatchingDiagram:
         plt.xlabel('Wing Loading (W/S) [N/m²]')
         plt.ylabel('Power Loading (W/P) [N/W]')
         plt.title('HYCOOL Matching Diagram')
-        plt.legend(loc='lower left', fontsize='small')
+        plt.legend(loc='upper right', fontsize='small')  
         plt.grid()
         plt.ylim(0, 0.2) 
         
