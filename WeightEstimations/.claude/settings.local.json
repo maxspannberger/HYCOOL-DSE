@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python mainClassII.py)",
+      "Read(//c/Users/flavi/OneDrive/Documents/GitHub/HYCOOL-DSE/**)",
+      "Bash(python WeightEstimations/mainClassII.py)"
+    ]
+  }
+}
