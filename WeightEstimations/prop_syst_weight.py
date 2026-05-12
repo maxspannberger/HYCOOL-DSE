@@ -83,21 +83,21 @@ def calculate_power_unit_weight(
     #design C: 34 meters of pipe
     #design D: 48 meters of pipe
 
-    #cable lengths:
-    #design A: 200 meters of cable
+    #cable lengths:             #approximated 
+    #design A: 34 meters of cable
     #design B: 150 meters of cable
     #design C: 300 meters of cable
     #design D: 250 meters of cable
 
 
     if config == 1:
-        component_list = ["gt_hex", "bt", "hts", "ac_dc","dc_dc", "dc_ac","hts","hts", "cable","pipe"]
+        component_list = ["gt_hex", "bt", "hts_gen", "ac_dc","dc_dc", "dc_ac","hts_pow","hts_pow", "cable","pipe"]
     elif config == 2:
-        component_list = ["fc", "bt", "dc_dc", "dc_dc", "dc_ac", "hts","hts", "cable","pipe"]
+        component_list = ["fc", "bt", "dc_dc", "dc_dc", "dc_ac", "hts_pow","hts_pow", "cable","pipe"]
     elif config == 3:
-        component_list = ["gt_hex", "gt_hex", "hts", "hts", "ac_dc","ac_dc", "dc_ac","dc_ac","hts","hts", "cable","pipe"]
+        component_list = ["gt_hex", "gt_hex", "hts_gen", "hts_gen", "ac_dc","ac_dc", "dc_ac","dc_ac","hts_pow","hts_pow", "cable","pipe"]
     elif config == 4:
-        component_list = ["gt_hex", "gt_hex", "fc", "ac_dc", "ac_dc", "dc_dc", "dc_ac", "dc_ac", "hts","hts", "cable","pipe"]
+        component_list = ["gt_hex", "gt_hex", "hts_gen", "hts_gen", "fc", "ac_dc", "ac_dc", "dc_dc", "dc_ac", "dc_ac", "hts_pow","hts_pow", "cable","pipe"]
     else:
         raise ValueError(f"Unknown configuration: {config}")
 
