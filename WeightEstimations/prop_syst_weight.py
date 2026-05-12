@@ -83,11 +83,13 @@ def calculate_power_unit_weight(
     #design C: 34 meters of pipe
     #design D: 48 meters of pipe
 
-    #cable lengths:             #approximated 
-    #design A: 34 meters of cable
-    #design B: 150 meters of cable
-    #design C: 300 meters of cable
-    #design D: 250 meters of cable
+    #cable lengths:             #approximated by fuselage length of about 35 meters and wing span of about 28 meters,
+                                #with HTS placed at quarter span
+    
+    #design A: 29 meters of cryo cable      #cable from GT to wing = 1/2 fuselage length + 1/4 wing span, cable from wing to HTS = 1/4 wing span, Battery distance to HTS with 5 meters in total estimated for routing and connections
+    #design B: 19 meters of cryo cable      #cable from Battery to wing = 1/4 wing span + 1/4 wing span, Fuel cell distance to HTS with 5 meters in total estimated for routing and connections
+    #design C: 5 meters of cryo cable     #Turbine distance to HTS with 5 meters in total estimated for routing and connections
+    #design D: 19 meters of cryo cable     #cable from Fuel Cell to wing = 1/4 wing span + 1/4 wing span, Turbine distance to HTS with 5 meters in total estimated for routing and connections
 
 
     if config == 1:
