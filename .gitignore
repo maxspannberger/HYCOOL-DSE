@@ -12,3 +12,6 @@
 .ipynb_checkpoints/
 __pycache__/
 *.png
+
+# Claude Code internals
+.claude/worktrees/
