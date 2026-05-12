@@ -77,14 +77,27 @@ def calculate_power_unit_weight(
     ED_BATT     =   comp["bt"].energy_density  #kWh/kg Energy density of battery
     PD_CABLE    =   comp["cable"].power_density  #kW/kg Power density of electrical cables
 
+    #pipe lengths:
+    #design A: 82 meters of pipe
+    #design B: 34 meters of pipe
+    #design C: 34 meters of pipe
+    #design D: 48 meters of pipe
+
+    #cable lengths:
+    #design A: 200 meters of cable
+    #design B: 150 meters of cable
+    #design C: 300 meters of cable
+    #design D: 250 meters of cable
+
+
     if config == 1:
-        component_list = ["gt", "bt", "ac_dc", "dc_ac"]
+        component_list = ["gt_hex", "bt", "hts", "ac_dc","dc_dc", "dc_ac","hts","hts", "cable","pipe"]
     elif config == 2:
-        component_list = ["fc", "dc_dc", "ac_dc", "dc_ac"]
+        component_list = ["fc", "bt", "dc_dc", "dc_dc", "dc_ac", "hts","hts", "cable","pipe"]
     elif config == 3:
-        component_list = ["hts", "dc_dc", "ac_dc", "dc_ac"]
+        component_list = ["gt_hex", "gt_hex", "hts", "hts", "ac_dc","ac_dc", "dc_ac","dc_ac","hts","hts", "cable","pipe"]
     elif config == 4:
-        component_list = ["gt_hex", "dc_dc", "ac_dc", "dc_ac"]
+        component_list = ["gt_hex", "gt_hex", "fc", "ac_dc", "ac_dc", "dc_dc", "dc_ac", "dc_ac", "hts","hts", "cable","pipe"]
     else:
         raise ValueError(f"Unknown configuration: {config}")
 
@@ -113,66 +126,61 @@ def calculate_power_unit_weight(
     )
 
 def run_Power_sizing(
-    cfg:      ClassIIResult,
+    cfg:      AircraftConfig,
     comp:     dict,
     tol:      float = 1.0,
     max_iter: int   = 10,
     verbose:  bool  = True,
 ) -> PropulsionUnitWeight:
 
-
-    # -----------------------------------------------------------------
-    # Step 1: define first power unit sizing outside of class II estimation
-    # -----------------------------------------------------------------
-    MTOW    = cfg.MTOW
+    # Iterative loop: run Class II, size power unit, inject propulsion mass
+    # into cfg.W_fixed and repeat until propulsion mass change < tol (kg).
+    base_W_fixed = cfg.W_fixed
+    prev_W_power = None
     converged = False
-    it = 0
-    config=int(input("Enter design configuration (1-4): "))
 
-    for it in range(1,max_iter+1):
-        # Compute W_power using the helper and check for convergence
-        pw = calculate_power_unit_weight(cfg, comp, config)
+    config = int(input("Enter design configuration (1-4): "))
+
+    for it in range(1, max_iter + 1):
+        # 1) Run Class II with current config
+        result = run_class_ii(cfg, verbose=False)
+
+        # 2) Size propulsion unit based on Class II result
+        pw = calculate_power_unit_weight(result, comp, config)
         W_power = pw.W_power
 
-        if abs(W_power - cfg.weight.W_fixed) < tol:
+        # 3) Inject propulsion mass into configuration and prepare next iteration
+        cfg.W_fixed = base_W_fixed + W_power
+
+        if verbose:
+            print(f"iter {it}: W_power={W_power:.1f} kg, cfg.W_fixed={cfg.W_fixed:.1f} kg")
+
+        # 4) Check convergence on propulsion mass change
+        if prev_W_power is not None and abs(W_power - prev_W_power) < tol:
             converged = True
-            break
+            pw.iterations = it
+            pw.converged = True
+            if verbose:
+                print(f"Converged after {it} iterations (ΔW={abs(W_power-prev_W_power):.2f} kg)")
+            return pw
 
-    print(f"Per-engine takeoff power: {P_TO_OEI:.2f} MW")
-    print(f"Climb power: {P_climb:.2f} MW")
-    print(f"Cruise power: {P_cruise:.2f} MW")
-    print(f"Reserve power: {P_reserve:.2f} MW")
+        prev_W_power = W_power
 
-
-#--------------------- CALCULATIONS -------------------------
-#pipe lengths:
-#design A: 82 meters of pipe
-#design B: 34 meters of pipe
-#design C: 34 meters of pipe
-#design D: 48 meters of pipe
+    # If we reach here, did not converge within max_iter; return last result
+    pw.iterations = max_iter
+    pw.converged = False
+    if verbose:
+        print(f"Warning: power sizing did not converge after {max_iter} iterations")
+    return pw
 
 
 #possibly add reserve OEI if required
-P_bat_climb = P_climb - P_cruise
-P_bat_OEI = P_TO_OEI
-P_bat_req = max(P_bat_climb, P_bat_OEI)
-
-def compute_design_mass(component_list, P_req_MW, comp_dict=comp_params):
-    """Compute total mass (kg) for a design defined by `component_list`.
-
-    `P_req_MW` is power requirement in MW; component power densities are kW/kg.
-    """
-    P_req_kW = P_req_MW * 1000.0
-    total_mass = 0.0
-    for key in component_list:
-        if key not in comp_dict:
-            raise ValueError(f"Unknown component: {key}")
-        pd = comp_dict[key].power_density
-        total_mass += P_req_kW / pd
-    return total_mass
+# P_bat_climb = P_climb - P_cruise
+# P_bat_OEI = P_TO_OEI
+# P_bat_req = max(P_bat_climb, P_bat_OEI)
 
 
 if __name__ == "__main__":
-    # Example usage:
-    result=run_Power_sizing(cfg=class_ii_result, comp=comp_params, tol=1.0, max_iter=10, verbose=True)
+    cfg = default_q400_hycool()
+    result = run_Power_sizing(cfg=cfg, comp=comp_params, tol=1.0, max_iter=10, verbose=True)
     print(result.summary())
