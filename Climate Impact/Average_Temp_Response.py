@@ -1,7 +1,6 @@
 import Outgoing_Longwave_Radiation as olr
 import Potential_Vorticity as pv
-from math import sin, cos
-from math import sin, cos, cos, radians
+from math import sin, cos, radians
 
 # constants defined from literature and datasets
 h = 7620 # m, based on the operating altitude of Dash 8 Q400 [Janes]
@@ -9,9 +8,8 @@ g0 = 9.80665 # m/s^2, standard gravity
 latitude = 51.0 # degrees, based on the location of interest (central Europe/Germany)
 f_day = 0.5 # day fraction, assuming 12 hours of daylight on average
 f_ISSR  = 0.15 # ISSR fraction [Lamquin 2012]
-lhv = 119.93 # kJ/g, lower heating value of Hydrogen [standard property - citation TBD]
 pv = pv.pv_376 # PV at 376 hPa in PVU
-olr = olr.olr # OLR in W/m2
+olr = olr.olr # OLR in W/m2 
 t = 238.62 # K, temperature altitude [standard atmosphere at 7620 m]
 n = 80 # dayof the year, Spring Equinox (maybe replace with average over the year)
 d_mission = 1000 # km, mission distance
@@ -27,16 +25,50 @@ m_h2 = 569 # kg, mass of hydrogen fuel
 turbine = True
 fc_liquid_venting = False
 
+lhv = 119930 # kJ/kg, lower heating value of Hydrogen [standard property - citation TBD]
+energies = {
+    'cruise': 500000 #kJ,
+    'climb': 100000 #kJ, 
+}
+designs = {
+    'GT-BAT': {
+        'cruise': {'source': 'GT', 'eta': 0.35},
+        'to_climb': {'primary': 'GT', 'eta_primary': 0.35, 'p_primary': 500, 'secondary': 'BAT', 'eta_secondary': 0.4, 'p_secondary': 300}
+    },
+    'FC-BAT':{
+        'cruise': {'source': 'FC', 'eta': 0.35},
+        'to_climb': {'primary': 'FC', 'eta_primary': 0.35, 'p_primary': 500, 'secondary': 'BAT', 'eta_secondary': 0.4, 'p_secondary': 300}
+    },
+    'GT-GT':{
+        'cruise': {'source': 'GT', 'eta': 0.35},
+        'to_climb': {'primary': 'GT', 'eta_primary': 0.35, 'p_primary': 500, 'secondary': 'GT2', 'eta_secondary': 0.4, 'p_secondary': 300}
+    },
+    'GT-FC':{
+        'cruise': {'source': 'GT', 'eta': 0.35},
+        'to_climb': {'primary': 'GT', 'eta_primary': 0.35, 'p_primary': 500, 'secondary': 'FC', 'eta_secondary': 0.4, 'p_secondary': 300}
+    },
+}
+source_props = {
+    'GT': {'nox': True, 'h2o': True, 'contrail': True},
+    'GT2': {'nox': True, 'h2o': True, 'contrail': True},
+    'FC': {'nox': False, 'h2o': True, 'contrail': False},
+    'BAT': {'nox': False, 'h2o': False, 'contrail': False},
+}
+
+def calc_mass_h2():
+    m_h2 = 0
+    return m_h2
 
 def calc_aCCF_nox():
 
-    d = -23.44*cos(360/365*(n+10))
+    d = -23.44*cos(radians(360/365*(n+10)))
     F_in = s*(sin(radians(latitude))*sin(radians(d)) + cos(radians(latitude))*cos(radians(d)))
 
     aCCF_o3 = -2.64*10**(-11) + 1.17*10**(-13)*t + 2.46*10**(-16)*geopotential - 1.04*(10**-18)*t*geopotential    
     aCCF_ch4 = -4.84*10**(-13) + 9.79*10**(-19)*geopotential - 3.11*10**(-16)*F_in + 3.01*10**(-21)*F_in*geopotential
     aCCF_pmo = 0.29 * aCCF_ch4
 
+    print(f"NOx impact: {aCCF_o3 + aCCF_ch4 + aCCF_pmo}")
     return aCCF_o3 + aCCF_ch4 + aCCF_pmo
 
 
@@ -44,6 +76,7 @@ def calc_aCCF_h2o():
 
     aCCF_h2o = (2.11*10**(-16) + 7.70*10**(-17)*abs(pv))*(9/1.231)
 
+    print(f"H2O impact: {aCCF_h2o}")
     return aCCF_h2o
 
 
@@ -57,6 +90,7 @@ def calc_aCCF_contrail():
     
     aCCF_contrail_mean = f_day*aCCF_contrail_day + (1-f_day)*aCCF_contrail_night
 
+    print(f"Contrail impact: {aCCF_contrail_mean}")
     return aCCF_contrail_mean
 
 
