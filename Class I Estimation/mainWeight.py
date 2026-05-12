@@ -107,6 +107,6 @@ if __name__ == "__main__":
         e=param.aerodynamic_parameters["e"],
         rho=atm.density
     )
-    V_lst = np.linspace(20, 180, 100)
+    V_lst = np.linspace(120, 400, 100)
     my_aircraft.calculate_performance(V_lst)
     my_aircraft.plot_results()
