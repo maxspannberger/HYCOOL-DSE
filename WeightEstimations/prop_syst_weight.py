@@ -115,20 +115,19 @@ def calculate_power_unit_weight(
             P_req_tot = max(P_cruise, P_climb, P_reserve, P_TO_OEI)
             P_req_primary = P_cruise
             P_req_secondary = max((P_climb - P_req_primary), P_TO_OEI)
-            if comp_key == "gt":
+            if comp_key == "gt_hex":
                 mass = P_req_primary / pd
             elif comp_key == "bt":
                 energy_required_kWh = P_req_secondary * (t_climb / 3600)  # Convert seconds to hours
                 ed = comp[comp_key].energy_density
                 mass = max(energy_required_kWh / ed, P_req_secondary / pd)
-            
-            
-            
-            P_req_kW = P_TO_OEI
+            elif comp_key == "hts":
+                
+
 
 
         pd = comp[comp_key].power_density
-        total_mass += P_req_kW / pd
+        total_mass += mass
 
     # Build and return a PropulsionUnitWeight
     return PropulsionUnitWeight(
