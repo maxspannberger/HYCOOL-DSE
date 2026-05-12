@@ -126,10 +126,12 @@ class PowerSizing:
         V_2 = 1.2 * cfg.V_stall
 
         # Working-engine thrust requirement at V_2 (per CS-25.121)
+        # required thrust for whole ac in OEI condition
         W = self.MTOW * G
         T_per_engine_V2 = W * (1.0 / cfg.LD_takeoff + gamma_min)
 
         # Convert to shaft power for the one working engine
+        # This is the power that all remaining engines combined must be able to provide
         P_per_engine = T_per_engine_V2 * V_2 / cfg.eta_prop_V2
 
         # Total aircraft power = N_engines * per-engine capability,
