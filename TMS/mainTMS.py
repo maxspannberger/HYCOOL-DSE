@@ -275,20 +275,23 @@ def compute_piping_losses(state_keys, states, design: str, flight_condition: str
     return total_heat_w / 1000.0
 
 def thermal_ratio_score(ratio):
+    # Asymmetric margin bands (upper / lower tolerance around 1.0):
+    #   Score 5: +0.25 / -0.50  -> [0.50, 1.25]
+    #   Score 4: +0.50 / -1.00  -> [0.00, 1.50]
+    #   Score 3: +0.75 / -1.00  -> [0.00, 1.75]
+    #   Score 2: +1.00 / -1.00  -> [0.00, 2.00]
+    #   Score 1: +1.25 / -1.00  -> [0.00, 2.25]
     if not np.isfinite(ratio):
         return 0
-
-    margin = abs(ratio - 1)
-
-    if margin <= 0.2:
+    if 0.50 <= ratio <= 1.25:
         return 5
-    elif margin <= 0.4:
+    elif 0.00 <= ratio <= 1.50:
         return 4
-    elif margin <= 0.6:
+    elif 0.00 <= ratio <= 1.75:
         return 3
-    elif margin <= 0.8:
+    elif 0.00 <= ratio <= 2.00:
         return 2
-    elif margin <= 1.0:
+    elif 0.00 <= ratio <= 2.25:
         return 1
     else:
         return 0
