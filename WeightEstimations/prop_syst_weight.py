@@ -52,12 +52,33 @@ class PropulsionUnitWeight:
 def calculate_power_unit_weight(
     cfg:      ClassIIResult,
     comp:     Component,
-    tol:      float = 1.0,
-    max_iter: int   = 100,
-    verbose:  bool  = True,
+    config:      int,
 ) -> PropulsionUnitWeight:
-    # This function will implement the logic to calculate the propulsion unit weight based on the power requirements from the Class II results and the component parameters.
-    # The implementation will depend on the specific details of how you want to model the power unit mass based on the power requirements and component characteristics.
+    
+    PD_GT       =   comp["gt"].power_density  #kW/kg Power density of gas turbine
+    PD_FC_syst  =   comp["fc"].power_density  #kW/kg Power density of fuel cell system
+    PD_HTS      =   comp["hts"].power_density  #kW/kg Power density of HTS motor
+    PD_GT_HEX   =   comp["gt_hex"].power_density  #kW/kg Power density of gas turbine with heat exchanger
+    PD_DCDC     =   comp["dc_dc"].power_density  #kW/kg Power density of DC/DC converter
+    PD_ACDC     =   comp["ac_dc"].power_density  #kW/kg Power density of AC/DC rectifier
+    PD_DCAC     =   comp["dc_ac"].power_density  #kW/kg Power density of DC/AC inverter
+    ED_BATT     =   comp["bt"].energy_density  #kWh/kg Energy density of battery
+    PD_CABLE    =   comp["cable"].power_density  #kW/kg Power density of electrical cables
+
+    if config == 1:
+        # Define component list for Design 1
+        component_list = ["gt", "dc_dc", "ac_dc", "dc_ac"]      #still needs to change
+    elif config == 2:
+        # Define component list for Design 2
+        component_list = ["fc", "dc_dc", "ac_dc", "dc_ac"]      #still needs to change  
+    elif config == 3:
+        # Define component list for Design 3
+        component_list = ["hts", "dc_dc", "ac_dc", "dc_ac"]     #still needs to change
+    elif config == 4:    
+        # Define component list for Design 4
+        component_list = ["gt_hex", "dc_dc", "ac_dc", "dc_ac"]  #still needs to change
+    else:
+        raise ValueError(f"Unknown configuration: {config}")
     pass
 
 def run_Power_sizing(
@@ -75,6 +96,7 @@ def run_Power_sizing(
     MTOW    = cfg.MTOW
     converged = False
     it = 0
+    config=input("Enter design configuration (1-4): ")
 
     for it in range(1,max_iter+1):
         # Compute power requirements based on Class II results
@@ -88,8 +110,10 @@ def run_Power_sizing(
         t_climb = cfg.mission.t_climb  # s
         t_reserve = cfg.mission.t_reserve  # s
 
+
+
         # Here you would implement your logic to compute W_power based on the power requirements and component parameters
-        W_power = PropulsionUnitWeight(MTOW, P_cruise, P_climb, P_reserve, P_TO_OEI, 0, 0, False)
+        W_power = PropulsionUnitWeight(ClassIIResult, comp, P_climb, P_reserve, P_TO_OEI, 0, 0, False)
 
         # Check for convergence (this is a placeholder, replace with actual logic)
         if abs(W_power - cfg.weight.W_fixed) < tol:
