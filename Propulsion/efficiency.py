@@ -2,6 +2,8 @@ import sys
 from pathlib import Path
 from pprint import pprint
 import pandas as pd
+import numpy as np
+from matplotlib import pyplot as plt
 
 root = Path(__file__).resolve().parent.parent
 sys.path.append(str(root))
@@ -29,60 +31,81 @@ def get_param(parameter_name):
         print(f"Error: Parameter '{parameter_name}' not found in CSV.")
         return None
 
+
 # Extract your specific variables
-t_climb = get_param('t_climb')             
-t_cruise = get_param('t_cruise')
+def return_wanted_params():
+    t_climb = get_param('t_climb')             
+    t_cruise = get_param('t_cruise')
 
-P_climb = get_param('P_climb_shaft')       
-P_cruise = get_param('P_cruise_shaft')
+    P_climb = get_param('P_climb_shaft')       
+    P_cruise = get_param('P_cruise_shaft')
 
-cable_efficiency = 1
-bt_c_frac = 0.05 # how much power goes to charging the battery while cruising
+    return t_climb, t_cruise, P_climb, P_cruise
+
+
 
 # =============================================================================
 # Gas Turbine + Battery powertrain
 # =============================================================================
+def GT_BAT_efficiency(bt_c_frac=0.05, cable_efficiency=1.0):
+    t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
 
-# Efficiency of power from gas turbine to motor
-gt_eff = (
-    c["gt"].efficiency 
-    * c["hts_gen"].efficiency 
-    * c["ac_dc"].efficiency 
-    * c["dc_ac"].efficiency
-    * c["hts_pow"].efficiency
-    * cable_efficiency
-)
+    # Efficiency of power from gas turbine to motor
+    gt_eff = (
+        c["gt"].efficiency 
+        * c["hts_gen"].efficiency 
+        * c["ac_dc"].efficiency 
+        * c["dc_ac"].efficiency
+        * c["hts_pow"].efficiency
+        * cable_efficiency
+    )
 
-# Efficiency of power from gas turbine to battery (charge)
-bt_eff_c = (
-    c["gt"].efficiency 
-    * c["ac_dc"].efficiency 
-    * c["dc_dc"].efficiency
-    # * c["bt"].efficiency
-    * cable_efficiency
-)
+    # Efficiency of power from gas turbine to battery (charge)
+    bt_eff_c = (
+        c["gt"].efficiency 
+        * c["ac_dc"].efficiency 
+        * c["dc_dc"].efficiency
+        # * c["bt"].efficiency
+        * cable_efficiency
+    )
 
-# Efficiency of power from battery to motor (discharge)
-bt_eff_d = (
-    c["bt"].efficiency
-    * c["dc_dc"].efficiency
-    * c["dc_ac"].efficiency 
-    * c["hts_pow"].efficiency
-    * cable_efficiency
-)
+    # Efficiency of power from battery to motor (discharge)
+    bt_eff_d = (
+        c["bt"].efficiency
+        * c["dc_dc"].efficiency
+        * c["dc_ac"].efficiency 
+        * c["hts_pow"].efficiency
+        * cable_efficiency
+    )
 
-# how much more power we have for climb than for cruise
-excess_P_climb = P_climb/P_cruise
+    # how much more power we have for climb than for cruise
+    excess_P_climb = P_climb/P_cruise
 
-# climbing efficiency
-climb_eff = excess_P_climb / (1/bt_eff_d + 1/(1-bt_c_frac) * (1/gt_eff - excess_P_climb/bt_eff_d))
+    # climbing efficiency
+    climb_eff = excess_P_climb / (1/bt_eff_d + 1/(1-bt_c_frac) * (1/gt_eff - excess_P_climb/bt_eff_d))
 
-# cruising efficiency
-cruise_eff = (1-bt_c_frac)*gt_eff + bt_c_frac*bt_eff_c
+    # cruising efficiency
+    cruise_eff = (1-bt_c_frac)*gt_eff + bt_c_frac*bt_eff_c
 
-# total energy efficiency over a flight
-gt_bt_eff = (t_climb * climb_eff + t_cruise * cruise_eff) / (t_climb + t_cruise)
+    # total energy efficiency over a flight
+    gt_bt_eff = (t_climb * climb_eff + t_cruise * cruise_eff) / (t_climb + t_cruise)
 
-print(f"Climb efficiency: {climb_eff}")
-print(f"Cruise efficiency: {cruise_eff}")
-print(f"Total efficiency: {gt_bt_eff}")
+    # print(f"Climb efficiency: {climb_eff}")
+    # print(f"Cruise efficiency: {cruise_eff}")
+    # print(f"Total efficiency: {gt_bt_eff}")
+
+    return gt_bt_eff
+
+
+
+if __name__ == "__main__":
+    # bt_c_frac = 0.05 # how much power goes to charging the battery while cruising
+    cable_efficiency = 1 # change later
+
+    gt_bt_eff = []
+    bt_c_frac_range = np.linspace(0.00, 0.99, 100)
+    for bt_c_frac in bt_c_frac_range:
+        gt_bt_eff.append(GT_BAT_efficiency(bt_c_frac=bt_c_frac, cable_efficiency=cable_efficiency))
+    
+    plt.plot(bt_c_frac_range, gt_bt_eff)
+    plt.show()
