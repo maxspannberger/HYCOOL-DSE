@@ -52,3 +52,100 @@ P_bat_climb = P_climb - P_cruise
 P_bat_OEI = P_TO_OEI
 P_bat_req = max(P_bat_climb, P_bat_OEI)
 
+def Design_1_mass(component_list, P_req):
+    total_mass = 0
+    for comp in component_list:
+        if comp == "gt":
+            mass = P_req / PD_GT
+        elif comp == "fc":
+            mass = P_req / PD_FC_syst
+        elif comp == "hts":
+            mass = P_req / PD_HTS
+        elif comp == "gt_hex":
+            mass = P_req / PD_GT_HEX
+        elif comp == "dc_dc":
+            mass = P_req / PD_DCDC
+        elif comp == "ac_dc":
+            mass = P_req / PD_ACDC
+        elif comp == "dc_ac":
+            mass = P_req / PD_DCAC
+        else:
+            raise ValueError(f"Unknown component: {comp}")
+        total_mass += mass
+
+        return total_mass
+
+def Design_2_mass(component_list, P_req):
+    total_mass = 0
+    for comp in component_list:
+        if comp == "gt":
+            mass = P_req / PD_GT
+        elif comp == "fc":
+            mass = P_req / PD_FC_syst
+        elif comp == "hts":
+            mass = P_req / PD_HTS
+        elif comp == "gt_hex":
+            mass = P_req / PD_GT_HEX
+        elif comp == "dc_dc":
+            mass = P_req / PD_DCDC
+        elif comp == "ac_dc":
+            mass = P_req / PD_ACDC
+        elif comp == "dc_ac":
+            mass = P_req / PD_DCAC
+        else:
+            raise ValueError(f"Unknown component: {comp}")
+        total_mass += mass
+
+        return total_mass
+
+def Design_3_mass(component_list, P_req):
+    total_mass = 0
+    for comp in component_list:
+        if comp == "gt":
+            mass = P_req / PD_GT
+        elif comp == "fc":
+            mass = P_req / PD_FC_syst
+        elif comp == "hts":
+            mass = P_req / PD_HTS
+        elif comp == "gt_hex":
+            mass = P_req / PD_GT_HEX
+        elif comp == "dc_dc":
+            mass = P_req / PD_DCDC
+        elif comp == "ac_dc":
+            mass = P_req / PD_ACDC
+        elif comp == "dc_ac":
+            mass = P_req / PD_DCAC
+        else:
+            raise ValueError(f"Unknown component: {comp}")
+        total_mass += mass
+        return total_mass
+    
+def Design_4_mass(component_list, P_req):
+    total_mass = 0
+    for comp in component_list:
+        if comp == "gt":
+            mass = P_req / PD_GT
+        elif comp == "fc":
+            mass = P_req / PD_FC_syst
+        elif comp == "hts":
+            mass = P_req / PD_HTS
+        elif comp == "gt_hex":
+            mass = P_req / PD_GT_HEX
+        elif comp == "dc_dc":
+            mass = P_req / PD_DCDC
+        elif comp == "ac_dc":
+            mass = P_req / PD_ACDC
+        elif comp == "dc_ac":
+            mass = P_req / PD_DCAC
+        else:
+            raise ValueError(f"Unknown component: {comp}")
+        total_mass += mass
+        return total_mass
+    # Add battery mass based on energy requirement
+
+
+if __name__ == "__main__":
+    # Example usage:
+    design_a_components = ["gt", "dc_dc", "ac_dc", "dc_ac"]
+    mass_a = Design_2_mass(design_a_components, P_bat_req)
+    print(f"Design A mass: {mass_a:.2f} kg")
