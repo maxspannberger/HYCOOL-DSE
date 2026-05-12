@@ -35,6 +35,7 @@ from ClassII_Drag   import ClassII_Drag_Input, DragEstimation,      DragBreakdow
 from ClassII_Weight import ClassII_Input,      weightEstimation,    WeightBreakdown
 from Mission_Power     import MissionPower,       MissionFuelBreakdown
 from Power_Sizing      import PowerSizing,        PowerSizingBreakdown
+from Export_Results    import export_results
 
 from rich import print
 from rich.console import Console
@@ -64,6 +65,7 @@ class ClassIIResult:
     mission:     MissionFuelBreakdown
     power:       PowerSizingBreakdown
     tail_rechecked: TailSizingBreakdown    # rerun with computed T_TO
+    iteration_log: list = None             # per-iteration MTOW trace
 
     def summary(self):
         status_color = "green" if self.converged else "red"
@@ -115,6 +117,7 @@ def run_class_ii(
     mis_bd  = MissionFuelBreakdown()
     converged = False
     it = 0
+    iteration_log: list[dict] = []
 
     for it in range(1, max_iter + 1):
 
@@ -154,6 +157,19 @@ def run_class_ii(
         MZFW_new = wt_bd.W_empty + cfg.W_payload + cfg.W_fixed
         MTOW_new = MZFW_new + W_fuel
         delta    = abs(MTOW_new - MTOW)
+
+        iteration_log.append(dict(
+            iter         = it,
+            MTOW_in_kg   = MTOW,
+            MTOW_out_kg  = MTOW_new,
+            delta_kg     = delta,
+            L_over_D     = drag_bd.L_over_D,
+            P_cruise_kW  = mis_bd.P_cruise_shaft / 1000,
+            P_max_kW     = mis_bd.P_max / 1000,
+            P_TO_kW      = P_TO_kW,
+            W_fuel_kg    = W_fuel,
+            OEW_kg       = wt_bd.W_empty,
+        ))
 
         if verbose:
             print(f"  iter {it:2d}: MTOW {MTOW:8.1f} -> {MTOW_new:8.1f} kg  "
@@ -210,6 +226,7 @@ def run_class_ii(
         mission    = mis_bd,
         power      = pwr_bd,
         tail_rechecked = tail_bd_recheck,
+        iteration_log  = iteration_log,
     )
 
 
@@ -231,3 +248,13 @@ if __name__ == "__main__":
     print(result.mission.summary())
     print()
     print(result.summary())
+
+    paths = export_results(
+        result,
+        output_dir = "outputs",
+        iterations = result.iteration_log,
+    )
+    print()
+    print("[bold]Results exported to:[/bold]")
+    for label, p in paths.items():
+        print(f"  {label}: {p}")
