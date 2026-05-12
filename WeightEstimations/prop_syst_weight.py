@@ -48,6 +48,18 @@ class PropulsionUnitWeight:
             title=f"[bold {status_color}]Power Unit Calculations[/bold {status_color}]",
             border_style=status_color
         )
+    
+def calculate_power_unit_weight(
+    cfg:      ClassIIResult,
+    comp:     Component,
+    tol:      float = 1.0,
+    max_iter: int   = 100,
+    verbose:  bool  = True,
+) -> PropulsionUnitWeight:
+    # This function will implement the logic to calculate the propulsion unit weight based on the power requirements from the Class II results and the component parameters.
+    # The implementation will depend on the specific details of how you want to model the power unit mass based on the power requirements and component characteristics.
+    pass
+
 def run_Power_sizing(
     cfg:      ClassIIResult,
     comp:     Component,
@@ -58,11 +70,31 @@ def run_Power_sizing(
 
 
     # -----------------------------------------------------------------
-    # Step 1: outer MTOW iteration with mission-power coupling
+    # Step 1: define first power unit sizing outside of class II estimation
     # -----------------------------------------------------------------
-    MTOW    = cfg.MTOW_initial
+    MTOW    = cfg.MTOW
     converged = False
     it = 0
+
+    for it in range(1,max_iter+1):
+        # Compute power requirements based on Class II results
+        P_cruise = cfg.mission.P_cruise_shaft / 1e6  # MW
+        P_climb = cfg.mission.P_climb_shaft / 1e6    # MW
+        P_reserve = cfg.mission.P_reserve_shaft / 1e6  # MW
+        P_TO_OEI = cfg.power.P_TO_per_engine / 1e6   # MW
+
+        #Compute time requirements based on Class II results
+        t_cruise = cfg.mission.t_cruise  # s
+        t_climb = cfg.mission.t_climb  # s
+        t_reserve = cfg.mission.t_reserve  # s
+
+        # Here you would implement your logic to compute W_power based on the power requirements and component parameters
+        W_power = PropulsionUnitWeight(MTOW, P_cruise, P_climb, P_reserve, P_TO_OEI, 0, 0, False)
+
+        # Check for convergence (this is a placeholder, replace with actual logic)
+        if abs(W_power - cfg.weight.W_fixed) < tol:
+            converged = True
+            break
 
 # Run Class II once and reuse the config/result
 cfg = default_q400_hycool()
