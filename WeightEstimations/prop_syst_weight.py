@@ -4,8 +4,65 @@ import sys
 from pathlib import Path
 root = Path(__file__).resolve().parent.parent
 sys.path.append(str(root))
-from General.component_parameters import component_params as c
-from mainClassII import default_q400_hycool, run_class_ii
+from General.component_parameters import Component
+from Aircraft_Config   import AircraftConfig, default_q400_hycool
+from mainClassII import ClassIIResult
+from dataclasses import dataclass
+
+from rich import print
+from rich.console import Console
+from rich.panel import Panel
+from rich.columns import Columns
+
+
+@dataclass
+class PropulsionUnitWeight:
+
+    MTOW:        float
+    P_cruise:        float
+    P_climb:     float
+    P_reserve:      float
+    P_TO_OEI:   float
+    W_power:     float
+    iterations:  int
+    converged:   bool
+
+    classII:        ClassIIResult
+    components:       Component
+
+
+    def summary(self):
+        status_color = "green" if self.converged else "red"
+        main_info = (
+            f"MTOW: {self.MTOW/1000:.2f} t\n"
+            f"Cruise Power:  {self.P_cruise:.2f} MW\n"
+            f"Climb Power: {self.P_climb:.2f} MW\n"
+            f"Reserve Power: {self.P_reserve:.2f} MW\n"
+            f"TO/OEI Power: {self.P_TO_OEI:.2f} MW\n"
+            f"Power Unit Mass: {self.W_power:.2f} kg\n"
+            f"Iterations: {self.iterations}"
+        )
+
+        return Panel(
+            Columns([main_info]),
+            title=f"[bold {status_color}]Power Unit Calculations[/bold {status_color}]",
+            border_style=status_color
+        )
+def run_Power_sizing(
+    cfg:      ClassIIResult,
+    comp:     Component,
+    tol:      float = 1.0,
+    max_iter: int   = 100,
+    verbose:  bool  = True,
+) -> PropulsionUnitWeight:
+
+
+    # -----------------------------------------------------------------
+    # Step 1: outer MTOW iteration with mission-power coupling
+    # -----------------------------------------------------------------
+    MTOW    = cfg.MTOW_initial
+    converged = False
+    it = 0
 
 # Run Class II once and reuse the config/result
 cfg = default_q400_hycool()
