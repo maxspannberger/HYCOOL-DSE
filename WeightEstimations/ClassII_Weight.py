@@ -363,13 +363,28 @@ class weightEstimation:
             turbine_weight  = g.P_TO_KW / g.rho_turb
             generator_weight = g.P_TO_KW / g.rho_HTS_gen
             motor_weight = g.P_TO_KW / g.rho_HTS_pow
-            total
+            total_weight = turbine_weight + generator_weight + motor_weight
         elif config == 2:
             # Fuel cell + electric drive
             turbine_weight  = g.P_TO_KW / g.rho_turb
             generator_weight = g.P_TO_KW / g.rho_HTS
             motor_weight = g.P_TO_KW / g.rho_HTS
-        return turbine_weight + generator_weight + motor_weight
+            total_weight = turbine_weight + generator_weight + motor_weight
+        elif config == 3:
+            # Gas Turbine + Gas Turbine
+            turbine_weight  = 0.0
+            generator_weight = 0.0
+            motor_weight = g.P_TO_KW / g.rho_HTS_pow
+            total_weight = turbine_weight + generator_weight + motor_weight
+
+        elif config == 4:
+            # Fuel Cell + Fuel Cell
+            turbine_weight  = 0.0
+            generator_weight = 0.0
+            motor_weight = g.P_TO_KW / g.rho_HTS_pow
+            total_weight = turbine_weight + generator_weight + motor_weight
+
+        return total_weight
     
     def _h2_tank_weight(self) -> float:
         return self.g.W_fuel * (1 / self.g.grav_density - 1)
