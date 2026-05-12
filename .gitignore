@@ -11,3 +11,6 @@
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 __pycache__/
+
+# Claude Code internals
+.claude/worktrees/
