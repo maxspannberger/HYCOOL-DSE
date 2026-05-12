@@ -2,14 +2,17 @@ import numpy as np
 
 import pipe_python
 
+# Values to input
 P_cl = 5099.5
 P_cr = 3792
+P_res = 1281.8
+P_OEI = 3100
+
+# Other values
 Charging_percent = 0.05
 P_ch = (1 + Charging_percent) * P_cr
-P_res = 1281.8
 P_extra_1 = P_cl - P_ch
 P_extra_2 = P_cl - P_cr
-P_OEI = 3100
 P_rem_1 = P_OEI - (P_ch / 2)
 P_rem_2 = P_OEI - (P_cr / 2)
 
