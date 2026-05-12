@@ -97,6 +97,6 @@ beta_dict = {
     'beta_loiter': calculate_beta(mass_fractions, "Mf_6", loiter=True),
     'beta_descent': calculate_beta(mass_fractions, "Mf_7"), 
     'beta_descent_loiter': calculate_beta(mass_fractions, "Mf_7", loiter=True), 
-    'beta_landing': calculate_beta(mass_fractions, "Mf_8"),
+    'beta_landing': 0.85,
     'beta_landing_loiter': calculate_beta(mass_fractions, "Mf_8", loiter=True)
 }

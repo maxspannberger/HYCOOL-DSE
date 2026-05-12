@@ -81,6 +81,7 @@ class MatchingDiagram:
         self.h2 = 11      # [m]
         self.TO = 2500    # Take-off field length [m]
         self.kT = 0.9     # Take-off thrust parameter [-]
+        self.alpha_p = 1.0
         
         # Sea Level Properties
         self.density_SLS = Atmosphere(0).density  
@@ -92,7 +93,7 @@ class MatchingDiagram:
         self.Vs0 = Vs0 
         self.Vapp = Vapp 
         self.LFL = LFL 
-        self.CLFL = 0.5 
+        self.CLFL = 0.45 
         
         # Cruise speed calculated using speed of sound
         self.V_cr = self.MCR * Atmosphere(self.flight_parameters['Cruise_altitude']).speed_of_sound 
@@ -110,21 +111,23 @@ class MatchingDiagram:
         self.W_S = np.linspace(100, 8000, 1000)
 
     def calculate_matching(self, atm: Atmosphere):
-        """Calculates Torenbeek matching diagram curves based on physics."""
         
-        # 1. Cruise Speed Requirement (TORENBEEK 156)
-        W_P_cruise = (self.eta_prop / self.beta['beta_cruise']) / (((self.CD0 * 0.5 * self.density_cruise * np.power(self.V_cr, 3))/(self.beta['beta_cruise'] * self.W_S)) + ((self.beta['beta_cruise'] * (self.W_S)) / (np.pi * self.A * self.e * 0.5 * self.density_cruise * self.V_cr)))
+        # 1. Cruise Speed Requirement (TORENBEEK 154)
+        #W_P_cruise = (self.eta_prop / self.beta['beta_cruise']) / (((self.CD0 * 0.5 * self.density_cruise * np.power(self.V_cr, 3))/(self.beta['beta_cruise'] * self.W_S)) + ((self.beta['beta_cruise'] * (self.W_S)) / (np.pi * self.A * self.e * 0.5 * self.density_cruise * self.V_cr)))
+        W_P_cruise = self.eta_prop * ((self.density_cruise/self.density_SLS)**(3/4) / self.beta['beta_cruise']) * ((self.CD0 * 0.5 * self.density_cruise * (self.V_cr ** 3))/(self.beta['beta_cruise'] * self.W_S) + (self.beta['beta_cruise'] * self.W_S) / (np.pi * self.A * self.e * 0.5 * self.density_cruise * self.V_cr))**(-1)
 
-        # 2. Take-off Distance Requirement (TORENBEEK 169)
+        # 2. Take-off Distance Requirement (TORENBEEK 176)
         self.CL2 = 0.694 * self.lift_coefficients['CL_max_TO']
-        W_P_TO = (1 / (1.15 * np.sqrt((self.Ne / (self.Ne - 1)) * (self.W_S / (self.TO * self.density_cruise * self.kT * self.g * self.A * self.e))) + (self.Ne / (self.Ne - 1)) * (4 * self.h2 / self.TO))) * np.sqrt((self.CL2 / self.W_S) * (self.density_SLS / 2))
+        #W_P_TO = (1 / (1.15 * np.sqrt((self.Ne / (self.Ne - 1)) * (self.W_S / (self.TO * self.density_cruise * self.kT * self.g * self.A * self.e))) + (self.Ne / (self.Ne - 1)) * (4 * self.h2 / self.TO))) * np.sqrt((self.CL2 / self.W_S) * (self.density_SLS / 2))
+        W_P_TO = (1.15 * np.sqrt(self.Ne/(self.Ne - 1) * self.W_S / (self.TO * self.kT * 1.0 * self.g * np.pi * self.A * self.e)) + self.Ne/(self.Ne - 1) * 4 * self.h2/self.TO)**(-1) * np.sqrt(self.CL2 / self.W_S * 1.0 / 2)
 
-        # 3. Landing Distance Requirement (TORENBEEK 171)
-        W_S_land = (1 / self.beta['beta_landing']) * (self.LFL/self.CLFL) * (self.density_SLS / 2) * self.lift_coefficients['CL_max_L']# Adjust for landing beta factor
+        # 3. Landing Distance Requirement (TORENBEEK 152)
+        #W_S_land = (1 / self.beta['beta_landing']) * (self.LFL/self.CLFL) * (self.density_SLS / 2) * self.lift_coefficients['CL_max_L']# Adjust for landing beta factor
+        W_S_land = (1 / self.beta['beta_landing']) * (self.LFL/self.CLFL) * (self.density_SLS * self.lift_coefficients['CL_max_L']) / 2
 
         # 4. Minimum Speed Requirement (TORENBEEK 166)
         W_S_min = (1 / self.beta['beta_landing']) * 0.5 * self.density_SLS * self.lift_coefficients['CL_max_L'] * np.square(self.Vapp / 1.23)
-        
+    
         # 5. Climb Gradient Requirement (OEI) (TORENBEEK 161)
         CD = self.CD0 + self.CL2 / (np.pi * self.A * self.e) 
         CL = self.CL2
