@@ -4,9 +4,9 @@ import sys
 from pathlib import Path
 root = Path(__file__).resolve().parent.parent
 sys.path.append(str(root))
-from General.component_parameters import Component
+from General.component_parameters import component_params as comp_params
 from Aircraft_Config   import AircraftConfig, default_q400_hycool
-from mainClassII import ClassIIResult
+from mainClassII import ClassIIResult, run_class_ii
 from dataclasses import dataclass
 
 from rich import print
@@ -28,7 +28,7 @@ class PropulsionUnitWeight:
     converged:   bool
 
     classII:        ClassIIResult
-    components:       Component
+    components:       dict
 
 
     def summary(self):
@@ -51,10 +51,22 @@ class PropulsionUnitWeight:
     
 def calculate_power_unit_weight(
     cfg:      ClassIIResult,
-    comp:     Component,
+    comp:     dict,
     config:      int,
 ) -> PropulsionUnitWeight:
     
+    # Compute power requirements based on Class II results
+    P_cruise = cfg.mission.P_cruise_shaft / 1e6  # MW
+    P_climb = cfg.mission.P_climb_shaft / 1e6    # MW
+    P_reserve = cfg.mission.P_reserve_shaft / 1e6  # MW
+    P_TO_OEI = cfg.power.P_TO_per_engine / 1e6   # MW
+
+    #Compute time requirements based on Class II results
+    t_cruise = cfg.mission.t_cruise  # s
+    t_climb = cfg.mission.t_climb  # s
+    t_reserve = cfg.mission.t_reserve  # s
+
+
     PD_GT       =   comp["gt"].power_density  #kW/kg Power density of gas turbine
     PD_FC_syst  =   comp["fc"].power_density  #kW/kg Power density of fuel cell system
     PD_HTS      =   comp["hts"].power_density  #kW/kg Power density of HTS motor
@@ -66,26 +78,45 @@ def calculate_power_unit_weight(
     PD_CABLE    =   comp["cable"].power_density  #kW/kg Power density of electrical cables
 
     if config == 1:
-        # Define component list for Design 1
-        component_list = ["gt", "dc_dc", "ac_dc", "dc_ac"]      #still needs to change
+        component_list = ["gt", "bt", "ac_dc", "dc_ac"]
     elif config == 2:
-        # Define component list for Design 2
-        component_list = ["fc", "dc_dc", "ac_dc", "dc_ac"]      #still needs to change  
+        component_list = ["fc", "dc_dc", "ac_dc", "dc_ac"]
     elif config == 3:
-        # Define component list for Design 3
-        component_list = ["hts", "dc_dc", "ac_dc", "dc_ac"]     #still needs to change
-    elif config == 4:    
-        # Define component list for Design 4
-        component_list = ["gt_hex", "dc_dc", "ac_dc", "dc_ac"]  #still needs to change
+        component_list = ["hts", "dc_dc", "ac_dc", "dc_ac"]
+    elif config == 4:
+        component_list = ["gt_hex", "dc_dc", "ac_dc", "dc_ac"]
     else:
         raise ValueError(f"Unknown configuration: {config}")
-    pass
+
+    # Compute total mass: convert P (MW) -> kW, mass = P_kW / power_density (kW/kg)
+    P_req_MW = cfg.mission.P_climb_shaft / 1e6
+    P_req_kW = P_req_MW * 1000.0
+    total_mass = 0.0
+    for comp_key in component_list:
+        if comp_key not in comp:
+            raise ValueError(f"Component '{comp_key}' not found in component dict")
+        pd = comp[comp_key].power_density
+        total_mass += P_req_kW / pd
+
+    # Build and return a PropulsionUnitWeight
+    return PropulsionUnitWeight(
+        MTOW=cfg.MTOW,
+        P_cruise=cfg.mission.P_cruise_shaft/1e6,
+        P_climb=cfg.mission.P_climb_shaft/1e6,
+        P_reserve=cfg.mission.P_reserve_shaft/1e6,
+        P_TO_OEI=cfg.power.P_TO_per_engine/1e6,
+        W_power=total_mass,
+        iterations=0,
+        converged=True,
+        classII=cfg,
+        components=comp,
+    )
 
 def run_Power_sizing(
     cfg:      ClassIIResult,
-    comp:     Component,
+    comp:     dict,
     tol:      float = 1.0,
-    max_iter: int   = 100,
+    max_iter: int   = 10,
     verbose:  bool  = True,
 ) -> PropulsionUnitWeight:
 
@@ -96,61 +127,22 @@ def run_Power_sizing(
     MTOW    = cfg.MTOW
     converged = False
     it = 0
-    config=input("Enter design configuration (1-4): ")
+    config=int(input("Enter design configuration (1-4): "))
 
     for it in range(1,max_iter+1):
-        # Compute power requirements based on Class II results
-        P_cruise = cfg.mission.P_cruise_shaft / 1e6  # MW
-        P_climb = cfg.mission.P_climb_shaft / 1e6    # MW
-        P_reserve = cfg.mission.P_reserve_shaft / 1e6  # MW
-        P_TO_OEI = cfg.power.P_TO_per_engine / 1e6   # MW
+        # Compute W_power using the helper and check for convergence
+        pw = calculate_power_unit_weight(cfg, comp, config)
+        W_power = pw.W_power
 
-        #Compute time requirements based on Class II results
-        t_cruise = cfg.mission.t_cruise  # s
-        t_climb = cfg.mission.t_climb  # s
-        t_reserve = cfg.mission.t_reserve  # s
-
-
-
-        # Here you would implement your logic to compute W_power based on the power requirements and component parameters
-        W_power = PropulsionUnitWeight(ClassIIResult, comp, P_climb, P_reserve, P_TO_OEI, 0, 0, False)
-
-        # Check for convergence (this is a placeholder, replace with actual logic)
         if abs(W_power - cfg.weight.W_fixed) < tol:
             converged = True
             break
 
-# Run Class II once and reuse the config/result
-cfg = default_q400_hycool()
-class_ii_result = run_class_ii(cfg, verbose=False)
+    print(f"Per-engine takeoff power: {P_TO_OEI:.2f} MW")
+    print(f"Climb power: {P_climb:.2f} MW")
+    print(f"Cruise power: {P_cruise:.2f} MW")
+    print(f"Reserve power: {P_reserve:.2f} MW")
 
-#--------------------- INPUTS ------------------------- (these will be changed to take proper variables from other files)
-
-P_cruise    =   class_ii_result.mission.P_cruise_shaft/ 1e6  #MW 
-P_climb     =   class_ii_result.mission.P_climb_shaft/ 1e6  #MW
-P_reserve   =   class_ii_result.mission.P_reserve_shaft/ 1e6  #MW
-
-t_cruise    =   class_ii_result.mission.t_cruise #s
-t_climb     =   class_ii_result.mission.t_climb  #s
-t_reserve   =   class_ii_result.mission.t_reserve #s
-
-# Use per-engine takeoff power (watts) and compute OEI power in MW
-P_TO_OEI =  class_ii_result.power.P_TO_per_engine/ 1e6  # MW
-print(f"Per-engine takeoff power: {P_TO_OEI:.2f} MW")
-print(f"Climb power: {P_climb:.2f} MW")
-print(f"Cruise power: {P_cruise:.2f} MW")
-print(f"Reserve power: {P_reserve:.2f} MW")
-
-#--------------------- Power/energy densities -------------------------
-PD_GT       =   c["gt"].power_density  #kW/kg Power density of gas turbine
-PD_FC_syst  =   c["fc"].power_density  #kW/kg Power density of fuel cell system
-PD_HTS      =   c["hts"].power_density  #kW/kg Power density of HTS motor
-PD_GT_HEX   =   c["gt_hex"].power_density  #kW/kg Power density of gas turbine with heat exchanger
-PD_DCDC     =   c["dc_dc"].power_density  #kW/kg Power density of DC/DC converter
-PD_ACDC     =   c["ac_dc"].power_density  #kW/kg Power density of AC/DC rectifier
-PD_DCAC     =   c["dc_ac"].power_density  #kW/kg Power density of DC/AC inverter
-ED_BATT     =   c["bt"].energy_density  #kWh/kg Energy density of battery
-PD_CABLE    =   c["cable"].power_density  #kW/kg Power density of electrical cables
 
 #--------------------- CALCULATIONS -------------------------
 #pipe lengths:
@@ -165,100 +157,22 @@ P_bat_climb = P_climb - P_cruise
 P_bat_OEI = P_TO_OEI
 P_bat_req = max(P_bat_climb, P_bat_OEI)
 
-def Design_1_mass(component_list, P_req):
-    total_mass = 0
-    for comp in component_list:
-        if comp == "gt":
-            mass = P_req / PD_GT
-        elif comp == "fc":
-            mass = P_req / PD_FC_syst
-        elif comp == "hts":
-            mass = P_req / PD_HTS
-        elif comp == "gt_hex":
-            mass = P_req / PD_GT_HEX
-        elif comp == "dc_dc":
-            mass = P_req / PD_DCDC
-        elif comp == "ac_dc":
-            mass = P_req / PD_ACDC
-        elif comp == "dc_ac":
-            mass = P_req / PD_DCAC
-        else:
-            raise ValueError(f"Unknown component: {comp}")
-        total_mass += mass
+def compute_design_mass(component_list, P_req_MW, comp_dict=comp_params):
+    """Compute total mass (kg) for a design defined by `component_list`.
 
-        return total_mass
-
-def Design_2_mass(component_list, P_req):
-    total_mass = 0
-    for comp in component_list:
-        if comp == "gt":
-            mass = P_req / PD_GT
-        elif comp == "fc":
-            mass = P_req / PD_FC_syst
-        elif comp == "hts":
-            mass = P_req / PD_HTS
-        elif comp == "gt_hex":
-            mass = P_req / PD_GT_HEX
-        elif comp == "dc_dc":
-            mass = P_req / PD_DCDC
-        elif comp == "ac_dc":
-            mass = P_req / PD_ACDC
-        elif comp == "dc_ac":
-            mass = P_req / PD_DCAC
-        else:
-            raise ValueError(f"Unknown component: {comp}")
-        total_mass += mass
-
-        return total_mass
-
-def Design_3_mass(component_list, P_req):
-    total_mass = 0
-    for comp in component_list:
-        if comp == "gt":
-            mass = P_req / PD_GT
-        elif comp == "fc":
-            mass = P_req / PD_FC_syst
-        elif comp == "hts":
-            mass = P_req / PD_HTS
-        elif comp == "gt_hex":
-            mass = P_req / PD_GT_HEX
-        elif comp == "dc_dc":
-            mass = P_req / PD_DCDC
-        elif comp == "ac_dc":
-            mass = P_req / PD_ACDC
-        elif comp == "dc_ac":
-            mass = P_req / PD_DCAC
-        else:
-            raise ValueError(f"Unknown component: {comp}")
-        total_mass += mass
-        return total_mass
-    
-def Design_4_mass(component_list, P_req):
-    total_mass = 0
-    for comp in component_list:
-        if comp == "gt":
-            mass = P_req / PD_GT
-        elif comp == "fc":
-            mass = P_req / PD_FC_syst
-        elif comp == "hts":
-            mass = P_req / PD_HTS
-        elif comp == "gt_hex":
-            mass = P_req / PD_GT_HEX
-        elif comp == "dc_dc":
-            mass = P_req / PD_DCDC
-        elif comp == "ac_dc":
-            mass = P_req / PD_ACDC
-        elif comp == "dc_ac":
-            mass = P_req / PD_DCAC
-        else:
-            raise ValueError(f"Unknown component: {comp}")
-        total_mass += mass
-        return total_mass
-    # Add battery mass based on energy requirement
+    `P_req_MW` is power requirement in MW; component power densities are kW/kg.
+    """
+    P_req_kW = P_req_MW * 1000.0
+    total_mass = 0.0
+    for key in component_list:
+        if key not in comp_dict:
+            raise ValueError(f"Unknown component: {key}")
+        pd = comp_dict[key].power_density
+        total_mass += P_req_kW / pd
+    return total_mass
 
 
 if __name__ == "__main__":
     # Example usage:
-    design_a_components = ["gt", "dc_dc", "ac_dc", "dc_ac"]
-    mass_a = Design_2_mass(design_a_components, P_bat_req)
-    print(f"Design A mass: {mass_a:.2f} kg")
+    result=run_Power_sizing(cfg=class_ii_result, comp=comp_params, tol=1.0, max_iter=10, verbose=True)
+    print(result.summary())
