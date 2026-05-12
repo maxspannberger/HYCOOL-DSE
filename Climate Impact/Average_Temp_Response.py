@@ -1,6 +1,7 @@
 import Outgoing_Longwave_Radiation as olr
 import Potential_Vorticity as pv
 from math import sin, cos
+from math import sin, cos, cos, radians
 
 # constants defined from literature and datasets
 h = 7620 # m, based on the operating altitude of Dash 8 Q400 [Janes]
@@ -14,14 +15,14 @@ olr = olr.olr # OLR in W/m2
 t = 238.62 # K, temperature altitude [standard atmosphere at 7620 m]
 n = 80 # dayof the year, Spring Equinox (maybe replace with average over the year)
 d_mission = 1000 # km, mission distance
-ei_nox = 4.5 # g/kg, NOx emission index 2015 [Ponater 2006] 1.5 a 2050 predicted
+ei_nox = 3*10**(-3) # kg/kg, 3 = lean premixed [Grewe 2016]; 4.5 = NOx emission index 2015 [Ponater 2006] 1.5 a 2050 predicted
 r = 6356766 # m, Earth's radius
 geopotential = h * g0 * (r/(r+h))**2 # m^2/s^2, geopotential at 7620 m
 s = 1360 # W/m2, solar constant
 
 # system-specific parameters to be changed based on the design of the aircraft and mission profile
 #eta_prop = 0.6 # propulsion efficiency
-m_h2 = 1000 # kg, mass of hydrogen fuel
+m_h2 = 569 # kg, mass of hydrogen fuel
 #E_mission = 500000 # kJ, energy required for the mission
 turbine = True
 fc_liquid_venting = False
@@ -30,7 +31,7 @@ fc_liquid_venting = False
 def calc_aCCF_nox():
 
     d = -23.44*cos(360/365*(n+10))
-    F_in = s*(sin(latitude)*sin(d) + cos(latitude)*cos(d))
+    F_in = s*(sin(radians(latitude))*sin(radians(d)) + cos(radians(latitude))*cos(radians(d)))
 
     aCCF_o3 = -2.64*10**(-11) + 1.17*10**(-13)*t + 2.46*10**(-16)*geopotential - 1.04*(10**-18)*t*geopotential    
     aCCF_ch4 = -4.84*10**(-13) + 9.79*10**(-19)*geopotential - 3.11*10**(-16)*F_in + 3.01*10**(-21)*F_in*geopotential
@@ -41,7 +42,7 @@ def calc_aCCF_nox():
 
 def calc_aCCF_h2o():
 
-    aCCF_h2o = 2.11*10**(-16) + 7.70*10**(-17)*abs(pv)*(9/1.231)
+    aCCF_h2o = (2.11*10**(-16) + 7.70*10**(-17)*abs(pv))*(9/1.231)
 
     return aCCF_h2o
 
