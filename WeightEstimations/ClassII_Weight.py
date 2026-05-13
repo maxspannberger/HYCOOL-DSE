@@ -191,6 +191,7 @@ class WeightBreakdown:
     W_lg:     float = 0.0
     W_sc:     float = 0.0
     W_engine: float = 0.0
+    W_total_prop: float = 0.0
 
     # Propulsion breakdown (populated by weightEstimation.compute)
     W_turbine:   float = 0.0
@@ -261,26 +262,12 @@ class WeightBreakdown:
         # Propulsion breakdown
         prop_items = [
             (
-                "  Turbine Core",
-                self.W_turbine,
-                f"{self.rho_turb:.1f} kW/kg  (P_TO = {self.P_TO_KW:.1f} kW)",
-            ),
-            (
-                "  Generator (HTS)",
-                self.W_generator,
-                f"{self.rho_HTS_gen:.1f} kW/kg  (P_TO = {self.P_TO_KW:.1f} kW)",
-            ),
-            (
-                "  Motors (HTS)",
-                self.W_motor,
-                f"{self.rho_HTS_pow:.1f} kW/kg  (P_TO = {self.P_TO_KW:.1f} kW)",
-            ),
-            (
                 "  H2 Tank",
                 self.W_h2_tank,
                 (f"grav. density = {self.grav_density:.2f}  "
                  f"(W_fuel = {self.W_fuel:.1f} kg)"),
             ),
+
         ]
 
         for name, weight, note in prop_items:
@@ -288,8 +275,13 @@ class WeightBreakdown:
 
         table.add_section()
         table.add_row(
-            "Propulsion System (total)",
+            "Propulsion System without tank",
             f"[bold]{self.W_engine:.1f}[/bold]",
+            "",
+        )
+        table.add_row(
+            "Propulsion System with tank (total)",
+            f"[bold]{self.W_total_prop:.1f}[/bold]",
             "",
         )
         table.add_section()
@@ -569,6 +561,7 @@ class weightEstimation:
             W_lg     = self._LDG_weight(),
             W_sc     = self._surface_control_weight(),
             W_engine = W_engine_total,
+            W_total_prop = W_engine_total + h2_tank_weight,
 
             # Propulsion detail
             W_h2_tank   = h2_tank_weight,
