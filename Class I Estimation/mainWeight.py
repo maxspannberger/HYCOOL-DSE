@@ -1,4 +1,5 @@
 import numpy as np
+import csv
 import parameters as param
 from Wing_Design import WingDesign
 from Drag_Polar import DragPolarEstimator
@@ -15,13 +16,14 @@ def run_class_1_sizing():
     MTOW = param.flight_parameters["MTOW"] 
     tolerance = 0.01
     error = 1e6
-    iteration = 1
+    iterations = 0
     
     print("\n" + "="*50)
     print("  STARTING CLASS I WEIGHT ITERATION (KEROSENE)")
     print("="*50)
     
     while error > tolerance:
+        iterations += 1
         # Calculate constituent weights
         W_OE = C_OE * MTOW
         W_F = (1 - M_ff) * MTOW
@@ -32,26 +34,28 @@ def run_class_1_sizing():
         # Determine convergence error
         error = abs(MTOW - MTOW_calc)
         MTOW = MTOW_calc
-        iteration += 1
         
         # Breakout to prevent infinite loops
-        if iteration > 1000:
+        if iterations > 1000:
             print("WARNING: Sizing failed to converge.")
             break
 
     print("\n" + "="*50)
-    print("             ITERATION CONVERGED!")
+    print("            ITERATION CONVERGED!")
     print("="*50)
+    print(f"Iterations to converge: {iterations}")
     print(f"Final MTOW:    {MTOW:.2f} kg")
     print(f"Final OEW:     {W_OE:.2f} kg")
     print(f"Total fuel (including reserves):     {W_F:.2f} kg")
     print("=" * 50 + "\n")
-    return MTOW
+    
+    # Returning the separated weights and iteration count for the CSV
+    return MTOW, W_OE, W_F, iterations
 
 if __name__ == "__main__":
     
     # 1. Converge Weight
-    converged_MTOW = run_class_1_sizing()
+    converged_MTOW, W_OE, W_F, iterations = run_class_1_sizing()
     param.flight_parameters["MTOW"] = converged_MTOW
     
     # 2. Match Performance (Generate Diagram)
@@ -85,6 +89,64 @@ if __name__ == "__main__":
     )
     print(wing)
     
+    # ---------------------------------------------------------
+    # CSV EXPORT SECTION
+    # ---------------------------------------------------------
+    csv_filename = "class_1_results.csv"
+    print(f">>> SAVING RESULTS TO {csv_filename}...")
+    
+    with open(csv_filename, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        
+        # Write Headers
+        writer.writerow(["Parameter", "Value", "Unit"])
+        
+        # Weight & Iteration Data
+        writer.writerow(["Iterations to Converge", iterations, "Count"])
+        writer.writerow(["Final MTOW", round(converged_MTOW, 2), "kg"])
+        writer.writerow(["Final OEW", round(W_OE, 2), "kg"])
+        writer.writerow(["Total Fuel", round(W_F, 2), "kg"])
+        
+        # Performance Data
+        writer.writerow(["Optimum Wing Loading (W/S)", round(optimal_W_S, 2), "N/m^2"])
+        writer.writerow(["Optimum Power Loading (W/P)", round(optimal_W_P, 4), "N/W"])
+        writer.writerow(["Total Peak Power Req", round(total_peak_power_kw, 2), "kW"])
+        writer.writerow(["Peak Power per Engine", round(power_per_engine_kw, 2), "kW"])
+        
+        # Wing Geometry Data 
+        # (Check your WingDesign class attributes if you get an error here)
+        writer.writerow(["Area (S)", round(wing.S, 2), "m^2"])
+        writer.writerow(["Span (b)", round(wing.b, 2), "m"])
+        writer.writerow(["Aspect Ratio", round(wing.A, 2), "-"])
+        
+        # Try/Except blocks added in case your variable names differ slightly in WingDesign
+        try: writer.writerow(["Taper Ratio", round(wing.taper, 2), "-"]) 
+        except AttributeError: pass
+        
+        try: writer.writerow(["Root Chord (C_r)", round(wing.c_r, 2), "m"])
+        except AttributeError: pass
+        
+        try: writer.writerow(["Tip Chord (C_t)", round(wing.c_t, 2), "m"])
+        except AttributeError: pass
+        
+        try: writer.writerow(["MAC", round(wing.mac, 2), "m"])
+        except AttributeError: pass
+        
+        try: writer.writerow(["Sweep (LE)", round(wing.sweep_le, 2), "deg"])
+        except AttributeError: pass
+        
+        try: writer.writerow(["Sweep (c/4)", round(wing.sweep_c4, 2), "deg"])
+        except AttributeError: pass
+        
+        try: writer.writerow(["Sweep (c/2)", round(wing.sweep_c2, 2), "deg"])
+        except AttributeError: pass
+        
+        try: writer.writerow(["x_MGC", round(wing.x_mgc, 2), "m"])
+        except AttributeError: pass
+        
+        try: writer.writerow(["y_MGC", round(wing.y_mgc, 2), "m"])
+        except AttributeError: pass
+
     # 4. Generate Performance Plots
     print("\n>>> GENERATING MATCHING DIAGRAM PLOT (Close window to continue)...")
     diagram.generate_diagram(W_P_Curves, W_S_Curves, design_point=(optimal_W_S, optimal_W_P))

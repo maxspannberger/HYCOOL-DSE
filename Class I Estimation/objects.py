@@ -52,8 +52,9 @@ class Atmosphere:
 class MatchingDiagram:
     """Calculates performance constraint curves and optimal W/S & W/P points."""
     
-    def __init__(self, MTOW, Vs0=55.0, Vapp=60.0, LFL=1050, c=0, G=0.0024):
-        
+    def __init__(self, MTOW, Vapp=58.133):
+        # For approach speed, 113 knots, so 58.133 m/s for ATR72-600
+
         self.MTOW = MTOW # dynamically passed from main script
         
         # Assign Parameter Dictionaries
@@ -83,7 +84,6 @@ class MatchingDiagram:
         self.TO = 1263.314    # Take-off field length [m]
         self.kT = 0.9     # Take-off thrust parameter [-]
         self.density_TO = Atmosphere(610).density 
-        # self.alpha_p = 1.0
         
         # Sea Level Properties
         self.density_SLS = Atmosphere(0).density  
@@ -91,11 +91,10 @@ class MatchingDiagram:
         # Atmospheric Cruise Properties
         self.density_cruise = Atmosphere(self.flight_parameters['Cruise_altitude']).density
         
-        # Speed Requirements
-        self.Vs0 = Vs0 
+        # Speed Requirements 
         self.Vapp = Vapp 
         self.LFL = 915 # [m], same as ATR72-600 at max landing weight 
-        self.CLFL = 0.45 # taken from ADSEE, 
+        self.CLFL = 0.45 # taken from ADSEE, for cs25 aircraft
         
         # Cruise speed calculated using speed of sound
         self.V_cr = self.MCR * Atmosphere(self.flight_parameters['Cruise_altitude']).speed_of_sound 
@@ -115,7 +114,7 @@ class MatchingDiagram:
         # 3. Landing Distance Requirement (ADSEE 152)
         W_S_land = (1 / self.beta['beta_landing']) * (self.LFL/self.CLFL) * (self.density_SLS * self.lift_coefficients['CL_max_L']) / 2
 
-        # 4. Minimum Speed Requirement (ADSEE 166)
+        # 4. Minimum Speed Requirement (ADSEE 145)
         W_S_min = (1 / self.beta['beta_landing']) * 0.5 * self.density_SLS * self.lift_coefficients['CL_max_L'] * np.square(self.Vapp / 1.23)
     
         # 5. Climb Gradient Requirement (OEI) (ADSEE 161)
