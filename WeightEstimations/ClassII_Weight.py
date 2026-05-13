@@ -468,7 +468,8 @@ class weightEstimation:
                     elif comp_key == "dc_dc_2":
                         mass = P_req_secondary / pd
                     elif comp_key == "dc_ac" or comp_key == "hts_pow":
-                        mass = P_req_tot / pd           
+                        max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
+                        mass = max_P_per_string / pd      
                 total_mass += mass
 
             elif config == 2:
@@ -486,7 +487,7 @@ class weightEstimation:
                     # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
                     P_req_primary = max(g.P_cruise_KW*(1+bt_charging_ratio), g.P_TO_OEI_KW)
                     # secondary power source requirement is to sustain TO 
-                    P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
+                    P_req_secondary = max((g.P_TO_KW - P_req_primary), (g.P_TO_OEI_KW-(1/2)*P_req_primary))
                     if comp_key == "fc_with_hex" or comp_key == "dc_dc_1":
                         mass = P_req_primary / pd
                     elif comp_key == "bt":
@@ -496,7 +497,8 @@ class weightEstimation:
                     elif comp_key == "dc_dc_2":
                         mass = P_req_secondary / pd
                     elif comp_key == "dc_ac" or comp_key == "hts_pow":
-                        mass = P_req_tot / pd
+                        max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
+                        mass = max_P_per_string / pd
                 total_mass += mass
 
             
