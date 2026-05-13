@@ -65,7 +65,8 @@ class ClassII_Input:
     rho_HTS_gen: float = 0.0
     rho_HTS_pow: float = 0.0
     rho_ac_dc:    float = 0.0
-    rho_dc_dc:    float = 0.0
+    rho_dc_dc_1:    float = 0.0
+    rho_dc_dc_2:    float = 0.0
     rho_dc_ac:    float = 0.0
     rho_cable:    float = 0.0
     rho_cable:    float = 0.0
@@ -150,9 +151,10 @@ class ClassII_Input:
             has_flap_slat = cfg.has_flap_slat,
 
             rho_bat     =   comp["bt"].energy_density,  #kWh/kg Energy density of battery
-            rho_fc      =   comp["fc"].power_density,  #kW/kg Power density of fuel cell system
+            rho_fc      =   comp["fc_with_hex"].power_density,  #kW/kg Power density of fuel cell system
             rho_ac_dc   =   comp["ac_dc"].power_density,  #kW/kg Power density of AC/DC rectifier
-            rho_dc_dc   =   comp["dc_dc"].power_density,  #kW/kg Power density of DC/DC converter
+            rho_dc_dc_1   =   comp["dc_dc_1"].power_density,  #kW/kg Power density of primary DC/DC converter
+            rho_dc_dc_2   =   comp["dc_dc_2"].power_density,  #kW/kg Power density of secondary DC/DC converter
             rho_dc_ac   =   comp["dc_ac"].power_density,  #kW/kg Power density of DC/AC inverter
             rho_cable   =   comp["cable"].power_density,  #kW/kg Power density of electrical cables
             rho_pipe    =   comp["pipe"].mass_per_length,  #kg/m Mass per length of piping
@@ -404,102 +406,124 @@ class weightEstimation:
         config = g.configuration
 
         component_lists = {
-            1: ["gt_hex", "bt", "hts_gen", "ac_dc", "dc_dc", "dc_ac",
-                "hts_pow", "hts_pow", "cable", "pipe"][82,36.5],
-
-            2: ["fc_with_hex", "hex_fc", "bt", "dc_dc_1", "dc_dc_2", "dc_ac",
-                "hts_pow", "hts_pow", "cable", "pipe"][34,19],
-
-            3: ["gt_hex", "gt_hex", "hts_gen", "hts_gen", "ac_dc", "ac_dc",
-                "dc_ac", "dc_ac", "hts_pow", "hts_pow", "cable", "pipe"][34,5],
-
-            4: ["gt_hex", "gt_hex", "hts_gen", "hts_gen", "fc_with_hex", "ac_dc", "ac_dc",
-                "dc_dc_2", "dc_ac", "dc_ac", "hts_pow", "hts_pow", "cable", "pipe"][48,19],
+            1: {
+                "components": [
+                    "gt_hex", "bt", "hts_gen", "ac_dc", "dc_dc_2", "dc_ac",
+                    "hts_pow", "hts_pow", "cable", "pipe",
+                ],
+                "lengths": {"pipe": 82.0, "cable": 36.5},
+            },
+            2: {
+                "components": [
+                    "fc_with_hex", "bt", "dc_dc_1", "dc_dc_2", "dc_ac",
+                    "hts_pow", "hts_pow", "cable", "pipe",
+                ],
+                "lengths": {"pipe": 34.0, "cable": 19.0},
+            },
+            3: {
+                "components": [
+                    "gt_hex", "gt_hex", "hts_gen", "hts_gen", "ac_dc", "ac_dc",
+                    "dc_ac", "dc_ac", "hts_pow", "hts_pow", "cable", "pipe",
+                ],
+                "lengths": {"pipe": 34.0, "cable": 5.0},
+            },
+            4: {
+                "components": [
+                    "gt_hex", "gt_hex", "hts_gen", "hts_gen", "fc_with_hex", "ac_dc",
+                    "ac_dc", "dc_dc_2", "dc_ac", "dc_ac", "hts_pow", "hts_pow", "cable", "pipe",
+                ],
+                "lengths": {"pipe": 48.0, "cable": 19.0},
+            },
         }
 
         if config not in component_lists:
             raise ValueError(f"Unknown configuration: {config}")
 
-
-        component_list = component_lists[config][0]
-        length_values = component_lists[config][1]
+        cfg_data = component_lists[config]
+        component_list = cfg_data["components"]
+        pipe_len = cfg_data["lengths"]["pipe"]
+        cable_len = cfg_data["lengths"]["cable"]
         total_mass = 0.0
 
         for comp_key in component_list:
             if comp_key not in comp:
                 raise ValueError(f"Component '{comp_key}' not found in component dict")
             elif config == 1:
-                # 5% of cruise power but put this in some input file!
-                bt_charging_ratio = 0.05 
-                pd = comp[comp_key].power_density
 
-                # maximum power that flows to the motors (most likely takeoff)
-                P_req_tot = max((g.P_cruise_KW*(1+bt_charging_ratio)), g.P_climb_KW, g.P_reserve_KW, g.P_TO_KW)
-
-                # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
-                P_req_primary = max(g.P_cruise_KW*(1+bt_charging_ratio), g.P_TO_OEI_KW)
-                
-                # secondary power source requirement is to sustain TO 
-                P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
-                if comp_key == "gt_hex" or comp_key == "hts_gen" or comp_key == "ac_dc":
-                    mass = P_req_primary / pd
-                elif comp_key == "bt":
-                    energy_required_kWh = P_req_secondary * (g.t_climb / 3600)  # Convert seconds to hours
-                    ed = comp[comp_key].energy_density
-                    mass = max(energy_required_kWh / ed, P_req_secondary / pd)
-                elif comp_key == "dc_dc":
-                    mass = P_req_secondary / pd
-                elif comp_key == "dc_ac" or comp_key == "hts_pow":
-                    mass = P_req_tot / pd
-                elif comp_key == "cable":
-                    mass = length_values[1] * comp[comp_key].mass_per_length
+                if comp_key == "cable":
+                    mass = cable_len * comp[comp_key].mass_per_length
                 elif comp_key == "pipe":
-                    mass = length_values[0] * comp[comp_key].mass_per_length                
+                    mass = pipe_len * comp[comp_key].mass_per_length   
+                elif comp_key != "cable" and comp_key != "pipe":
+                    # 5% of cruise power but put this in some input file!
+                    bt_charging_ratio = 0.05 
+                    pd = comp[comp_key].power_density
+
+                    # maximum power that flows to the motors (most likely takeoff)
+                    P_req_tot = max((g.P_cruise_KW*(1+bt_charging_ratio)), g.P_climb_KW, g.P_reserve_KW, g.P_TO_KW)
+
+                    # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
+                    P_req_primary = max(g.P_cruise_KW*(1+bt_charging_ratio), g.P_TO_OEI_KW)
+                    
+                    # secondary power source requirement is to sustain TO 
+                    P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
+                    if comp_key == "gt_hex" or comp_key == "hts_gen" or comp_key == "ac_dc":
+                        mass = P_req_primary / pd
+                    elif comp_key == "bt":
+                        energy_required_kWh = P_req_secondary * (g.t_climb / 3600)  # Convert seconds to hours
+                        ed = comp[comp_key].energy_density
+                        mass = max(energy_required_kWh / ed, P_req_secondary / pd)
+                    elif comp_key == "dc_dc_2":
+                        mass = P_req_secondary / pd
+                    elif comp_key == "dc_ac" or comp_key == "hts_pow":
+                        mass = P_req_tot / pd           
                 total_mass += mass
 
             elif config == 2:
                 # Similar logic for config 2 but with fuel cell instead of gas turbine
-                # 5% of cruise power but put this in some input file!
-                bt_charging_ratio = 0.05 
-                pd = comp[comp_key].power_density
-                # maximum power that flows to the motors (most likely takeoff)
-                P_req_tot = max((g.P_cruise_KW*(1+bt_charging_ratio)), g.P_climb_KW, g.P_reserve_KW, g.P_TO_KW)
-                # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
-                P_req_primary = max(g.P_cruise_KW*(1+bt_charging_ratio), g.P_TO_OEI_KW)
-                # secondary power source requirement is to sustain TO 
-                P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
-                if comp_key == "fc_with_hex" or comp_key == "dc_dc_1":
-                    mass = P_req_primary / pd
-                elif comp_key == "bt":
-                    energy_required_kWh = P_req_secondary * (g.t_climb / 3600)  # Convert seconds to hours
-                    ed = comp[comp_key].energy_density
-                    mass = max(energy_required_kWh / ed, P_req_secondary / pd)
-                elif comp_key == "dc_dc_2":
-                    mass = P_req_secondary / pd
-                elif comp_key == "dc_ac" or comp_key == "hts_pow":
-                    mass = P_req_tot / pd
-                elif comp_key == "cable":
-                    mass = length_values[1] * comp[comp_key].mass_per_length
+                if comp_key == "cable":
+                    mass = cable_len * comp[comp_key].mass_per_length
                 elif comp_key == "pipe":
-                    mass = length_values[0] * comp[comp_key].mass_per_length 
+                    mass = pipe_len * comp[comp_key].mass_per_length   
+                elif comp_key != "cable" and comp_key != "pipe":
+                    # 5% of cruise power but put this in some input file!
+                    bt_charging_ratio = 0.05 
+                    pd = comp[comp_key].power_density
+                    # maximum power that flows to the motors (most likely takeoff)
+                    P_req_tot = max((g.P_cruise_KW*(1+bt_charging_ratio)), g.P_climb_KW, g.P_reserve_KW, g.P_TO_KW)
+                    # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
+                    P_req_primary = max(g.P_cruise_KW*(1+bt_charging_ratio), g.P_TO_OEI_KW)
+                    # secondary power source requirement is to sustain TO 
+                    P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
+                    if comp_key == "fc_with_hex" or comp_key == "dc_dc_1":
+                        mass = P_req_primary / pd
+                    elif comp_key == "bt":
+                        energy_required_kWh = P_req_secondary * (g.t_climb / 3600)  # Convert seconds to hours
+                        ed = comp[comp_key].energy_density
+                        mass = max(energy_required_kWh / ed, P_req_secondary / pd)
+                    elif comp_key == "dc_dc_2":
+                        mass = P_req_secondary / pd
+                    elif comp_key == "dc_ac" or comp_key == "hts_pow":
+                        mass = P_req_tot / pd
                 total_mass += mass
 
             
             elif config == 3:
                 # Similar logic for config 3 but with different component assignments
-                pd = comp[comp_key].power_density
-                # maximum power that flows to the motors (most likely takeoff)
-                P_req_tot = max((g.P_cruise_KW), g.P_climb_KW, g.P_reserve_KW, g.P_TO_KW)
-                # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
-                P_req_primary = max(g.P_cruise_KW/2, g.P_TO_OEI_KW,P_req_tot/2)
-                # secondary power source requirement is to sustain TO 
-                P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
-                if comp_key == "gt_hex" or comp_key == "ac_dc" or comp_key == "hts_gen" or comp_key == "hts_pow" or comp_key == "dc_ac":
-                    mass = P_req_primary / pd
-                elif comp_key == "cable":
-                    mass = length_values[1] * comp[comp_key].mass_per_length
+                if comp_key == "cable":
+                    mass = cable_len * comp[comp_key].mass_per_length
                 elif comp_key == "pipe":
-                    mass = length_values[0] * comp[comp_key].mass_per_length 
+                    mass = pipe_len * comp[comp_key].mass_per_length   
+                elif comp_key != "cable" and comp_key != "pipe":
+                    pd = comp[comp_key].power_density
+                    # maximum power that flows to the motors (most likely takeoff)
+                    P_req_tot = max((g.P_cruise_KW), g.P_climb_KW, g.P_reserve_KW, g.P_TO_KW)
+                    # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
+                    P_req_primary = max(g.P_cruise_KW/2, g.P_TO_OEI_KW,P_req_tot/2)
+                    # secondary power source requirement is to sustain TO 
+                    P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
+                    if comp_key == "gt_hex" or comp_key == "ac_dc" or comp_key == "hts_gen" or comp_key == "hts_pow" or comp_key == "dc_ac":
+                        mass = P_req_primary / pd
                 total_mass += mass
 
         return total_mass
