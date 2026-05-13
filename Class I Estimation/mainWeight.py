@@ -20,7 +20,6 @@ C_OE       = param.weight_parameters["C_OE_guess"]
 # )
 
 M_ff = param.calculate_mass_fraction()
-print(M_ff)
 
 def run_class_1_sizing():
     """Iteratively converges MTOW based on fuel and payload requirements."""
