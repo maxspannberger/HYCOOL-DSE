@@ -434,6 +434,7 @@ class weightEstimation:
         k_SC = 0.567 if g.has_flap_slat else 0.472
         return 1.2 * k_SC * g.MTOW ** (2 / 3)
 
+    
     def _propulsion_weight(self) -> float:
 
         #pipe lengths:
@@ -511,27 +512,40 @@ class weightEstimation:
                     pd = comp[comp_key].power_density
 
                     # maximum power that flows to the motors (most likely takeoff)
-                    P_req_tot = max((g.P_cruise_KW*(1+bt_charging_ratio)), g.P_climb_KW, g.P_reserve_KW, g.P_TO_KW)
+                    P_req_tot = max((g.P_cruise_KW*(1+bt_charging_ratio)), 
+                                    g.P_climb_KW, 
+                                    g.P_reserve_KW, 
+                                    g.P_TO_KW)
 
                     # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
-                    P_req_primary = max(g.P_cruise_KW*(1+bt_charging_ratio), g.P_TO_OEI_KW)
+                    P_req_primary = max(g.P_cruise_KW*(1+bt_charging_ratio), 
+                                        g.P_TO_OEI_KW)
                     
                     # secondary power source requirement is to sustain TO 
-                    P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
-                    if comp_key == "gt_hex" or comp_key == "hts_gen" or comp_key == "ac_dc":
-                        mass = P_req_primary/efficiency["GT-MOT-eff"] / pd
+                    P_req_secondary = max((g.P_TO_KW - P_req_primary), 
+                                          g.P_TO_OEI_KW)
+                    
+                    if comp_key == "gt_hex": #or comp_key == "hts_gen" or comp_key == "ac_dc":
+                        mass = P_req_primary / pd
                         if comp_key == "gt_hex":
                             W_primary = mass
+                    elif comp_key == "hts_gen":
+                        mass = P_req_primary / pd
+                    elif comp_key == "ac_dc":
+                        mass = P_req_primary / pd
                     elif comp_key == "bt":
-                        energy_required_kWh = P_req_secondary/efficiency["BAT-MOT_eff"] * (g.t_climb / 3600)  # Convert seconds to hours
+                        energy_required_kWh = P_req_secondary * (g.t_climb / 3600)  # Convert seconds to hours
                         ed = comp[comp_key].energy_density
-                        mass = max(energy_required_kWh / ed, P_req_secondary/efficiency["BAT-MOT_eff"] / pd)
+                        mass = max(energy_required_kWh / ed, P_req_secondary / pd)
                         W_secondary = mass
                     elif comp_key == "dc_dc_2":
-                        mass = P_req_secondary/efficiency["BAT-MOT_eff"] / pd
-                    elif comp_key == "dc_ac" or comp_key == "hts_pow":
+                        mass = P_req_secondary / pd
+                    elif comp_key == "dc_ac": #or comp_key == "hts_pow":
                         max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
-                        mass = max_P_per_string / pd      
+                        mass = max_P_per_string / pd     
+                    elif comp_key == "hts_pow":
+                        max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
+                        mass = max_P_per_string / pd  
                 total_mass += mass
                 eff=efficiency["Total_eff"]
 
@@ -545,16 +559,27 @@ class weightEstimation:
                     # 5% of cruise power but put this in some input file!
                     bt_charging_ratio = 0.05 
                     pd = comp[comp_key].power_density
+
                     # maximum power that flows to the motors (most likely takeoff)
-                    P_req_tot = max((g.P_cruise_KW*(1+bt_charging_ratio)), g.P_climb_KW, g.P_reserve_KW, g.P_TO_KW)
+                    P_req_tot = max((g.P_cruise_KW*(1+bt_charging_ratio)), 
+                                    g.P_climb_KW, 
+                                    g.P_reserve_KW, 
+                                    g.P_TO_KW)
+
                     # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
-                    P_req_primary = max(g.P_cruise_KW*(1+bt_charging_ratio), g.P_TO_OEI_KW)
+                    P_req_primary = max(g.P_cruise_KW*(1+bt_charging_ratio), 
+                                        g.P_TO_OEI_KW)
+
                     # secondary power source requirement is to sustain TO 
-                    P_req_secondary = max((g.P_TO_KW - P_req_primary), (g.P_TO_OEI_KW-(1/2)*P_req_primary))
-                    if comp_key == "fc_with_hex" or comp_key == "dc_dc_1":
+                    P_req_secondary = max((g.P_TO_KW - P_req_primary), 
+                                          (g.P_TO_OEI_KW-(1/2)*P_req_primary))
+                    
+                    if comp_key == "fc_with_hex": #or comp_key == "dc_dc_1":
                         mass = P_req_primary / pd
                         if comp_key == "fc_with_hex":
                             W_primary = mass
+                    elif comp_key == "dc_dc_1":
+                        mass = P_req_primary / pd
                     elif comp_key == "bt":
                         energy_required_kWh = P_req_secondary * (g.t_climb / 3600)  # Convert seconds to hours
                         ed = comp[comp_key].energy_density
@@ -562,7 +587,10 @@ class weightEstimation:
                         W_secondary = mass
                     elif comp_key == "dc_dc_2":
                         mass = P_req_secondary / pd
-                    elif comp_key == "dc_ac" or comp_key == "hts_pow":
+                    elif comp_key == "dc_ac": #or comp_key == "hts_pow":
+                        max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
+                        mass = max_P_per_string / pd
+                    elif comp_key == "hts_pow":
                         max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
                         mass = max_P_per_string / pd
                 total_mass += mass
@@ -579,16 +607,33 @@ class weightEstimation:
                 elif comp_key != "cable" and comp_key != "pipe":
                     pd = comp[comp_key].power_density
                     # maximum power that flows to the motors (most likely takeoff)
-                    P_req_tot = max((g.P_cruise_KW), g.P_climb_KW, g.P_reserve_KW, g.P_TO_KW)
+                    P_req_tot = max((g.P_cruise_KW), 
+                                    g.P_climb_KW, 
+                                    g.P_reserve_KW, 
+                                    g.P_TO_KW)
+
                     # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
-                    P_req_primary = max(g.P_cruise_KW/2, g.P_TO_OEI_KW,P_req_tot/2)
+                    P_req_primary = max(g.P_cruise_KW/2, 
+                                        g.P_TO_OEI_KW,
+                                        P_req_tot/2)
+
                     # secondary power source requirement is to sustain TO 
-                    P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
-                    if comp_key == "gt_hex" or comp_key == "ac_dc" or comp_key == "hts_gen" or comp_key == "hts_pow" or comp_key == "dc_ac":
+                    P_req_secondary = max((g.P_TO_KW - P_req_primary), 
+                                          g.P_TO_OEI_KW)
+                    
+                    if comp_key == "gt_hex": #or comp_key == "ac_dc" or comp_key == "hts_gen" or comp_key == "hts_pow" or comp_key == "dc_ac":
                         mass = P_req_primary / pd
                         if comp_key == "gt_hex":
                             W_primary = mass
                             W_secondary = mass
+                    elif comp_key == "ac_dc":
+                        mass = P_req_primary / pd
+                    elif comp_key == "hts_gen":
+                        mass = P_req_primary / pd
+                    elif comp_key == "hts_pow":
+                        mass = P_req_primary / pd
+                    elif comp_key == "dc_ac":
+                        mass = P_req_primary / pd
                 total_mass += mass
                 efficiency=GT_GT_efficiency()
                 eff=efficiency["Total_eff"]
