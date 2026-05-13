@@ -39,16 +39,16 @@ def return_wanted_params():
     P_climb = get_param('P_climb_shaft')       
     P_cruise = get_param('P_cruise_shaft')
 
-    excess_P_climb = P_climb/P_cruise
-
-    return t_climb, t_cruise, P_climb, P_cruise, excess_P_climb
+    return t_climb, t_cruise, P_climb, P_cruise
 
 
 # =============================================================================
 # Gas Turbine + Battery powertrain
 # =============================================================================
 def GT_BAT_efficiency(t_charge=1800, cable_efficiency=1.0, show=False):
-    t_climb, t_cruise, _, _, excess_P_climb = return_wanted_params()
+    t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
+
+    excess_P_climb = P_climb/P_cruise
 
     # Efficiency of power from gas turbine to motor
     gt_eff = (
@@ -85,29 +85,41 @@ def GT_BAT_efficiency(t_charge=1800, cable_efficiency=1.0, show=False):
 
     # cruising efficiency
     cruise_eff_c = (1-bt_c_frac)*gt_eff + bt_c_frac*bt_eff_c
-    cruise_eff_d = gt_eff
+    cruise_eff_full = gt_eff
+
+    # component powers
+    P_gt = P_cruise / (gt_eff * (1 - bt_c_frac))
+    P_bt_discharge = 1/bt_eff_d * (P_climb - P_cruise / (1 - bt_c_frac))
+    P_bt_charge = bt_eff_c/gt_eff * bt_c_frac/(1-bt_c_frac) * P_cruise
+
+    # required energies
+    E_climb = P_climb * t_climb
+    E_cruise_c = (P_cruise + P_bt_charge) * t_charge
+    E_cruise_full = P_cruise * (t_cruise - t_charge)
 
     # total energy efficiency over a flight
-    gt_bt_eff = (t_climb * climb_eff + t_charge * cruise_eff_c + (t_cruise - t_charge) * cruise_eff_d) / (t_climb + t_cruise)
+    gt_bt_eff = (E_climb * climb_eff + E_cruise_c * cruise_eff_c + E_cruise_full * cruise_eff_full) / (E_climb + E_cruise_c + E_cruise_full)
 
     if show:
         print("\nGT+BAT")
         print(f"Best charging power fraction: {bt_c_frac}")
         print(f"Climb efficiency: {climb_eff}")
         print(f"Cruise efficiency while charging: {cruise_eff_c}")
-        print(f"Cruise efficiency while not charging: {cruise_eff_d}")
+        print(f"Cruise efficiency while not charging: {cruise_eff_full}")
         print(f"Total efficiency: {gt_bt_eff}")
 
-    return gt_bt_eff
+    return gt_bt_eff, P_gt, climb_eff, P_bt_discharge, bt_eff_d
 
 
 # =============================================================================
 # Fuel Cell + Battery powertrain
 # =============================================================================
 def FC_BAT_efficiency(t_charge=1800, cable_efficiency=1.0, show=False):
-    t_climb, t_cruise, _, _, excess_P_climb = return_wanted_params()
+    t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
 
-    # Efficiency of power from gas turbine to motor
+    excess_P_climb = P_climb/P_cruise
+
+    # Efficiency of power from fuel cell to motor
     fc_eff = (
         c["fc_with_hex"].efficiency 
         * c["dc_dc_1"].efficiency
@@ -116,7 +128,7 @@ def FC_BAT_efficiency(t_charge=1800, cable_efficiency=1.0, show=False):
         * cable_efficiency
     )
 
-    # Efficiency of power from gas turbine to battery (charge)
+    # Efficiency of power from fuel cell to battery (charge)
     bt_eff_c = (
         c["fc_with_hex"].efficiency 
         * c["dc_dc_1"].efficiency
@@ -141,27 +153,39 @@ def FC_BAT_efficiency(t_charge=1800, cable_efficiency=1.0, show=False):
 
     # cruising efficiency
     cruise_eff_c = (1-bt_c_frac)*fc_eff + bt_c_frac*bt_eff_c
-    cruise_eff_d = fc_eff
+    cruise_eff_full = fc_eff
+
+    # component powers
+    P_fc = P_cruise / (fc_eff * (1 - bt_c_frac))
+    P_bt_discharge = 1/bt_eff_d * (P_climb - P_cruise / (1 - bt_c_frac))
+    P_bt_charge = bt_eff_c/fc_eff * bt_c_frac/(1-bt_c_frac) * P_cruise
+
+    # required energies
+    E_climb = P_climb * t_climb
+    E_cruise_c = (P_cruise + P_bt_charge) * t_charge
+    E_cruise_full = P_cruise * (t_cruise - t_charge)
 
     # total energy efficiency over a flight
-    fc_bt_eff = (t_climb * climb_eff + t_charge * cruise_eff_c + (t_cruise - t_charge) * cruise_eff_d) / (t_climb + t_cruise)
+    fc_bt_eff = (E_climb * climb_eff + E_cruise_c * cruise_eff_c + E_cruise_full * cruise_eff_full) / (E_climb + E_cruise_c + E_cruise_full)
 
     if show:
         print("\nFC+BAT")
         print(f"Best charging power fraction: {bt_c_frac}")
         print(f"Climb efficiency: {climb_eff}")
         print(f"Cruise efficiency while charging: {cruise_eff_c}")
-        print(f"Cruise efficiency while not charging: {cruise_eff_d}")
+        print(f"Cruise efficiency while not charging: {cruise_eff_full}")
         print(f"Total efficiency: {fc_bt_eff}")
 
-    return fc_bt_eff
+    return fc_bt_eff, P_fc, climb_eff, P_bt_discharge, bt_eff_d
 
 
 # =============================================================================
 # Gass Turbine + Gas Turbine powertrain
 # =============================================================================
 def GT_GT_efficiency(cable_efficiency=1.0, show=False):
-    t_climb, t_cruise, _, _, excess_P_climb = return_wanted_params()
+    t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
+
+    excess_P_climb = P_climb/P_cruise
 
     # Efficiency of power from gas turbine to motor
     gt_eff = (
@@ -173,7 +197,7 @@ def GT_GT_efficiency(cable_efficiency=1.0, show=False):
         * cable_efficiency
     )
 
-    gt_eff_climb = gt_eff
+    climb_eff = gt_eff
 
     # efficiency = max_efficiency * (a*throttle^2 + b*throttle + d)
     a = -0.6
@@ -181,34 +205,36 @@ def GT_GT_efficiency(cable_efficiency=1.0, show=False):
     d = 0.4
     cruise_throttle = 1/excess_P_climb * (1 - (a + b*excess_P_climb + (d-1)*excess_P_climb**2) /
                                           (3*a + 2*b*excess_P_climb + d*excess_P_climb**2))
-    gt_eff_cruise = gt_eff * (a*cruise_throttle**2 + b*cruise_throttle + d)
+    cruise_eff = gt_eff * (a*cruise_throttle**2 + b*cruise_throttle + d)
+
+    # TODO: make optimization for the optimal power of the turbine.
+    # For now, the climb one is used but it would make more sense to have it somewhere in between climb and cruise
+    P_gt_climb = P_climb / (2 * gt_eff)
+    P_gt_cruise = cruise_throttle * P_gt_climb
+
+    E_climb = P_climb * t_climb
+    E_cruise = P_cruise * t_cruise
     
     # total energy efficiency over a flight
-    gt_gt_eff = (t_climb * gt_eff_climb + t_cruise * gt_eff_cruise) / (t_climb + t_cruise)
+    gt_gt_eff = (E_climb * climb_eff + E_cruise * cruise_eff) / (E_climb + E_cruise)
 
     if show:
         print("\nGT+GT")
         print(f"Cruise throttle: {cruise_throttle}")
-        print(f"Climb efficiency: {gt_eff_climb}")
-        print(f"Cruise efficiency: {gt_eff_cruise}")
+        print(f"Climb efficiency: {climb_eff}")
+        print(f"Cruise efficiency: {cruise_eff}")
         print(f"Total efficiency: {gt_gt_eff}")
 
-    return gt_gt_eff
+    return gt_gt_eff, P_gt_climb, climb_eff, P_gt_cruise, cruise_eff
 
 
 # =============================================================================
 # Gas Turbine + Fuel Cell powertrain
 # =============================================================================
 def GT_FC_efficiency(cable_efficiency, show):
-    t_climb, t_cruise, P_climb, P_cruise, excess_P_climb = return_wanted_params()
-    
-    fc_eff = (
-        c["fc_with_hex"].efficiency 
-        * c["dc_dc_1"].efficiency
-        * c["dc_ac"].efficiency
-        * c["hts_pow"].efficiency
-        * cable_efficiency
-    )
+    t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
+
+    # Efficiency of power from gas turbine to motor
     gt_eff = (
         c["gt"].efficiency 
         * c["hts_gen"].efficiency 
@@ -217,7 +243,16 @@ def GT_FC_efficiency(cable_efficiency, show):
         * c["hts_pow"].efficiency
         * cable_efficiency
     )
-    
+
+    # Efficiency of power from fuel cell to motor
+    fc_eff = (
+        c["fc_with_hex"].efficiency 
+        * c["dc_dc_1"].efficiency
+        * c["dc_ac"].efficiency
+        * c["hts_pow"].efficiency
+        * cable_efficiency
+    )
+
     # Calculate power of gas turbine and fuel cell, assuming that the gas
     # turbine provides all cruise power and fuel cell provides excess climb power
     P_gt = P_cruise / gt_eff
@@ -242,7 +277,7 @@ def GT_FC_efficiency(cable_efficiency, show):
         print(f"Cruise efficiency: {cruise_eff}")
         print(f"Total efficiency: {gt_fc_eff}")
 
-    return gt_fc_eff
+    return gt_fc_eff, P_gt, gt_eff, P_fc, fc_eff
 
 
 
