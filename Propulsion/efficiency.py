@@ -65,13 +65,13 @@ def GT_BAT_efficiency(t_charge=1800, cable_efficiency=1.0, show=False):
         c["gt"].efficiency 
         * c["ac_dc"].efficiency 
         * c["dc_dc_2"].efficiency
-        # * c["bt"].efficiency
+        * np.sqrt(c["bt"].efficiency)
         * cable_efficiency
     )
 
     # Efficiency of power from battery to motor (discharge)
     bt_eff_d = (
-        c["bt"].efficiency
+        np.sqrt(c["bt"].efficiency)
         * c["dc_dc_2"].efficiency
         * c["dc_ac"].efficiency 
         * c["hts_pow"].efficiency
@@ -133,13 +133,13 @@ def FC_BAT_efficiency(t_charge=1800, cable_efficiency=1.0, show=False):
         c["fc_with_hex"].efficiency 
         * c["dc_dc_1"].efficiency
         * c["dc_dc_2"].efficiency
-        # * c["bt"].efficiency
+        * np.sqrt(c["bt"].efficiency)
         * cable_efficiency
     )
 
     # Efficiency of power from battery to motor (discharge)
     bt_eff_d = (
-        c["bt"].efficiency
+        np.sqrt(c["bt"].efficiency)
         * c["dc_dc_2"].efficiency
         * c["dc_ac"].efficiency 
         * c["hts_pow"].efficiency
