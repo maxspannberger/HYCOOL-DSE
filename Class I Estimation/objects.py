@@ -106,16 +106,13 @@ class MatchingDiagram:
     def calculate_matching(self, atm: Atmosphere):
         
         # 1. Cruise Speed Requirement (ADSEE 154)
-        #W_P_cruise = (self.eta_prop / self.beta['beta_cruise']) / (((self.CD0 * 0.5 * self.density_cruise * np.power(self.V_cr, 3))/(self.beta['beta_cruise'] * self.W_S)) + ((self.beta['beta_cruise'] * (self.W_S)) / (np.pi * self.A * self.e * 0.5 * self.density_cruise * self.V_cr)))
         W_P_cruise = self.eta_prop * ((self.density_cruise/self.density_SLS)**(3/4) / self.beta['beta_cruise']) * ((self.CD0 * 0.5 * self.density_cruise * (self.V_cr ** 3))/(self.beta['beta_cruise'] * self.W_S) + (self.beta['beta_cruise'] * self.W_S) / (np.pi * self.A * self.e * 0.5 * self.density_cruise * self.V_cr))**(-1)
 
         # 2. Take-off Distance Requirement (ADSEE 176)
         self.CL2 = 0.694 * self.lift_coefficients['CL_max_TO']
-        #W_P_TO = (1 / (1.15 * np.sqrt((self.Ne / (self.Ne - 1)) * (self.W_S / (self.TO * self.density_cruise * self.kT * self.g * self.A * self.e))) + (self.Ne / (self.Ne - 1)) * (4 * self.h2 / self.TO))) * np.sqrt((self.CL2 / self.W_S) * (self.density_SLS / 2))
         W_P_TO = (1.15 * np.sqrt(self.Ne/(self.Ne - 1) * self.W_S / (self.TO * self.kT * self.density_TO * self.g * np.pi * self.A * self.e)) + self.Ne/(self.Ne - 1) * 4 * self.h2/self.TO)**(-1) * np.sqrt(self.CL2 / self.W_S * self.density_TO / 2)
 
         # 3. Landing Distance Requirement (ADSEE 152)
-        #W_S_land = (1 / self.beta['beta_landing']) * (self.LFL/self.CLFL) * (self.density_SLS / 2) * self.lift_coefficients['CL_max_L']# Adjust for landing beta factor
         W_S_land = (1 / self.beta['beta_landing']) * (self.LFL/self.CLFL) * (self.density_SLS * self.lift_coefficients['CL_max_L']) / 2
 
         # 4. Minimum Speed Requirement (ADSEE 166)
