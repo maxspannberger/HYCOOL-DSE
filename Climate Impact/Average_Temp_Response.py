@@ -70,7 +70,7 @@ E_total = E_climb + E_cruise
 
 # =============================================================================
 
-lhv = 119930 # kJ/kg, lower heating value of Hydrogen [standard property]
+lhv = 119930000 # J/kg, lower heating value of Hydrogen [standard property]
 energies = {
     'cruise': E_cruise ,
     'climb': E_climb , 
