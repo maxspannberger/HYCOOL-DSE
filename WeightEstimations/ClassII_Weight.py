@@ -647,23 +647,36 @@ class weightEstimation:
                 elif comp_key != "cable" and comp_key != "pipe":
                     pd = comp[comp_key].power_density
                     # maximum power that flows to the motors (most likely takeoff)
-                    P_req_tot = max(g.P_cruise_KW, g.P_climb_KW, g.P_reserve_KW, g.P_TO_KW)
-                    
+                    P_req_tot = max(g.P_cruise_KW, 
+                                    g.P_climb_KW, 
+                                    g.P_reserve_KW, 
+                                    g.P_TO_KW)
                     
                     # primary power source requirement is cruise power or OEI scenario, GT's together must suffice in both situations
                     P_req_secondary = g.P_TO_OEI_KW
-                    P_req_primary = max(g.P_cruise_KW-P_req_secondary, g.P_TO_OEI_KW,P_req_tot - P_req_secondary)
+                    P_req_primary = max(g.P_cruise_KW-P_req_secondary, 
+                                        g.P_TO_OEI_KW,P_req_tot - P_req_secondary)
+                    
                     # secondary power source requirement is to sustain TO 
                     #P_req_secondary = max((P_req_tot - P_req_primary), (g.P_TO_OEI_KW-(1/2)*P_req_primary))
-                    if comp_key == "gt_hex" or comp_key == "hts_gen" or comp_key == "ac_dc":
+                    if comp_key == "gt_hex": #or comp_key == "hts_gen" or comp_key == "ac_dc":
                         mass = (P_req_primary/2) / pd
                         if comp_key == "gt_hex":
                             W_primary = mass*2
-                    elif comp_key == "fc_with_hex" or comp_key == "dc_dc_2":
+                    elif comp_key == "hts_gen":
+                        mass = (P_req_primary/2) / pd
+                    elif comp_key == "ac_dc":
+                        mass = (P_req_primary/2) / pd
+                    elif comp_key == "fc_with_hex": #or comp_key == "dc_dc_2":
                         mass = P_req_secondary / pd
                         if comp_key == "fc_with_hex":
                             W_secondary = mass
-                    elif comp_key == "dc_ac" or comp_key == "hts_pow":
+                    elif comp_key == "dc_dc_2":
+                        mass = P_req_secondary / pd
+                    elif comp_key == "dc_ac": #or comp_key == "hts_pow":
+                        max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
+                        mass = max_P_per_string / pd
+                    elif comp_key == "hts_pow":
                         max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
                         mass = max_P_per_string / pd
                 total_mass += mass
