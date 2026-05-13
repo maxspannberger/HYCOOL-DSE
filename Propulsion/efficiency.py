@@ -116,17 +116,23 @@ def GT_BAT_efficiency(t_charge=1800, cable_efficiency=1.0, show=False):
 
     bt_c_frac =  (excess_P_climb - 1) / (excess_P_climb + bt_eff_c*bt_eff_d/gt_eff * t_charge/t_climb)
 
-    # climbing efficiency
-    climb_eff = excess_P_climb / (1/bt_eff_d + 1/(1-bt_c_frac) * (1/gt_eff - excess_P_climb/bt_eff_d))
-
-    # cruising efficiency
-    cruise_eff_c = (1-bt_c_frac)*gt_eff + bt_c_frac*bt_eff_c
-    cruise_eff_full = gt_eff
+    P_optimal_out = binary_power_search(P_climb, P_cruise, t_climb+t_charge, t_cruise-t_charge)
+    climb_throttle, climb_eff_factor = get_throttle(P_optimal_out/P_climb)
+    cruise_throttle, cruise_eff_factor = get_throttle(P_optimal_out/P_cruise)
 
     # component powers
-    P_gt = P_cruise / (gt_eff * (1 - bt_c_frac))
     P_bt_discharge = 1/bt_eff_d * (P_climb - P_cruise / (1 - bt_c_frac))
     P_bt_charge = bt_eff_c/gt_eff * bt_c_frac/(1-bt_c_frac) * P_cruise
+    P_optimal_gt = P_optimal_out / (gt_eff * (1 - bt_c_frac))
+    P_gt_climb = climb_throttle * P_optimal_gt
+    P_gt_cruise = cruise_throttle * P_optimal_gt
+
+    # climbing efficiency
+    climb_eff = excess_P_climb / (1/bt_eff_d + 1/(1-bt_c_frac) * (1/(gt_eff*climb_eff_factor) - excess_P_climb/bt_eff_d))
+
+    # cruising efficiency
+    cruise_eff_c = (1-bt_c_frac)*gt_eff*climb_eff_factor + bt_c_frac*bt_eff_c
+    cruise_eff_full = gt_eff*cruise_eff_factor
 
     # required energies
     E_climb = P_climb * t_climb
@@ -139,12 +145,14 @@ def GT_BAT_efficiency(t_charge=1800, cable_efficiency=1.0, show=False):
     if show:
         print("\nGT+BAT")
         print(f"Best charging power fraction: {bt_c_frac}")
+        print(f"Climb throttle: {climb_throttle}")
+        print(f"Cruise throttle: {cruise_throttle}")
         print(f"Climb efficiency: {climb_eff}")
         print(f"Cruise efficiency while charging: {cruise_eff_c}")
         print(f"Cruise efficiency while not charging: {cruise_eff_full}")
         print(f"Total efficiency: {gt_bt_eff}")
 
-    return gt_bt_eff, P_gt, climb_eff, P_bt_discharge, bt_eff_d
+    return gt_bt_eff, P_gt_climb, climb_eff, P_gt_cruise, cruise_eff_c, P_bt_discharge, bt_eff_d
 
 
 # =============================================================================
