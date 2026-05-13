@@ -65,14 +65,14 @@ EFFICIENCY_MAP = {
 
 # Electrical system loss fractions by source.  When electrical power is
 # transmitted, a fraction of the power is lost as heat.  Gas turbine‑derived
-# power incurs a 3.13 % penalty, whereas fuel cell or battery power incurs
-# only a 1.83 % penalty.  When both gas turbines and other sources are
+# power incurs a 2.38 % penalty, whereas fuel cell or battery power incurs
+# only a 1.72 % penalty.  When both gas turbines and other sources are
 # present, the penalty applies per source (i.e. gas turbine output is
-# penalised at 3.13 % and the remainder at 1.83 %).
+# penalised at 2.38 % and the remainder at 1.72 %).
 PENALTY_MAP = {
-    "gt": 0.0313,
-    "fc": 0.0183,
-    "bat": 0.0183,
+    "gt": 0.0238,
+    "fc": 0.0172,
+    "bat": 0.0172,
 }
 
 
