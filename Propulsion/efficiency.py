@@ -2,11 +2,8 @@ import sys
 from pathlib import Path
 from pprint import pprint
 import pandas as pd
-<<<<<<< HEAD
-=======
 import numpy as np
 from matplotlib import pyplot as plt
->>>>>>> de8da238cd18af0e61728c3100155996387a0f39
 
 root = Path(__file__).resolve().parent.parent
 sys.path.append(str(root))
@@ -46,7 +43,7 @@ def return_wanted_params():
 
     excess_P_climb = P_climb/P_cruise
 
-    return t_climb, t_cruise, excess_P_climb
+    return t_climb, t_cruise, P_climb, P_cruise, excess_P_climb
 
 
 
@@ -54,7 +51,7 @@ def return_wanted_params():
 # Gas Turbine + Battery powertrain
 # =============================================================================
 def GT_BAT_efficiency(t_charge=1800, cable_efficiency=1.0, show=False):
-    t_climb, t_cruise, excess_P_climb = return_wanted_params()
+    t_climb, t_cruise, _, _, excess_P_climb = return_wanted_params()
 
     # Efficiency of power from gas turbine to motor
     gt_eff = (
@@ -111,7 +108,7 @@ def GT_BAT_efficiency(t_charge=1800, cable_efficiency=1.0, show=False):
 # Gas Turbine + Battery powertrain
 # =============================================================================
 def FC_BAT_efficiency(t_charge=1800, cable_efficiency=1.0, show=False):
-    t_climb, t_cruise, excess_P_climb = return_wanted_params()
+    t_climb, t_cruise, _, _, excess_P_climb = return_wanted_params()
 
     # Efficiency of power from gas turbine to motor
     fc_eff = (
@@ -162,6 +159,53 @@ def FC_BAT_efficiency(t_charge=1800, cable_efficiency=1.0, show=False):
 
     return fc_bt_eff
 
+# =============================================================================
+# Gas Turbine + Fuel Cell powertrain
+# =============================================================================
+def GT_FC_efficiency(cable_efficiency, show):
+    t_climb, t_cruise, P_climb, P_cruise, excess_P_climb = return_wanted_params()
+    
+    fc_eff = (
+        c["fc_with_hex"].efficiency 
+        * c["dc_dc_1"].efficiency
+        * c["dc_ac"].efficiency
+        * c["hts_pow"].efficiency
+        * cable_efficiency
+    )
+    gt_eff = (
+        c["gt"].efficiency 
+        * c["hts_gen"].efficiency 
+        * c["ac_dc"].efficiency 
+        * c["dc_ac"].efficiency
+        * c["hts_pow"].efficiency
+        * cable_efficiency
+    )
+    
+    # Calculate power of gas turbine and fuel cell, assuming that the gas
+    # turbine provides all cruise power and fuel cell provides excess climb power
+    P_gt = P_cruise / gt_eff
+    P_fc = (P_climb - P_cruise) / fc_eff
+    
+    # Calculate energy input and outputs for flight phases
+    E_out_cruise = P_cruise * t_cruise
+    E_out_climb = P_climb * t_climb
+    E_in_cruise = P_gt * t_cruise
+    E_in_climb = (P_gt + P_fc) * t_climb
+    
+    # Energy efficiency for cruise and climb
+    cruise_eff = E_out_cruise / E_in_cruise
+    climb_eff = E_out_climb / E_in_climb
+    
+    # Total energy efficiency over a flight
+    gt_fc_eff = (E_out_climb + E_out_cruise) / (E_in_climb + E_in_cruise)
+    
+    if show:
+        print("\nGT+FC")
+        print(f"Climb efficiency: {climb_eff}")
+        print(f"Cruise efficiency: {cruise_eff}")
+        print(f"Total efficiency: {gt_fc_eff}")
+
+    return gt_fc_eff
 
 
 if __name__ == "__main__":
@@ -170,6 +214,7 @@ if __name__ == "__main__":
 
     GT_BAT_efficiency(t_charge=t_charge, cable_efficiency=cable_efficiency, show=True)
     FC_BAT_efficiency(t_charge=t_charge, cable_efficiency=cable_efficiency, show=True)
+    GT_FC_efficiency(cable_efficiency=cable_efficiency, show=True)
 
     # gt_bt_eff = []
     # t_charge_range = np.linspace(0, 4826.25, 1000)
