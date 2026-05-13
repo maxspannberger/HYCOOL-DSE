@@ -384,33 +384,45 @@ class weightEstimation:
         return 1.2 * k_SC * g.MTOW ** (2 / 3)
 
     def _propulsion_weight(self) -> float:
+
+        #pipe lengths:
+        #design A: 82 meters of pipe
+        #design B: 34 meters of pipe
+        #design C: 34 meters of pipe
+        #design D: 48 meters of pipe
+
+        #cable lengths:             #approximated by fuselage length of about 35 meters and wing span of about 28 meters,
+                                    #with HTS placed at quarter span
+        
+        #design A: 36.5 meters of cryo cable      #cable from GT to wing = 1/2 fuselage length + 1/4 wing span + 1/4 wing span, cable from wing to HTS = 1/4 wing span, Battery distance to HTS with 5 meters in total estimated for routing and connections
+        #design B: 19 meters of cryo cable      #cable from Battery to wing = 1/4 wing span + 1/4 wing span, Fuel cell distance to HTS with 5 meters in total estimated for routing and connections
+        #design C: 5 meters of cryo cable     #Turbine distance to HTS with 5 meters in total estimated for routing and connections
+        #design D: 19 meters of cryo cable     #cable from Fuel Cell to wing = 1/4 wing span + 1/4 wing span, Turbine distance to HTS with 5 meters in total estimated for routing and connections
+
         g     = self.g
         comp = self.comp
         config = g.configuration
 
         component_lists = {
             1: ["gt_hex", "bt", "hts_gen", "ac_dc", "dc_dc", "dc_ac",
-                "hts_pow", "hts_pow", "cable", "pipe"],
+                "hts_pow", "hts_pow", "cable", "pipe"][82,36.5],
 
             2: ["fc_with_hex", "hex_fc", "bt", "dc_dc_1", "dc_dc_2", "dc_ac",
-                "hts_pow", "hts_pow", "cable", "pipe"],
+                "hts_pow", "hts_pow", "cable", "pipe"][34,19],
 
             3: ["gt_hex", "gt_hex", "hts_gen", "hts_gen", "ac_dc", "ac_dc",
-                "dc_ac", "dc_ac", "hts_pow", "hts_pow", "cable", "pipe"],
+                "dc_ac", "dc_ac", "hts_pow", "hts_pow", "cable", "pipe"][34,5],
 
             4: ["gt_hex", "gt_hex", "hts_gen", "hts_gen", "fc_with_hex", "ac_dc", "ac_dc",
-                "dc_dc_2", "dc_ac", "dc_ac", "hts_pow", "hts_pow", "cable", "pipe"],
+                "dc_dc_2", "dc_ac", "dc_ac", "hts_pow", "hts_pow", "cable", "pipe"][48,19],
         }
 
         if config not in component_lists:
             raise ValueError(f"Unknown configuration: {config}")
-        
-            # Compute total mass: convert P (MW) -> kW, mass = P_kW / power_density (kW/kg)
-            # P_req_MW = cfg.mission.P_climb_shaft / 1e6
-            # P_req_kW = P_req_MW * 1000.0
 
-        component_list = component_lists[config]
 
+        component_list = component_lists[config][0]
+        length_values = component_lists[config][1]
         total_mass = 0.0
 
         for comp_key in component_list:
@@ -439,7 +451,10 @@ class weightEstimation:
                     mass = P_req_secondary / pd
                 elif comp_key == "dc_ac" or comp_key == "hts_pow":
                     mass = P_req_tot / pd
-                                 
+                elif comp_key == "cable":
+                    mass = length_values[1] * comp[comp_key].mass_per_length
+                elif comp_key == "pipe":
+                    mass = length_values[0] * comp[comp_key].mass_per_length                
                 total_mass += mass
 
             elif config == 2:
@@ -463,30 +478,28 @@ class weightEstimation:
                     mass = P_req_secondary / pd
                 elif comp_key == "dc_ac" or comp_key == "hts_pow":
                     mass = P_req_tot / pd
+                elif comp_key == "cable":
+                    mass = length_values[1] * comp[comp_key].mass_per_length
+                elif comp_key == "pipe":
+                    mass = length_values[0] * comp[comp_key].mass_per_length 
                 total_mass += mass
 
             
             elif config == 3:
                 # Similar logic for config 3 but with different component assignments
-                # 5% of cruise power but put this in some input file!
-                bt_charging_ratio = 0.05 
                 pd = comp[comp_key].power_density
                 # maximum power that flows to the motors (most likely takeoff)
-                P_req_tot = max((g.P_cruise_KW*(1+bt_charging_ratio)), g.P_climb_KW, g.P_reserve_KW, g.P_TO_KW)
+                P_req_tot = max((g.P_cruise_KW), g.P_climb_KW, g.P_reserve_KW, g.P_TO_KW)
                 # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
-                P_req_primary = max(g.P_cruise_KW*(1+bt_charging_ratio), g.P_TO_OEI_KW)
+                P_req_primary = max(g.P_cruise_KW/2, g.P_TO_OEI_KW,P_req_tot/2)
                 # secondary power source requirement is to sustain TO 
                 P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
-                if comp_key == "fc_with_hex" or comp_key == "dc_dc_1":
+                if comp_key == "gt_hex" or comp_key == "ac_dc" or comp_key == "hts_gen" or comp_key == "hts_pow" or comp_key == "dc_ac":
                     mass = P_req_primary / pd
-                elif comp_key == "bt":
-                    energy_required_kWh = P_req_secondary * (g.t_climb / 3600)  # Convert seconds to hours
-                    ed = comp[comp_key].energy_density
-                    mass = max(energy_required_kWh / ed, P_req_secondary / pd)
-                elif comp_key == "dc_dc_2":
-                    mass = P_req_secondary / pd
-                elif comp_key == "dc_ac":
-                    mass = P_req_tot / pd
+                elif comp_key == "cable":
+                    mass = length_values[1] * comp[comp_key].mass_per_length
+                elif comp_key == "pipe":
+                    mass = length_values[0] * comp[comp_key].mass_per_length 
                 total_mass += mass
 
             elif config == 4:
@@ -516,11 +529,8 @@ class weightEstimation:
         self._validate()
         g = self.g
 
-        turbine_weight   = g.P_TO_KW / g.rho_turb
-        generator_weight = g.P_TO_KW / g.rho_HTS
-        motor_weight     = g.P_TO_KW / g.rho_HTS
         h2_tank_weight   = self._h2_tank_weight()
-        W_engine_total   = turbine_weight + generator_weight + motor_weight + h2_tank_weight
+        W_engine_total   = self._propulsion_weight()
 
         return WeightBreakdown(
             W_wing   = self._wing_weight(),
@@ -532,14 +542,9 @@ class weightEstimation:
             W_engine = W_engine_total,
 
             # Propulsion detail
-            W_turbine   = turbine_weight,
-            W_generator = generator_weight,
-            W_motor     = motor_weight,
             W_h2_tank   = h2_tank_weight,
 
             # For display in summary
-            rho_turb     = g.rho_turb,
-            rho_HTS      = g.rho_HTS,
             grav_density = g.grav_density,
             P_TO_KW      = g.P_TO_KW,
             W_fuel       = g.W_fuel,
