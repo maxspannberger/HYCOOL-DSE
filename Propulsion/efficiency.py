@@ -84,11 +84,11 @@ def GT_BAT_efficiency(t_charge=1800, cable_efficiency=1.0, show=False):
 
     excess_P_climb = P_climb/P_cruise
 
-    only_gt_efficiency = c["gt"].efficiency
+    only_gt_efficiency = c["gt_hex"].efficiency
 
     # Efficiency of power from gas turbine to motor
     gt_eff = (
-        c["gt"].efficiency 
+        only_gt_efficiency
         * c["hts_gen"].efficiency 
         * c["ac_dc"].efficiency 
         * c["dc_ac"].efficiency
@@ -269,11 +269,11 @@ def GT_GT_efficiency(cable_efficiency=1.0, show=False):
 
     excess_P_climb = P_climb/P_cruise
 
-    only_gt_efficiency = c["gt"].efficiency
+    only_gt_efficiency = c["gt_hex"].efficiency
 
     # Efficiency of power from gas turbine to motor
     gt_eff = (
-        c["gt"].efficiency 
+        only_gt_efficiency
         * c["hts_gen"].efficiency 
         * c["ac_dc"].efficiency 
         * c["dc_ac"].efficiency
@@ -325,12 +325,12 @@ def GT_GT_efficiency(cable_efficiency=1.0, show=False):
 def GT_FC_efficiency(cable_efficiency=1.0, show=False):
     t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
 
-    only_gt_efficiency = c["gt"].efficiency
+    only_gt_efficiency = c["gt_hex"].efficiency
     only_fc_efficiency = c["fc_with_hex"].efficiency
 
     # Efficiency of power from gas turbine to motor
     gt_eff = (
-        c["gt"].efficiency 
+        only_gt_efficiency
         * c["hts_gen"].efficiency 
         * c["ac_dc"].efficiency 
         * c["dc_ac"].efficiency
@@ -340,7 +340,7 @@ def GT_FC_efficiency(cable_efficiency=1.0, show=False):
 
     # Efficiency of power from fuel cell to motor
     fc_eff = (
-        c["fc_with_hex"].efficiency 
+        only_fc_efficiency 
         * c["dc_dc_1"].efficiency
         * c["dc_ac"].efficiency
         * c["hts_pow"].efficiency
