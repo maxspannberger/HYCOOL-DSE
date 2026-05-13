@@ -13,9 +13,10 @@ class PowerComponent(Component):
 
 class StorageComponent(Component):
     # class for energy storage components (batteries)
-    def __init__(self, name, energy_density, efficiency, trl):
+    def __init__(self, name, energy_density, power_density, efficiency, trl):
         super().__init__(name, trl)
         self.energy_density = energy_density
+        self.power_density = power_density
         self.efficiency = efficiency / 100 if efficiency else None
 
 class PipingComponent(Component):
@@ -55,7 +56,7 @@ component_params = {
     "dc_ac": PowerComponent("DC-AC Inverter", 21.1, 98.9, 3),
 
     # Battery
-    "bt": StorageComponent("Battery", 510, 90, 3),
+    "bt": StorageComponent("Battery", 0.510,1.53, 90, 3),
 
     # Pipes
     "pipe": PipingComponent("Pipe", 9.89, 1.801, 6),

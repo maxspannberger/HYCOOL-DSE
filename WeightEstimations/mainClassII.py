@@ -126,6 +126,8 @@ def run_class_ii(
     converged = False
     it = 0
     iteration_log: list[dict] = []
+    config = int(input("Enter config for power unit weight estimation (1-4): "))
+    comp=comp_params
 
     for it in range(1, max_iter + 1):
 
@@ -148,8 +150,6 @@ def run_class_ii(
         P_TO_kW = pwr_bd.P_TO_total / 1000.0
         P_TO_OEI_kW = pwr_bd.P_total_OEI / 1000.0
 
-        config = int(input("Enter config for power unit weight estimation (1-4): "))
-        comp=comp_params
 
         # Weight at current MTOW with sized tails
         wt_inp = ClassII_Input.from_config(
@@ -161,7 +161,7 @@ def run_class_ii(
             S_v  = tail_bd.S_v,
             b_v  = tail_bd.b_v,
             P_TO_KW = P_TO_kW,
-            P_TO_OEI_kW = P_TO_OEI_kW,
+            P_TO_OEI_KW = P_TO_OEI_kW,
             P_max_KW = P_max_kw,
             W_fuel = W_fuel,
             configuration=config
