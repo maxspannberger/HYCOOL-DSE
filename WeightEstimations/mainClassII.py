@@ -163,7 +163,8 @@ def run_class_ii(
             P_TO_KW = P_TO_kW,
             P_TO_OEI_kW = P_TO_OEI_kW,
             P_max_KW = P_max_kw,
-            W_fuel = W_fuel
+            W_fuel = W_fuel,
+            configuration=config
         )
         wt_bd = weightEstimation(wt_inp).compute()
 
