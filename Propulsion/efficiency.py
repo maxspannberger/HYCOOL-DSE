@@ -55,9 +55,9 @@ def find_optimal_point(P_opt, P_1, P_2, t_1, t_2):
     r_1 = P_opt/P_1
     r_2 = P_opt/P_2
     throttle_1, eff_1 = get_throttle(r_1)
-    throttle_1, eff_2 = get_throttle(r_2)
-    goal = P_1 * t_1 * eff_1 + P_2 * t_2 * eff_2
-    return goal
+    throttle_2, eff_2 = get_throttle(r_2)
+    eff = (P_1 * t_1 * eff_1 + P_2 * t_2 * eff_2) / (P_1 * t_1 + P_2 * t_2)
+    return eff
 
 
 def binary_power_search(P_1, P_2, t_1, t_2):
@@ -65,9 +65,9 @@ def binary_power_search(P_1, P_2, t_1, t_2):
     P_max = max(P_1, P_2)
     err = (P_max - P_min) / 2
     while err > 1e-6:
-        goal_left = find_optimal_point(P_min, P_1, P_2, t_1, t_2)
-        goal_right = find_optimal_point(P_max, P_1, P_2, t_1, t_2)
-        if goal_left > goal_right:
+        eff_left = find_optimal_point(P_min, P_1, P_2, t_1, t_2)
+        eff_right = find_optimal_point(P_max, P_1, P_2, t_1, t_2)
+        if eff_left > eff_right:
             P_max = (P_max + P_min) / 2
         else:
             P_min = (P_max + P_min) / 2
@@ -114,11 +114,18 @@ def GT_BAT_efficiency(t_charge=1800, cable_efficiency=1.0, show=False):
         * cable_efficiency
     )
 
-    bt_c_frac =  (excess_P_climb - 1) / (excess_P_climb + bt_eff_c*bt_eff_d/gt_eff * t_charge/t_climb)
+    # iterate to obtain battery charge fraction and optimal power
+    error = np.inf
+    climb_eff_factor = 1.0
+    bt_c_frac = 0.0
+    while error > 1e-8:
+        bt_c_frac_old = bt_c_frac
+        bt_c_frac = (excess_P_climb - 1) / (excess_P_climb + bt_eff_c*bt_eff_d/(gt_eff*climb_eff_factor) * t_charge/t_climb)
+        error = np.abs(bt_c_frac_old - bt_c_frac)
 
-    P_optimal_out = binary_power_search((1-bt_c_frac)*P_climb, P_cruise, t_climb+t_charge, t_cruise-t_charge)
-    climb_throttle, climb_eff_factor = get_throttle(P_optimal_out/((1-bt_c_frac)*P_climb))
-    cruise_throttle, cruise_eff_factor = get_throttle(P_optimal_out/P_cruise)
+        P_optimal_out = binary_power_search((1-bt_c_frac)*P_climb, P_cruise, t_climb+t_charge, t_cruise-t_charge)
+        climb_throttle, climb_eff_factor = get_throttle(P_optimal_out/((1-bt_c_frac)*P_climb))
+        cruise_throttle, cruise_eff_factor = get_throttle(P_optimal_out/P_cruise)
 
     # component powers
     P_bt_discharge = 1/bt_eff_d * (P_climb - P_cruise / (1 - bt_c_frac))
@@ -382,13 +389,13 @@ if __name__ == "__main__":
     cable_efficiency = 1 # change later
 
     results_GT_BAT = GT_BAT_efficiency(t_charge=t_charge, cable_efficiency=cable_efficiency, show=True)
-    print(results_GT_BAT)
+    # print(results_GT_BAT)
 
     results_FC_BAT = FC_BAT_efficiency(t_charge=t_charge, cable_efficiency=cable_efficiency, show=True)
-    print(results_GT_BAT)
+    # print(results_FC_BAT)
 
     results_GT_GT = GT_GT_efficiency(cable_efficiency=cable_efficiency, show=True)
-    print(results_GT_GT)
+    # print(results_GT_GT)
 
     results_GT_FC = GT_FC_efficiency(cable_efficiency=cable_efficiency, show=True)
-    print(results_GT_FC)
+    # print(results_GT_FC)
