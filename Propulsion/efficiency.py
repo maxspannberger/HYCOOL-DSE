@@ -2,10 +2,10 @@ import sys
 from pathlib import Path
 from pprint import pprint
 import pandas as pd
-from General.component_parameters import component_params as c
 
 root = Path(__file__).resolve().parent.parent
 sys.path.append(str(root))
+from General.component_parameters import component_params as c
 
 # =============================================================================
 # Loading results from Class 2 and calculating the mission phase power and 

@@ -1,6 +1,15 @@
+import sys
+from pathlib import Path
+
+import pandas as pd
+
 import Outgoing_Longwave_Radiation as olr
 import Potential_Vorticity as pv
 from math import sin, cos, radians
+
+
+root = Path(__file__).resolve().parent.parent
+sys.path.append(str(root))
 
 # constants defined from literature and datasets
 h = 7620 # m, based on the operating altitude of Dash 8 Q400 [Janes]
@@ -25,27 +34,63 @@ m_h2 = 569 # kg, mass of hydrogen fuel
 turbine = True
 fc_liquid_venting = False
 
-lhv = 119930 # kJ/kg, lower heating value of Hydrogen [standard property - citation TBD]
+# =============================================================================
+# Loading results from Class 2 and calculating the mission phase power and 
+# energy requirements.
+# =============================================================================
+
+# Load the data
+df = pd.read_csv(root / "outputs/class_ii_results.csv")
+# Clean up whitespace (CSV exports often have hidden spaces in strings)
+df['Section'] = df['Section'].str.strip()
+df['Parameter'] = df['Parameter'].str.strip()
+
+# Create a helper function to pull values safely
+def get_param(parameter_name):
+    try:
+        # We look for the parameter name and return the associated value
+        val = df.loc[df['Parameter'] == parameter_name, 'Value'].values[0]
+        return float(val)
+    except IndexError:
+        print(f"Error: Parameter '{parameter_name}' not found in CSV.")
+        return None
+
+# Extract your specific variables
+t_climb = get_param('t_climb')             
+t_cruise = get_param('t_cruise')           
+t_reserve = get_param('t_reserve')         
+
+P_climb = get_param('P_climb_shaft')       
+P_cruise = get_param('P_cruise_shaft')
+
+# Energy per flight phase that has to arrive at the shaft
+E_climb = P_climb * t_climb
+E_cruise = P_cruise * t_cruise
+E_total = E_climb + E_cruise
+
+# =============================================================================
+
+lhv = 119930 # kJ/kg, lower heating value of Hydrogen [standard property]
 energies = {
-    'cruise': 500000 #kJ,
-    'climb': 100000 #kJ, 
+    'cruise': E_cruise ,
+    'climb': E_climb , 
 }
 designs = {
     'GT-BAT': {
         'cruise': {'source': 'GT', 'eta': 0.35},
-        'to_climb': {'primary': 'GT', 'eta_primary': 0.35, 'p_primary': 500, 'secondary': 'BAT', 'eta_secondary': 0.4, 'p_secondary': 300}
+        'to_climb': {'primary': 'GT', 'eta_primary': 0.35, 'p_primary': 500, 'secondary': 'BAT', 'eta_secondary': 0.6, 'p_secondary': 300}
     },
     'FC-BAT':{
-        'cruise': {'source': 'FC', 'eta': 0.35},
-        'to_climb': {'primary': 'FC', 'eta_primary': 0.35, 'p_primary': 500, 'secondary': 'BAT', 'eta_secondary': 0.4, 'p_secondary': 300}
+        'cruise': {'source': 'FC', 'eta': 0.45},
+        'to_climb': {'primary': 'FC', 'eta_primary': 0.35, 'p_primary': 500, 'secondary': 'BAT', 'eta_secondary': 0.6, 'p_secondary': 300}
     },
     'GT-GT':{
         'cruise': {'source': 'GT', 'eta': 0.35},
-        'to_climb': {'primary': 'GT', 'eta_primary': 0.35, 'p_primary': 500, 'secondary': 'GT2', 'eta_secondary': 0.4, 'p_secondary': 300}
+        'to_climb': {'primary': 'GT', 'eta_primary': 0.35, 'p_primary': 500, 'secondary': 'GT2', 'eta_secondary': 0.35, 'p_secondary': 300}
     },
     'GT-FC':{
         'cruise': {'source': 'GT', 'eta': 0.35},
-        'to_climb': {'primary': 'GT', 'eta_primary': 0.35, 'p_primary': 500, 'secondary': 'FC', 'eta_secondary': 0.4, 'p_secondary': 300}
+        'to_climb': {'primary': 'GT', 'eta_primary': 0.35, 'p_primary': 500, 'secondary': 'FC', 'eta_secondary': 0.45, 'p_secondary': 300}
     },
 }
 source_props = {
@@ -56,8 +101,91 @@ source_props = {
 }
 
 def calc_mass_h2():
-    m_h2 = 0
-    return m_h2
+    """Return hydrogen mass by design, phase, and source."""
+
+    h2_masses = {}
+
+    for design_name, design in designs.items():
+        h2_masses[design_name] = {}
+
+        cruise_source = design['cruise']['source']
+        cruise_eta = design['cruise']['eta']
+        cruise_energy = energies['cruise']
+        cruise_m_h2 = 0.0
+        if cruise_source != 'BAT':
+            cruise_m_h2 = cruise_energy / (cruise_eta * lhv)
+
+        h2_masses[design_name]['cruise'] = {
+            'source': cruise_source,
+            'energy_kJ': cruise_energy,
+            'eta': cruise_eta,
+            'm_h2_kg': cruise_m_h2,
+        }
+
+        to_climb = design['to_climb']
+        primary_source = to_climb['primary']
+        primary_eta = to_climb['eta_primary']
+        primary_power = to_climb['p_primary']
+
+        secondary_source = to_climb['secondary']
+        secondary_eta = to_climb['eta_secondary']
+        secondary_power = to_climb['p_secondary']
+
+        total_power = primary_power + secondary_power
+        if total_power <= 0:
+            raise ValueError(f"Total TO/climb power must be positive for design '{design_name}'.")
+
+        climb_energy = energies['climb']
+        primary_energy = climb_energy * (primary_power / total_power)
+        secondary_energy = climb_energy * (secondary_power / total_power)
+
+        primary_m_h2 = 0.0
+        if primary_source != 'BAT':
+            primary_m_h2 = primary_energy / (primary_eta * lhv)
+
+        secondary_m_h2 = 0.0
+        if secondary_source != 'BAT':
+            secondary_m_h2 = secondary_energy / (secondary_eta * lhv)
+
+        h2_masses[design_name]['to_climb'] = {
+            'primary': {
+                'source': primary_source,
+                'power_W': primary_power,
+                'energy_kJ': primary_energy,
+                'eta': primary_eta,
+                'm_h2_kg': primary_m_h2,
+            },
+            'secondary': {
+                'source': secondary_source,
+                'power_W': secondary_power,
+                'energy_kJ': secondary_energy,
+                'eta': secondary_eta,
+                'm_h2_kg': secondary_m_h2,
+            },
+            'energy_split': {
+                'primary_fraction': primary_power / total_power,
+                'secondary_fraction': secondary_power / total_power,
+            },
+        }
+
+        h2_masses[design_name]['total_m_h2_kg'] = cruise_m_h2 + primary_m_h2 + secondary_m_h2
+
+    return h2_masses
+
+
+def print_mass_h2_summary(h2_masses):
+    print("\nHydrogen mass summary:")
+    for design_name, design_data in h2_masses.items():
+        cruise = design_data['cruise']
+        primary = design_data['to_climb']['primary']
+        secondary = design_data['to_climb']['secondary']
+        total = design_data['total_m_h2_kg']
+
+        print(f"\n{design_name}")
+        print(f"  Cruise    ({cruise['source']}):     {cruise['m_h2_kg']:.3f} kg H2")
+        print(f"  TO/Climb P ({primary['source']}):     {primary['m_h2_kg']:.3f} kg H2")
+        print(f"  TO/Climb S ({secondary['source']}):   {secondary['m_h2_kg']:.3f} kg H2")
+        print(f"  Total:                    {total:.3f} kg H2")
 
 def calc_aCCF_nox():
 
@@ -71,14 +199,12 @@ def calc_aCCF_nox():
     print(f"NOx impact: {aCCF_o3 + aCCF_ch4 + aCCF_pmo}")
     return aCCF_o3 + aCCF_ch4 + aCCF_pmo
 
-
 def calc_aCCF_h2o():
 
     aCCF_h2o = (2.11*10**(-16) + 7.70*10**(-17)*abs(pv))*(9/1.231)
 
     print(f"H2O impact: {aCCF_h2o}")
     return aCCF_h2o
-
 
 def calc_aCCF_contrail():
 
@@ -93,28 +219,47 @@ def calc_aCCF_contrail():
     print(f"Contrail impact: {aCCF_contrail_mean}")
     return aCCF_contrail_mean
 
+def calc_atr_per_design(h2_masses):
+    aCCF_nox = calc_aCCF_nox()
+    aCCF_h2o = calc_aCCF_h2o()
+    aCCF_contrail = calc_aCCF_contrail()
 
-def calc_average_temperature_response():
+    atrs = {}
+    for design_name, design_data in h2_masses.items():
+        cruise = design_data['cruise']
+        primary = design_data['to_climb']['primary']
+        secondary = design_data['to_climb']['secondary']
 
-    if turbine:
-        aCCF_nox = calc_aCCF_nox()
-        aCCF_h2o = calc_aCCF_h2o()
-        aCCF_contrail = calc_aCCF_contrail()
-    elif fc_liquid_venting:
-        aCCF_nox = 0
-        aCCF_h2o = calc_aCCF_h2o()
-        aCCF_contrail = 0
-    else:
-        aCCF_nox = 0
-        aCCF_h2o = 0
-        aCCF_contrail = 0
+        atr_cruise = 0.0
+        if source_props[cruise['source']]['nox']:
+            atr_cruise += cruise['m_h2_kg'] * ei_nox * aCCF_nox
+        if source_props[cruise['source']]['h2o']:
+            atr_cruise += cruise['m_h2_kg'] * aCCF_h2o
+        if source_props[cruise['source']]['contrail']:
+            atr_cruise += d_mission * f_ISSR * aCCF_contrail
 
-    atr20 = aCCF_nox*m_h2*ei_nox + aCCF_h2o*m_h2 + aCCF_contrail*d_mission*f_ISSR
+        atr_primary = 0.0
+        if source_props[primary['source']]['nox']:
+            atr_primary += primary['m_h2_kg'] * ei_nox * aCCF_nox
+        if source_props[primary['source']]['h2o']:
+            atr_primary += primary['m_h2_kg'] * aCCF_h2o
 
-    return atr20
+        atr_secondary = 0.0
+        if source_props[secondary['source']]['nox']:
+            atr_secondary += secondary['m_h2_kg'] * ei_nox * aCCF_nox
+        if source_props[secondary['source']]['h2o']:
+            atr_secondary += secondary['m_h2_kg'] * aCCF_h2o
+
+        total_atr = atr_cruise + atr_primary + atr_secondary
+        atrs[design_name] = total_atr
+
+    print(atrs)
+    return atrs
 
 
 if __name__ == "__main__":
-    atr20 = calc_average_temperature_response()
-    print(f"Average Temperature Response (ATR20) for the mission: {atr20:.12f} K")
+    h2_masses = calc_mass_h2()
+    print_mass_h2_summary(h2_masses)
+
+    calc_atr_per_design(h2_masses)
 
