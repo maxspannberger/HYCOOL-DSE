@@ -130,101 +130,101 @@ class AircraftConfig:
 
 
 def default_q400_hycool() -> AircraftConfig:
-    c_root      = 4.97
-    b_v_initial = 5.5
-    MAC_v       = 3.5
+    c_root      = 4.97                          # Referenced
+    b_v_initial = 5.5                           # Referenced
+    MAC_v       = 3.5                           # Referenced
     return AircraftConfig(
         # Wing
-        S_ref            = 92.5,        # E190 Reference
-        b                = 28.72,       # E190 Reference
-        AR               = 8.91,        # E190 Reference
-        MAC              = 3.35,
+        S_ref            = 81.68,               # Class I Value
+        b                = 28.58,               # Class I Value
+        AR               = 10,                  # Class I Value
+        MAC              = 2.86,                # Class I Value
         c_root           = c_root,
-        tc_root          = 0.12,
-        tc_mean          = 0.11,
-        sweep_half       = np.deg2rad(23.0),
-        sweep_tc         = np.deg2rad(24.0),
+        tc_root          = 0.12,                # Referenced
+        tc_mean          = 0.11,                # Referenced
+        sweep_half       = np.deg2rad(23.0),    # Referenced
+        sweep_tc         = np.deg2rad(24.0),    # Referenced
 
         # Horizontal tail
-        S_h_initial      = 24,
-        MAC_h            = 2.10,
-        tc_h             = 0.12,
-        sweep_h_half     = np.deg2rad(22.0),
-        sweep_h_tc       = np.deg2rad(20.0),
-        l_h              = 17.5,
+        S_h_initial      = 24,                  # Referenced
+        MAC_h            = 2.10,                # Referenced
+        tc_h             = 0.12,                # Referenced
+        sweep_h_half     = np.deg2rad(22.0),    # Referenced
+        sweep_h_tc       = np.deg2rad(20.0),    # Referenced
+        l_h              = 17.5,                # Referenced
 
         # Vertical tail
-        MAC_v            = MAC_v,
-        tc_v             = 0.12,
-        sweep_v_half     = np.deg2rad(33.0),
-        sweep_v_tc       = np.deg2rad(35.0),
-        l_v              = 17.5,
-        b_v_initial      = b_v_initial,
-        t_tail           = False,
+        MAC_v            = MAC_v,               
+        tc_v             = 0.12,                # Referenced
+        sweep_v_half     = np.deg2rad(33.0),    # Referenced
+        sweep_v_tc       = np.deg2rad(35.0),    # Referenced
+        l_v              = 17.5,                # Referenced
+        b_v_initial      = b_v_initial,         
+        t_tail           = False,               # Design Decision
         h_h              = b_v_initial,
         S_v_initial      = MAC_v * b_v_initial,
 
         # Fuselage
-        l_f              = 36.24,
-        b_f              = 2.74,
-        h_f              = 2.74,
-        S_wet_f          = 280,
-        l_t              = 17.5,
+        l_f              = 36.55,               # Class I Value
+        b_f              = 2.9,                 # Class I Value
+        h_f              = 2.9,                 # Class I Value
+        S_wet_f          = 298.15,              # Class I Value
+        l_t              = 17.5,                # Referenced
 
         # Flight envelope
-        altitude_cruise  = 7_620,
-        M_cruise         = 0.7,
-        V_cruise         = 0.7 * 296.0,
-        V_dive           = 213.5,
-        V_stall          = 60.0,
+        altitude_cruise  = 7_620,               # From Mission Definition
+        M_cruise         = 0.7,                 # From Mission Definition
+        V_cruise         = 0.7 * 296.0,         # From Mission Definition
+        V_dive           = 213.5,               # --- TBD ---
+        V_stall          = 48.6,                # Class I Value
 
         # Mission
-        range_m          = 1_000_000.0,
-        eta_prop         = 0.90,
-        eta_thermal      = 0.40,
+        range_m          = 1_000_000.0,         # From Mission Definition
+        eta_prop         = 0.90,                # Assumed
+        eta_thermal      = 0.40,                # Assumed
 
-        altitude_reserve = 457.2,
-        t_reserve        = 45 * 60.0,
-        V_climb_EAS      = 130.0,
-        ROC_avg          = 7.62,
-        TO_taxi_frac     = 0.02,
+        altitude_reserve = 457.2,               # 1500ft, standard
+        t_reserve        = 45 * 60.0,           # From Mission Definition
+        V_climb_EAS      = 130.0,               # Assumed
+        ROC_avg          = 7.62,                # Assumed
+        TO_taxi_frac     = 0.02,                # Assumed
 
-        m_dot_fuel       = 0.071,
+        m_dot_fuel       = 0.071,               # Initial Assumption
 
         # Propulsion
-        T_TO_per_engine  = 20_000.0,
-        y_engine         = 5.0,
-        W_propulsion     = 2_500.0,
-        N_engines        = 2,
-        D_propfan        = 4.0,
-        eta_static_loss  = 0.80,
-        eta_prop_V2      = 0.70,
-        LD_takeoff       = 11.0,
+        T_TO_per_engine  = 20_000.0,            # Initial Assumption
+        y_engine         = 5.0,                 # Assumed
+        W_propulsion     = 2_500.0,             # Assumed
+        N_engines        = 2,                   # Class I Value
+        D_propfan        = 4.0,                 # Assumed
+        eta_static_loss  = 0.80,                # Assumed
+        eta_prop_V2      = 0.70,                # Assumed
+        LD_takeoff       = 11.0,                # Assumed
 
         # Propulsion Densities
-        rho_hts_motor    = 20,
-        rho_turbine_core = 10,
-        turbine_penalty  = 1.4,
-        cryo_penalty     = 1.15,
-        grav_density     = 0.64,
+        rho_hts_motor    = 20,                  # Referenced
+        rho_turbine_core = 10,                  # Referenced
+        turbine_penalty  = 1.4,                 # --- TBD ---
+        cryo_penalty     = 1.15,                # --- TBD ---
+        grav_density     = 0.64,                # Referenced
 
         # Tail sizing targets (propfan: V_v bumped from 0.085 to 0.10)
-        V_h_target       = 0.95,
-        V_v_target       = 0.10,
-        AR_h             = 4.5,
-        AR_v             = 1.7,
+        V_h_target       = 0.95,                # Torenbeek
+        V_v_target       = 0.10,                # Torenbeek
+        AR_h             = 4.5,                 # Torenbeek
+        AR_v             = 1.7,                 # Torenbeek
 
         # Config
-        high_wing        = False,
-        has_flap_slat    = True,
+        high_wing        = False,               # Design Decision
+        has_flap_slat    = True,                # Design Decision
 
         # Loads
-        n_ult            = 3.75,
+        n_ult            = 3.75,                # CS-25 Requirements
 
         # Mission masses
-        W_payload        = 10_000.0,
-        W_fixed          = 5_500.0,
+        W_payload        = 10_000.0,            # Class I Value
+        W_fixed          = 5_500.0,             # Torenbeek
 
         # Iteration
-        MTOW_initial     = 31_237.0,
+        MTOW_initial     = 31_729.92,           # Class I Value
     )
