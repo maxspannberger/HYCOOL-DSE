@@ -99,6 +99,7 @@ def GT_BAT_efficiency(t_charge=1800, cable_efficiency=1.0, show=False):
     # Efficiency of power from gas turbine to battery (charge)
     bt_eff_c = (
         c["gt"].efficiency 
+        * c["hts_gen"].efficiency
         * c["ac_dc"].efficiency 
         * c["dc_dc_2"].efficiency
         * np.sqrt(c["bt"].efficiency)
