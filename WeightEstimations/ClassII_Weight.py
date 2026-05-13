@@ -11,6 +11,7 @@ sys.path.append(str(root))
 import Tail_Interpolation as Tail_Interp
 from Aircraft_Config import AircraftConfig
 from General.component_parameters import component_params as comp_params
+from Propulsion.efficiency import GT_BAT_efficiency, GT_FC_efficiency, GT_GT_efficiency,FC_BAT_efficiency
 
 from rich.table import Table
 
@@ -223,9 +224,14 @@ class WeightBreakdown:
     P_TO_OEI_KW: float = 0.0
     P_climb_KW:  float = 0.0
     P_reserve_KW: float = 0.0
+    P_primary_KW: float = 0.0
+    P_secondary_KW: float = 0.0
     W_fuel:      float = 0.0
+    W_primary:   float = 0.0
+    W_secondary: float = 0.0
     grav_density:float = 0.64
     configuration: int = 1
+    total_prop_efficiency: float = 0.0
 
 
     @property
@@ -275,6 +281,16 @@ class WeightBreakdown:
 
         table.add_section()
         table.add_row(
+            "Mass Primary Power Unit",
+            f"[bold]{self.W_primary:.1f}[/bold]",
+            "",
+        )
+        table.add_row(
+            "Mass Secondary Power Unit",
+            f"[bold]{self.W_secondary:.1f}[/bold]",
+            "",
+        )
+        table.add_row(
             "Propulsion System without tank",
             f"[bold]{self.W_engine:.1f}[/bold]",
             "",
@@ -284,6 +300,47 @@ class WeightBreakdown:
             f"[bold]{self.W_total_prop:.1f}[/bold]",
             "",
         )
+
+
+        table.add_section()
+        #Power Distribution breakdown
+        table.add_row(
+            "Cruise Power",
+            f"[bold]{self.P_cruise_KW:.1f}[/bold]",
+            "",
+        )
+
+        table.add_row(
+            "OEI Power",
+            f"[bold]{self.P_TO_OEI_KW:.1f}[/bold]",
+            "",
+        )
+
+        table.add_row(
+            "Primary Power Unit",
+            f"[bold]{self.P_primary_KW:.1f}[/bold]",
+            "",
+        )
+
+        table.add_row(
+            "Secondary Power Unit",
+            f"[bold]{self.P_secondary_KW:.1f}[/bold]",
+            "",
+        )
+
+        table.add_row(
+            "Maximum Power required",
+            f"[bold]{self.P_max_KW:.1f}[/bold]",
+            "",
+        )
+
+        table.add_section()
+        table.add_row(
+            "Power Production Efficiency",
+            f"[bold]{self.total_prop_efficiency:.1f}[/bold]",
+            "",
+        )
+
         table.add_section()
         table.add_row(
             "[bold green]OEW (Empty Weight)[/bold green]",
@@ -461,10 +518,13 @@ class weightEstimation:
                     P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
                     if comp_key == "gt_hex" or comp_key == "hts_gen" or comp_key == "ac_dc":
                         mass = P_req_primary / pd
+                        if comp_key == "gt_hex":
+                            W_primary = mass
                     elif comp_key == "bt":
                         energy_required_kWh = P_req_secondary * (g.t_climb / 3600)  # Convert seconds to hours
                         ed = comp[comp_key].energy_density
                         mass = max(energy_required_kWh / ed, P_req_secondary / pd)
+                        W_secondary = mass
                     elif comp_key == "dc_dc_2":
                         mass = P_req_secondary / pd
                     elif comp_key == "dc_ac" or comp_key == "hts_pow":
@@ -490,10 +550,13 @@ class weightEstimation:
                     P_req_secondary = max((g.P_TO_KW - P_req_primary), (g.P_TO_OEI_KW-(1/2)*P_req_primary))
                     if comp_key == "fc_with_hex" or comp_key == "dc_dc_1":
                         mass = P_req_primary / pd
+                        if comp_key == "fc_with_hex":
+                            W_primary = mass
                     elif comp_key == "bt":
                         energy_required_kWh = P_req_secondary * (g.t_climb / 3600)  # Convert seconds to hours
                         ed = comp[comp_key].energy_density
                         mass = max(energy_required_kWh / ed, P_req_secondary / pd)
+                        W_secondary = mass
                     elif comp_key == "dc_dc_2":
                         mass = P_req_secondary / pd
                     elif comp_key == "dc_ac" or comp_key == "hts_pow":
@@ -518,6 +581,9 @@ class weightEstimation:
                     P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
                     if comp_key == "gt_hex" or comp_key == "ac_dc" or comp_key == "hts_gen" or comp_key == "hts_pow" or comp_key == "dc_ac":
                         mass = P_req_primary / pd
+                        if comp_key == "gt_hex":
+                            W_primary = mass
+                            W_secondary = mass
                 total_mass += mass
 
             elif config == 4:
@@ -530,20 +596,27 @@ class weightEstimation:
                     pd = comp[comp_key].power_density
                     # maximum power that flows to the motors (most likely takeoff)
                     P_req_tot = max(g.P_cruise_KW, g.P_climb_KW, g.P_reserve_KW, g.P_TO_KW)
+                    
+                    
                     # primary power source requirement is cruise power or OEI scenario, GT's together must suffice in both situations
-                    P_req_primary = max(g.P_cruise_KW, g.P_TO_OEI_KW)
+                    P_req_secondary = g.P_TO_OEI_KW
+                    P_req_primary = max(g.P_cruise_KW-P_req_secondary, g.P_TO_OEI_KW,P_req_tot - P_req_secondary)
                     # secondary power source requirement is to sustain TO 
-                    P_req_secondary = max((P_req_tot - P_req_primary), (g.P_TO_OEI_KW-(1/2)*P_req_primary))
+                    #P_req_secondary = max((P_req_tot - P_req_primary), (g.P_TO_OEI_KW-(1/2)*P_req_primary))
                     if comp_key == "gt_hex" or comp_key == "hts_gen" or comp_key == "ac_dc":
                         mass = (P_req_primary/2) / pd
+                        if comp_key == "gt_hex":
+                            W_primary = mass*2
                     elif comp_key == "fc_with_hex" or comp_key == "dc_dc_2":
                         mass = P_req_secondary / pd
+                        if comp_key == "fc_with_hex":
+                            W_secondary = mass
                     elif comp_key == "dc_ac" or comp_key == "hts_pow":
                         max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
                         mass = max_P_per_string / pd
                 total_mass += mass
 
-        return total_mass
+        return total_mass, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary
     
     def _h2_tank_weight(self) -> float:
         return self.g.W_fuel * (1 / self.g.grav_density - 1)
@@ -553,7 +626,7 @@ class weightEstimation:
         g = self.g
 
         h2_tank_weight   = self._h2_tank_weight()
-        W_engine_total   = self._propulsion_weight()
+        W_engine_total, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary = self._propulsion_weight()
 
         return WeightBreakdown(
             W_wing   = self._wing_weight(),
@@ -562,6 +635,8 @@ class weightEstimation:
             W_fus    = self._fuselage_weight(),
             W_lg     = self._LDG_weight(),
             W_sc     = self._surface_control_weight(),
+            W_primary= W_primary,
+            W_secondary = W_secondary,
             W_engine = W_engine_total,
             W_total_prop = W_engine_total + h2_tank_weight,
 
@@ -572,6 +647,13 @@ class weightEstimation:
             grav_density = g.grav_density,
             P_TO_KW      = g.P_TO_KW,
             W_fuel       = g.W_fuel,
+
+            #power values for display
+            P_cruise_KW  = g.P_cruise_KW,
+            P_TO_OEI_KW  = g.P_TO_OEI_KW,
+            P_primary_KW = P_req_primary,
+            P_secondary_KW = P_req_secondary,
+            P_max_KW=  P_req_tot,
         )
 
 

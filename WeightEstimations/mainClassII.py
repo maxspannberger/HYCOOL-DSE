@@ -144,6 +144,7 @@ def run_class_ii(
         mis_bd = MissionPower(cfg, drag_bd, MTOW).compute()
         W_fuel = mis_bd.m_LH2_total
         P_max_kw = mis_bd.P_max / 1000
+        P_cruise_kw = mis_bd.P_cruise_shaft / 1000
 
         # Performance & CS-25 Requirements
         pwr_bd = PowerSizing(cfg, mis_bd, MTOW).compute()
@@ -162,6 +163,7 @@ def run_class_ii(
             b_v  = tail_bd.b_v,
             P_TO_KW = P_TO_kW,
             P_TO_OEI_KW = P_TO_OEI_kW,
+            P_cruise_KW=P_cruise_kw,
             P_max_KW = P_max_kw,
             W_fuel = W_fuel,
             configuration=config
