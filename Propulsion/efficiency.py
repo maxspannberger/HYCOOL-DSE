@@ -108,7 +108,7 @@ def GT_BAT_efficiency(t_charge=1800, cable_efficiency=1.0, show=False):
         print(f"Cruise efficiency while not charging: {cruise_eff_full}")
         print(f"Total efficiency: {gt_bt_eff}")
 
-    return gt_bt_eff, P_gt, climb_eff, P_bt_discharge, bt_eff_d
+    return gt_bt_eff, P_gt, climb_eff, P_bt_discharge, bt_eff_d, cruise_eff_c, gt_eff
 
 
 # =============================================================================
@@ -176,7 +176,7 @@ def FC_BAT_efficiency(t_charge=1800, cable_efficiency=1.0, show=False):
         print(f"Cruise efficiency while not charging: {cruise_eff_full}")
         print(f"Total efficiency: {fc_bt_eff}")
 
-    return fc_bt_eff, P_fc, climb_eff, P_bt_discharge, bt_eff_d
+    return fc_bt_eff, P_fc, climb_eff, P_bt_discharge, bt_eff_d, cruise_eff_c, fc_eff
 
 
 # =============================================================================
@@ -231,7 +231,7 @@ def GT_GT_efficiency(cable_efficiency=1.0, show=False):
 # =============================================================================
 # Gas Turbine + Fuel Cell powertrain
 # =============================================================================
-def GT_FC_efficiency(cable_efficiency, show):
+def GT_FC_efficiency(cable_efficiency=1.0, show=False):
     t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
 
     # Efficiency of power from gas turbine to motor

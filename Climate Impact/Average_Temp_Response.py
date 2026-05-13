@@ -1,15 +1,23 @@
 import sys
 from pathlib import Path
+root = Path(__file__).resolve().parent.parent
+if str(root) not in sys.path:
+    sys.path.insert(0, str(root))
 
 import pandas as pd
+
+from Propulsion.efficiency import (
+    FC_BAT_efficiency,
+    GT_BAT_efficiency,
+    GT_FC_efficiency,
+    GT_GT_efficiency,
+)
 
 import Outgoing_Longwave_Radiation as olr
 import Potential_Vorticity as pv
 from math import sin, cos, radians
 
 
-root = Path(__file__).resolve().parent.parent
-sys.path.append(str(root))
 
 # constants defined from literature and datasets
 h = 7620 # m, based on the operating altitude of Dash 8 Q400 [Janes]
@@ -69,6 +77,19 @@ E_cruise = P_cruise * t_cruise
 E_total = E_climb + E_cruise
 
 # =============================================================================
+# Loading results from  efficiency calculations 
+# =============================================================================
+
+#design A: GT-BAT
+A_gt_bt_eff, A_P_gt, A_climb_eff, A_P_bt_discharge, A_bt_eff_d, A_cruise_eff_c, A_gt_eff = GT_BAT_efficiency()
+#design B: FC-BAT
+B_fc_bt_eff, B_P_fc, B_climb_eff, B_P_bt_discharge, B_bt_eff_d, B_cruise_eff_c, B_fc_eff = FC_BAT_efficiency()
+#design C: GT-FC
+C_gt_fc_eff, C_P_gt, C_gt_eff, C_P_fc, C_fc_eff = GT_FC_efficiency()
+#design D: GT-GT
+D_gt_gt_eff, D_P_gt_climb, D_climb_eff, D_P_gt_cruise, D_cruise_eff = GT_GT_efficiency()
+
+# =============================================================================
 
 lhv = 119930000 # J/kg, lower heating value of Hydrogen [standard property]
 energies = {
@@ -77,20 +98,20 @@ energies = {
 }
 designs = {
     'GT-BAT': {
-        'cruise': {'source': 'GT', 'eta': 0.35},
-        'to_climb': {'primary': 'GT', 'eta_primary': 0.35, 'p_primary': 500, 'secondary': 'BAT', 'eta_secondary': 0.6, 'p_secondary': 300}
+        'cruise': {'source': 'GT', 'eta': A_cruise_eff_c},
+        'to_climb': {'primary': 'GT', 'eta_primary': A_gt_eff, 'p_primary': A_P_gt, 'secondary': 'BAT', 'eta_secondary': A_bt_eff_d, 'p_secondary': A_P_bt_discharge}
     },
     'FC-BAT':{
-        'cruise': {'source': 'FC', 'eta': 0.45},
-        'to_climb': {'primary': 'FC', 'eta_primary': 0.35, 'p_primary': 500, 'secondary': 'BAT', 'eta_secondary': 0.6, 'p_secondary': 300}
+        'cruise': {'source': 'FC', 'eta': B_cruise_eff_c},
+        'to_climb': {'primary': 'FC', 'eta_primary': B_fc_eff, 'p_primary': B_P_fc, 'secondary': 'BAT', 'eta_secondary': B_bt_eff_d, 'p_secondary': B_P_bt_discharge}
     },
     'GT-GT':{
-        'cruise': {'source': 'GT', 'eta': 0.35},
-        'to_climb': {'primary': 'GT', 'eta_primary': 0.35, 'p_primary': 500, 'secondary': 'GT2', 'eta_secondary': 0.35, 'p_secondary': 300}
+        'cruise': {'source': 'GT', 'eta': D_cruise_eff},
+        'to_climb': {'primary': 'GT', 'eta_primary': D_climb_eff, 'p_primary': D_P_gt_climb/2, 'secondary': 'GT2', 'eta_secondary': D_climb_eff, 'p_secondary': D_P_gt_climb/2}
     },
     'GT-FC':{
-        'cruise': {'source': 'GT', 'eta': 0.35},
-        'to_climb': {'primary': 'GT', 'eta_primary': 0.35, 'p_primary': 500, 'secondary': 'FC', 'eta_secondary': 0.45, 'p_secondary': 300}
+        'cruise': {'source': 'GT', 'eta': C_gt_eff},
+        'to_climb': {'primary': 'GT', 'eta_primary': C_gt_eff, 'p_primary': C_P_gt, 'secondary': 'FC', 'eta_secondary': C_fc_eff, 'p_secondary': C_P_fc}
     },
 }
 source_props = {
