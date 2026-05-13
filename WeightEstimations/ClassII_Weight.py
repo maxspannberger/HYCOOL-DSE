@@ -518,6 +518,10 @@ class weightEstimation:
                 elif comp_key == "dc_ac" or comp_key == "hts_pow":
                     max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
                     mass = max_P_per_string / pd
+                elif comp_key == "cable":
+                    mass = length_values[1] * comp[comp_key].mass_per_length
+                elif comp_key == "pipe":
+                    mass = length_values[0] * comp[comp_key].mass_per_length 
                 total_mass += mass
 
         return total_mass
