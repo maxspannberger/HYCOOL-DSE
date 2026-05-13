@@ -5,106 +5,106 @@ CLASS II INTEGRATED SIZING RESULTS
 ------------------------------------------------------------------------
 Summary
 ------------------------------------------------------------------------
-  MTOW [kg]           =  32644.9
-  MZFW [kg]           =  32035.6
-  W_empty (OEW) [kg]  =  16535.6
-  W_fuel (LH2) [kg]   =  609.208
+  MTOW [kg]           =  29611.8
+  MZFW [kg]           =  29052.4
+  W_empty (OEW) [kg]  =  13552.4
+  W_fuel (LH2) [kg]   =  559.394
   W_payload [kg]      =  10000
   W_fixed [kg]        =  5500
-  Cruise L/D [-]      =  16.7772
-  CL_cruise [-]       =  0.254931
-  iterations [-]      =  7
+  Cruise L/D [-]      =  16.4474
+  CL_cruise [-]       =  0.261889
+  iterations [-]      =  6
   converged [-]       =  True
 
 ------------------------------------------------------------------------
 Tail Sizing (initial)
 ------------------------------------------------------------------------
-  S_h            =  16.8218
-  S_v            =  15.1806
-  b_h            =  8.70046
-  b_v            =  5.08006
-  S_h_stability  =  16.8218
-  S_h_control    =  2.70887
+  S_h            =  12.6814
+  S_v            =  13.3395
+  b_h            =  7.55423
+  b_v            =  4.76206
+  S_h_stability  =  12.6814
+  S_h_control    =  3.58046
   S_h_driver     =  stability (V_h)
-  S_v_stability  =  15.1806
-  S_v_control    =  4.52026
+  S_v_stability  =  13.3395
+  S_v_control    =  6.88959
   S_v_driver     =  stability (V_v)
   V_h            =  0.95
   V_v            =  0.1
   V_h_ok         =  True
   V_v_ok         =  True
-  S_elevator     =  5.21475
+  S_elevator     =  3.93124
   Se_Sh          =  0.31
-  S_rudder       =  3.79514
+  S_rudder       =  3.33488
   Sr_Sv          =  0.25
   M_engine       =  1.000000e+05
-  M_rudder       =  2.398813e+05
+  M_rudder       =  1.382987e+05
   OEI_ok         =  True
-  S_aileron      =  2.4975
+  S_aileron      =  2.20536
   Sa_Sref        =  0.027
-  p_achieved     =  0.218103
+  p_achieved     =  0.177529
   p_required     =  0.0747998
   roll_ok        =  True
 
 ------------------------------------------------------------------------
 Tail Sizing (rechecked w/ T_TO)
 ------------------------------------------------------------------------
-  S_h            =  16.8218
-  S_v            =  15.1806
-  b_h            =  8.70046
-  b_v            =  5.08006
-  S_h_stability  =  16.8218
-  S_h_control    =  2.83096
+  S_h            =  12.6814
+  S_v            =  17.0773
+  b_h            =  7.55423
+  b_v            =  5.38808
+  S_h_stability  =  12.6814
+  S_h_control    =  3.34145
   S_h_driver     =  stability (V_h)
-  S_v_stability  =  15.1806
-  S_v_control    =  13.7604
-  S_v_driver     =  stability (V_v)
+  S_v_stability  =  13.3395
+  S_v_control    =  17.0773
+  S_v_driver     =  control (OEI rudder)
   V_h            =  0.95
-  V_v            =  0.1
+  V_v            =  0.12802
   V_h_ok         =  True
   V_v_ok         =  True
-  S_elevator     =  5.21475
+  S_elevator     =  3.93124
   Se_Sh          =  0.31
-  S_rudder       =  4.81615
-  Sr_Sv          =  0.317257
-  M_engine       =  3.044164e+05
-  M_rudder       =  3.044164e+05
+  S_rudder       =  5.97705
+  Sr_Sv          =  0.35
+  M_engine       =  2.478707e+05
+  M_rudder       =  2.478707e+05
   OEI_ok         =  True
-  S_aileron      =  2.4975
+  S_aileron      =  2.20536
   Sa_Sref        =  0.027
-  p_achieved     =  0.218103
+  p_achieved     =  0.177529
   p_required     =  0.0747998
   roll_ok        =  True
 
 ------------------------------------------------------------------------
 Drag Breakdown (cruise)
 ------------------------------------------------------------------------
-  CD0_wing                           =  0.00511959
-  CD0_htail                          =  9.665101e-04
-  CD0_vtail                          =  7.735945e-04
-  CD0_fus                            =  0.00480617
+  CD0_wing                           =  0.0051666
+  CD0_htail                          =  7.563721e-04
+  CD0_vtail                          =  7.403017e-04
+  CD0_fus                            =  0.00580935
   CD_misc                            =  1.06
-  CD_i                               =  0.00282924
+  CD_i                               =  0.00270184
   CD_wL                              =  0
   CD_wave                            =  0
-  e                                  =  0.820631
-  CL_cruise                          =  0.254931
-  CD0 (total, with misc factor) [-]  =  0.0123658
-  CD_lift_dep [-]                    =  0.00282924
-  CD_total [-]                       =  0.0151951
-  L_over_D [-]                       =  16.7772
+  e                                  =  0.808027
+  CL_cruise                          =  0.261889
+  CD0 (total, with misc factor) [-]  =  0.013221
+  CD_lift_dep [-]                    =  0.00270184
+  CD_total [-]                       =  0.0159228
+  L_over_D [-]                       =  16.4474
 
 ------------------------------------------------------------------------
 Weight Breakdown
 ------------------------------------------------------------------------
-  W_wing              =  3598.76
-  W_htail             =  359.439
-  W_vtail             =  334.523
-  W_fus               =  5217.6
-  W_lg                =  1313.78
-  W_sc                =  694.976
-  W_engine            =  5016.56
-  W_total_prop        =  5359.24
+  W_wing              =  3222.84
+  W_htail             =  254.993
+  W_vtail             =  286.166
+  W_fus               =  5449.93
+  W_lg                =  1199.44
+  W_sc                =  651.252
+  W_engine            =  2487.82
+  W_total_prop        =  2802.48
   W_turbine           =  0
   W_battery           =  0
   W_fc                =  0
@@ -115,7 +115,7 @@ Weight Breakdown
   W_motor             =  0
   W_cable             =  0
   W_pipe              =  0
-  W_h2_tank           =  342.68
+  W_h2_tank           =  314.659
   rho_turb            =  0
   rho_bat             =  0
   rho_fc              =  0
@@ -126,58 +126,58 @@ Weight Breakdown
   rho_dc_ac           =  0
   rho_cable           =  0
   rho_pipe            =  0
-  P_TO_KW             =  7567.41
+  P_TO_KW             =  5560.34
   P_max_KW            =  0
   P_cruise_KW         =  0
   P_TO_OEI_KW         =  0
   P_climb_KW          =  0
   P_reserve_KW        =  0
-  W_fuel              =  609.208
+  W_fuel              =  559.394
   grav_density        =  0.64
   configuration       =  1
-  W_structure [kg]    =  11519.1
-  W_empty (OEW) [kg]  =  16535.6
+  W_structure [kg]    =  11064.6
+  W_empty (OEW) [kg]  =  13552.4
 
 ------------------------------------------------------------------------
 Mission Power & Fuel
 ------------------------------------------------------------------------
-  P_cruise_shaft                    =  3.953528e+06
-  P_reserve_shaft                   =  1.524418e+06
-  P_climb_shaft                     =  5.552655e+06
-  P_TO_shaft                        =  3.200000e+06
-  mdot_cruise                       =  0.0823652
-  mdot_reserve                      =  0.0317587
-  mdot_climb                        =  0.11568
+  P_cruise_shaft                    =  3.646746e+06
+  P_reserve_shaft                   =  1.383341e+06
+  P_climb_shaft                     =  5.062506e+06
+  P_TO_shaft                        =  2.592000e+06
+  mdot_cruise                       =  0.0759739
+  mdot_reserve                      =  0.0288196
+  mdot_climb                        =  0.105469
   t_cruise                          =  4826.25
   t_reserve                         =  2700
   t_climb                           =  1000
-  m_LH2_cruise                      =  397.515
-  m_LH2_reserve                     =  85.7485
-  m_LH2_climb                       =  115.68
-  m_LH2_TO_taxi                     =  10.2639
-  CL_cruise                         =  0.279018
-  CL_reserve                        =  0.928735
-  CL_climb                          =  0.331001
-  LD_cruise                         =  17.7098
-  LD_reserve                        =  18.6061
-  LD_climb                          =  19.3168
-  V_reserve_TAS                     =  79.7394
+  m_LH2_cruise                      =  366.669
+  m_LH2_reserve                     =  77.8129
+  m_LH2_climb                       =  105.469
+  m_LH2_TO_taxi                     =  9.44276
+  CL_cruise                         =  0.286633
+  CL_reserve                        =  1.45417
+  CL_climb                          =  0.340036
+  LD_cruise                         =  17.4166
+  LD_reserve                        =  15.0655
+  LD_climb                          =  19.1291
+  V_reserve_TAS                     =  64.5889
   V_climb_TAS                       =  157.395
-  m_LH2_total [kg]                  =  609.208
-  P_max (shaft, across phases) [W]  =  5.552655e+06
+  m_LH2_total [kg]                  =  559.394
+  P_max (shaft, across phases) [W]  =  5.062506e+06
 
 ------------------------------------------------------------------------
 Power & Thrust Sizing
 ------------------------------------------------------------------------
-  P_TO_total           =  7.567531e+06
-  P_TO_per_engine      =  3.783765e+06
-  P_from_climb         =  5.552655e+06
-  P_from_CS25_121      =  7.567531e+06
+  P_TO_total           =  5.560192e+06
+  P_TO_per_engine      =  2.780096e+06
+  P_from_climb         =  5.062506e+06
+  P_from_CS25_121      =  5.560192e+06
   driving_case         =  CS-25.121 second segment
-  T_per_engine_V2      =  36786.6
-  V_2                  =  72
+  T_per_engine_V2      =  33368.8
+  V_2                  =  58.32
   LD_takeoff           =  11
   gamma_min            =  0.024
-  P_total_OEI          =  3.783765e+06
-  T_static_total       =  1.217666e+05
-  T_static_per_engine  =  60883.3
+  P_total_OEI          =  2.780096e+06
+  T_static_total       =  99148.3
+  T_static_per_engine  =  49574.1
