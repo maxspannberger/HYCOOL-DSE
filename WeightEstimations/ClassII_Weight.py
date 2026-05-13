@@ -499,6 +499,8 @@ class weightEstimation:
                 raise ValueError(f"Component '{comp_key}' not found in component dict")
             elif config == 1:
 
+                efficiency=GT_BAT_efficiency()
+
                 if comp_key == "cable":
                     mass = cable_len * comp[comp_key].mass_per_length
                 elif comp_key == "pipe":
@@ -517,20 +519,21 @@ class weightEstimation:
                     # secondary power source requirement is to sustain TO 
                     P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
                     if comp_key == "gt_hex" or comp_key == "hts_gen" or comp_key == "ac_dc":
-                        mass = P_req_primary / pd
+                        mass = P_req_primary/efficiency["GT-MOT-eff"] / pd
                         if comp_key == "gt_hex":
                             W_primary = mass
                     elif comp_key == "bt":
-                        energy_required_kWh = P_req_secondary * (g.t_climb / 3600)  # Convert seconds to hours
+                        energy_required_kWh = P_req_secondary/efficiency["BAT-MOT_eff"] * (g.t_climb / 3600)  # Convert seconds to hours
                         ed = comp[comp_key].energy_density
-                        mass = max(energy_required_kWh / ed, P_req_secondary / pd)
+                        mass = max(energy_required_kWh / ed, P_req_secondary/efficiency["BAT-MOT_eff"] / pd)
                         W_secondary = mass
                     elif comp_key == "dc_dc_2":
-                        mass = P_req_secondary / pd
+                        mass = P_req_secondary/efficiency["BAT-MOT_eff"] / pd
                     elif comp_key == "dc_ac" or comp_key == "hts_pow":
                         max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
                         mass = max_P_per_string / pd      
                 total_mass += mass
+                eff=efficiency["Total_eff"]
 
             elif config == 2:
                 # Similar logic for config 2 but with fuel cell instead of gas turbine
@@ -563,6 +566,8 @@ class weightEstimation:
                         max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
                         mass = max_P_per_string / pd
                 total_mass += mass
+                efficiency=FC_BAT_efficiency()
+                eff=efficiency["Total_eff"] #need to update efficiency function to return dict with all efficiencies for different components
 
             
             elif config == 3:
@@ -585,6 +590,8 @@ class weightEstimation:
                             W_primary = mass
                             W_secondary = mass
                 total_mass += mass
+                efficiency=GT_GT_efficiency()
+                eff=efficiency["Total_eff"]
 
             elif config == 4:
                 # Similar logic for config 4 but with different component assignments 
@@ -615,8 +622,10 @@ class weightEstimation:
                         max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
                         mass = max_P_per_string / pd
                 total_mass += mass
+                efficiency=GT_FC_efficiency()
+                eff=efficiency["Total_eff"]
 
-        return total_mass, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary
+        return total_mass, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff
     
     def _h2_tank_weight(self) -> float:
         return self.g.W_fuel * (1 / self.g.grav_density - 1)
@@ -626,7 +635,7 @@ class weightEstimation:
         g = self.g
 
         h2_tank_weight   = self._h2_tank_weight()
-        W_engine_total, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary = self._propulsion_weight()
+        W_engine_total, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary, total_prop_efficiency = self._propulsion_weight()
 
         return WeightBreakdown(
             W_wing   = self._wing_weight(),
@@ -654,6 +663,7 @@ class weightEstimation:
             P_primary_KW = P_req_primary,
             P_secondary_KW = P_req_secondary,
             P_max_KW=  P_req_tot,
+            total_prop_efficiency = total_prop_efficiency,
         )
 
 
