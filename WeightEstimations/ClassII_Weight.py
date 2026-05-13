@@ -527,8 +527,6 @@ class weightEstimation:
             W_h2_tank   = h2_tank_weight,
 
             # For display in summary
-            rho_turb     = g.rho_turb,
-            rho_HTS      = g.rho_HTS,
             grav_density = g.grav_density,
             P_TO_KW      = g.P_TO_KW,
             W_fuel       = g.W_fuel,
