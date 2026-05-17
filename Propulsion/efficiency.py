@@ -43,9 +43,9 @@ def return_wanted_params():
 # r is P_optimal/P_required
 def get_throttle(r):
     # efficiency = max_efficiency * (a*throttle^2 + b*throttle + d)
-    a = -0.6
-    b = 1.2
-    d = 0.4
+    a = -0.62659
+    b = 1.25318
+    d = 0.37341
     throttle = 1/r * (1 - (a + b*r + (d-1)*r**2) / (3*a + 2*b*r + d*r**2))
     eff_factor = a*r**2 + b*r + d
     return throttle, eff_factor
