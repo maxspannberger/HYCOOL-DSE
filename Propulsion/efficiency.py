@@ -422,7 +422,7 @@ def GT_GT_efficiency(cable_efficiency=1.0,
 # =============================================================================
 # Gas Turbine + Fuel Cell powertrain
 # =============================================================================
-def GT_FC_efficiency(P_OEI_out=2e6, cable_efficiency=1.0,
+def GT_FC_efficiency(P_OEI_out=2.6e6, cable_efficiency=1.0,
     show=False,
     t_climb: Optional[float] = None,
     t_cruise: Optional[float] = None,
@@ -489,7 +489,7 @@ def GT_FC_efficiency(P_OEI_out=2e6, cable_efficiency=1.0,
     climb_throttle, climb_eff_factor = get_throttle(P_optimal_out_gt/P_climb_by_gt)
     cruise_throttle, cruise_eff_factor = get_throttle(P_optimal_out_gt/P_cruise_by_gt)
 
-    P_optimal_gt = (P_optimal_out_gt - P_fc * fc_eff) / (2 * gt_eff) # only one GT of the two
+    P_optimal_gt = P_optimal_out_gt / (2 * gt_eff) # only one GT of the two
     P_gt_climb = climb_throttle * P_optimal_gt
     P_gt_cruise = cruise_throttle * P_optimal_gt
 
@@ -512,6 +512,7 @@ def GT_FC_efficiency(P_OEI_out=2e6, cable_efficiency=1.0,
         print(f"Climb efficiency: {climb_eff}")
         print(f"Cruise efficiency: {cruise_eff}")
         print(f"Total efficiency: {gt_fc_eff}")
+
 
     results_GT_FC = {
         "LH2-GT-MOT_eff": gt_eff,
