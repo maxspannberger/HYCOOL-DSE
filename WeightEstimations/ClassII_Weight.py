@@ -599,6 +599,8 @@ class weightEstimation:
 
             
             elif config == 3:
+                efficiency1 = GT_GT_efficiency()
+                efficiency2 = GT_BAT_efficiency()
                 # Similar logic for config 3 but with different component assignments
                 if comp_key == "cable":
                     mass = cable_len * comp[comp_key].mass_per_length
@@ -622,23 +624,26 @@ class weightEstimation:
                                           g.P_TO_OEI_KW)
                     
                     if comp_key == "gt_hex": #or comp_key == "ac_dc" or comp_key == "hts_gen" or comp_key == "hts_pow" or comp_key == "dc_ac":
-                        mass = P_req_primary / pd
+                        mass = P_req_primary / pd / efficiency1["GT-MOT-eff"]
                         if comp_key == "gt_hex":
                             W_primary = mass        #gt_hex is in there twice but taken into account in W_primary
                             W_secondary = mass
                     elif comp_key == "ac_dc":
-                        mass = P_req_primary / pd
+                        mass = P_req_primary / pd / efficiency2["ACDC_eff"]
                     elif comp_key == "hts_gen":
-                        mass = P_req_primary / pd
+                        mass = P_req_primary / pd / efficiency2["GEN_eff"]
                     elif comp_key == "hts_pow":
                         mass = P_req_primary / pd
                     elif comp_key == "dc_ac":
-                        mass = P_req_primary / pd
+                        mass = P_req_primary / pd /efficiency2["Dcac_eff"]
                 total_mass += mass
                 efficiency=GT_GT_efficiency()
                 eff=efficiency["Total_eff"]
 
             elif config == 4:
+                efficiency1=GT_FC_efficiency()
+                efficiency2=GT_BAT_efficiency
+
                 # Similar logic for config 4 but with different component assignments 
                 if comp_key == "cable":
                     mass = cable_len * comp[comp_key].mass_per_length
@@ -660,25 +665,25 @@ class weightEstimation:
                     # secondary power source requirement is to sustain TO 
                     #P_req_secondary = max((P_req_tot - P_req_primary), (g.P_TO_OEI_KW-(1/2)*P_req_primary))
                     if comp_key == "gt_hex": #or comp_key == "hts_gen" or comp_key == "ac_dc":
-                        mass = (P_req_primary/2) / pd
+                        mass = (P_req_primary/2) / pd / efficiency1["GT-MOT-eff"]
                         if comp_key == "gt_hex":
                             W_primary = mass*2
                     elif comp_key == "hts_gen":
-                        mass = (P_req_primary/2) / pd
+                        mass = (P_req_primary/2) / pd / efficiency2["GEN_eff"]
                     elif comp_key == "ac_dc":
-                        mass = (P_req_primary/2) / pd
+                        mass = (P_req_primary/2) / pd / efficiency2["ACDC_eff"]
                     elif comp_key == "fc_with_hex": #or comp_key == "dc_dc_2":
-                        mass = P_req_secondary / pd
+                        mass = P_req_secondary / pd / efficiency1["FC-MOT-eff"]
                         if comp_key == "fc_with_hex":
                             W_secondary = mass
                     elif comp_key == "dc_dc_2":
-                        mass = P_req_secondary / pd
+                        mass = P_req_secondary / pd / efficiency2["Dcdc_eff"]
                     elif comp_key == "dc_ac": #or comp_key == "hts_pow":
                         max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
-                        mass = max_P_per_string / pd
+                        mass = max_P_per_string / pd / efficiency2["Dcac_eff"]
                     elif comp_key == "hts_pow":
                         max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
-                        mass = max_P_per_string / pd
+                        mass = max_P_per_string / pd 
                 total_mass += mass
                 efficiency=GT_FC_efficiency()
                 eff=efficiency["Total_eff"]
