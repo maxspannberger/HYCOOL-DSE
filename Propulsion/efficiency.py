@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 from pprint import pprint
+from typing import Optional
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
@@ -86,8 +87,17 @@ def binary_power_search(P_1, P_2, t_1, t_2):
 # =============================================================================
 # Gas Turbine + Battery powertrain
 # =============================================================================
-def GT_BAT_efficiency(t_charge=1800, cable_efficiency=1.0, show=False):
-    t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
+def GT_BAT_efficiency(
+    t_charge=1800,
+    cable_efficiency=1.0,
+    show=False,
+    t_climb: Optional[float] = None,
+    t_cruise: Optional[float] = None,
+    P_climb: Optional[float] = None,
+    P_cruise: Optional[float] = None,
+):
+    #if any(value is None for value in (t_climb, t_cruise, P_climb, P_cruise)):
+        #t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
 
     excess_P_climb = P_climb/P_cruise
 

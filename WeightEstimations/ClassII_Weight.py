@@ -232,6 +232,9 @@ class WeightBreakdown:
     grav_density:float = 0.64
     configuration: int = 1
     total_prop_efficiency: float = 0.0
+    t_cruise: float = 0.0,
+    t_climb  : float = 0.0,
+    t_reserve: float = 0.0
 
 
     @property
@@ -522,7 +525,7 @@ class weightEstimation:
                     # secondary power source requirement is to sustain TO 
                     P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
 
-                    efficiency=GT_BAT_efficiency(P_OEI_out=P_req_secondary)
+                    efficiency=GT_BAT_efficiency(t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW, P_cruise=g.P_cruise_KW)
 
                     if comp_key == "gt_hex":
                         mass = P_req_primary/efficiency["GT-MOT-eff"] / pd
@@ -573,7 +576,7 @@ class weightEstimation:
                                           (g.P_TO_OEI_KW-(1/2)*P_req_primary))
                     
                     efficiency=FC_BAT_efficiency()
-                    efficiency1=GT_FC_efficiency(P_OEI_out=P_req_secondary)
+                    efficiency1=GT_FC_efficiency()
 
                     if comp_key == "fc_with_hex": #or comp_key == "dc_dc_1":
                         mass = P_req_primary / efficiency["FC-MOT_eff"] / pd
