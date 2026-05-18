@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 from pprint import pprint
+import ast
 from typing import Optional
 import pandas as pd
 import numpy as np
@@ -15,28 +16,42 @@ from General.component_parameters import component_params as c
 # energy requirements.
 # =============================================================================
 # Create a helper function to pull values safely
-def get_param(parameter_name):
+def get_param(parameter_name, section_name=None):
     # Load the data
     df = pd.read_csv(root / "outputs/class_ii_results.csv")
     # Clean up whitespace (CSV exports often have hidden spaces in strings)
     df['Section'] = df['Section'].str.strip()
     df['Parameter'] = df['Parameter'].str.strip()
     try:
+        if section_name is not None:
+            df = df.loc[df['Section'] == section_name]
+
         # We look for the parameter name and return the associated value
         val = df.loc[df['Parameter'] == parameter_name, 'Value'].values[0]
+
+        if isinstance(val, str):
+            val = ast.literal_eval(val)
+
+        if isinstance(val, (tuple, list)):
+            val = val[0]
+
         return float(val)
     except IndexError:
         print(f"Error: Parameter '{parameter_name}' not found in CSV.")
+        return None
+    except (ValueError, SyntaxError):
+        print(f"Error: Parameter '{parameter_name}' in CSV is not a numeric value: {val!r}")
         return None
 
 
 # Extract your specific variables
 def return_wanted_params():
-    t_climb = get_param('t_climb')             
-    t_cruise = get_param('t_cruise')
+    mission_section = 'Mission Power & Fuel'
+    t_climb = get_param('t_climb', mission_section)
+    t_cruise = get_param('t_cruise', mission_section)
 
-    P_climb = get_param('P_climb_shaft')       
-    P_cruise = get_param('P_cruise_shaft')
+    P_climb = get_param('P_climb_shaft', mission_section)
+    P_cruise = get_param('P_cruise_shaft', mission_section)
 
     return t_climb, t_cruise, P_climb, P_cruise
 
