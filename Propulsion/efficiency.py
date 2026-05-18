@@ -195,12 +195,12 @@ def GT_BAT_efficiency(
         error = np.abs(P_optimal_gt_old - P_optimal_gt)
         i += 1
 
-    # required energies
+    # energy required
     E_climb_out = P_climb * t_climb
     E_cruise_c_out = (P_cruise + P_bt_charge) * t_charge
     E_cruise_full_out = P_cruise * (t_cruise - t_charge)
 
-    # provided energies
+    # energy provided
     E_climb_in = P_gt_climb * t_climb
     E_cruise_c_in = P_gt_climb * t_charge
     E_cruise_full_in = P_gt_cruise * (t_cruise - t_charge)
@@ -258,9 +258,6 @@ def FC_BAT_efficiency(t_charge=1800,
     P_climb: Optional[float] = None,
     P_cruise: Optional[float] = None,
 ):
-    #t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
-
-    excess_P_climb = P_climb/P_cruise
 
     only_fc_efficiency = c["fc_with_hex"].efficiency
 
@@ -321,12 +318,12 @@ def FC_BAT_efficiency(t_charge=1800,
         error = np.abs(bt_c_frac_old - bt_c_frac)
         i += 1
 
-    # required energies
+    # energy required
     E_climb_out = P_climb * t_climb
     E_cruise_c_out = (P_cruise + P_bt_charge) * t_charge
     E_cruise_full_out = P_cruise * (t_cruise - t_charge)
 
-    # provided energies
+    # energy provided
     E_climb_in = P_fc_climb * t_climb
     E_cruise_c_in = P_fc_climb * t_charge
     E_cruise_full_in = P_fc_cruise * (t_cruise - t_charge)
@@ -377,9 +374,6 @@ def GT_GT_efficiency(cable_efficiency=1.0,
     P_climb: Optional[float] = None,
     P_cruise: Optional[float] = None,
 ):
-    #t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
-
-    excess_P_climb = P_climb/P_cruise
 
     only_gt_efficiency = c["gt_hex"].efficiency
 
@@ -405,18 +399,22 @@ def GT_GT_efficiency(cable_efficiency=1.0,
     climb_throttle, climb_eff_factor = get_throttle(P_optimal_out/P_climb)
     cruise_throttle, cruise_eff_factor = get_throttle(P_optimal_out/P_cruise)
 
-    P_optimal_gt = P_optimal_out / (2 * gt_eff) * only_gt_efficiency # only one GT out of the two
+    P_optimal_gt = P_optimal_out / gt_eff
     P_gt_climb = climb_throttle * P_optimal_gt
     P_gt_cruise = cruise_throttle * P_optimal_gt
 
+    # energy required
+    E_climb_out = P_climb * t_climb
+    E_cruise_out = P_cruise * t_cruise
+
+    # energy provided
+    E_climb_in = P_gt_climb * t_climb
+    E_cruise_in = P_gt_cruise * t_cruise
+    
+    # efficiencies
     climb_eff = gt_eff * climb_eff_factor
     cruise_eff = gt_eff * cruise_eff_factor
-
-    E_climb = P_climb * t_climb
-    E_cruise = P_cruise * t_cruise
-    
-    # total energy efficiency over a flight
-    gt_gt_eff = (E_climb * climb_eff + E_cruise * cruise_eff) / (E_climb + E_cruise)
+    gt_gt_eff = (E_climb_out + E_cruise_out) / (E_climb_in + E_cruise_in)
 
     if show:
         print("\nGT+GT")
@@ -432,7 +430,7 @@ def GT_GT_efficiency(cable_efficiency=1.0,
         "Climb_eff": climb_eff,
         "Cruise_average_eff": cruise_eff,
         "Total_eff": gt_gt_eff,
-        "GT_P_opt": P_optimal_gt,
+        "GT_P_opt": 0.5 * P_optimal_gt * only_gt_efficiency,
         "GT_throttle_climb": climb_throttle,
         "GT_throttle_cruise": cruise_throttle
     }
@@ -450,7 +448,6 @@ def GT_FC_efficiency(P_OEI_out=2.6e6, cable_efficiency=1.0,
     P_climb: Optional[float] = None,
     P_cruise: Optional[float] = None,
 ):
-    #t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
 
     only_gt_efficiency = c["gt_hex"].efficiency
     only_fc_efficiency = c["fc_with_hex"].efficiency
@@ -474,7 +471,6 @@ def GT_FC_efficiency(P_OEI_out=2.6e6, cable_efficiency=1.0,
         * cable_efficiency
     )
 
-
     # Efficiency of power from fuel cell to motor
     fc_eff = (
         only_fc_efficiency 
@@ -492,17 +488,7 @@ def GT_FC_efficiency(P_OEI_out=2.6e6, cable_efficiency=1.0,
         * cable_efficiency
     )
 
-    # Calculate power of gas turbine and fuel cell, assuming that the gas
-    # turbine provides all cruise power and fuel cell provides excess climb power
-    #
-    # Using only GT while cruising
-    # P_gt = 0.5 * P_cruise / gt_eff * only_gt_efficiency
-    # P_fc = (P_climb - P_cruise) / fc_eff * only_fc_efficiency
-    # E_in_cruise = P_gt * t_cruise / only_gt_efficiency
-    # E_in_climb = (P_gt/only_gt_efficiency + P_fc/only_fc_efficiency) * t_climb 
-    #
-    # Using FC max power while cruising
-    P_fc = P_OEI_out / fc_eff * only_fc_efficiency
+    P_fc = P_OEI_out / fc_eff
     P_climb_by_gt = P_climb - P_OEI_out
     P_cruise_by_gt = P_cruise - P_OEI_out
     P_optimal_out_gt = golden_power_search(P_climb_by_gt, P_cruise_by_gt, t_climb, t_cruise)
@@ -510,23 +496,22 @@ def GT_FC_efficiency(P_OEI_out=2.6e6, cable_efficiency=1.0,
     climb_throttle, climb_eff_factor = get_throttle(P_optimal_out_gt/P_climb_by_gt)
     cruise_throttle, cruise_eff_factor = get_throttle(P_optimal_out_gt/P_cruise_by_gt)
 
-    P_optimal_gt = P_optimal_out_gt / (2 * gt_eff) # only one GT of the two
+    P_optimal_gt = P_optimal_out_gt / gt_eff
     P_gt_climb = climb_throttle * P_optimal_gt
     P_gt_cruise = cruise_throttle * P_optimal_gt
 
-    E_in_cruise = (P_gt_cruise/(cruise_eff_factor*only_gt_efficiency) + P_fc/only_fc_efficiency) * t_cruise
-    E_in_climb = (P_gt_climb/(climb_eff_factor*only_gt_efficiency) + P_fc/only_fc_efficiency) * t_climb 
-    
-    # Calculate energy input and outputs for flight phases
-    E_out_cruise = P_cruise * t_cruise
-    E_out_climb = P_climb * t_climb
-    
-    # Energy efficiency for cruise and climb
-    cruise_eff = E_out_cruise / E_in_cruise
-    climb_eff = E_out_climb / E_in_climb
-    
-    # Total energy efficiency over a flight
-    gt_fc_eff = (E_out_climb + E_out_cruise) / (E_in_climb + E_in_cruise)
+    # energy required
+    E_cruise_out = P_cruise * t_cruise
+    E_climb_out = P_climb * t_climb
+
+    # energy provided
+    E_cruise_in = (P_gt_cruise + P_fc) * t_cruise
+    E_climb_in = (P_gt_climb + P_fc) * t_climb 
+
+    # efficiencies
+    cruise_eff = E_cruise_out / E_cruise_in
+    climb_eff = E_climb_out / E_climb_in
+    gt_fc_eff = (E_climb_out + E_cruise_out) / (E_climb_in + E_cruise_in)
     
     if show:
         print("\nGT+FC")
@@ -543,8 +528,8 @@ def GT_FC_efficiency(P_OEI_out=2.6e6, cable_efficiency=1.0,
         "Climb_eff": climb_eff,
         "Cruise_average_eff": cruise_eff,
         "Total_eff": gt_fc_eff,
-        "FC_P": P_fc,
-        "GT_P_opt": P_optimal_gt,
+        "FC_P": 0.5 * P_fc * only_gt_efficiency,
+        "GT_P_opt": 0.5 * P_optimal_gt * only_gt_efficiency,
         "GT_throttle_climb": climb_throttle,
         "GT_throttle_cruise": cruise_throttle
     }
@@ -564,8 +549,8 @@ if __name__ == "__main__":
     results_FC_BAT = FC_BAT_efficiency(t_charge=t_charge, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
     # #print(results_FC_BAT)
 
-    # results_GT_GT = GT_GT_efficiency(cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
+    results_GT_GT = GT_GT_efficiency(cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
     # #print(results_GT_GT)
 
-    # results_GT_FC = GT_FC_efficiency(cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
+    results_GT_FC = GT_FC_efficiency(cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
     # # print(results_GT_FC)
