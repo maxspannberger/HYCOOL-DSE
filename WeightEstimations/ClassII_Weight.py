@@ -434,7 +434,6 @@ class weightEstimation:
         k_SC = 0.567 if g.has_flap_slat else 0.472
         return 1.2 * k_SC * g.MTOW ** (2 / 3)
 
-    
     def _propulsion_weight(self) -> float:
 
         #pipe lengths:
@@ -500,7 +499,6 @@ class weightEstimation:
                 raise ValueError(f"Component '{comp_key}' not found in component dict")
             elif config == 1:
 
-                efficiency=GT_BAT_efficiency()
 
                 if comp_key == "cable":
                     mass = cable_len * comp[comp_key].mass_per_length
@@ -522,30 +520,30 @@ class weightEstimation:
                                         g.P_TO_OEI_KW)
                     
                     # secondary power source requirement is to sustain TO 
-                    P_req_secondary = max((g.P_TO_KW - P_req_primary), 
-                                          g.P_TO_OEI_KW)
-                    
-                    if comp_key == "gt_hex": #or comp_key == "hts_gen" or comp_key == "ac_dc":
-                        mass = P_req_primary / pd
-                        if comp_key == "gt_hex":
-                            W_primary = mass
+                    P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
+
+                    efficiency=GT_BAT_efficiency(P_OEI_out=P_req_secondary)
+
+                    if comp_key == "gt_hex":
+                        mass = P_req_primary/efficiency["GT-MOT-eff"] / pd
+                        W_primary = mass
                     elif comp_key == "hts_gen":
-                        mass = P_req_primary / pd
+                        mass = P_req_primary/efficiency["GEN_eff"] / pd
                     elif comp_key == "ac_dc":
-                        mass = P_req_primary / pd
+                        mass = P_req_primary/efficiency["ACDC_eff"] / pd
                     elif comp_key == "bt":
-                        energy_required_kWh = P_req_secondary * (g.t_climb / 3600)  # Convert seconds to hours
+                        energy_required_kWh = P_req_secondary/efficiency["BAT-MOT_eff"] * (g.t_climb / 3600)  # Convert seconds to hours
                         ed = comp[comp_key].energy_density
-                        mass = max(energy_required_kWh / ed, P_req_secondary / pd)
+                        mass = max(energy_required_kWh / ed, P_req_secondary/efficiency["BAT-MOT_eff"] / pd)
                         W_secondary = mass
                     elif comp_key == "dc_dc_2":
-                        mass = P_req_secondary / pd
-                    elif comp_key == "dc_ac": #or comp_key == "hts_pow":
+                        mass = P_req_secondary/efficiency["Dcdc_eff"] / pd
+                    elif comp_key == "dc_ac": 
                         max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
-                        mass = max_P_per_string / pd     
+                        mass = max_P_per_string /efficiency["Dcac_eff"] / pd 
                     elif comp_key == "hts_pow":
                         max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
-                        mass = max_P_per_string / pd  
+                        mass = max_P_per_string / pd      
                 total_mass += mass
                 eff=efficiency["Total_eff"]
 
@@ -574,27 +572,28 @@ class weightEstimation:
                     P_req_secondary = max((g.P_TO_KW - P_req_primary), 
                                           (g.P_TO_OEI_KW-(1/2)*P_req_primary))
                     
+                    efficiency=FC_BAT_efficiency()
+                    efficiency1=GT_FC_efficiency(P_OEI_out=P_req_secondary)
+
                     if comp_key == "fc_with_hex": #or comp_key == "dc_dc_1":
-                        mass = P_req_primary / pd
-                        if comp_key == "fc_with_hex":
-                            W_primary = mass
+                        mass = P_req_primary / efficiency["FC-MOT_eff"] / pd
+                        W_primary = mass
                     elif comp_key == "dc_dc_1":
-                        mass = P_req_primary / pd
+                        mass = P_req_primary / efficiency["DC-DC_1_eff"] / pd
                     elif comp_key == "bt":
                         energy_required_kWh = P_req_secondary * (g.t_climb / 3600)  # Convert seconds to hours
                         ed = comp[comp_key].energy_density
-                        mass = max(energy_required_kWh / ed, P_req_secondary / pd)
+                        mass = max(energy_required_kWh / efficiency1["BAT-MOT_eff"] / ed, P_req_secondary / efficiency1["BAT-MOT_eff"] / pd)
                         W_secondary = mass
                     elif comp_key == "dc_dc_2":
-                        mass = P_req_secondary / pd
+                        mass = P_req_secondary / efficiency1["Dcdc_eff"] / pd
                     elif comp_key == "dc_ac": #or comp_key == "hts_pow":
                         max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
-                        mass = max_P_per_string / pd
+                        mass = max_P_per_string / efficiency1["Dcac_eff"] / pd
                     elif comp_key == "hts_pow":
                         max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
                         mass = max_P_per_string / pd
                 total_mass += mass
-                efficiency=FC_BAT_efficiency()
                 eff=efficiency["Total_eff"] #need to update efficiency function to return dict with all efficiencies for different components
 
             
