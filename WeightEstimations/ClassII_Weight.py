@@ -232,6 +232,8 @@ class WeightBreakdown:
     grav_density:float = 0.64
     configuration: int = 1
     total_prop_efficiency: float = 0.0
+    climb_efficiency: float = 0.0
+    cruise_efficiency: float = 0.0
     t_cruise: float = 0.0,
     t_climb  : float = 0.0,
     t_reserve: float = 0.0
@@ -341,6 +343,16 @@ class WeightBreakdown:
         table.add_row(
             "Power Production Efficiency",
             f"[bold]{self.total_prop_efficiency:.4f}[/bold]",
+            "",
+        )
+        table.add_row(
+            "Climb Efficiency",
+            f"[bold]{self.climb_efficiency:.4f}[/bold]",
+            "",
+        )
+        table.add_row(
+            "Cruise Efficiency",
+            f"[bold]{self.cruise_efficiency:.4f}[/bold]",
             "",
         )
 
@@ -684,7 +696,9 @@ class weightEstimation:
                         mass = max_P_per_string / pd 
                 total_mass += mass
         eff=efficiency["Total_eff"]
-        return total_mass, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff
+        eff_cruise=efficiency["Cruise_average_eff"]
+        eff_climb=efficiency["Climb_eff"]
+        return total_mass, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff,eff_climb, eff_cruise
     
     def _h2_tank_weight(self) -> float:
         return self.g.W_fuel * (1 / self.g.grav_density - 1)
@@ -694,7 +708,7 @@ class weightEstimation:
         g = self.g
 
         h2_tank_weight   = self._h2_tank_weight()
-        W_engine_total, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary, total_prop_efficiency = self._propulsion_weight()
+        W_engine_total, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary, total_prop_efficiency,climb_eff,cruise_eff = self._propulsion_weight()
 
         return WeightBreakdown(
             W_wing   = self._wing_weight(),
@@ -723,6 +737,8 @@ class weightEstimation:
             P_secondary_KW = P_req_secondary,
             P_max_KW=  P_req_tot,
             total_prop_efficiency = total_prop_efficiency,
+            climb_efficiency=climb_eff,
+            cruise_efficiency=cruise_eff
         )
 
 
