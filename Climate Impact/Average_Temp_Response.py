@@ -5,6 +5,7 @@ if str(root) not in sys.path:
     sys.path.insert(0, str(root))
 
 import pandas as pd
+import ast
 
 from Propulsion.efficiency import (
     FC_BAT_efficiency,
@@ -56,11 +57,32 @@ df['Section'] = df['Section'].str.strip()
 df['Parameter'] = df['Parameter'].str.strip()
 
 # Create a helper function to pull values safely
-def get_param(parameter_name):
+def get_param(parameter_name, prefer_section='Mission Power & Fuel'):
+    # Prefer the mission section if the parameter appears multiple times
+    mask_pref = (df['Parameter'] == parameter_name) & (df['Section'] == prefer_section)
     try:
-        # We look for the parameter name and return the associated value
-        val = df.loc[df['Parameter'] == parameter_name, 'Value'].values[0]
-        return float(val)
+        if mask_pref.any():
+            val = df.loc[mask_pref, 'Value'].values[0]
+        else:
+            vals = df.loc[df['Parameter'] == parameter_name, 'Value'].values
+            if len(vals) == 0:
+                print(f"Error: Parameter '{parameter_name}' not found in CSV.")
+                return None
+            # take the last occurrence by default
+            val = vals[-1]
+
+        # Try direct float conversion first
+        try:
+            return float(val)
+        except Exception:
+            # handle strings like "(0.0,)" or "[0.0]"
+            try:
+                parsed = ast.literal_eval(val)
+                if isinstance(parsed, (list, tuple)) and len(parsed) > 0:
+                    return float(parsed[0])
+                return float(parsed)
+            except Exception:
+                raise ValueError(f"Could not parse parameter '{parameter_name}' value: {val!r}")
     except IndexError:
         print(f"Error: Parameter '{parameter_name}' not found in CSV.")
         return None
@@ -83,7 +105,7 @@ E_total = E_climb + E_cruise
 # =============================================================================
 
 #design A: GT-BAT
-res_A = GT_BAT_efficiency()
+res_A = GT_BAT_efficiency(t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
 A_gt_bt_eff = res_A["Total_eff"]
 A_P_gt = res_A.get("GT_P_opt")
 A_climb_eff = res_A.get("Climb_eff")
@@ -93,7 +115,7 @@ A_cruise_eff_c = res_A.get("Cruise_charging_eff")
 A_gt_eff = res_A.get("LH2-GT-MOT_eff")
 
 #design B: FC-BAT
-res_B = FC_BAT_efficiency()
+res_B = FC_BAT_efficiency(t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
 B_fc_bt_eff = res_B["Total_eff"]
 B_P_fc = res_B.get("FC_P")
 B_climb_eff = res_B.get("Climb_eff")
@@ -103,15 +125,24 @@ B_cruise_eff_c = res_B.get("Cruise_charging_eff")
 B_fc_eff = res_B.get("LH2-FC-MOT_eff")
 
 #design C: GT-FC
-res_C = GT_FC_efficiency()
+res_C = GT_FC_efficiency(t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
 C_gt_fc_eff = res_C["Total_eff"]
-C_P_gt = res_C.get("GT_P")
+_C_P_gt_opt = res_C.get("GT_P_opt")
+C_throttle_climb = res_C.get("GT_throttle_climb")
+C_throttle_cruise = res_C.get("GT_throttle_cruise")
+if _C_P_gt_opt is not None:
+    C_P_gt = _C_P_gt_opt * (C_throttle_cruise if C_throttle_cruise is not None else 1.0)
+    C_P_gt_climb = _C_P_gt_opt * (C_throttle_climb if C_throttle_climb is not None else 1.0)
+else:
+    C_P_gt = None
+    C_P_gt_climb = None
 C_gt_eff = res_C.get("LH2-GT-MOT_eff")
 C_P_fc = res_C.get("FC_P")
 C_fc_eff = res_C.get("LH2-FC-MOT_eff")
+C_cruise_eff = res_C.get("Cruise_average_eff")
 
 #design D: GT-GT
-res_D = GT_GT_efficiency()
+res_D = GT_GT_efficiency(t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
 D_gt_gt_eff = res_D["Total_eff"]
 # compute per-engine climb/cruise powers from returned optimal and throttles
 D_P_gt_climb = res_D.get("GT_P_opt") * res_D.get("GT_throttle_climb") if res_D.get("GT_P_opt") is not None else None
@@ -140,8 +171,8 @@ designs = {
         'to_climb': {'primary': 'GT', 'eta_primary': D_climb_eff, 'p_primary': D_P_gt_climb/2, 'secondary': 'GT2', 'eta_secondary': D_climb_eff, 'p_secondary': D_P_gt_climb/2}
     },
     'GT-FC':{
-        'cruise': {'source': 'GT', 'eta': C_gt_eff},
-        'to_climb': {'primary': 'GT', 'eta_primary': C_gt_eff, 'p_primary': C_P_gt, 'secondary': 'FC', 'eta_secondary': C_fc_eff, 'p_secondary': C_P_fc}
+        'cruise': {'source': 'FC', 'eta': C_cruise_eff},
+        'to_climb': {'primary': 'GT', 'eta_primary': C_gt_eff, 'p_primary': C_P_gt_climb, 'secondary': 'FC', 'eta_secondary': C_fc_eff, 'p_secondary': C_P_fc}
     },
     'Baseline':{
         'cruise': {'source': 'Jet', 'eta': 0.33},
@@ -166,26 +197,130 @@ def calc_mass_h2():
 
         cruise_source = design['cruise']['source']
         cruise_eta = design['cruise']['eta']
+        # fallback if cruise efficiency not provided by the efficiency helpers
+        if cruise_eta is None:
+            try:
+                total_eff_map = {
+                    'GT-BAT': A_gt_bt_eff,
+                    'FC-BAT': B_fc_bt_eff,
+                    'GT-GT': D_gt_gt_eff,
+                    'GT-FC': C_gt_fc_eff,
+                    'Baseline': 0.33,
+                }
+                cruise_eta = total_eff_map.get(design_name) or 0.33
+            except Exception:
+                cruise_eta = 0.33
         cruise_energy = energies['cruise']
         cruise_m_h2 = 0.0
-        if cruise_source != 'BAT':
-            cruise_m_h2 = cruise_energy / (cruise_eta * lhv)
 
-        h2_masses[design_name]['cruise'] = {
-            'source': cruise_source,
-            'energy_kJ': cruise_energy,
-            'eta': cruise_eta,
-            'm_h2_kg': cruise_m_h2,
-        }
+        # Special handling for GT-FC: both FC and GT supply cruise power.
+        if design_name == 'GT-FC':
+            # Primary rule: FC runs at its available cruise power (FC_P) and GT supplies the remainder
+            if C_P_fc is not None:
+                p_fc = C_P_fc
+                # ensure not negative remainder
+                p_gt = max(0.0, P_cruise - p_fc)
+                energy_fc = p_fc * t_cruise
+                energy_gt = p_gt * t_cruise
+
+                m_h2_fc = 0.0
+                if C_fc_eff:
+                    m_h2_fc = energy_fc / (C_fc_eff * lhv)
+
+                m_h2_gt = 0.0
+                if C_gt_eff and p_gt > 0:
+                    m_h2_gt = energy_gt / (C_gt_eff * lhv)
+
+                cruise_m_h2 = m_h2_fc + m_h2_gt
+                h2_masses[design_name]['cruise'] = {
+                    'source': 'FC+GT',
+                    'energy_kJ': cruise_energy,
+                    'eta': cruise_eta,
+                    'm_h2_kg': cruise_m_h2,
+                    'cruise_breakdown': [
+                        {'source': 'FC', 'energy_kJ': energy_fc, 'eta': C_fc_eff, 'm_h2_kg': m_h2_fc},
+                        {'source': 'GT', 'energy_kJ': energy_gt, 'eta': C_gt_eff, 'm_h2_kg': m_h2_gt},
+                    ],
+                }
+                # Debug output for GT-FC split
+                print("GT-FC cruise split debug:")
+                print(f"  C_P_fc={C_P_fc}, derived C_P_gt={p_gt}")
+                print(f"  energy_fc={energy_fc}, energy_gt={energy_gt}")
+                print(f"  C_fc_eff={C_fc_eff}, C_gt_eff={C_gt_eff}")
+                print(f"  m_h2_fc={m_h2_fc}, m_h2_gt={m_h2_gt}, total_cruise_m_h2={cruise_m_h2}")
+            else:
+                # fallback: if FC_P not provided, fall back to previous power-share split when both provided
+                p_fc = C_P_fc
+                p_gt = C_P_gt
+                if (p_fc is not None) and (p_gt is not None) and (p_fc + p_gt) > 0:
+                    total_p = p_fc + p_gt
+                    energy_fc = cruise_energy * (p_fc / total_p)
+                    energy_gt = cruise_energy * (p_gt / total_p)
+
+                    m_h2_fc = 0.0
+                    if C_fc_eff:
+                        m_h2_fc = energy_fc / (C_fc_eff * lhv)
+
+                    m_h2_gt = 0.0
+                    if C_gt_eff:
+                        m_h2_gt = energy_gt / (C_gt_eff * lhv)
+
+                    cruise_m_h2 = m_h2_fc + m_h2_gt
+                    h2_masses[design_name]['cruise'] = {
+                        'source': 'FC+GT',
+                        'energy_kJ': cruise_energy,
+                        'eta': cruise_eta,
+                        'm_h2_kg': cruise_m_h2,
+                        'cruise_breakdown': [
+                            {'source': 'FC', 'energy_kJ': energy_fc, 'eta': C_fc_eff, 'm_h2_kg': m_h2_fc},
+                            {'source': 'GT', 'energy_kJ': energy_gt, 'eta': C_gt_eff, 'm_h2_kg': m_h2_gt},
+                        ],
+                    }
+                    print("GT-FC cruise split debug (fallback share):")
+                    print(f"  C_P_fc={C_P_fc}, C_P_gt={C_P_gt}")
+                    print(f"  energy_fc={energy_fc}, energy_gt={energy_gt}")
+                    print(f"  C_fc_eff={C_fc_eff}, C_gt_eff={C_gt_eff}")
+                    print(f"  m_h2_fc={m_h2_fc}, m_h2_gt={m_h2_gt}, total_cruise_m_h2={cruise_m_h2}")
+                else:
+                    # last-resort fallback: treat cruise as single source
+                    if cruise_source != 'BAT':
+                        cruise_m_h2 = cruise_energy / (cruise_eta * lhv)
+                    h2_masses[design_name]['cruise'] = {
+                        'source': cruise_source,
+                        'energy_kJ': cruise_energy,
+                        'eta': cruise_eta,
+                        'm_h2_kg': cruise_m_h2,
+                    }
+            
+        else:
+            if cruise_source != 'BAT':
+                cruise_m_h2 = cruise_energy / (cruise_eta * lhv)
+
+            h2_masses[design_name]['cruise'] = {
+                'source': cruise_source,
+                'energy_kJ': cruise_energy,
+                'eta': cruise_eta,
+                'm_h2_kg': cruise_m_h2,
+            }
 
         to_climb = design['to_climb']
         primary_source = to_climb['primary']
         primary_eta = to_climb['eta_primary']
+        if primary_eta is None:
+            primary_eta = cruise_eta
         primary_power = to_climb['p_primary']
+        if primary_power is None:
+            print(f"Warning: 'p_primary' missing for design '{design_name}', treating as 0.0 W")
+            primary_power = 0.0
 
         secondary_source = to_climb['secondary']
         secondary_eta = to_climb['eta_secondary']
+        if secondary_eta is None:
+            secondary_eta = cruise_eta
         secondary_power = to_climb['p_secondary']
+        if secondary_power is None:
+            print(f"Warning: 'p_secondary' missing for design '{design_name}', treating as 0.0 W")
+            secondary_power = 0.0
 
         total_power = primary_power + secondary_power
         if total_power <= 0:
@@ -299,14 +434,47 @@ def calc_atr_per_design(h2_masses):
             f_ed = 1.0
         
         atr_cruise = 0.0
-        if source_props[cruise['source']]['nox']:
-            atr_cruise += cruise['m_h2_kg'] * ei_nox * aCCF_nox * f_ed
-        if source_props[cruise['source']]['h2o']:
-            atr_cruise += cruise['m_h2_kg'] * aCCF_h2o * f_ed
-        if source_props[cruise['source']]['contrail']:
-            atr_cruise += d_mission * f_ISSR * aCCF_contrail
-        if source_props[cruise['source']]['co2']:
-            atr_cruise += cruise['m_h2_kg'] * aCCF_co2 * f_energy_density # adjust for energy density difference to jet fuel
+        cruise_nox = cruise_h2o = cruise_co2 = cruise_contrail = 0.0
+        # If cruise has a detailed breakdown, attribute impacts per contributing source
+        cruise_breakdown = cruise.get('cruise_breakdown') if isinstance(cruise, dict) else None
+        if cruise_breakdown:
+            # compute per-source NOx/H2O/CO2 then add a single contrail term
+            total_contrail_mass = sum(part.get('m_h2_kg', 0.0) for part in cruise_breakdown if source_props[part['source']]['contrail'])
+            total_cruise_mass = sum(part.get('m_h2_kg', 0.0) for part in cruise_breakdown)
+            for part in cruise_breakdown:
+                src = part['source']
+                m_h2 = part.get('m_h2_kg', 0.0)
+                if source_props[src]['nox']:
+                    val = m_h2 * ei_nox * aCCF_nox * f_ed
+                    atr_cruise += val
+                    cruise_nox += val
+                if source_props[src]['h2o']:
+                    val = m_h2 * aCCF_h2o * f_ed
+                    atr_cruise += val
+                    cruise_h2o += val
+                if source_props[src]['co2']:
+                    val = m_h2 * aCCF_co2 * f_energy_density
+                    atr_cruise += val
+                    cruise_co2 += val
+            # add contrail once, scaled by fraction of cruise mass from contrail-producing sources
+            if total_cruise_mass > 0 and total_contrail_mass > 0:
+                contrail_total = d_mission * f_ISSR * aCCF_contrail * (total_contrail_mass / total_cruise_mass)
+                atr_cruise += contrail_total
+                cruise_contrail += contrail_total
+        else:
+            cruise_nox = cruise_h2o = cruise_co2 = cruise_contrail = 0.0
+            if source_props[cruise['source']]['nox']:
+                cruise_nox = cruise['m_h2_kg'] * ei_nox * aCCF_nox * f_ed
+                atr_cruise += cruise_nox
+            if source_props[cruise['source']]['h2o']:
+                cruise_h2o = cruise['m_h2_kg'] * aCCF_h2o * f_ed
+                atr_cruise += cruise_h2o
+            if source_props[cruise['source']]['contrail']:
+                cruise_contrail = d_mission * f_ISSR * aCCF_contrail
+                atr_cruise += cruise_contrail
+            if source_props[cruise['source']]['co2']:
+                cruise_co2 = cruise['m_h2_kg'] * aCCF_co2 * f_energy_density # adjust for energy density difference to jet fuel
+                atr_cruise += cruise_co2
 
         atr_primary = 0.0
         if source_props[primary['source']]['nox']:
@@ -317,15 +485,26 @@ def calc_atr_per_design(h2_masses):
             atr_primary += primary['m_h2_kg'] * aCCF_co2 * f_energy_density 
             
         atr_secondary = 0.0
+        sec_nox = sec_h2o = sec_co2 = 0.0
         if source_props[secondary['source']]['nox']:
-            atr_secondary += secondary['m_h2_kg'] * ei_nox * aCCF_nox * f_ed
+            sec_nox = secondary['m_h2_kg'] * ei_nox * aCCF_nox * f_ed
+            atr_secondary += sec_nox
         if source_props[secondary['source']]['h2o']:
-            atr_secondary += secondary['m_h2_kg'] * aCCF_h2o * f_ed
+            sec_h2o = secondary['m_h2_kg'] * aCCF_h2o * f_ed
+            atr_secondary += sec_h2o
         if source_props[secondary['source']]['co2']:
-            atr_secondary += secondary['m_h2_kg'] * aCCF_co2 * f_energy_density
+            sec_co2 = secondary['m_h2_kg'] * aCCF_co2 * f_energy_density
+            atr_secondary += sec_co2
 
         total_atr = atr_cruise + atr_primary + atr_secondary
         atrs[design_name] = total_atr
+
+        # Debug print: detailed ATR contributions
+        print(f"ATR breakdown for {design_name}:")
+        print(f"  Cruise total={atr_cruise} (NOx={cruise_nox}, H2O={cruise_h2o}, CO2={cruise_co2}, Contrail={cruise_contrail})")
+        print(f"  TO/Climb primary={atr_primary}")
+        print(f"  TO/Climb secondary={atr_secondary}")
+        print(f"  Total ATR={total_atr}\n")
 
     print(atrs)
     return atrs
