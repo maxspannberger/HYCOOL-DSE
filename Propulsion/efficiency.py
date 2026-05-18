@@ -100,7 +100,7 @@ def golden_power_search(P_1, P_2, t_1, t_2):
 # Gas Turbine + Battery powertrain
 # =============================================================================
 def GT_BAT_efficiency(
-    t_charge=2700,
+    t_charge=1800,
     cable_efficiency=1.0,
     show=False,
     t_climb: Optional[float] = None,
@@ -188,7 +188,7 @@ def GT_BAT_efficiency(
         climb_throttle, climb_eff_factor = get_throttle(P_optimal_gt/P_gt_climb)
         cruise_throttle, cruise_eff_factor = get_throttle(P_optimal_gt/P_gt_cruise)
 
-        P_bt_discharge = (P_climb - climb_eff_factor * gt_eff) / bt_eff_d
+        P_bt_discharge = (P_climb - climb_eff_factor * gt_eff * P_gt_climb) / bt_eff_d
         P_bt_charge = t_climb/t_charge * P_bt_discharge
 
         bt_c_frac = P_bt_charge / (climb_eff_factor * gt_eff * P_gt_climb)
@@ -304,34 +304,39 @@ def FC_BAT_efficiency(t_charge=1800,
         * cable_efficiency
     )
 
-    bt_c_frac =  (excess_P_climb - 1) / (excess_P_climb + bt_eff_c*bt_eff_d/fc_eff * t_charge/t_climb)
+    # iterate to obtain battery charge fraction and optimal power
+    error = np.inf
+    bt_c_frac = t_climb/t_charge
+    i = 0
+    while error > 1e-8 and i < 1000:
+        bt_c_frac_old = bt_c_frac
 
-    # climbing efficiency
-    climb_eff = excess_P_climb / (1/bt_eff_d + 1/(1-bt_c_frac) * (1/fc_eff - excess_P_climb/bt_eff_d))
+        P_fc_climb = P_cruise / (fc_eff * (1 - bt_c_frac))
+        P_fc_cruise = P_cruise / fc_eff
 
-    # cruising efficiency
-    cruise_eff_c = (1-bt_c_frac)*fc_eff + bt_c_frac*bt_eff_c
-    cruise_eff_full = fc_eff
+        P_bt_discharge = (P_climb - fc_eff * P_fc_climb) / bt_eff_d
+        P_bt_charge = t_climb/t_charge * P_bt_discharge
 
-    # component powers
-    P_fc = 0.5 * P_cruise / (fc_eff * (1 - bt_c_frac)) * only_fc_efficiency # only one FC out of the two
-    P_bt_discharge = 1/bt_eff_d * (P_climb - P_cruise / (1 - bt_c_frac))
-    P_bt_charge = bt_eff_c/fc_eff * bt_c_frac/(1-bt_c_frac) * P_cruise
+        bt_c_frac = P_bt_charge / (fc_eff * P_fc_climb)
+        error = np.abs(bt_c_frac_old - bt_c_frac)
+        i += 1
 
     # required energies
-    E_climb = P_climb * t_climb
-    E_cruise_c = (P_cruise + P_bt_charge) * t_charge
-    E_cruise_full = P_cruise * (t_cruise - t_charge)
+    E_climb_out = P_climb * t_climb
+    E_cruise_c_out = (P_cruise + P_bt_charge) * t_charge
+    E_cruise_full_out = P_cruise * (t_cruise - t_charge)
 
-    # average cruise efficiency
-    E_cruise_in = E_cruise_c + E_cruise_full
-    E_cruise_out = E_cruise_c * cruise_eff_c + E_cruise_full * cruise_eff_full
-    cruise_eff = E_cruise_out / E_cruise_in
+    # provided energies
+    E_climb_in = P_fc_climb * t_climb
+    E_cruise_c_in = P_fc_climb * t_charge
+    E_cruise_full_in = P_fc_cruise * (t_cruise - t_charge)
 
-    # total energy efficiency over a flight
-    E_in = E_climb + E_cruise_c + E_cruise_full
-    E_out = E_climb * climb_eff + E_cruise_c * cruise_eff_c + E_cruise_full * cruise_eff_full
-    fc_bt_eff = E_out / E_in
+    # efficiencies
+    climb_eff = E_climb_out / E_climb_in
+    cruise_eff_c = E_cruise_c_out / E_cruise_c_in
+    cruise_eff_full = E_cruise_full_out / E_cruise_full_in
+    cruise_eff = (E_cruise_c_out + E_cruise_full_out) / (E_cruise_c_in + E_cruise_full_in)
+    fc_bt_eff = (E_climb_out + E_cruise_c_out + E_cruise_full_out) / (E_climb_in + E_cruise_c_in + E_cruise_full_in)
 
     if show:
         print("\nFC+BAT")
@@ -353,7 +358,8 @@ def FC_BAT_efficiency(t_charge=1800,
         "Cruise_noncharging_eff": cruise_eff_full,
         "Cruise_average_eff": cruise_eff,
         "Total_eff": fc_bt_eff,
-        "FC_P": P_fc,
+        "FC_P": 0.5 * P_fc_climb * only_fc_efficiency,
+        # "FC_P_cruise": 0.5 * P_fc_cruise * only_fc_efficiency, # not used for sizing, might be useful if we vary FC efficiency with throttle
         "BAT_P_discharge": P_bt_discharge,
         "BAT_charging_frac": bt_c_frac
     }
@@ -548,14 +554,14 @@ def GT_FC_efficiency(P_OEI_out=2.6e6, cable_efficiency=1.0,
 
 
 if __name__ == "__main__":
-    t_charge = 45*60 # 45 min charge time
+    t_charge = 30*60 # 45 min charge time
     cable_efficiency = 1 # change later
     t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
 
     results_GT_BAT = GT_BAT_efficiency(t_charge=t_charge, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
-    print(results_GT_BAT)
+    # print(results_GT_BAT)
 
-    # results_FC_BAT = FC_BAT_efficiency(t_charge=t_charge, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
+    results_FC_BAT = FC_BAT_efficiency(t_charge=t_charge, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
     # #print(results_FC_BAT)
 
     # results_GT_GT = GT_GT_efficiency(cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
