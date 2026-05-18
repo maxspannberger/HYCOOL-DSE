@@ -232,6 +232,11 @@ class WeightBreakdown:
     grav_density:float = 0.64
     configuration: int = 1
     total_prop_efficiency: float = 0.0
+    climb_efficiency: float = 0.0
+    cruise_efficiency: float = 0.0
+    t_cruise: float = 0.0,
+    t_climb  : float = 0.0,
+    t_reserve: float = 0.0
 
 
     @property
@@ -337,7 +342,17 @@ class WeightBreakdown:
         table.add_section()
         table.add_row(
             "Power Production Efficiency",
-            f"[bold]{self.total_prop_efficiency:.1f}[/bold]",
+            f"[bold]{self.total_prop_efficiency:.4f}[/bold]",
+            "",
+        )
+        table.add_row(
+            "Climb Efficiency",
+            f"[bold]{self.climb_efficiency:.4f}[/bold]",
+            "",
+        )
+        table.add_row(
+            "Cruise Efficiency",
+            f"[bold]{self.cruise_efficiency:.4f}[/bold]",
             "",
         )
 
@@ -499,6 +514,7 @@ class weightEstimation:
                 raise ValueError(f"Component '{comp_key}' not found in component dict")
             elif config == 1:
 
+
                 if comp_key == "cable":
                     mass = cable_len * comp[comp_key].mass_per_length
                 elif comp_key == "pipe":
@@ -509,25 +525,38 @@ class weightEstimation:
                     pd = comp[comp_key].power_density
 
                     # maximum power that flows to the motors (most likely takeoff)
-                    P_req_tot = max((g.P_cruise_KW*(1+bt_charging_ratio)), g.P_climb_KW, g.P_reserve_KW, g.P_TO_KW)
+                    P_req_tot = max((g.P_cruise_KW*(1+bt_charging_ratio)), 
+                                    g.P_climb_KW, 
+                                    g.P_reserve_KW, 
+                                    g.P_TO_KW)
 
                     # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
-                    P_req_primary = max(g.P_cruise_KW*(1+bt_charging_ratio), g.P_TO_OEI_KW)
+                    P_req_primary = max(g.P_cruise_KW*(1+bt_charging_ratio), 
+                                        g.P_TO_OEI_KW)
                     
                     # secondary power source requirement is to sustain TO 
                     P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
-                    if comp_key == "gt_hex" or comp_key == "hts_gen" or comp_key == "ac_dc":
-                        mass = P_req_primary / pd
-                        if comp_key == "gt_hex":
-                            W_primary = mass
+
+                    efficiency=GT_BAT_efficiency(t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
+
+                    if comp_key == "gt_hex":
+                        mass = P_req_primary/efficiency["GT-MOT-eff"] / pd
+                        W_primary = mass
+                    elif comp_key == "hts_gen":
+                        mass = P_req_primary/efficiency["GEN_eff"] / pd
+                    elif comp_key == "ac_dc":
+                        mass = P_req_primary/efficiency["ACDC_eff"] / pd
                     elif comp_key == "bt":
-                        energy_required_kWh = P_req_secondary * (g.t_climb / 3600)  # Convert seconds to hours
+                        energy_required_kWh = P_req_secondary/efficiency["BAT-MOT_eff"] * (g.t_climb / 3600)  # Convert seconds to hours
                         ed = comp[comp_key].energy_density
-                        mass = max(energy_required_kWh / ed, P_req_secondary / pd)
+                        mass = max(energy_required_kWh / ed, P_req_secondary/efficiency["BAT-MOT_eff"] / pd)
                         W_secondary = mass
                     elif comp_key == "dc_dc_2":
-                        mass = P_req_secondary / pd
-                    elif comp_key == "dc_ac" or comp_key == "hts_pow":
+                        mass = P_req_secondary/efficiency["Dcdc_eff"] / pd
+                    elif comp_key == "dc_ac": 
+                        max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
+                        mass = max_P_per_string /efficiency["Dcac_eff"] / pd 
+                    elif comp_key == "hts_pow":
                         max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
                         mass = max_P_per_string / pd      
                 total_mass += mass
@@ -542,30 +571,47 @@ class weightEstimation:
                     # 5% of cruise power but put this in some input file!
                     bt_charging_ratio = 0.05 
                     pd = comp[comp_key].power_density
+
                     # maximum power that flows to the motors (most likely takeoff)
-                    P_req_tot = max((g.P_cruise_KW*(1+bt_charging_ratio)), g.P_climb_KW, g.P_reserve_KW, g.P_TO_KW)
+                    P_req_tot = max((g.P_cruise_KW*(1+bt_charging_ratio)), 
+                                    g.P_climb_KW, 
+                                    g.P_reserve_KW, 
+                                    g.P_TO_KW)
+
                     # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
-                    P_req_primary = max(g.P_cruise_KW*(1+bt_charging_ratio), g.P_TO_OEI_KW)
+                    P_req_primary = max(g.P_cruise_KW*(1+bt_charging_ratio), 
+                                        g.P_TO_OEI_KW)
+
                     # secondary power source requirement is to sustain TO 
-                    P_req_secondary = max((g.P_TO_KW - P_req_primary), (g.P_TO_OEI_KW-(1/2)*P_req_primary))
-                    if comp_key == "fc_with_hex" or comp_key == "dc_dc_1":
-                        mass = P_req_primary / pd
-                        if comp_key == "fc_with_hex":
-                            W_primary = mass
+                    P_req_secondary = max((g.P_TO_KW - P_req_primary), 
+                                          (g.P_TO_OEI_KW-(1/2)*P_req_primary))
+                    
+                    efficiency=FC_BAT_efficiency(t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
+                    efficiency1=GT_BAT_efficiency(t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
+
+                    if comp_key == "fc_with_hex": #or comp_key == "dc_dc_1":
+                        mass = P_req_primary / efficiency["FC-MOT_eff"] / pd
+                        W_primary = mass
+                    elif comp_key == "dc_dc_1":
+                        mass = P_req_primary / efficiency["DC-DC1_eff"] / pd
                     elif comp_key == "bt":
                         energy_required_kWh = P_req_secondary * (g.t_climb / 3600)  # Convert seconds to hours
                         ed = comp[comp_key].energy_density
-                        mass = max(energy_required_kWh / ed, P_req_secondary / pd)
+                        mass = max(energy_required_kWh / efficiency1["BAT-MOT_eff"] / ed, P_req_secondary / efficiency1["BAT-MOT_eff"] / pd)
                         W_secondary = mass
                     elif comp_key == "dc_dc_2":
-                        mass = P_req_secondary / pd
-                    elif comp_key == "dc_ac" or comp_key == "hts_pow":
+                        mass = P_req_secondary / efficiency1["Dcdc_eff"] / pd
+                    elif comp_key == "dc_ac": #or comp_key == "hts_pow":
+                        max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
+                        mass = max_P_per_string / efficiency1["Dcac_eff"] / pd
+                    elif comp_key == "hts_pow":
                         max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
                         mass = max_P_per_string / pd
                 total_mass += mass
-
             
             elif config == 3:
+                efficiency = GT_GT_efficiency(t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
+                efficiency2 = GT_BAT_efficiency(t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
                 # Similar logic for config 3 but with different component assignments
                 if comp_key == "cable":
                     mass = cable_len * comp[comp_key].mass_per_length
@@ -574,19 +620,37 @@ class weightEstimation:
                 elif comp_key != "cable" and comp_key != "pipe":
                     pd = comp[comp_key].power_density
                     # maximum power that flows to the motors (most likely takeoff)
-                    P_req_tot = max((g.P_cruise_KW), g.P_climb_KW, g.P_reserve_KW, g.P_TO_KW)
+                    P_req_tot = max((g.P_cruise_KW), 
+                                    g.P_climb_KW, 
+                                    g.P_reserve_KW, 
+                                    g.P_TO_KW)
+
                     # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
-                    P_req_primary = max(g.P_cruise_KW/2, g.P_TO_OEI_KW,P_req_tot/2)
+                    P_req_primary = max(g.P_cruise_KW/2, 
+                                        g.P_TO_OEI_KW,
+                                        P_req_tot/2)
+
                     # secondary power source requirement is to sustain TO 
-                    P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
-                    if comp_key == "gt_hex" or comp_key == "ac_dc" or comp_key == "hts_gen" or comp_key == "hts_pow" or comp_key == "dc_ac":
-                        mass = P_req_primary / pd
+                    P_req_secondary = max((g.P_TO_KW - P_req_primary), 
+                                          g.P_TO_OEI_KW)
+                    
+                    if comp_key == "gt_hex": #or comp_key == "ac_dc" or comp_key == "hts_gen" or comp_key == "hts_pow" or comp_key == "dc_ac":
+                        mass = P_req_primary / pd / efficiency["GT-MOT-eff"]
                         if comp_key == "gt_hex":
-                            W_primary = mass
+                            W_primary = mass        #gt_hex is in there twice but taken into account in W_primary
                             W_secondary = mass
+                    elif comp_key == "ac_dc":
+                        mass = P_req_primary / pd / efficiency2["ACDC_eff"]
+                    elif comp_key == "hts_gen":
+                        mass = P_req_primary / pd / efficiency2["GEN_eff"]
+                    elif comp_key == "hts_pow":
+                        mass = P_req_primary / pd
+                    elif comp_key == "dc_ac":
+                        mass = P_req_primary / pd /efficiency2["Dcac_eff"]
                 total_mass += mass
 
             elif config == 4:
+
                 # Similar logic for config 4 but with different component assignments 
                 if comp_key == "cable":
                     mass = cable_len * comp[comp_key].mass_per_length
@@ -595,28 +659,46 @@ class weightEstimation:
                 elif comp_key != "cable" and comp_key != "pipe":
                     pd = comp[comp_key].power_density
                     # maximum power that flows to the motors (most likely takeoff)
-                    P_req_tot = max(g.P_cruise_KW, g.P_climb_KW, g.P_reserve_KW, g.P_TO_KW)
-                    
+                    P_req_tot = max(g.P_cruise_KW, 
+                                    g.P_climb_KW, 
+                                    g.P_reserve_KW, 
+                                    g.P_TO_KW)
                     
                     # primary power source requirement is cruise power or OEI scenario, GT's together must suffice in both situations
                     P_req_secondary = g.P_TO_OEI_KW
-                    P_req_primary = max(g.P_cruise_KW-P_req_secondary, g.P_TO_OEI_KW,P_req_tot - P_req_secondary)
+                    P_req_primary = max(g.P_cruise_KW-P_req_secondary, 
+                                        g.P_TO_OEI_KW,P_req_tot - P_req_secondary)
+                    
+                    efficiency=GT_FC_efficiency(P_OEI_out=P_req_secondary*1000,t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
+                    efficiency2=GT_BAT_efficiency(t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
+                    
                     # secondary power source requirement is to sustain TO 
                     #P_req_secondary = max((P_req_tot - P_req_primary), (g.P_TO_OEI_KW-(1/2)*P_req_primary))
-                    if comp_key == "gt_hex" or comp_key == "hts_gen" or comp_key == "ac_dc":
-                        mass = (P_req_primary/2) / pd
+                    if comp_key == "gt_hex": #or comp_key == "hts_gen" or comp_key == "ac_dc":
+                        mass = (P_req_primary/2) / pd / efficiency["GT-MOT-eff"]
                         if comp_key == "gt_hex":
                             W_primary = mass*2
-                    elif comp_key == "fc_with_hex" or comp_key == "dc_dc_2":
-                        mass = P_req_secondary / pd
+                    elif comp_key == "hts_gen":
+                        mass = (P_req_primary/2) / pd / efficiency2["GEN_eff"]
+                    elif comp_key == "ac_dc":
+                        mass = (P_req_primary/2) / pd / efficiency2["ACDC_eff"]
+                    elif comp_key == "fc_with_hex": #or comp_key == "dc_dc_2":
+                        mass = P_req_secondary / pd / efficiency["FC-MOT-eff"]
                         if comp_key == "fc_with_hex":
                             W_secondary = mass
-                    elif comp_key == "dc_ac" or comp_key == "hts_pow":
+                    elif comp_key == "dc_dc_2":
+                        mass = P_req_secondary / pd / efficiency2["Dcdc_eff"]
+                    elif comp_key == "dc_ac": #or comp_key == "hts_pow":
                         max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
-                        mass = max_P_per_string / pd
+                        mass = max_P_per_string / pd / efficiency2["Dcac_eff"]
+                    elif comp_key == "hts_pow":
+                        max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
+                        mass = max_P_per_string / pd 
                 total_mass += mass
-
-        return total_mass, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary
+        eff=efficiency["Total_eff"]
+        eff_cruise=efficiency["Cruise_average_eff"]
+        eff_climb=efficiency["Climb_eff"]
+        return total_mass, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff,eff_climb, eff_cruise
     
     def _h2_tank_weight(self) -> float:
         return self.g.W_fuel * (1 / self.g.grav_density - 1)
@@ -626,7 +708,7 @@ class weightEstimation:
         g = self.g
 
         h2_tank_weight   = self._h2_tank_weight()
-        W_engine_total, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary = self._propulsion_weight()
+        W_engine_total, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary, total_prop_efficiency,climb_eff,cruise_eff = self._propulsion_weight()
 
         return WeightBreakdown(
             W_wing   = self._wing_weight(),
@@ -654,6 +736,9 @@ class weightEstimation:
             P_primary_KW = P_req_primary,
             P_secondary_KW = P_req_secondary,
             P_max_KW=  P_req_tot,
+            total_prop_efficiency = total_prop_efficiency,
+            climb_efficiency=climb_eff,
+            cruise_efficiency=cruise_eff
         )
 
 

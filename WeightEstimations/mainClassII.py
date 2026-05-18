@@ -145,11 +145,17 @@ def run_class_ii(
         W_fuel = mis_bd.m_LH2_total
         P_max_kw = mis_bd.P_max / 1000
         P_cruise_kw = mis_bd.P_cruise_shaft / 1000
+        P_reserve_kw = mis_bd.P_reserve_shaft / 1000
+        t_cruise = mis_bd.t_cruise
+        t_climb = mis_bd.t_climb
+        t_reserve = mis_bd.t_reserve
 
         # Performance & CS-25 Requirements
         pwr_bd = PowerSizing(cfg, mis_bd, MTOW).compute()
         P_TO_kW = pwr_bd.P_TO_total / 1000.0
         P_TO_OEI_kW = pwr_bd.P_total_OEI / 1000.0
+        P_climb_kW = pwr_bd.P_from_climb / 1000.0
+
 
 
         # Weight at current MTOW with sized tails
@@ -165,8 +171,13 @@ def run_class_ii(
             P_TO_OEI_KW = P_TO_OEI_kW,
             P_cruise_KW=P_cruise_kw,
             P_max_KW = P_max_kw,
+            P_climb_KW=P_climb_kW,
+            P_reserve_KW=P_reserve_kw,
             W_fuel = W_fuel,
-            configuration=config
+            configuration=config,
+            t_climb=t_climb,
+            t_cruise=t_cruise,
+            t_reserve=t_reserve
         )
         wt_bd = weightEstimation(wt_inp).compute()
 
