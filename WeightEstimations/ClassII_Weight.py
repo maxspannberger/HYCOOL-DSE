@@ -624,7 +624,7 @@ class weightEstimation:
                     if comp_key == "gt_hex": #or comp_key == "ac_dc" or comp_key == "hts_gen" or comp_key == "hts_pow" or comp_key == "dc_ac":
                         mass = P_req_primary / pd
                         if comp_key == "gt_hex":
-                            W_primary = mass
+                            W_primary = mass        #gt_hex is in there twice but taken into account in W_primary
                             W_secondary = mass
                     elif comp_key == "ac_dc":
                         mass = P_req_primary / pd
