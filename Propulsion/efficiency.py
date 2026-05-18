@@ -96,8 +96,8 @@ def GT_BAT_efficiency(
     P_climb: Optional[float] = None,
     P_cruise: Optional[float] = None,
 ):
-    #if any(value is None for value in (t_climb, t_cruise, P_climb, P_cruise)):
-        #t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
+    
+    #t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
 
     excess_P_climb = P_climb/P_cruise
 
@@ -239,8 +239,15 @@ def GT_BAT_efficiency(
 # =============================================================================
 # Fuel Cell + Battery powertrain
 # =============================================================================
-def FC_BAT_efficiency(t_charge=1800, cable_efficiency=1.0, show=False):
-    t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
+def FC_BAT_efficiency(t_charge=1800,
+    cable_efficiency=1.0,
+    show=False,
+    t_climb: Optional[float] = None,
+    t_cruise: Optional[float] = None,
+    P_climb: Optional[float] = None,
+    P_cruise: Optional[float] = None,
+):
+    #t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
 
     excess_P_climb = P_climb/P_cruise
 
@@ -342,8 +349,14 @@ def FC_BAT_efficiency(t_charge=1800, cable_efficiency=1.0, show=False):
 # =============================================================================
 # Gass Turbine + Gas Turbine powertrain
 # =============================================================================
-def GT_GT_efficiency(cable_efficiency=1.0, show=False):
-    t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
+def GT_GT_efficiency(cable_efficiency=1.0,
+    show=False,
+    t_climb: Optional[float] = None,
+    t_cruise: Optional[float] = None,
+    P_climb: Optional[float] = None,
+    P_cruise: Optional[float] = None,
+):
+    #t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
 
     excess_P_climb = P_climb/P_cruise
 
@@ -409,8 +422,14 @@ def GT_GT_efficiency(cable_efficiency=1.0, show=False):
 # =============================================================================
 # Gas Turbine + Fuel Cell powertrain
 # =============================================================================
-def GT_FC_efficiency(P_OEI_out=2e6, cable_efficiency=1.0, show=False):
-    t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
+def GT_FC_efficiency(P_OEI_out=2e6, cable_efficiency=1.0,
+    show=False,
+    t_climb: Optional[float] = None,
+    t_cruise: Optional[float] = None,
+    P_climb: Optional[float] = None,
+    P_cruise: Optional[float] = None,
+):
+    #t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
 
     only_gt_efficiency = c["gt_hex"].efficiency
     only_fc_efficiency = c["fc_with_hex"].efficiency
@@ -515,15 +534,16 @@ def GT_FC_efficiency(P_OEI_out=2e6, cable_efficiency=1.0, show=False):
 if __name__ == "__main__":
     t_charge = 30*60 # 30 min charge time
     cable_efficiency = 1 # change later
+    t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
 
-    results_GT_BAT = GT_BAT_efficiency(t_charge=t_charge, cable_efficiency=cable_efficiency, show=True)
-    # print(results_GT_BAT)
+    results_GT_BAT = GT_BAT_efficiency(t_charge=t_charge, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
+    #print(results_GT_BAT)
 
-    results_FC_BAT = FC_BAT_efficiency(t_charge=t_charge, cable_efficiency=cable_efficiency, show=True)
-    # print(results_FC_BAT)
+    results_FC_BAT = FC_BAT_efficiency(t_charge=t_charge, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
+    #print(results_FC_BAT)
 
-    results_GT_GT = GT_GT_efficiency(cable_efficiency=cable_efficiency, show=True)
-    # print(results_GT_GT)
+    results_GT_GT = GT_GT_efficiency(cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
+    #print(results_GT_GT)
 
-    results_GT_FC = GT_FC_efficiency(cable_efficiency=cable_efficiency, show=True)
+    results_GT_FC = GT_FC_efficiency(cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
     print(results_GT_FC)
