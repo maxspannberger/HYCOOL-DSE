@@ -328,10 +328,14 @@ def FC_BAT_efficiency(t_charge=1800,
     E_cruise_full = P_cruise * (t_cruise - t_charge)
 
     # average cruise efficiency
-    cruise_eff = (E_cruise_c * cruise_eff_c + E_cruise_full * cruise_eff_full) / (E_cruise_c + E_cruise_full)
+    E_cruise_in = E_cruise_c + E_cruise_full
+    E_cruise_out = E_cruise_c * cruise_eff_c + E_cruise_full * cruise_eff_full
+    cruise_eff = E_cruise_out / E_cruise_in
 
     # total energy efficiency over a flight
-    fc_bt_eff = (E_climb * climb_eff + E_cruise_c * cruise_eff_c + E_cruise_full * cruise_eff_full) / (E_climb + E_cruise_c + E_cruise_full)
+    E_in = E_climb + E_cruise_c + E_cruise_full
+    E_out = E_climb * climb_eff + E_cruise_c * cruise_eff_c + E_cruise_full * cruise_eff_full
+    fc_bt_eff = E_out / E_in
 
     if show:
         print("\nFC+BAT")
