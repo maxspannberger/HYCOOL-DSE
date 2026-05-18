@@ -16,9 +16,9 @@ P_extra_2 = P_cl - P_cr
 P_rem_1 = P_OEI - (P_ch / 2)
 P_rem_2 = P_OEI - (P_cr / 2)
 
-sp_work = 48
+LHV_H2 = 120  # lower heating value of hydrogen [MJ/kg]
 
-T_start = 20
+T_start = 20.3
 T_use_fc = 433
 T_use_gt = 318.9
 
@@ -48,7 +48,7 @@ T_BOIL = 20.3       # approximate boiling temperature of LH2 [K]
 HEAT_REJECTION_FRACTION = {
     "fc": 0.40,  # fuel cell: 40 % of input power is rejected as heat
     "bat": 0.10,  # battery: 10 % of input power is rejected as heat
-    "gt": 0.089,  # gas turbine: 8.9 % of input power is rejected as heat
+    "gt": 0.035,  # gas turbine: 3.51 % of input power is rejected as heat
 }
 
 # Mapping of prime mover efficiencies.  These values represent the
@@ -168,7 +168,7 @@ def compute_states() -> dict:
     return states
 
 
-def heat_absorption(power_kw: float, system: str, sp_work_mj_per_kg: float = sp_work) -> float:
+def heat_absorption(power_kw: float, system: str, sp_work_mj_per_kg: float = LHV_H2) -> float:
     # Batteries do not consume hydrogen fuel, so they provide no cooling
     # capacity.  Their heat must be handled entirely by the available
     # coolant mass flow from other sources.
@@ -205,7 +205,7 @@ def heat_absorption(power_kw: float, system: str, sp_work_mj_per_kg: float = sp_
     return m_dot * delta_h
 
 
-def compute_piping_losses(state_keys, states, design: str, flight_condition: str, sp_work_mj_per_kg: float = sp_work) -> float:
+def compute_piping_losses(state_keys, states, design: str, flight_condition: str, sp_work_mj_per_kg: float = LHV_H2) -> float:
     # Convert specific work to kJ/kg
     sp_kj_per_kg = sp_work_mj_per_kg * 1000.0
     # Determine the power contributions from gas turbine and fuel cell
@@ -283,18 +283,16 @@ def thermal_ratio_score(ratio):
     #   Score 1: +1.25 / -1.00  -> [0.00, 2.25]
     if not np.isfinite(ratio):
         return 0
-    if 0.50 <= ratio <= 1.25:
+    if 0 <= ratio <= 1:
         return 5
-    elif 0.00 <= ratio <= 1.50:
+    elif 1 <= ratio <= 1.50:
         return 4
-    elif 0.00 <= ratio <= 1.75:
+    elif 1.5 <= ratio <= 2:
         return 3
-    elif 0.00 <= ratio <= 2.00:
+    elif 2 <= ratio <= 2.5:
         return 2
-    elif 0.00 <= ratio <= 2.25:
-        return 1
     else:
-        return 0
+        return 1
 
 def design_phase_table() -> 'pd.DataFrame':
     import pandas as pd
@@ -422,7 +420,7 @@ def design_phase_table() -> 'pd.DataFrame':
         "flight_condition": "OEI_gt",
         "states": ["p_oei_gt"],
     })
-    
+
     # Build the results table
     rows = []
     for cond in design_conditions:
@@ -431,6 +429,8 @@ def design_phase_table() -> 'pd.DataFrame':
         heat_abs_total_kw = 0.0
         power_gt_kw = 0.0
         power_other_kw = 0.0
+        m_dot_total_kg_s = 0.0
+        sp_kj_per_kg = LHV_H2 * 1000.0
         # Accumulate values over all states composing this flight condition
         for state_key in cond["states"]:
             state = states[state_key]
@@ -446,6 +446,11 @@ def design_phase_table() -> 'pd.DataFrame':
                 power_other_kw += p_kw
             # Compute heat absorbed by hydrogen for this state
             heat_abs_total_kw += heat_absorption(p_kw, system)
+            # Accumulate hydrogen mass flow (batteries consume no hydrogen)
+            if system in EFFICIENCY_MAP and system != "bat":
+                eff = EFFICIENCY_MAP[system]
+                penalty = PENALTY_MAP[system]
+                m_dot_total_kg_s += (p_kw / (eff * (1.0 - penalty))) / sp_kj_per_kg
         # Electrical system thermal contribution: apply 3.13 % to gas turbine power
         # and 1.83 % to all other power sources.  This heat adds to the component
         # heat that must be rejected.
@@ -469,6 +474,7 @@ def design_phase_table() -> 'pd.DataFrame':
             "FlightCondition": cond["flight_condition"],
             # "States": "+".join(cond["states"]),
             "TotalPower_kW": power_total_kw,
+            # "MassFlow_kg_s": m_dot_total_kg_s,
             # "HeatElec_kW": heat_elec_kw,
             "HeatToReject_kW": heat_total_kw,
             # "PipingLoss_kW": pipe_loss_kw,
@@ -476,7 +482,7 @@ def design_phase_table() -> 'pd.DataFrame':
             "RatioRejAbs": ratio_rej_abs,
             "ThermalScore": thermal_score,
             "NetHeat_kW": net_heat_kw,
-            "HeatStatus": heat_status,
+            # "HeatStatus": heat_status,
         })
     df = pd.DataFrame(rows)
     return df
