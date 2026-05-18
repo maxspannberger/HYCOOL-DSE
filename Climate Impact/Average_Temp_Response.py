@@ -41,6 +41,8 @@ m_h2 = 569 # kg, mass of hydrogen fuel
 #E_mission = 500000 # kJ, energy required for the mission
 turbine = True
 fc_liquid_venting = False
+#gravimetric energy density adjustment factor for baseline  system
+f_energy_density = 120/43 # from individual densities in MJ/kg, 120 for LH2, 43 for Jet fuel
 
 # =============================================================================
 # Loading results from Class 2 and calculating the mission phase power and 
@@ -81,13 +83,41 @@ E_total = E_climb + E_cruise
 # =============================================================================
 
 #design A: GT-BAT
-A_gt_bt_eff, A_P_gt, A_climb_eff, A_P_bt_discharge, A_bt_eff_d, A_cruise_eff_c, A_gt_eff = GT_BAT_efficiency()
+res_A = GT_BAT_efficiency()
+A_gt_bt_eff = res_A["Total_eff"]
+A_P_gt = res_A.get("GT_P_opt")
+A_climb_eff = res_A.get("Climb_eff")
+A_P_bt_discharge = res_A.get("BAT_P_discharge")
+A_bt_eff_d = res_A.get("BAT-MOT_eff")
+A_cruise_eff_c = res_A.get("Cruise_charging_eff")
+A_gt_eff = res_A.get("LH2-GT-MOT_eff")
+
 #design B: FC-BAT
-B_fc_bt_eff, B_P_fc, B_climb_eff, B_P_bt_discharge, B_bt_eff_d, B_cruise_eff_c, B_fc_eff = FC_BAT_efficiency()
+res_B = FC_BAT_efficiency()
+B_fc_bt_eff = res_B["Total_eff"]
+B_P_fc = res_B.get("FC_P")
+B_climb_eff = res_B.get("Climb_eff")
+B_P_bt_discharge = res_B.get("BAT_P_discharge")
+B_bt_eff_d = res_B.get("BAT-MOT_eff")
+B_cruise_eff_c = res_B.get("Cruise_charging_eff")
+B_fc_eff = res_B.get("LH2-FC-MOT_eff")
+
 #design C: GT-FC
-C_gt_fc_eff, C_P_gt, C_gt_eff, C_P_fc, C_fc_eff = GT_FC_efficiency()
+res_C = GT_FC_efficiency()
+C_gt_fc_eff = res_C["Total_eff"]
+C_P_gt = res_C.get("GT_P")
+C_gt_eff = res_C.get("LH2-GT-MOT_eff")
+C_P_fc = res_C.get("FC_P")
+C_fc_eff = res_C.get("LH2-FC-MOT_eff")
+
 #design D: GT-GT
-D_gt_gt_eff, D_P_gt_climb, D_climb_eff, D_P_gt_cruise, D_cruise_eff = GT_GT_efficiency()
+res_D = GT_GT_efficiency()
+D_gt_gt_eff = res_D["Total_eff"]
+# compute per-engine climb/cruise powers from returned optimal and throttles
+D_P_gt_climb = res_D.get("GT_P_opt") * res_D.get("GT_throttle_climb") if res_D.get("GT_P_opt") is not None else None
+D_climb_eff = res_D.get("Climb_eff")
+D_P_gt_cruise = res_D.get("GT_P_opt") * res_D.get("GT_throttle_cruise") if res_D.get("GT_P_opt") is not None else None
+D_cruise_eff = res_D.get("Cruise_eff")
 
 # =============================================================================
 
@@ -113,12 +143,17 @@ designs = {
         'cruise': {'source': 'GT', 'eta': C_gt_eff},
         'to_climb': {'primary': 'GT', 'eta_primary': C_gt_eff, 'p_primary': C_P_gt, 'secondary': 'FC', 'eta_secondary': C_fc_eff, 'p_secondary': C_P_fc}
     },
+    'Baseline':{
+        'cruise': {'source': 'Jet', 'eta': 0.33},
+        'to_climb': {'primary': 'Jet', 'eta_primary': 0.33, 'p_primary': D_P_gt_climb/2, 'secondary': 'Jet', 'eta_secondary': 0.33, 'p_secondary': D_P_gt_climb/2}
+    },
 }
 source_props = {
-    'GT': {'nox': True, 'h2o': True, 'contrail': True},
-    'GT2': {'nox': True, 'h2o': True, 'contrail': True},
-    'FC': {'nox': False, 'h2o': True, 'contrail': False},
-    'BAT': {'nox': False, 'h2o': False, 'contrail': False},
+    'GT': {'nox': True, 'h2o': True, 'contrail': True, 'co2': False},
+    'GT2': {'nox': True, 'h2o': True, 'contrail': True, 'co2': False},
+    'FC': {'nox': False, 'h2o': True, 'contrail': False, 'co2': False},
+    'BAT': {'nox': False, 'h2o': False, 'contrail': False, 'co2': False},
+    'Jet': {'nox': True, 'h2o': True, 'contrail': True, 'co2': True},
 }
 
 def calc_mass_h2():
@@ -240,10 +275,17 @@ def calc_aCCF_contrail():
     print(f"Contrail impact: {aCCF_contrail_mean}")
     return aCCF_contrail_mean
 
+def calc_aCCF_co2():
+    aCCF_co2 = 7.48*10**(-16)
+
+    print(f"CO2 impact: {aCCF_co2}")
+    return aCCF_co2
+
 def calc_atr_per_design(h2_masses):
     aCCF_nox = calc_aCCF_nox()
     aCCF_h2o = calc_aCCF_h2o()
     aCCF_contrail = calc_aCCF_contrail()
+    aCCF_co2 = calc_aCCF_co2()
 
     atrs = {}
     for design_name, design_data in h2_masses.items():
@@ -251,25 +293,36 @@ def calc_atr_per_design(h2_masses):
         primary = design_data['to_climb']['primary']
         secondary = design_data['to_climb']['secondary']
 
+        if design_name == 'Jet': # only apply energy density adjustment for jet
+            f_ed = f_energy_density
+        else:
+            f_ed = 1.0
+        
         atr_cruise = 0.0
         if source_props[cruise['source']]['nox']:
-            atr_cruise += cruise['m_h2_kg'] * ei_nox * aCCF_nox
+            atr_cruise += cruise['m_h2_kg'] * ei_nox * aCCF_nox * f_ed
         if source_props[cruise['source']]['h2o']:
-            atr_cruise += cruise['m_h2_kg'] * aCCF_h2o
+            atr_cruise += cruise['m_h2_kg'] * aCCF_h2o * f_ed
         if source_props[cruise['source']]['contrail']:
             atr_cruise += d_mission * f_ISSR * aCCF_contrail
+        if source_props[cruise['source']]['co2']:
+            atr_cruise += cruise['m_h2_kg'] * aCCF_co2 * f_energy_density # adjust for energy density difference to jet fuel
 
         atr_primary = 0.0
         if source_props[primary['source']]['nox']:
-            atr_primary += primary['m_h2_kg'] * ei_nox * aCCF_nox
+            atr_primary += primary['m_h2_kg'] * ei_nox * aCCF_nox * f_ed
         if source_props[primary['source']]['h2o']:
-            atr_primary += primary['m_h2_kg'] * aCCF_h2o
-
+            atr_primary += primary['m_h2_kg'] * aCCF_h2o * f_ed
+        if source_props[primary['source']]['co2']:
+            atr_primary += primary['m_h2_kg'] * aCCF_co2 * f_energy_density 
+            
         atr_secondary = 0.0
         if source_props[secondary['source']]['nox']:
-            atr_secondary += secondary['m_h2_kg'] * ei_nox * aCCF_nox
+            atr_secondary += secondary['m_h2_kg'] * ei_nox * aCCF_nox * f_ed
         if source_props[secondary['source']]['h2o']:
-            atr_secondary += secondary['m_h2_kg'] * aCCF_h2o
+            atr_secondary += secondary['m_h2_kg'] * aCCF_h2o * f_ed
+        if source_props[secondary['source']]['co2']:
+            atr_secondary += secondary['m_h2_kg'] * aCCF_co2 * f_energy_density
 
         total_atr = atr_cruise + atr_primary + atr_secondary
         atrs[design_name] = total_atr
