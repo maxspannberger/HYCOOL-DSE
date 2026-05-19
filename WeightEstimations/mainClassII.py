@@ -73,6 +73,7 @@ class ClassIIResult:
     power:       PowerSizingBreakdown
     tail_rechecked: TailSizingBreakdown    # rerun with computed T_TO
     iteration_log: list = None             # per-iteration MTOW trace
+    total_prop_efficiency: float = 1.0
 
     def summary(self):
         status_color = "green" if self.converged else "red"
@@ -259,6 +260,7 @@ def run_class_ii(
         power      = pwr_bd,
         tail_rechecked = tail_bd_recheck,
         iteration_log  = iteration_log,
+        total_prop_efficiency = wt_bd.total_prop_efficiency,
     )
 
 

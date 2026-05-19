@@ -49,11 +49,41 @@ def sensitivity_analysis(
                         pass
 
             print(f"Performing run {run} out of {max_runs}")
-            sensitivity_results[run] = run_class_ii(config=config, comp=comp, verbose=False, cfg=cfg)
+            class_II_results = run_class_ii(config=config, comp=comp, verbose=False, cfg=cfg)
+            sensitivity_results[run] = {
+                "OEW": class_II_results.MTOW,
+                "eff": class_II_results.total_prop_efficiency
+            }
 
     print(f"Sensitivity analysis finished for design {config}.\n")
 
     return sensitivity_results
+
+
+def stats_calculator(sensitivity_results):
+    
+    results_stats = {}
+    for i, result in enumerate(sensitivity_results):
+
+        criterion_result = {}
+        for run in result:
+            for criterion in result[run]:
+                if criterion in criterion_result:
+                    criterion_result[criterion].append(result[run][criterion])
+                else:
+                    criterion_result[criterion] = [result[run][criterion]]
+
+        criterion_stats = {}
+        for criterion in criterion_result:
+            criterion_stats[criterion] = {
+                "mean": np.mean(np.array(criterion_result[criterion])),
+                "std": np.std(np.array(criterion_result[criterion]))
+            }
+
+        results_stats[i+1] = criterion_stats
+
+    return results_stats
+        
 
 
 if __name__ == "__main__":
@@ -65,6 +95,5 @@ if __name__ == "__main__":
     for config in designs_to_consider:
         sensitivity_results.append(sensitivity_analysis(cfg=cfg, config=config, n_repeats=n_repeats, sensitivity_config="all"))
     
-    for result in sensitivity_results:
-        for run in result:
-            print(result[run].summary())
+    results_stats = stats_calculator(sensitivity_results)
+    print(results_stats)
