@@ -373,7 +373,7 @@ class weightEstimation:
     _LG_main = dict(A=18.1, B=0.131, C=0.019, D=2.23e-5)
     _LG_nose = dict(A=9.1,  B=0.082, C=0.0,   D=2.97e-6)
 
-    def __init__(self, geometry: ClassII_Input, comp: dict = comp_params):
+    def __init__(self, geometry: ClassII_Input, comp: dict):
         self.g = geometry
         self.comp = comp
 
@@ -537,7 +537,7 @@ class weightEstimation:
                     # secondary power source requirement is to sustain TO 
                     P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
 
-                    efficiency=GT_BAT_efficiency(t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
+                    efficiency=GT_BAT_efficiency(comp=comp,t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
 
                     if comp_key == "gt_hex":
                         mass = P_req_primary/efficiency["GT-MOT-eff"] / pd
@@ -586,8 +586,8 @@ class weightEstimation:
                     P_req_secondary = max((g.P_TO_KW - P_req_primary), 
                                           (g.P_TO_OEI_KW-(1/2)*P_req_primary))
                     
-                    efficiency=FC_BAT_efficiency(t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
-                    efficiency1=GT_BAT_efficiency(t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
+                    efficiency=FC_BAT_efficiency(comp=comp,t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
+                    efficiency1=GT_BAT_efficiency(comp=comp,t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
 
                     if comp_key == "fc_with_hex": #or comp_key == "dc_dc_1":
                         mass = P_req_primary / efficiency["FC-MOT_eff"] / pd
@@ -610,8 +610,8 @@ class weightEstimation:
                 total_mass += mass
             
             elif config == 3:
-                efficiency = GT_GT_efficiency(t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
-                efficiency2 = GT_BAT_efficiency(t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
+                efficiency = GT_GT_efficiency(comp=comp,t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
+                efficiency2 = GT_BAT_efficiency(comp=comp,t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
                 # Similar logic for config 3 but with different component assignments
                 if comp_key == "cable":
                     mass = cable_len * comp[comp_key].mass_per_length
@@ -669,8 +669,8 @@ class weightEstimation:
                     P_req_primary = max(g.P_cruise_KW-P_req_secondary, 
                                         g.P_TO_OEI_KW,P_req_tot - P_req_secondary)
                     
-                    efficiency=GT_FC_efficiency(P_OEI_out=P_req_secondary*1000,t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
-                    efficiency2=GT_BAT_efficiency(t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
+                    efficiency=GT_FC_efficiency(comp=comp,P_OEI_out=P_req_secondary*1000,t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
+                    efficiency2=GT_BAT_efficiency(comp=comp,t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
                     
                     # secondary power source requirement is to sustain TO 
                     #P_req_secondary = max((P_req_tot - P_req_primary), (g.P_TO_OEI_KW-(1/2)*P_req_primary))
