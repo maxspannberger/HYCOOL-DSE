@@ -6,32 +6,36 @@ class Component:
 
 class PowerComponent(Component):
     # class for power providing components
-    def __init__(self, name, power_density, efficiency, trl):
+    def __init__(self, name, power_density, efficiency, trl, power_density_std=0.0):
         super().__init__(name, trl)
         self.power_density = power_density
         self.efficiency = efficiency / 100 if efficiency else None
+        self.power_density_std = power_density_std
 
 class StorageComponent(Component):
     # class for energy storage components (batteries)
-    def __init__(self, name, energy_density, power_density, efficiency, trl):
+    def __init__(self, name, energy_density, power_density, efficiency, trl, energy_density_std=0.0):
         super().__init__(name, trl)
         self.energy_density = energy_density
         self.power_density = power_density
         self.efficiency = efficiency / 100 if efficiency else None
+        self.energy_density_std = energy_density_std
 
 class PipingComponent(Component):
     # class for pipes
-    def __init__(self, name, heat_flux, mass_per_length, trl):
+    def __init__(self, name, heat_flux, mass_per_length, trl, mass_per_length_std=0.0):
         super().__init__(name, trl)
         self.heat_flux = heat_flux
         self.mass_per_length = mass_per_length
+        self.mass_per_length_std = mass_per_length_std
 
 class CableComponent(Component):
     # class for cables
-    def __init__(self, name, power_density, mass_per_length, trl):
+    def __init__(self, name, power_density, mass_per_length, trl, power_density_std=0.0):
         super().__init__(name, trl)
         self.power_density = power_density
         self.mass_per_length = mass_per_length
+        self.power_density_std = power_density_std
         
 class HeatExchangeComponent(Component):
     # class for HEX
@@ -43,10 +47,11 @@ class HeatExchangeComponent(Component):
 # =============================================================================
 # Define a dictionary containing the data
 # =============================================================================
+# TODO: adjust standard deviations
 component_params = {
     # Power Components
-    "gt": PowerComponent("Gas Turbine", 10, 35, 5),
-    "fc_with_hex": PowerComponent("Fuel Cell", 2.83, 51, 3),
+    "gt": PowerComponent("Gas Turbine", 10, 35, 5, 5),
+    "fc_with_hex": PowerComponent("Fuel Cell", 2.83, 51, 3, 1),
     "hts_gen": PowerComponent("HTS Motor", 20, 99.9, 4),
     "hts_pow": PowerComponent("HTS Motor", 20, 99.9, 4),
     "gt_hex": PowerComponent("Gas Turbine + HEX ", 9.62, 39.5, 3),

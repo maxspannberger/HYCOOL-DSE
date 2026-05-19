@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.random import normal as normal
 from dataclasses import dataclass
 from typing import Optional
 import sys
@@ -114,6 +115,7 @@ class ClassII_Input:
         t_climb: float = 0.0,
         t_reserve: float = 0.0,
         N_engines: float = 0.0,
+        base_params=False
     ) -> "ClassII_Input":
         """
         Build the weight-estimator input from a shared AircraftConfig.
@@ -151,20 +153,18 @@ class ClassII_Input:
             high_wing     = cfg.high_wing,
             has_flap_slat = cfg.has_flap_slat,
 
-            rho_bat     =   comp["bt"].energy_density,          #kWh/kg Energy density of battery                       # TODO vary parameter
-            rho_fc      =   comp["fc_with_hex"].power_density,  #kW/kg Power density of fuel cell system                # TODO vary parameter
-            rho_ac_dc   =   comp["ac_dc"].power_density,        #kW/kg Power density of AC/DC rectifier                 # TODO vary parameter
-            rho_dc_dc_1 =   comp["dc_dc_1"].power_density,      #kW/kg Power density of primary DC/DC converter         # TODO vary parameter
-            rho_dc_dc_2 =   comp["dc_dc_2"].power_density,      #kW/kg Power density of secondary DC/DC converter       # TODO vary parameter
-            rho_dc_ac   =   comp["dc_ac"].power_density,        #kW/kg Power density of DC/AC inverter                  # TODO vary parameter
-            rho_cable   =   comp["cable"].power_density,        #kW/kg Power density of electrical cables               # TODO vary parameter
-            rho_pipe    =   comp["pipe"].mass_per_length,       #kg/m Mass per length of piping                         # TODO vary parameter
-
-
-            rho_turb      = comp["gt_hex"].power_density / cfg.turbine_penalty, #kW/kg Power density of gas turbine     # TODO vary parameter
-            rho_HTS_gen   = comp["hts_gen"].power_density / cfg.cryo_penalty,   #kW/kg Power density of HTS generator   # TODO vary parameter
-            rho_HTS_pow   = comp["hts_pow"].power_density / cfg.cryo_penalty,   #kW/kg Power density of HTS motor       # TODO vary parameter
-            grav_density  = cfg.grav_density,                                                                           # TODO vary parameter
+            rho_bat       = comp["bt"].energy_density if base_params            else normal(comp["bt"].energy_density, comp["bt"].energy_density_std),                              #kWh/kg Energy density of battery
+            rho_fc        = comp["fc_with_hex"].power_density if base_params    else normal(comp["fc_with_hex"].power_density, comp["fc_with_hex"].power_density_std),              #kW/kg Power density of fuel cell system
+            rho_ac_dc     = comp["ac_dc"].power_density if base_params          else normal(comp["ac_dc"].power_density, comp["ac_dc"].power_density_std),                          #kW/kg Power density of AC/DC rectifier
+            rho_dc_dc_1   = comp["dc_dc_1"].power_density if base_params        else normal(comp["dc_dc_1"].power_density, comp["dc_dc_1"].power_density_std),                      #kW/kg Power density of primary DC/DC converter
+            rho_dc_dc_2   = comp["dc_dc_2"].power_density if base_params        else normal(comp["dc_dc_2"].power_density, comp["dc_dc_2"].power_density_std),                      #kW/kg Power density of secondary DC/DC converter
+            rho_dc_ac     = comp["dc_ac"].power_density if base_params          else normal(comp["dc_ac"].power_density, comp["dc_ac"].power_density_std),                          #kW/kg Power density of DC/AC inverter
+            rho_cable     = comp["cable"].power_density if base_params          else normal(comp["cable"].power_density, comp["cable"].power_density_std),                          #kW/kg Power density of electrical cables
+            rho_pipe      = comp["pipe"].mass_per_length if base_params         else normal(comp["pipe"].mass_per_length, comp["pipe"].mass_per_length_std),                        #kg/m Mass per length of piping
+            rho_turb      = (comp["gt_hex"].power_density if base_params        else normal(comp["gt_hex"].power_density, comp["gt_hex"].power_density_std)) / cfg.turbine_penalty, #kW/kg Power density of gas turbine
+            rho_HTS_gen   = (comp["hts_gen"].power_density if base_params       else normal(comp["hts_gen"].power_density, comp["hts_gen"].power_density_std)) / cfg.cryo_penalty,  #kW/kg Power density of HTS generator
+            rho_HTS_pow   = (comp["hts_pow"].power_density if base_params       else normal(comp["hts_pow"].power_density, comp["hts_pow"].power_density_std)) / cfg.cryo_penalty,  #kW/kg Power density of HTS motor
+            grav_density  = cfg.grav_density if base_params                     else normal(cfg.grav_density, cfg.grav_density_std),
             
             P_TO_KW       = P_TO_KW,
             P_max_KW      = P_max_KW,
@@ -782,7 +782,7 @@ if __name__ == "__main__":
 
     comp = comp_params
     cfg = default_q400_hycool()
-    geo = ClassII_Input.from_config(cfg, comp)
+    geo = ClassII_Input.from_config(cfg, comp, base_params=True)
     est = weightEstimation(geo)
 
     print("--- Single-shot ---")

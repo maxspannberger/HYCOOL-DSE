@@ -43,7 +43,7 @@ from Mission_Power     import MissionPower,       MissionFuelBreakdown
 from Power_Sizing      import PowerSizing,        PowerSizingBreakdown
 from Export_Results    import export_results
 from General.component_parameters import component_params as comp_params
-
+from General.component_parameters import PowerComponent, StorageComponent, PipingComponent, CableComponent, HeatExchangeComponent
 
 from rich import print
 from rich.console import Console
@@ -127,7 +127,29 @@ def run_class_ii(
     it = 0
     iteration_log: list[dict] = []
     config = int(input("Enter config for power unit weight estimation (1-4): "))
-    comp=comp_params
+
+    # TODO: automate looping through all components
+    param_varying = ["gt", "fc_with_hex"]
+    comp_init = comp_params
+    
+    comp = comp_init.copy()
+    if param_varying is not None:
+        for param in param_varying:
+            match comp[param]:
+                case PowerComponent():
+                    print(comp[param].power_density)
+                    comp[param].power_density += np.random.normal(0.0, comp[param].power_density_std)
+                    print(comp[param].power_density)
+                case StorageComponent():
+                    comp[param].energy_density += np.random.normal(0.0, comp[param].energy_density_std)
+                case PipingComponent():
+                    comp[param].mass_per_length += np.random.normal(0.0, comp[param].mass_per_length_std)
+                case CableComponent():
+                    comp[param].power_density += np.random.normal(0.0, comp[param].power_density_std)
+                case HeatExchangeComponent():
+                    pass
+                case _:
+                    pass
 
     for it in range(1, max_iter + 1):
 
@@ -177,7 +199,8 @@ def run_class_ii(
             configuration=config,
             t_climb=t_climb,
             t_cruise=t_cruise,
-            t_reserve=t_reserve
+            t_reserve=t_reserve,
+            base_params=False
         )
         wt_bd = weightEstimation(wt_inp).compute()
 
