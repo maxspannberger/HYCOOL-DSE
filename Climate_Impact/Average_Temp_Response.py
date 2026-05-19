@@ -243,11 +243,11 @@ def calc_mass_h2():
                     ],
                 }
                 # Debug output for GT-FC split
-                print("GT-FC cruise split debug:")
+                """ print("GT-FC cruise split debug:")
                 print(f"  C_P_fc={C_P_fc}, derived C_P_gt={p_gt}")
                 print(f"  energy_fc={energy_fc}, energy_gt={energy_gt}")
                 print(f"  C_fc_eff={C_fc_eff}, C_gt_eff={C_gt_eff}")
-                print(f"  m_h2_fc={m_h2_fc}, m_h2_gt={m_h2_gt}, total_cruise_m_h2={cruise_m_h2}")
+                print(f"  m_h2_fc={m_h2_fc}, m_h2_gt={m_h2_gt}, total_cruise_m_h2={cruise_m_h2}") """
             else:
                 # fallback: if FC_P not provided, fall back to previous power-share split when both provided
                 p_fc = C_P_fc
@@ -276,11 +276,11 @@ def calc_mass_h2():
                             {'source': 'GT', 'energy_kJ': energy_gt, 'eta': C_gt_eff, 'm_h2_kg': m_h2_gt},
                         ],
                     }
-                    print("GT-FC cruise split debug (fallback share):")
+                    """ print("GT-FC cruise split debug (fallback share):")
                     print(f"  C_P_fc={C_P_fc}, C_P_gt={C_P_gt}")
                     print(f"  energy_fc={energy_fc}, energy_gt={energy_gt}")
                     print(f"  C_fc_eff={C_fc_eff}, C_gt_eff={C_gt_eff}")
-                    print(f"  m_h2_fc={m_h2_fc}, m_h2_gt={m_h2_gt}, total_cruise_m_h2={cruise_m_h2}")
+                    print(f"  m_h2_fc={m_h2_fc}, m_h2_gt={m_h2_gt}, total_cruise_m_h2={cruise_m_h2}") """
                 else:
                     # last-resort fallback: treat cruise as single source
                     if cruise_source != 'BAT':
@@ -372,11 +372,11 @@ def print_mass_h2_summary(h2_masses):
         secondary = design_data['to_climb']['secondary']
         total = design_data['total_m_h2_kg']
 
-        print(f"\n{design_name}")
+        """ print(f"\n{design_name}")
         print(f"  Cruise    ({cruise['source']}):     {cruise['m_h2_kg']:.3f} kg H2")
         print(f"  TO/Climb P ({primary['source']}):     {primary['m_h2_kg']:.3f} kg H2")
         print(f"  TO/Climb S ({secondary['source']}):   {secondary['m_h2_kg']:.3f} kg H2")
-        print(f"  Total:                    {total:.3f} kg H2")
+        print(f"  Total:                    {total:.3f} kg H2") """
 
 def calc_aCCF_nox():
 
@@ -387,14 +387,14 @@ def calc_aCCF_nox():
     aCCF_ch4 = -4.84*10**(-13) + 9.79*10**(-19)*geopotential - 3.11*10**(-16)*F_in + 3.01*10**(-21)*F_in*geopotential
     aCCF_pmo = 0.29 * aCCF_ch4
 
-    print(f"NOx impact: {aCCF_o3 + aCCF_ch4 + aCCF_pmo}")
+    # print(f"NOx impact: {aCCF_o3 + aCCF_ch4 + aCCF_pmo}")
     return aCCF_o3 + aCCF_ch4 + aCCF_pmo
 
 def calc_aCCF_h2o():
 
     aCCF_h2o = (2.11*10**(-16) + 7.70*10**(-17)*abs(pv))*(9/1.231)
 
-    print(f"H2O impact: {aCCF_h2o}")
+    # print(f"H2O impact: {aCCF_h2o}")
     return aCCF_h2o
 
 def calc_aCCF_contrail():
@@ -407,13 +407,13 @@ def calc_aCCF_contrail():
     
     aCCF_contrail_mean = f_day*aCCF_contrail_day + (1-f_day)*aCCF_contrail_night
 
-    print(f"Contrail impact: {aCCF_contrail_mean}")
+    # print(f"Contrail impact: {aCCF_contrail_mean}")
     return aCCF_contrail_mean
 
 def calc_aCCF_co2():
     aCCF_co2 = 7.48*10**(-16)
 
-    print(f"CO2 impact: {aCCF_co2}")
+    #  print(f"CO2 impact: {aCCF_co2}")
     return aCCF_co2
 
 def calc_atr_per_design(h2_masses):
@@ -499,20 +499,25 @@ def calc_atr_per_design(h2_masses):
         total_atr = atr_cruise + atr_primary + atr_secondary
         atrs[design_name] = total_atr
 
-        # Debug print: detailed ATR contributions
+    """ # Debug print: detailed ATR contributions
         print(f"ATR breakdown for {design_name}:")
         print(f"  Cruise total={atr_cruise} (NOx={cruise_nox}, H2O={cruise_h2o}, CO2={cruise_co2}, Contrail={cruise_contrail})")
         print(f"  TO/Climb primary={atr_primary}")
         print(f"  TO/Climb secondary={atr_secondary}")
         print(f"  Total ATR={total_atr}\n")
-
-    print(atrs)
+ """
+    #print(atrs)
     return atrs
+
+
+def get_results():
+    """Return the ATR results dictionary for all designs."""
+    return calc_atr_per_design(calc_mass_h2())
 
 
 if __name__ == "__main__":
     h2_masses = calc_mass_h2()
-    print_mass_h2_summary(h2_masses)
-
-    calc_atr_per_design(h2_masses)
+    # print_mass_h2_summary(h2_masses)
+    print(calc_atr_per_design(h2_masses))
+    
 
