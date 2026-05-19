@@ -1,6 +1,6 @@
 import xarray as xr
 
-nc_path = r'Climate Impact\fd16b8ba74e3acb261aa83a75e2d74f4.nc'
+nc_path = r'Climate_Impact\fd16b8ba74e3acb261aa83a75e2d74f4.nc'
 
 ds = xr.open_dataset(nc_path)
 
@@ -10,4 +10,4 @@ olr = ds['avg_tnlwrf'].sel(
     method='nearest'
 ).mean().values
 
-print(f"Annual mean OLR at 51N, 10E: {olr:.2f} W/m2")
+# print(f"Annual mean OLR at 51N, 10E: {olr:.2f} W/m2")
