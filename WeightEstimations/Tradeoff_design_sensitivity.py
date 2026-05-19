@@ -19,18 +19,19 @@ from rich.columns import Columns
 
 def sensitivity_analysis(
         cfg:            AircraftConfig,
-        config:         int = None,
         n_repeats:      int = 1,
         comp_params:    dict = comp_params,
-        sensitivity_config: str = "none"
+        sensitivity_config: str = "none",
+        designs_to_consider:list = [1, 2, 3, 4]
 ) -> dict:
     
     sensitivity_results = {}
-    print(f"Starting sensitivity analysis for design {config}...")
+    print(f"Starting sensitivity analysis...")
     max_runs = 1 if sensitivity_config == "none" else n_repeats
 
     for run in range(1, max_runs + 1):
         comp = comp_params.copy()
+        sensitivity_results[run] = {}
 
         if sensitivity_config == "all":
             for param in comp:
@@ -48,42 +49,56 @@ def sensitivity_analysis(
                     case _:
                         pass
 
-            print(f"Performing run {run} out of {max_runs}")
+        print(f"Performing run {run} out of {max_runs}")
+        
+        for config in designs_to_consider:
             class_II_results = run_class_ii(config=config, comp=comp, verbose=False, cfg=cfg)
-            sensitivity_results[run] = {
-                "OEW": class_II_results.MTOW,
+            sensitivity_results[run][config] = {
+                "MTOW": class_II_results.MTOW,
                 "eff": class_II_results.total_prop_efficiency
             }
 
-    print(f"Sensitivity analysis finished for design {config}.\n")
-
+    print(f"Sensitivity analysis finished.\n")
     return sensitivity_results
 
 
 def stats_calculator(sensitivity_results):
-    
-    results_stats = {}
-    for i, result in enumerate(sensitivity_results):
+    criterion_result = {}
+    criterion_stats = {}
 
-        criterion_result = {}
-        for run in result:
-            for criterion in result[run]:
+    for run in sensitivity_results:
+        for config in sensitivity_results[run]:
+            if config not in criterion_result:
+                criterion_result[config] = {}
+
+            for criterion in sensitivity_results[run][config]:
                 if criterion in criterion_result:
-                    criterion_result[criterion].append(result[run][criterion])
+                    criterion_result[config][criterion].append(sensitivity_results[run][config][criterion])
                 else:
-                    criterion_result[criterion] = [result[run][criterion]]
+                    criterion_result[config][criterion] = [sensitivity_results[run][config][criterion]]
 
-        criterion_stats = {}
-        for criterion in criterion_result:
-            criterion_stats[criterion] = {
-                "mean": np.mean(np.array(criterion_result[criterion])),
-                "std": np.std(np.array(criterion_result[criterion]))
+    for config in criterion_result:
+        criterion_stats[config] = {}
+        for criterion in criterion_result[config]:
+            criterion_stats[config][criterion] = {
+                "mean": np.mean(np.array(criterion_result[config][criterion])),
+                "std": np.std(np.array(criterion_result[config][criterion]))
             }
 
-        results_stats[i+1] = criterion_stats
+    return criterion_stats
 
-    return results_stats
-        
+
+def assign_scores(sensitivity_results):
+    tradeoff_table = {
+        1: None,
+        2: None,
+        3: None,
+        4: None
+    }
+
+    for design in tradeoff_table:
+        runs = sensitivity_results[design-1]
+
 
 
 if __name__ == "__main__":
@@ -91,9 +106,8 @@ if __name__ == "__main__":
     n_repeats = 3
     designs_to_consider = [1, 2, 3, 4]
 
-    sensitivity_results = []
-    for config in designs_to_consider:
-        sensitivity_results.append(sensitivity_analysis(cfg=cfg, config=config, n_repeats=n_repeats, sensitivity_config="all"))
+    sensitivity_results = sensitivity_analysis(cfg=cfg, n_repeats=n_repeats, sensitivity_config="all", designs_to_consider=designs_to_consider)
+    print(sensitivity_results)
     
     results_stats = stats_calculator(sensitivity_results)
     print(results_stats)
