@@ -54,7 +54,8 @@ def sensitivity_analysis(
         for config in designs_to_consider:
             class_II_results = run_class_ii(config=config, comp=comp, verbose=False, cfg=cfg)
             sensitivity_results[run][config] = {
-                "MTOW": class_II_results.MTOW,
+                "OEW": class_II_results.W_empty,
+                "prop_frac": class_II_results.W_prop / class_II_results.W_empty,
                 "eff": class_II_results.total_prop_efficiency
             }
 
@@ -88,16 +89,71 @@ def stats_calculator(sensitivity_results):
     return criterion_stats
 
 
-def assign_scores(sensitivity_results):
-    tradeoff_table = {
-        1: None,
-        2: None,
-        3: None,
-        4: None
+def assign_scores(sizing_outputs):
+    thermal_score = TRL_score = mass_score = eff_score = climate_score = 0
+
+    OEW = sizing_outputs["OEW"]
+    prop_frac = sizing_outputs["prop_frac"]
+    eff = sizing_outputs["eff"]
+
+    # mass scoring
+    # TODO: decide if we choose OEW or prop_frac
+    if prop_frac < 0.15:
+        mass_score = 5
+    elif prop_frac < 0.20:
+        mass_score = 4
+    elif prop_frac < 0.25:
+        mass_score = 3
+    elif prop_frac < 0.30:
+        mass_score = 2
+    else:
+        mass_score = 1
+
+    # efficiency scoring
+    if eff < 0.40:
+        eff_score = 1
+    elif eff < 0.45:
+        eff_score = 2
+    elif eff < 0.50:
+        eff_score = 3
+    elif eff < 0.5:
+        eff_score = 5
+    else:
+        eff_score = 5
+
+    overall_score = 0.25 * thermal_score +\
+                    0.15 * TRL_score +\
+                    0.25 * mass_score +\
+                    0.20 * eff_score +\
+                    0.15 * climate_score
+
+    return {
+        "mass": mass_score,
+        "efficiency": eff_score,
+        "overall": overall_score
     }
 
-    for design in tradeoff_table:
-        runs = sensitivity_results[design-1]
+
+def numerical_tradeoff(single_variation_results):
+    tradeoff_table = {
+        1: {},
+        2: {},
+        3: {},
+        4: {}
+    }
+
+    for config in single_variation_results:
+        scores = assign_scores(single_variation_results[config])
+        for criterion in scores:
+            tradeoff_table[config][criterion] = scores[criterion]
+
+    return tradeoff_table
+
+
+def tradeoff_sensitivity(sensitivity_results):
+    for run in sensitivity_results:
+        tradeoff_table = numerical_tradeoff(sensitivity_results[run])
+        print(tradeoff_table)
 
 
 
@@ -111,3 +167,5 @@ if __name__ == "__main__":
     
     results_stats = stats_calculator(sensitivity_results)
     print(results_stats)
+
+    tradeoff_sensitivity(sensitivity_results)

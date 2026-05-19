@@ -61,6 +61,7 @@ class ClassIIResult:
     W_fuel:      float
     W_payload:   float
     W_fixed:     float
+    W_prop:      float
     L_over_D:    float
     CL_cruise:   float
     iterations:  int
@@ -249,6 +250,7 @@ def run_class_ii(
         W_fuel     = mis_bd.m_LH2_total,
         W_payload  = cfg.W_payload,
         W_fixed    = cfg.W_fixed,
+        W_prop     = wt_bd.W_total_prop,
         L_over_D   = drag_bd.L_over_D,
         CL_cruise  = drag_bd.CL_cruise,
         iterations = it,
