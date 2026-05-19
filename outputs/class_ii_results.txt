@@ -140,6 +140,8 @@ Weight Breakdown
   grav_density           =  0.64
   configuration          =  1
   total_prop_efficiency  =  0.426934
+  climb_efficiency       =  0.408802
+  cruise_efficiency      =  0.432454
   t_cruise               =  (0.0,)
   t_climb                =  (0.0,)
   t_reserve              =  0

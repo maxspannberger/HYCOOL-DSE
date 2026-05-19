@@ -521,7 +521,7 @@ class weightEstimation:
                     mass = pipe_len * comp[comp_key].mass_per_length   
                 elif comp_key != "cable" and comp_key != "pipe":
                     # 5% of cruise power but put this in some input file!
-                    bt_charging_ratio = 0.05 
+                    bt_charging_ratio = 0.12 
                     pd = comp[comp_key].power_density
 
                     # maximum power that flows to the motors (most likely takeoff)
@@ -568,8 +568,8 @@ class weightEstimation:
                 elif comp_key == "pipe":
                     mass = pipe_len * comp[comp_key].mass_per_length   
                 elif comp_key != "cable" and comp_key != "pipe":
-                    # 5% of cruise power but put this in some input file!
-                    bt_charging_ratio = 0.05 
+                    # 12% of cruise power but put this in some input file!
+                    bt_charging_ratio = 0.12 
                     pd = comp[comp_key].power_density
 
                     # maximum power that flows to the motors (most likely takeoff)
