@@ -12,3 +12,5 @@
 .ipynb_checkpoints/
 __pycache__/
 *.png
+*.txt
+*.csv

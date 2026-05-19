@@ -90,13 +90,16 @@ class TailSizing_Input:
     @classmethod
     def from_config(
         cls,
-        cfg: AircraftConfig,
-        MTOW: Optional[float] = None,
+        cfg:   AircraftConfig,
+        MTOW:  Optional[float] = None,
+        S_ref: Optional[float] = None,
+        b:     Optional[float] = None,
+        MAC:   Optional[float] = None,
     ) -> "TailSizing_Input":
         return cls(
-            S_ref       = cfg.S_ref,
-            MAC         = cfg.MAC,
-            b           = cfg.b,
+            S_ref       = S_ref if S_ref is not None else cfg.S_ref,
+            MAC         = MAC   if MAC   is not None else cfg.MAC,
+            b           = b     if b     is not None else cfg.b,
             AR          = cfg.AR,
             l_h         = cfg.l_h,
             l_v         = cfg.l_v,

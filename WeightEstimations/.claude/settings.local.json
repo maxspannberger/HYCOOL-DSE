@@ -3,7 +3,9 @@
     "allow": [
       "Bash(python mainClassII.py)",
       "Read(//c/Users/flavi/OneDrive/Documents/GitHub/HYCOOL-DSE/**)",
-      "Bash(python WeightEstimations/mainClassII.py)"
+      "Bash(python WeightEstimations/mainClassII.py)",
+      "Bash(python -c \"from Mission_Power import MissionPower; from ClassII_Drag import DragBreakdown; from Aircraft_Config import default_q400_hycool; cfg=default_q400_hycool\\(\\); db=DragBreakdown\\(CD0_wing=0.005, CD_misc=1.0, e=0.85, CL_cruise=0.5\\); mp=MissionPower\\(cfg, db, 30000.0, S_ref=70.0\\); print\\('S_ref:', mp.S_ref\\)\")",
+      "Bash(python -c ' *)"
     ]
   }
 }

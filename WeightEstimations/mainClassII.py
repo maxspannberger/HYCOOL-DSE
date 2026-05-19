@@ -99,6 +99,75 @@ class ClassIIResult:
         )
 
 
+def compute_fuselage_geometry(W_fuel: float, cfg: AircraftConfig):
+    """
+    Resize the fuselage to accommodate the LH2 tank.
+
+    Tank: cylindrical core of length 2r with two hemispherical end caps,
+    giving V_tank = (4/3) pi r^3 + 2 pi r^3 = (10/3) pi r^3. Total tank
+    length L_tank = 4r and tank diameter d_tank = 2r.
+
+    Hump-back layout (747-style): the tank rides on top of the fuselage.
+    Fuselage length and width are unchanged; the exposed half of the
+    tank's surface (approx. 4 pi r^2) is added to the fuselage wetted
+    area.
+
+    In-line layout: the tank lies inside the fuselage, so the fuselage
+    grows by L_tank in length. If the tank diameter exceeds the
+    pre-defined fuselage diameter, b_f and h_f are increased to the
+    tank diameter. The fuselage wetted area is re-evaluated with the
+    same teardrop formula used in the weight module so the two stay
+    consistent.
+
+    Returns (cfg_updated, r_tank, L_tank, d_tank, S_wet_hump).
+    """
+    from dataclasses import replace as _replace
+
+    V_tank = max(W_fuel, 0.0) / cfg.rho_LH2_eff
+    r_tank = (3.0 * V_tank / (10.0 * np.pi)) ** (1/3) if V_tank > 0 else 0.0
+    L_tank = 4.0 * r_tank
+    d_tank = 2.0 * r_tank
+
+    if cfg.hump_back:
+        l_f = cfg.l_f
+        b_f = cfg.b_f
+        h_f = cfg.h_f
+        # Half of the tank's outer surface (cylinder 4 pi r^2 + spheres
+        # 4 pi r^2, halved for the exposed top) sits above the fuselage.
+        S_wet_hump = 4.0 * np.pi * r_tank**2
+        S_wet_f    = cfg.S_wet_f + S_wet_hump
+    else:
+        S_wet_hump = 0.0
+        l_f = cfg.l_f + L_tank
+        b_f = max(cfg.b_f, d_tank)
+        h_f = max(cfg.h_f, d_tank)
+        d_eq  = 0.5 * (b_f + h_f)
+        sigma = l_f / d_eq
+        S_wet_f = (np.pi * b_f * l_f
+                   * (1.0 - 2.0 / sigma) ** (2.0 / 3.0)
+                   * (1.0 + 1.0 / sigma**2))
+
+    cfg_updated = _replace(cfg, l_f=l_f, b_f=b_f, h_f=h_f, S_wet_f=S_wet_f)
+    return cfg_updated, r_tank, L_tank, d_tank, S_wet_hump
+
+
+def compute_wing_geometry(MTOW: float, cfg: AircraftConfig) -> tuple[float, float, float, float, float]:
+    """
+    Trapezoidal wing planform at constant wing loading, AR, and taper.
+
+    Returns (S_ref, b, c_root, c_tip, MAC). Sweep angles are held
+    constant — LE and c/2 sweep follow from c/4 sweep, AR, and taper
+    (all constants), so they don't change with MTOW.
+    """
+    lam   = cfg.taper
+    S_ref = MTOW * G / cfg.Loading
+    b     = np.sqrt(cfg.AR * S_ref)
+    c_root = 2 * S_ref / ((1 + lam) * b)
+    c_tip  = lam * c_root
+    MAC    = (2 / 3) * c_root * (1 + lam + lam**2) / (1 + lam)
+    return S_ref, b, c_root, c_tip, MAC
+
+
 def run_class_ii(
     cfg:      AircraftConfig,
     tol:      float = 1.0,
@@ -107,9 +176,10 @@ def run_class_ii(
 ) -> ClassIIResult:
 
     # -----------------------------------------------------------------
-    # Step 1: tail sizing (does not depend on MTOW)
+    # Step 1: tail sizing (uses initial wing geometry; refined in the recheck)
     # -----------------------------------------------------------------
-    tail_inp = TailSizing_Input.from_config(cfg)
+    S_ref, b, c_root, c_tip, MAC = compute_wing_geometry(cfg.MTOW_initial, cfg)
+    tail_inp = TailSizing_Input.from_config(cfg, S_ref=S_ref, b=b, MAC=MAC)
     tail_bd  = TailSizingEstimator(tail_inp).compute()
 
     if verbose:
@@ -120,6 +190,9 @@ def run_class_ii(
     # Step 2: outer MTOW iteration with mission-power coupling
     # -----------------------------------------------------------------
     MTOW    = cfg.MTOW_initial
+    # Initial W_fuel guess for fuselage/tank sizing on iter 1.
+    # Refined to the converged value within a couple of iterations.
+    W_fuel  = cfg.m_dot_fuel * cfg.range_m / cfg.V_cruise
     drag_bd = DragBreakdown()
     wt_bd   = WeightBreakdown()
     mis_bd  = MissionFuelBreakdown()
@@ -131,17 +204,31 @@ def run_class_ii(
 
     for it in range(1, max_iter + 1):
 
-        # Drag at current MTOW with sized tails
+        # Recompute wing planform at the start of each iteration: under
+        # constant wing loading, AR, and taper, S_ref, b, c_root, c_tip,
+        # MAC all scale with the current MTOW.
+        S_ref, b, c_root, c_tip, MAC = compute_wing_geometry(MTOW, cfg)
+
+        # Recompute fuselage / H2-tank geometry from the latest W_fuel.
+        # cfg_iter has updated l_f, b_f, h_f, S_wet_f and is fed to every
+        # downstream module so drag and weight use consistent dimensions.
+        cfg_iter, r_tank, L_tank, d_tank, S_wet_hump = compute_fuselage_geometry(W_fuel, cfg)
+
+        # Drag at current MTOW with sized tails and current wing geometry
         drag_inp = ClassII_Drag_Input.from_config(
-            cfg,
-            MTOW = MTOW,
-            S_h  = tail_bd.S_h,
-            S_v  = tail_bd.S_v,
+            cfg_iter,
+            MTOW   = MTOW,
+            S_ref  = S_ref,
+            b      = b,
+            c_root = c_root,
+            MAC    = MAC,
+            S_h    = tail_bd.S_h,
+            S_v    = tail_bd.S_v,
         )
         drag_bd = DragEstimation(drag_inp).compute()
 
         # Mission power -> LH2 fuel mass
-        mis_bd = MissionPower(cfg, drag_bd, MTOW).compute()
+        mis_bd = MissionPower(cfg_iter, drag_bd, MTOW, S_ref=S_ref).compute()
         W_fuel = mis_bd.m_LH2_total
         P_max_kw = mis_bd.P_max / 1000
         P_cruise_kw = mis_bd.P_cruise_shaft / 1000
@@ -151,22 +238,24 @@ def run_class_ii(
         t_reserve = mis_bd.t_reserve
 
         # Performance & CS-25 Requirements
-        pwr_bd = PowerSizing(cfg, mis_bd, MTOW).compute()
+        pwr_bd = PowerSizing(cfg_iter, mis_bd, MTOW).compute()
         P_TO_kW = pwr_bd.P_TO_total / 1000.0
         P_TO_OEI_kW = pwr_bd.P_total_OEI / 1000.0
         P_climb_kW = pwr_bd.P_from_climb / 1000.0
 
 
 
-        # Weight at current MTOW with sized tails
+        # Weight at current MTOW with sized tails and current wing geometry
         wt_inp = ClassII_Input.from_config(
-            cfg,
+            cfg_iter,
             comp=comp,
-            MTOW = MTOW,
-            MZFW = MTOW - W_fuel,
-            S_h  = tail_bd.S_h,
-            S_v  = tail_bd.S_v,
-            b_v  = tail_bd.b_v,
+            MTOW  = MTOW,
+            MZFW  = MTOW - W_fuel,
+            S_ref = S_ref,
+            b     = b,
+            S_h   = tail_bd.S_h,
+            S_v   = tail_bd.S_v,
+            b_v   = tail_bd.b_v,
             P_TO_KW = P_TO_kW,
             P_TO_OEI_KW = P_TO_OEI_kW,
             P_cruise_KW=P_cruise_kw,
@@ -191,6 +280,18 @@ def run_class_ii(
             MTOW_in_kg   = MTOW,
             MTOW_out_kg  = MTOW_new,
             delta_kg     = delta,
+            S_ref_m2     = S_ref,
+            b_m          = b,
+            c_root_m     = c_root,
+            c_tip_m      = c_tip,
+            MAC_m        = MAC,
+            r_tank_m     = r_tank,
+            L_tank_m     = L_tank,
+            d_tank_m     = d_tank,
+            l_f_m        = cfg_iter.l_f,
+            d_f_m        = cfg_iter.d_f,
+            S_wet_f_m2   = cfg_iter.S_wet_f,
+            S_wet_hump_m2= S_wet_hump,
             L_over_D     = drag_bd.L_over_D,
             P_cruise_kW  = mis_bd.P_cruise_shaft / 1000,
             P_max_kW     = mis_bd.P_max / 1000,
@@ -201,8 +302,10 @@ def run_class_ii(
 
         if verbose:
             print(f"  iter {it:2d}: MTOW {MTOW:8.1f} -> {MTOW_new:8.1f} kg  "
-                  f"(L/D={drag_bd.L_over_D:5.2f}, "
-                  f"P_cr={mis_bd.P_cruise_shaft/1000:5.0f} kW, "
+                  f"(S={S_ref:5.2f} m^2, b={b:5.2f} m, "
+                  f"c_r={c_root:4.2f} m, MAC={MAC:4.2f} m, "
+                  f"l_f={cfg_iter.l_f:5.2f} m, d_tank={d_tank:4.2f} m, "
+                  f"L/D={drag_bd.L_over_D:5.2f}, "
                   f"fuel={W_fuel:6.1f} kg, "
                   f"OEW={wt_bd.W_empty:7.1f} kg)")
 
@@ -217,7 +320,7 @@ def run_class_ii(
     # -----------------------------------------------------------------
     # Step 3 (post-loop): power & takeoff thrust sizing
     # -----------------------------------------------------------------
-    pwr_bd = PowerSizing(cfg, mis_bd, MTOW).compute()
+    pwr_bd = PowerSizing(cfg_iter, mis_bd, MTOW).compute()
 
     if verbose:
         print()
@@ -228,8 +331,11 @@ def run_class_ii(
     # so the OEI rudder check uses a self-consistent thrust value
     # rather than the user-supplied initial guess.
     # -----------------------------------------------------------------
-    cfg_recheck = replace_T_TO(cfg, pwr_bd.T_static_per_engine)
-    tail_inp_recheck = TailSizing_Input.from_config(cfg_recheck, MTOW=MTOW)
+    cfg_recheck = replace_T_TO(cfg_iter, pwr_bd.T_static_per_engine)
+    S_ref, b, c_root, c_tip, MAC = compute_wing_geometry(MTOW, cfg)
+    tail_inp_recheck = TailSizing_Input.from_config(
+        cfg_recheck, MTOW=MTOW, S_ref=S_ref, b=b, MAC=MAC,
+    )
     tail_bd_recheck  = TailSizingEstimator(tail_inp_recheck).compute()
 
     if verbose:

@@ -56,6 +56,10 @@ class ClassII_Drag_Input:
         cls,
         cfg: AircraftConfig,
         MTOW:    Optional[float] = None,
+        S_ref:   Optional[float] = None,
+        b:       Optional[float] = None,
+        c_root:  Optional[float] = None,
+        MAC:     Optional[float] = None,
         S_h:     Optional[float] = None,
         S_v:     Optional[float] = None,
         K_A:     float = 0.935,
@@ -64,25 +68,30 @@ class ClassII_Drag_Input:
         """
         Build drag input from shared config. Tail areas default to the
         config's initial guesses but should be overridden by tail-sizing
-        outputs once available.
+        outputs once available. S_ref / b / c_root / MAC default to cfg
+        values but should be overridden by the iteratively updated wing
+        geometry (constant wing loading, AR, and taper).
 
         W_cruise is the standard mid-cruise approximation 0.95 * MTOW * g.
         """
-        MTOW_use = MTOW if MTOW is not None else cfg.MTOW_initial
-        S_h_use  = S_h  if S_h  is not None else cfg.S_h_initial
-        S_v_use  = S_v  if S_v  is not None else cfg.S_v_initial
+        MTOW_use   = MTOW   if MTOW   is not None else cfg.MTOW_initial
+        S_ref_use  = S_ref  if S_ref  is not None else cfg.S_ref
+        c_root_use = c_root if c_root is not None else cfg.c_root
+        MAC_use    = MAC    if MAC    is not None else cfg.MAC
+        S_h_use    = S_h    if S_h    is not None else cfg.S_h_initial
+        S_v_use    = S_v    if S_v    is not None else cfg.S_v_initial
 
         # Wetted areas:
-        S_wet_w = 2 * 1.02 * (cfg.S_ref - cfg.b_f * cfg.c_root / 2.0)
+        S_wet_w = 2 * 1.02 * (S_ref_use - cfg.b_f * c_root_use / 2.0)
         S_wet_h = 2 * 1.02 * (S_h_use   - cfg.d_f * cfg.MAC_h   / 2.0)
         S_wet_v = 2 * 1.02 * (S_v_use   - cfg.d_f * cfg.MAC_v   / 4.0)
 
         return cls(
-            S_ref        = cfg.S_ref,
+            S_ref        = S_ref_use,
             tc           = cfg.tc_mean,
             lambda_half  = cfg.sweep_half,
             lambda_tc    = cfg.sweep_tc,
-            MAC          = cfg.MAC,
+            MAC          = MAC_use,
             AR           = cfg.AR,
             S_wet_w      = S_wet_w,
             K_A          = K_A,

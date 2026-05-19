@@ -99,6 +99,8 @@ class ClassII_Input:
         comp: dict,
         MTOW: Optional[float] = None,
         MZFW: Optional[float] = None,
+        S_ref: Optional[float] = None,
+        b:    Optional[float] = None,
         S_h:  Optional[float] = None,
         S_v:  Optional[float] = None,
         b_v:  Optional[float] = None,
@@ -120,6 +122,8 @@ class ClassII_Input:
 
         S_h, S_v, b_v default to the initial guesses in cfg but should be
         overridden by the tail-sizing module's outputs each iteration.
+        S_ref defaults to cfg.S_ref but should be overridden by the
+        iteratively updated wing area (S_ref = MTOW*g/Loading).
         MTOW defaults to cfg.MTOW_initial.
         """
         return cls(
@@ -127,8 +131,8 @@ class ClassII_Input:
             MZFW          = MZFW if MZFW is not None else cfg.MTOW_initial * 0.95,
             n_ult         = cfg.n_ult,
 
-            b             = cfg.b,
-            S_w           = cfg.S_ref,
+            b             = b     if b     is not None else cfg.b,
+            S_w           = S_ref if S_ref is not None else cfg.S_ref,
             sweep_half    = cfg.sweep_half,
             t_r           = cfg.t_root_abs,
 
