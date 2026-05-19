@@ -185,7 +185,7 @@ class MatchingDiagram:
         
         plt.xlabel('Wing Loading (W/S) [N/m²]')
         plt.ylabel('Power Loading (W/P) [N/W]')
-        plt.title('HYCOOL Matching Diagram')
+        #plt.title('HYCOOL Matching Diagram')
         plt.legend(loc='upper right', fontsize='small')  
         plt.grid()
         plt.ylim(0, 0.2) 

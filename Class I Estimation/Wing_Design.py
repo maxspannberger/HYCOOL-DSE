@@ -84,3 +84,44 @@ class WingDesign:
                 f"Sweep (c/2)   = {self.Lambda_c2_deg:.2f} deg\n"
                 f"x_MGC         = {self.x_MGC:.2f} m\n"
                 f"y_MGC         = {self.y_MGC:.2f} m")
+    
+# COMMENT THIS WHOLE SECTION AFTER THIS LINE IF ITERATION IS RUN FROM mainWeight.py!!!!!!    
+# ==============================================================================
+# FIXED WING SIZING & POWER EXECUTION
+# ==============================================================================
+
+# Import the parameters file as seen in your main script
+import parameters as param
+
+if __name__ == "__main__":
+    # Fixed values extracted from the provided data tables
+    fixed_MTOW = 28740  # kg
+    fixed_W_S = 3810    # N/m^2
+    fixed_W_P = 0.0309  # N/W (Extracted from your Optimum Power Loading snippet)
+
+    print(">>> CALCULATING FIXED WING GEOMETRY...")
+    
+    # Instantiate the WingDesign class with the fixed values and parameter dictionaries
+    wing_fixed = WingDesign(
+        W = fixed_MTOW,
+        w = fixed_W_S,
+        A = param.aerodynamic_parameters["A"],
+        M_cr = param.flight_parameters["MCR"]
+    )
+
+    # Print the resulting geometry
+    print(wing_fixed)
+    print("\n" + "="*40 + "\n")
+
+    print(">>> CALCULATING ENGINE POWER REQUIREMENTS...")
+    
+    # Calculate Engine Power Requirement (matching lines 72-75 of mainWeight.py)
+    total_peak_power_kw = ((fixed_MTOW * 9.80665) / fixed_W_P) / 1000.0
+    power_per_engine_kw = total_peak_power_kw / param.propulsion_parameters["Ne"]
+
+    # Print the power results (matching lines 76-80 formatting)
+    print("FIXED DESIGN POINT POWER REQUIREMENTS:")
+    print(f" -> Optimum Wing Loading (W/S): {fixed_W_S:.0f} N/m²")
+    print(f" -> Optimum Power Loading (W/P): {fixed_W_P:.4f} N/W")
+    print(f" -> Total Peak Power Req:      {total_peak_power_kw:.2f} kW")
+    print(f" -> Peak Power per Engine:     {power_per_engine_kw:.2f} kW\n")
