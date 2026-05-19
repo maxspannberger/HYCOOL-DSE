@@ -4,6 +4,10 @@ root = Path(__file__).resolve().parent.parent
 if str(root) not in sys.path:
     sys.path.insert(0, str(root))
 
+local_dir = Path(__file__).resolve().parent
+if str(local_dir) not in sys.path:
+    sys.path.insert(0, str(local_dir))
+
 import pandas as pd
 import ast
 
@@ -13,6 +17,7 @@ from Propulsion.efficiency import (
     GT_FC_efficiency,
     GT_GT_efficiency,
 )
+from General.component_parameters import component_params
 
 import Outgoing_Longwave_Radiation as olr
 import Potential_Vorticity as pv
@@ -101,84 +106,98 @@ E_cruise = P_cruise * t_cruise
 E_total = E_climb + E_cruise
 
 # =============================================================================
-# Loading results from  efficiency calculations 
-# =============================================================================
-
-#design A: GT-BAT
-res_A = GT_BAT_efficiency(t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
-A_gt_bt_eff = res_A["Total_eff"]
-A_P_gt = res_A.get("GT_P_opt")
-A_climb_eff = res_A.get("Climb_eff")
-A_P_bt_discharge = res_A.get("BAT_P_discharge")
-A_bt_eff_d = res_A.get("BAT-MOT_eff")
-A_cruise_eff_c = res_A.get("Cruise_charging_eff")
-A_gt_eff = res_A.get("LH2-GT-MOT_eff")
-
-#design B: FC-BAT
-res_B = FC_BAT_efficiency(t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
-B_fc_bt_eff = res_B["Total_eff"]
-B_P_fc = res_B.get("FC_P")
-B_climb_eff = res_B.get("Climb_eff")
-B_P_bt_discharge = res_B.get("BAT_P_discharge")
-B_bt_eff_d = res_B.get("BAT-MOT_eff")
-B_cruise_eff_c = res_B.get("Cruise_charging_eff")
-B_fc_eff = res_B.get("LH2-FC-MOT_eff")
-
-#design C: GT-FC
-res_C = GT_FC_efficiency(t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
-C_gt_fc_eff = res_C["Total_eff"]
-_C_P_gt_opt = res_C.get("GT_P_opt")
-C_throttle_climb = res_C.get("GT_throttle_climb")
-C_throttle_cruise = res_C.get("GT_throttle_cruise")
-if _C_P_gt_opt is not None:
-    C_P_gt = _C_P_gt_opt * (C_throttle_cruise if C_throttle_cruise is not None else 1.0)
-    C_P_gt_climb = _C_P_gt_opt * (C_throttle_climb if C_throttle_climb is not None else 1.0)
-else:
-    C_P_gt = None
-    C_P_gt_climb = None
-C_gt_eff = res_C.get("LH2-GT-MOT_eff")
-C_P_fc = res_C.get("FC_P")
-C_fc_eff = res_C.get("LH2-FC-MOT_eff")
-C_cruise_eff = res_C.get("Cruise_average_eff")
-
-#design D: GT-GT
-res_D = GT_GT_efficiency(t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
-D_gt_gt_eff = res_D["Total_eff"]
-# compute per-engine climb/cruise powers from returned optimal and throttles
-D_P_gt_climb = res_D.get("GT_P_opt") * res_D.get("GT_throttle_climb") if res_D.get("GT_P_opt") is not None else None
-D_climb_eff = res_D.get("Climb_eff")
-D_P_gt_cruise = res_D.get("GT_P_opt") * res_D.get("GT_throttle_cruise") if res_D.get("GT_P_opt") is not None else None
-D_cruise_eff = res_D.get("Cruise_eff")
-
-# =============================================================================
-
 lhv = 119930000 # J/kg, lower heating value of Hydrogen [standard property]
-energies = {
-    'cruise': E_cruise ,
-    'climb': E_climb , 
-}
-designs = {
-    'GT-BAT': {
-        'cruise': {'source': 'GT', 'eta': A_cruise_eff_c},
-        'to_climb': {'primary': 'GT', 'eta_primary': A_gt_eff, 'p_primary': A_P_gt, 'secondary': 'BAT', 'eta_secondary': A_bt_eff_d, 'p_secondary': A_P_bt_discharge}
-    },
-    'FC-BAT':{
-        'cruise': {'source': 'FC', 'eta': B_cruise_eff_c},
-        'to_climb': {'primary': 'FC', 'eta_primary': B_fc_eff, 'p_primary': B_P_fc, 'secondary': 'BAT', 'eta_secondary': B_bt_eff_d, 'p_secondary': B_P_bt_discharge}
-    },
-    'GT-GT':{
-        'cruise': {'source': 'GT', 'eta': D_cruise_eff},
-        'to_climb': {'primary': 'GT', 'eta_primary': D_climb_eff, 'p_primary': D_P_gt_climb/2, 'secondary': 'GT2', 'eta_secondary': D_climb_eff, 'p_secondary': D_P_gt_climb/2}
-    },
-    'GT-FC':{
-        'cruise': {'source': 'FC', 'eta': C_cruise_eff},
-        'to_climb': {'primary': 'GT', 'eta_primary': C_gt_eff, 'p_primary': C_P_gt_climb, 'secondary': 'FC', 'eta_secondary': C_fc_eff, 'p_secondary': C_P_fc}
-    },
-    'Baseline':{
-        'cruise': {'source': 'Jet', 'eta': 0.33},
-        'to_climb': {'primary': 'Jet', 'eta_primary': 0.33, 'p_primary': D_P_gt_climb/2, 'secondary': 'Jet', 'eta_secondary': 0.33, 'p_secondary': D_P_gt_climb/2}
-    },
-}
+# =============================================================================
+
+def load_efficiencies(comp):
+    #design A: GT-BAT
+    res_A = GT_BAT_efficiency(comp, t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
+    A_gt_bt_eff = res_A["Total_eff"]
+    A_P_gt = res_A.get("GT_P_opt")
+    A_bt_eff_d = res_A.get("BAT-MOT_eff")
+    A_cruise_eff_c = res_A.get("Cruise_charging_eff")
+    A_gt_eff = res_A.get("LH2-GT-MOT_eff")
+
+    #design B: FC-BAT
+    res_B = FC_BAT_efficiency(comp, t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
+    B_fc_bt_eff = res_B["Total_eff"]
+    B_P_fc = res_B.get("FC_P")
+    B_bt_eff_d = res_B.get("BAT-MOT_eff")
+    B_cruise_eff_c = res_B.get("Cruise_charging_eff")
+    B_cruise_eff_nc = res_B.get("Cruise_noncharging_eff")
+    B_fc_eff = res_B.get("LH2-FC-MOT_eff")
+
+    #design C: GT-FC
+    res_C = GT_FC_efficiency(comp, t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
+    C_gt_fc_eff = res_C["Total_eff"]
+    C_P_gt_opt = res_C.get("GT_P_opt")
+    C_throttle_climb = res_C.get("GT_throttle_climb")
+    C_throttle_cruise = res_C.get("GT_throttle_cruise")
+    C_P_gt = C_P_gt_opt * (C_throttle_cruise if C_throttle_cruise is not None else 1.0) if C_P_gt_opt is not None else None
+    C_P_gt_climb = C_P_gt_opt * (C_throttle_climb if C_throttle_climb is not None else 1.0) if C_P_gt_opt is not None else None
+    C_gt_eff = res_C.get("LH2-GT-MOT_eff")
+    C_P_fc = res_C.get("FC_P")
+    C_fc_eff = res_C.get("LH2-FC-MOT_eff")
+    C_cruise_eff = res_C.get("Cruise_average_eff")
+
+    #design D: GT-GT
+    res_D = GT_GT_efficiency(comp, t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
+    D_gt_gt_eff = res_D["Total_eff"]
+    D_P_gt_climb = res_D.get("GT_P_opt") * res_D.get("GT_throttle_climb") if res_D.get("GT_P_opt") is not None else None
+    D_climb_eff = res_D.get("Climb_eff")
+    D_P_gt_cruise = res_D.get("GT_P_opt") * res_D.get("GT_throttle_cruise") if res_D.get("GT_P_opt") is not None else None
+    D_cruise_eff = res_D.get("Cruise_average_eff")
+
+    return {
+        "A_gt_bt_eff": A_gt_bt_eff,
+        "A_cruise_eff_c": A_cruise_eff_c,
+        "A_gt_eff": A_gt_eff,
+        "A_P_gt": A_P_gt,
+        "A_bt_eff_d": A_bt_eff_d,
+        "A_P_bt_discharge": res_A.get("BAT_P_discharge"),
+        "B_fc_bt_eff": B_fc_bt_eff,
+        "B_cruise_eff_c": B_cruise_eff_c,
+        "B_cruise_eff_nc": B_cruise_eff_nc,
+        "B_fc_eff": B_fc_eff,
+        "B_P_fc": B_P_fc,
+        "B_bt_eff_d": B_bt_eff_d,
+        "B_P_bt_discharge": res_B.get("BAT_P_discharge"),
+        "C_gt_fc_eff": C_gt_fc_eff,
+        "C_cruise_eff": C_cruise_eff,
+        "C_gt_eff": C_gt_eff,
+        "C_P_gt_climb": C_P_gt_climb,
+        "C_P_fc": C_P_fc,
+        "C_fc_eff": C_fc_eff,
+        "D_gt_gt_eff": D_gt_gt_eff,
+        "D_cruise_eff": D_cruise_eff,
+        "D_climb_eff": D_climb_eff,
+        "D_P_gt_climb": D_P_gt_climb,
+    }
+
+
+def build_designs(eff):
+    return {
+        'GT-BAT': {
+            'cruise': {'source': 'GT', 'eta': eff['A_cruise_eff_c']},
+            'to_climb': {'primary': 'GT', 'eta_primary': eff['A_gt_eff'], 'p_primary': eff['A_P_gt'], 'secondary': 'BAT', 'eta_secondary': eff['A_bt_eff_d'], 'p_secondary': eff['A_P_bt_discharge']}
+        },
+        'FC-BAT': {
+            'cruise': {'source': 'FC', 'eta': eff['B_cruise_eff_c']},
+            'to_climb': {'primary': 'FC', 'eta_primary': eff['B_fc_eff'], 'p_primary': eff['B_P_fc'], 'secondary': 'BAT', 'eta_secondary': eff['B_bt_eff_d'], 'p_secondary': eff['B_P_bt_discharge']}
+        },
+        'GT-GT': {
+            'cruise': {'source': 'GT', 'eta': eff['D_cruise_eff']},
+            'to_climb': {'primary': 'GT', 'eta_primary': eff['D_climb_eff'], 'p_primary': eff['D_P_gt_climb'] / 2, 'secondary': 'GT2', 'eta_secondary': eff['D_climb_eff'], 'p_secondary': eff['D_P_gt_climb'] / 2}
+        },
+        'GT-FC': {
+            'cruise': {'source': 'FC', 'eta': eff['C_cruise_eff']},
+            'to_climb': {'primary': 'GT', 'eta_primary': eff['C_gt_eff'], 'p_primary': eff['C_P_gt_climb'], 'secondary': 'FC', 'eta_secondary': eff['C_fc_eff'], 'p_secondary': eff['C_P_fc']}
+        },
+        'Baseline': {
+            'cruise': {'source': 'Jet', 'eta': 0.33},
+            'to_climb': {'primary': 'Jet', 'eta_primary': 0.33, 'p_primary': eff['D_P_gt_climb'] / 2, 'secondary': 'Jet', 'eta_secondary': 0.33, 'p_secondary': eff['D_P_gt_climb'] / 2}
+        },
+    }
 source_props = {
     'GT': {'nox': True, 'h2o': True, 'contrail': True, 'co2': False},
     'GT2': {'nox': True, 'h2o': True, 'contrail': True, 'co2': False},
@@ -187,8 +206,34 @@ source_props = {
     'Jet': {'nox': True, 'h2o': True, 'contrail': True, 'co2': True},
 }
 
-def calc_mass_h2():
+def calc_mass_h2(comp, efficiency_results=None):
     """Return hydrogen mass by design, phase, and source."""
+
+    if efficiency_results is None:
+        efficiency_results = load_efficiencies(comp)
+
+    designs = build_designs(efficiency_results)
+    A_gt_bt_eff = efficiency_results['A_gt_bt_eff']
+    A_gt_eff = efficiency_results['A_gt_eff']
+    A_P_gt = efficiency_results['A_P_gt']
+    A_bt_eff_d = efficiency_results['A_bt_eff_d']
+    B_fc_bt_eff = efficiency_results['B_fc_bt_eff']
+    B_fc_eff = efficiency_results['B_fc_eff']
+    B_P_fc = efficiency_results['B_P_fc']
+    B_bt_eff_d = efficiency_results['B_bt_eff_d']
+    C_gt_fc_eff = efficiency_results['C_gt_fc_eff']
+    C_gt_eff = efficiency_results['C_gt_eff']
+    C_P_gt_climb = efficiency_results['C_P_gt_climb']
+    C_P_fc = efficiency_results['C_P_fc']
+    C_fc_eff = efficiency_results['C_fc_eff']
+    C_cruise_eff = efficiency_results['C_cruise_eff']
+    D_gt_gt_eff = efficiency_results['D_gt_gt_eff']
+    D_climb_eff = efficiency_results['D_climb_eff']
+    D_P_gt_climb = efficiency_results['D_P_gt_climb']
+    energies = {
+        'cruise': E_cruise,
+        'climb': E_climb,
+    }
 
     h2_masses = {}
 
@@ -510,14 +555,15 @@ def calc_atr_per_design(h2_masses):
     return atrs
 
 
-def get_results():
+def get_results(comp=None):
     """Return the ATR results dictionary for all designs."""
-    return calc_atr_per_design(calc_mass_h2())
+    if comp is None:
+        comp = component_params
+    return calc_atr_per_design(calc_mass_h2(comp))
+
 
 
 if __name__ == "__main__":
-    h2_masses = calc_mass_h2()
-    # print_mass_h2_summary(h2_masses)
-    print(calc_atr_per_design(h2_masses))
+    print(get_results())
     
 
