@@ -99,7 +99,7 @@ class ClassIIResult:
         )
 
 
-def compute_fuselage_geometry(W_fuel: float, cfg: AircraftConfig):
+def compute_fuselage_geometry(W_fuel: float, cfg: AircraftConfig,hump_back:bool):
     """
     Resize the fuselage to accommodate the LH2 tank.
 
@@ -128,7 +128,7 @@ def compute_fuselage_geometry(W_fuel: float, cfg: AircraftConfig):
     L_tank = 4.0 * r_tank
     d_tank = 2.0 * r_tank
 
-    if cfg.hump_back:
+    if hump_back:
         l_f = cfg.l_f
         b_f = cfg.b_f
         h_f = cfg.h_f
@@ -202,6 +202,11 @@ def run_class_ii(
     config = int(input("Enter config for power unit weight estimation (1-4): "))
     comp=comp_params
 
+    if config == 1:
+        hump_back = True
+    else:
+        hump_back = False
+
     for it in range(1, max_iter + 1):
 
         # Recompute wing planform at the start of each iteration: under
@@ -212,7 +217,7 @@ def run_class_ii(
         # Recompute fuselage / H2-tank geometry from the latest W_fuel.
         # cfg_iter has updated l_f, b_f, h_f, S_wet_f and is fed to every
         # downstream module so drag and weight use consistent dimensions.
-        cfg_iter, r_tank, L_tank, d_tank, S_wet_hump = compute_fuselage_geometry(W_fuel, cfg)
+        cfg_iter, r_tank, L_tank, d_tank, S_wet_hump = compute_fuselage_geometry(W_fuel, cfg, hump_back)
 
         # Drag at current MTOW with sized tails and current wing geometry
         drag_inp = ClassII_Drag_Input.from_config(
