@@ -100,74 +100,75 @@ def golden_power_search(P_1, P_2, t_1, t_2):
 # Gas Turbine + Battery powertrain
 # =============================================================================
 def GT_BAT_efficiency(
-    t_charge=1800,
-    cable_efficiency=1.0,
-    show=False,
+    comp: dict,
     t_climb: Optional[float] = None,
     t_cruise: Optional[float] = None,
     P_climb: Optional[float] = None,
     P_cruise: Optional[float] = None,
+    t_charge: float = 1800,
+    cable_efficiency: float = 1.0,
+    show: bool = False,
 ):
 
-    only_gt_efficiency = c["gt_hex"].efficiency
+    only_gt_efficiency = comp["gt_hex"].efficiency
 
     # Efficiency of power from gas turbine to motor
     gt_eff = (
         only_gt_efficiency
-        * c["hts_gen"].efficiency 
-        * c["ac_dc"].efficiency 
-        * c["dc_ac"].efficiency
-        * c["hts_pow"].efficiency
+        * comp["hts_gen"].efficiency 
+        * comp["ac_dc"].efficiency 
+        * comp["dc_ac"].efficiency
+        * comp["hts_pow"].efficiency
         * cable_efficiency
     )
 
     gt_eff1 = (
-        c["hts_gen"].efficiency 
-        * c["ac_dc"].efficiency 
-        * c["dc_ac"].efficiency
-        * c["hts_pow"].efficiency
+        comp["hts_gen"].efficiency 
+        * comp["ac_dc"].efficiency 
+        * comp["dc_ac"].efficiency
+        * comp["hts_pow"].efficiency
         * cable_efficiency
     )
 
     gen_eff = (
-        c["ac_dc"].efficiency 
-        * c["dc_ac"].efficiency
-        * c["hts_pow"].efficiency
+        comp["ac_dc"].efficiency 
+        * comp["dc_ac"].efficiency
+        * comp["hts_pow"].efficiency
         * cable_efficiency
     )
 
     acdc_eff = (
-        c["dc_ac"].efficiency
-        * c["hts_pow"].efficiency
+        comp["dc_ac"].efficiency
+        * comp["hts_pow"].efficiency
     )
 
     dcac_eff = (
-        c["hts_pow"].efficiency
+        comp["hts_pow"].efficiency
         * cable_efficiency
     )
 
     dcdc_eff = (
-        c["dc_ac"].efficiency 
-        * c["hts_pow"].efficiency
+        comp["dc_ac"].efficiency 
+        * comp["hts_pow"].efficiency
         * cable_efficiency
     )
 
     # Efficiency of power from gas turbine to battery (charge)
     bt_eff_c = (
-        c["gt"].efficiency 
-        * c["hts_gen"].efficiency
-        * c["ac_dc"].efficiency 
-        * c["dc_dc_2"].efficiency
-        * np.sqrt(c["bt"].efficiency)
+        comp["gt"].efficiency 
+        * comp["hts_gen"].efficiency
+        * comp["ac_dc"].efficiency 
+        * comp["dc_dc_2"].efficiency
+        * np.sqrt(comp["bt"].efficiency)
         * cable_efficiency
     )
 
     # Efficiency of power from battery to motor (discharge)
     bt_eff_d = (
-        np.sqrt(c["bt"].efficiency)
-        * c["dc_dc_2"].efficiency
-        * c["dc_ac"].efficiency 
-        * c["hts_pow"].efficiency
+        np.sqrt(comp["bt"].efficiency)
+        * comp["dc_dc_2"].efficiency
+        * comp["dc_ac"].efficiency 
+        * comp["hts_pow"].efficiency
         * cable_efficiency
     )
 
@@ -250,7 +251,8 @@ def GT_BAT_efficiency(
 # =============================================================================
 # Fuel Cell + Battery powertrain
 # =============================================================================
-def FC_BAT_efficiency(t_charge=1800,
+def FC_BAT_efficiency(comp: dict,
+    t_charge=1800,
     cable_efficiency=1.0,
     show=False,
     t_climb: Optional[float] = None,
@@ -259,45 +261,45 @@ def FC_BAT_efficiency(t_charge=1800,
     P_cruise: Optional[float] = None,
 ):
 
-    only_fc_efficiency = c["fc_with_hex"].efficiency
+    only_fc_efficiency = comp["fc_with_hex"].efficiency
 
     # Efficiency of power from fuel cell to motor
     fc_eff = (
-        c["fc_with_hex"].efficiency 
-        * c["dc_dc_1"].efficiency
-        * c["dc_ac"].efficiency
-        * c["hts_pow"].efficiency
+        comp["fc_with_hex"].efficiency 
+        * comp["dc_dc_1"].efficiency
+        * comp["dc_ac"].efficiency
+        * comp["hts_pow"].efficiency
         * cable_efficiency
     )
 
     fc_eff1 = (
-        c["dc_dc_1"].efficiency
-        * c["dc_ac"].efficiency
-        * c["hts_pow"].efficiency
+        comp["dc_dc_1"].efficiency
+        * comp["dc_ac"].efficiency
+        * comp["hts_pow"].efficiency
         * cable_efficiency
     )
 
     dcdc_1_eff = (
-        c["dc_ac"].efficiency
-        * c["hts_pow"].efficiency
+        comp["dc_ac"].efficiency
+        * comp["hts_pow"].efficiency
         * cable_efficiency
     )
 
     # Efficiency of power from fuel cell to battery (charge)
     bt_eff_c = (
-        c["fc_with_hex"].efficiency 
-        * c["dc_dc_1"].efficiency
-        * c["dc_dc_2"].efficiency
-        * np.sqrt(c["bt"].efficiency)
+        comp["fc_with_hex"].efficiency 
+        * comp["dc_dc_1"].efficiency
+        * comp["dc_dc_2"].efficiency
+        * np.sqrt(comp["bt"].efficiency)
         * cable_efficiency
     )
 
     # Efficiency of power from battery to motor (discharge)
     bt_eff_d = (
-        np.sqrt(c["bt"].efficiency)
-        * c["dc_dc_2"].efficiency
-        * c["dc_ac"].efficiency 
-        * c["hts_pow"].efficiency
+        np.sqrt(comp["bt"].efficiency)
+        * comp["dc_dc_2"].efficiency
+        * comp["dc_ac"].efficiency 
+        * comp["hts_pow"].efficiency
         * cable_efficiency
     )
 
@@ -367,7 +369,9 @@ def FC_BAT_efficiency(t_charge=1800,
 # =============================================================================
 # Gass Turbine + Gas Turbine powertrain
 # =============================================================================
-def GT_GT_efficiency(cable_efficiency=1.0,
+def GT_GT_efficiency(
+    comp: dict,
+    cable_efficiency=1.0,
     show=False,
     t_climb: Optional[float] = None,
     t_cruise: Optional[float] = None,
@@ -375,23 +379,23 @@ def GT_GT_efficiency(cable_efficiency=1.0,
     P_cruise: Optional[float] = None,
 ):
 
-    only_gt_efficiency = c["gt_hex"].efficiency
+    only_gt_efficiency = comp["gt_hex"].efficiency
 
     # Efficiency of power from gas turbine to motor
     gt_eff = (
         only_gt_efficiency
-        * c["hts_gen"].efficiency 
-        * c["ac_dc"].efficiency 
-        * c["dc_ac"].efficiency
-        * c["hts_pow"].efficiency
+        * comp["hts_gen"].efficiency 
+        * comp["ac_dc"].efficiency 
+        * comp["dc_ac"].efficiency
+        * comp["hts_pow"].efficiency
         * cable_efficiency
     )
 
     gt_eff1 = (
-        c["hts_gen"].efficiency 
-        * c["ac_dc"].efficiency 
-        * c["dc_ac"].efficiency
-        * c["hts_pow"].efficiency
+        comp["hts_gen"].efficiency 
+        * comp["ac_dc"].efficiency 
+        * comp["dc_ac"].efficiency
+        * comp["hts_pow"].efficiency
         * cable_efficiency
     )
 
@@ -441,7 +445,7 @@ def GT_GT_efficiency(cable_efficiency=1.0,
 # =============================================================================
 # Gas Turbine + Fuel Cell powertrain
 # =============================================================================
-def GT_FC_efficiency(P_OEI_out=2.6e6, cable_efficiency=1.0,
+def GT_FC_efficiency(comp: dict, P_OEI_out=2.6e6, cable_efficiency=1.0,
     show=False,
     t_climb: Optional[float] = None,
     t_cruise: Optional[float] = None,
@@ -449,42 +453,42 @@ def GT_FC_efficiency(P_OEI_out=2.6e6, cable_efficiency=1.0,
     P_cruise: Optional[float] = None,
 ):
 
-    only_gt_efficiency = c["gt_hex"].efficiency
-    only_fc_efficiency = c["fc_with_hex"].efficiency
+    only_gt_efficiency = comp["gt_hex"].efficiency
+    only_fc_efficiency = comp["fc_with_hex"].efficiency
 
     # Efficiency of power from gas turbine to motor
     gt_eff = (
         only_gt_efficiency
-        * c["hts_gen"].efficiency 
-        * c["ac_dc"].efficiency 
-        * c["dc_ac"].efficiency
-        * c["hts_pow"].efficiency
+        * comp["hts_gen"].efficiency 
+        * comp["ac_dc"].efficiency 
+        * comp["dc_ac"].efficiency
+        * comp["hts_pow"].efficiency
         * cable_efficiency
     )
 
     #Efficiency of power after gas turbine to motor
     gt1_eff = (
-        c["hts_gen"].efficiency 
-        * c["ac_dc"].efficiency 
-        * c["dc_ac"].efficiency
-        * c["hts_pow"].efficiency
+        comp["hts_gen"].efficiency 
+        * comp["ac_dc"].efficiency 
+        * comp["dc_ac"].efficiency
+        * comp["hts_pow"].efficiency
         * cable_efficiency
     )
 
     # Efficiency of power from fuel cell to motor
     fc_eff = (
         only_fc_efficiency 
-        * c["dc_dc_1"].efficiency
-        * c["dc_ac"].efficiency
-        * c["hts_pow"].efficiency
+        * comp["dc_dc_1"].efficiency
+        * comp["dc_ac"].efficiency
+        * comp["hts_pow"].efficiency
         * cable_efficiency
     )
 
     # Efficiency of power from fuel cell to motor
     fc_eff1 = (
-        c["dc_dc_1"].efficiency
-        * c["dc_ac"].efficiency
-        * c["hts_pow"].efficiency
+        comp["dc_dc_1"].efficiency
+        * comp["dc_ac"].efficiency
+        * comp["hts_pow"].efficiency
         * cable_efficiency
     )
 

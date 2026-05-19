@@ -101,11 +101,11 @@ class ClassIIResult:
 
 def run_class_ii(
     cfg:        AircraftConfig,
+    comp:       dict,
     tol:        float   = 1.0,
     max_iter:   int     = 100,
     verbose:    bool    = True,
-    config:     int     = None,
-    comp:       dict    = comp_params
+    config:     int     = None, 
 ) -> ClassIIResult:
 
     # -----------------------------------------------------------------
@@ -184,7 +184,7 @@ def run_class_ii(
             t_reserve=t_reserve,
             base_params=False
         )
-        wt_bd = weightEstimation(wt_inp).compute()
+        wt_bd = weightEstimation(wt_inp, comp).compute()
 
         # Close the loop
         MZFW_new = wt_bd.W_empty + cfg.W_payload + cfg.W_fixed
@@ -272,7 +272,7 @@ def replace_T_TO(cfg: AircraftConfig, T_TO_new: float) -> AircraftConfig:
 
 if __name__ == "__main__":
     cfg = default_q400_hycool()
-    result = run_class_ii(cfg, tol=1.0, max_iter=100, verbose=True)
+    result = run_class_ii(cfg,comp=comp_params, tol=1.0, max_iter=100, verbose=True)
 
     print()
     print(result.drag.summary())
