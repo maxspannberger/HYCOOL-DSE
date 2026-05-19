@@ -151,20 +151,20 @@ class ClassII_Input:
             high_wing     = cfg.high_wing,
             has_flap_slat = cfg.has_flap_slat,
 
-            rho_bat     =   comp["bt"].energy_density,  #kWh/kg Energy density of battery
-            rho_fc      =   comp["fc_with_hex"].power_density,  #kW/kg Power density of fuel cell system
-            rho_ac_dc   =   comp["ac_dc"].power_density,  #kW/kg Power density of AC/DC rectifier
-            rho_dc_dc_1   =   comp["dc_dc_1"].power_density,  #kW/kg Power density of primary DC/DC converter
-            rho_dc_dc_2   =   comp["dc_dc_2"].power_density,  #kW/kg Power density of secondary DC/DC converter
-            rho_dc_ac   =   comp["dc_ac"].power_density,  #kW/kg Power density of DC/AC inverter
-            rho_cable   =   comp["cable"].power_density,  #kW/kg Power density of electrical cables
-            rho_pipe    =   comp["pipe"].mass_per_length,  #kg/m Mass per length of piping
+            rho_bat     =   comp["bt"].energy_density,          #kWh/kg Energy density of battery                       # TODO vary parameter
+            rho_fc      =   comp["fc_with_hex"].power_density,  #kW/kg Power density of fuel cell system                # TODO vary parameter
+            rho_ac_dc   =   comp["ac_dc"].power_density,        #kW/kg Power density of AC/DC rectifier                 # TODO vary parameter
+            rho_dc_dc_1 =   comp["dc_dc_1"].power_density,      #kW/kg Power density of primary DC/DC converter         # TODO vary parameter
+            rho_dc_dc_2 =   comp["dc_dc_2"].power_density,      #kW/kg Power density of secondary DC/DC converter       # TODO vary parameter
+            rho_dc_ac   =   comp["dc_ac"].power_density,        #kW/kg Power density of DC/AC inverter                  # TODO vary parameter
+            rho_cable   =   comp["cable"].power_density,        #kW/kg Power density of electrical cables               # TODO vary parameter
+            rho_pipe    =   comp["pipe"].mass_per_length,       #kg/m Mass per length of piping                         # TODO vary parameter
 
 
-            rho_turb      = comp["gt_hex"].power_density / cfg.turbine_penalty,     #kW/kg Power density of gas turbine
-            rho_HTS_gen       = comp["hts_gen"].power_density / cfg.cryo_penalty,           #kW/kg Power density of HTS generator
-            rho_HTS_pow       = comp["hts_pow"].power_density / cfg.cryo_penalty,           #kW/kg Power density of HTS motor
-            grav_density  = cfg.grav_density,
+            rho_turb      = comp["gt_hex"].power_density / cfg.turbine_penalty, #kW/kg Power density of gas turbine     # TODO vary parameter
+            rho_HTS_gen   = comp["hts_gen"].power_density / cfg.cryo_penalty,   #kW/kg Power density of HTS generator   # TODO vary parameter
+            rho_HTS_pow   = comp["hts_pow"].power_density / cfg.cryo_penalty,   #kW/kg Power density of HTS motor       # TODO vary parameter
+            grav_density  = cfg.grav_density,                                                                           # TODO vary parameter
             
             P_TO_KW       = P_TO_KW,
             P_max_KW      = P_max_KW,
