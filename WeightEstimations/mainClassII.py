@@ -202,10 +202,10 @@ def run_class_ii(
     if config is None:
         config = int(input("Enter config for power unit weight estimation (1-4): "))
 
-        if config == 1:
-            hump_tank = True
-        else:
-            hump_tank = False
+    if config == 1:
+        hump_tank = True
+    else:
+        hump_tank = False
 
     
     
