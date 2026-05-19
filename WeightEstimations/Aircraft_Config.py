@@ -27,6 +27,8 @@ class AircraftConfig:
     tc_mean:        float
     sweep_half:     float
     sweep_tc:       float
+    Loading:        float
+    taper:          float          # lambda = c_tip / c_root
 
     # --- Horizontal tail -----------------------------------------------
     S_h_initial:    float
@@ -53,6 +55,13 @@ class AircraftConfig:
     h_f:            float
     S_wet_f:        float
     l_t:            float
+
+    # --- H2 tank --------------------------------------------------------
+    # Hump-back: tank rides on top of fuselage (747-style); fuselage
+    # length is unchanged and only the wetted area grows. Otherwise
+    # the tank sits in-line and lengthens the fuselage.
+    hump_back:      bool
+    rho_LH2_eff:    float          # kg/m^3, effective LH2 density in tank
 
     # --- Flight envelope -----------------------------------------------
     altitude_cruise: float
@@ -134,9 +143,11 @@ def default_q400_hycool() -> AircraftConfig:
     c_root      = 4.97                          # Referenced
     b_v_initial = 5.5                           # Referenced
     MAC_v       = 3.5                           # Referenced
+    WingLoading_Target = 3810                   # Class I Value
+    ClassI_MTOW = 31_729.92                     # Class I Value
     return AircraftConfig(
         # Wing
-        S_ref            = 81.68,               # Class I Value
+        S_ref            = ClassI_MTOW * 9.80665 / WingLoading_Target,
         b                = 28.58,               # Class I Value
         AR               = 10,                  # Class I Value
         MAC              = 2.86,                # Class I Value
@@ -145,6 +156,8 @@ def default_q400_hycool() -> AircraftConfig:
         tc_mean          = 0.11,                # Referenced
         sweep_half       = np.deg2rad(23.0),    # Referenced
         sweep_tc         = np.deg2rad(24.0),    # Referenced
+        Loading          = WingLoading_Target,  # Class I Value
+        taper            = 0.4,                 # lambda, typical transport
 
         # Horizontal tail
         S_h_initial      = 24,                  # Referenced
@@ -166,11 +179,15 @@ def default_q400_hycool() -> AircraftConfig:
         S_v_initial      = MAC_v * b_v_initial,
 
         # Fuselage
-        l_f              = 36.55,               # Class I Value
+        l_f              = 35.05,               # Class I Value
         b_f              = 2.9,                 # Class I Value
         h_f              = 2.9,                 # Class I Value
         S_wet_f          = 298.15,              # Class I Value
         l_t              = 17.5,                # Referenced
+
+        # H2 tank
+        hump_back        = True,               # Design Decision
+        rho_LH2_eff      = 70.85,               # kg/m^3, LH2 at boiling point
 
         # Flight envelope
         altitude_cruise  = 7_620,               # From Mission Definition
@@ -227,5 +244,5 @@ def default_q400_hycool() -> AircraftConfig:
         W_fixed          = 5_500.0,             # Torenbeek
 
         # Iteration
-        MTOW_initial     = 31_729.92,           # Class I Value
+        MTOW_initial     = ClassI_MTOW,         # Class I Value
     )

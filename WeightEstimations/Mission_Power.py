@@ -121,10 +121,13 @@ class MissionPower:
         cfg:        AircraftConfig,
         drag_bd:    DragBreakdown,
         MTOW:       float,
+        S_ref:      Optional[float] = None,
     ):
         self.cfg     = cfg
         self.drag    = drag_bd
         self.MTOW    = MTOW
+        # S_ref is updated each MTOW iteration via S_ref = MTOW*g/Loading
+        self.S_ref   = S_ref if S_ref is not None else cfg.S_ref
 
         # Cache drag-polar coefficients from cruise drag breakdown
         self.CD0  = drag_bd.CD0 + drag_bd.CD_wave   # zero-lift incl. wave
@@ -145,9 +148,9 @@ class MissionPower:
         Returns (P_shaft, CL, L/D).
         """
         q  = 0.5 * rho * V**2
-        CL = W / (q * self.cfg.S_ref)
+        CL = W / (q * self.S_ref)
         CD = self._polar_CD(CL)
-        D  = q * self.cfg.S_ref * CD
+        D  = q * self.S_ref * CD
         P  = D * V / self.cfg.eta_prop
         LD = CL / CD
         return P, CL, LD
@@ -160,9 +163,9 @@ class MissionPower:
         Returns (P_shaft, CL, L/D).
         """
         q  = 0.5 * rho * V**2
-        CL = W / (q * self.cfg.S_ref)        # approx (cos(gamma)~1 for small angles)
+        CL = W / (q * self.S_ref)        # approx (cos(gamma)~1 for small angles)
         CD = self._polar_CD(CL)
-        D  = q * self.cfg.S_ref * CD
+        D  = q * self.S_ref * CD
         P  = (D * V + W * ROC) / self.cfg.eta_prop
         LD = CL / CD
         return P, CL, LD
