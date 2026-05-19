@@ -1,6 +1,16 @@
 import xarray as xr
+# needs install xarray, h5netcdf, netcdf4
 
-nc_path = r'Climate_Impact\fd16b8ba74e3acb261aa83a75e2d74f4.nc'
+from pathlib import Path
+import os
+import sys
+
+root = Path(__file__).resolve().parent.parent
+if str(root) not in sys.path:
+    sys.path.insert(0, str(root))
+
+local_dir = Path(__file__).resolve().parent
+nc_path = os.path.join(local_dir, "fd16b8ba74e3acb261aa83a75e2d74f4.nc")
 
 ds = xr.open_dataset(nc_path)
 

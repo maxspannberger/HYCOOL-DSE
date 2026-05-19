@@ -10,6 +10,7 @@ from General.component_parameters import component_params as comp_params
 from General.component_parameters import PowerComponent, StorageComponent, PipingComponent, CableComponent, HeatExchangeComponent
 from Aircraft_Config import AircraftConfig, default_q400_hycool
 from mainClassII import run_class_ii
+from Climate_Impact.Average_Temp_Response import get_results as get_climate_results
 
 from rich import print
 from rich.console import Console
@@ -51,12 +52,16 @@ def sensitivity_analysis(
 
         print(f"Performing run {run} out of {max_runs}")
         
+        climate_results = get_climate_results(comp=comp)
+        design_names = list(climate_results.keys())
         for config in designs_to_consider:
             class_II_results = run_class_ii(config=config, comp=comp, verbose=False, cfg=cfg)
-            sensitivity_results[run][config] = {
+
+            sensitivity_results[run][design_names[config-1]] = {
                 "OEW": class_II_results.W_empty,
                 "prop_frac": class_II_results.W_prop / class_II_results.W_empty,
-                "eff": class_II_results.total_prop_efficiency
+                "eff": class_II_results.total_prop_efficiency,
+                "atr_ratio": 1 - climate_results[design_names[config-1]] / climate_results["Baseline"]
             }
 
     print(f"Sensitivity analysis finished.\n")
@@ -95,6 +100,7 @@ def assign_scores(sizing_outputs):
     OEW = sizing_outputs["OEW"]
     prop_frac = sizing_outputs["prop_frac"]
     eff = sizing_outputs["eff"]
+    atr_ratio = sizing_outputs["atr_ratio"]
 
     # mass scoring
     # TODO: decide if we choose OEW or prop_frac
@@ -121,28 +127,41 @@ def assign_scores(sizing_outputs):
     else:
         eff_score = 5
 
-    overall_score = 0.25 * thermal_score +\
-                    0.15 * TRL_score +\
-                    0.25 * mass_score +\
-                    0.20 * eff_score +\
-                    0.15 * climate_score
+    # climate scoring
+    if atr_ratio <= 0.00:
+        climate_score = 1
+    elif atr_ratio <= 0.25:
+        climate_score = 2
+    elif atr_ratio <= 0.50:
+        climate_score = 3
+    elif atr_ratio <= 0.75:
+        climate_score = 4
+    else:
+        climate_score = 5
+
+    overall_score = round(
+        0.25 * thermal_score +\
+        0.15 * TRL_score +\
+        0.25 * mass_score +\
+        0.20 * eff_score +\
+        0.15 * climate_score, 2)
 
     return {
         "mass": mass_score,
+        "thermal": thermal_score,
         "efficiency": eff_score,
+        "climate": climate_score,
+        "TRL": TRL_score,
         "overall": overall_score
     }
 
 
 def numerical_tradeoff(single_variation_results):
-    tradeoff_table = {
-        1: {},
-        2: {},
-        3: {},
-        4: {}
-    }
-
+    tradeoff_table = {}
     for config in single_variation_results:
+        if config not in tradeoff_table:
+            tradeoff_table[config] = {}
+
         scores = assign_scores(single_variation_results[config])
         for criterion in scores:
             tradeoff_table[config][criterion] = scores[criterion]
