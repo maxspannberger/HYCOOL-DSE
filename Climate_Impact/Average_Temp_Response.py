@@ -7,7 +7,6 @@ if str(root) not in sys.path:
 local_dir = Path(__file__).resolve().parent
 if str(local_dir) not in sys.path:
     sys.path.insert(0, str(local_dir))
-print(local_dir)
 
 import pandas as pd
 import ast

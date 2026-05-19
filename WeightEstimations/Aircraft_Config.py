@@ -102,7 +102,7 @@ class AircraftConfig:
     turbine_penalty:   float = 1.4
     cryo_penalty:      float = 1.15
     grav_density:      float = 0.64
-    grav_density_std:  float = 0.00 # TODO: adjust
+    grav_density_std:  float = 0.05 # TODO: adjust
 
     # --- Tail sizing targets -------------------------------------------
     V_h_target:       float = 0.95   # HT volume coefficient (jet/turboprop)

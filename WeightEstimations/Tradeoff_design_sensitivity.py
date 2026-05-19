@@ -37,16 +37,30 @@ def sensitivity_analysis(
         if sensitivity_config == "all":
             for param in comp:
                 match comp[param]:
+
                     case PowerComponent():
                         comp[param].power_density += np.random.normal(0.0, comp[param].power_density_std)
+                        if comp[param].power_density <= 0.0:
+                            comp[param].power_density = 0.00001
+                        comp[param].efficiency += np.random.normal(0.0, comp[param].efficiency_std)
+                        if comp[param].efficiency <= 0.0:
+                            comp[param].efficiency = 0.00001
+                        elif comp[param].efficiency >= 1.0:
+                            comp[param].efficiency = 0.99999
+
                     case StorageComponent():
                         comp[param].energy_density += np.random.normal(0.0, comp[param].energy_density_std)
-                    case PipingComponent():
-                        comp[param].mass_per_length += np.random.normal(0.0, comp[param].mass_per_length_std)
-                    case CableComponent():
+                        if comp[param].energy_density <= 0.0:
+                            comp[param].energy_density = 0.00001
                         comp[param].power_density += np.random.normal(0.0, comp[param].power_density_std)
-                    case HeatExchangeComponent():
-                        pass
+                        if comp[param].power_density <= 0.0:
+                            comp[param].power_density = 0.00001
+                        comp[param].efficiency += np.random.normal(0.0, comp[param].efficiency_std)
+                        if comp[param].efficiency <= 0.0:
+                            comp[param].efficiency = 0.00001
+                        elif comp[param].efficiency > 1.0:
+                            comp[param].efficiency = 0.99999
+                            
                     case _:
                         pass
 

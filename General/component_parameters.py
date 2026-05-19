@@ -6,36 +6,37 @@ class Component:
 
 class PowerComponent(Component):
     # class for power providing components
-    def __init__(self, name, power_density, efficiency, trl, power_density_std=0.0):
+    def __init__(self, name, power_density, efficiency, trl, power_density_std=0.0, efficiency_std=0.0):
         super().__init__(name, trl)
         self.power_density = power_density
         self.efficiency = efficiency / 100 if efficiency else None
         self.power_density_std = power_density_std
+        self.efficiency_std = efficiency_std / 100
 
 class StorageComponent(Component):
     # class for energy storage components (batteries)
-    def __init__(self, name, energy_density, power_density, efficiency, trl, energy_density_std=0.0):
+    def __init__(self, name, energy_density, power_density, efficiency, trl, energy_density_std=0.0, power_density_std=0.0, efficiency_std=0.0):
         super().__init__(name, trl)
         self.energy_density = energy_density
         self.power_density = power_density
         self.efficiency = efficiency / 100 if efficiency else None
         self.energy_density_std = energy_density_std
+        self.power_density_std = power_density_std
+        self.efficiency_std = efficiency_std / 100
 
 class PipingComponent(Component):
     # class for pipes
-    def __init__(self, name, heat_flux, mass_per_length, trl, mass_per_length_std=0.0):
+    def __init__(self, name, heat_flux, mass_per_length, trl):
         super().__init__(name, trl)
         self.heat_flux = heat_flux
         self.mass_per_length = mass_per_length
-        self.mass_per_length_std = mass_per_length_std
 
 class CableComponent(Component):
     # class for cables
-    def __init__(self, name, power_density, mass_per_length, trl, power_density_std=0.0):
+    def __init__(self, name, power_density, mass_per_length, trl):
         super().__init__(name, trl)
         self.power_density = power_density
         self.mass_per_length = mass_per_length
-        self.power_density_std = power_density_std
         
 class HeatExchangeComponent(Component):
     # class for HEX
@@ -50,10 +51,10 @@ class HeatExchangeComponent(Component):
 # TODO: adjust standard deviations
 component_params = {
     # Power Components
-    "gt": PowerComponent("Gas Turbine", 10, 35, 5, 5),
-    "fc_with_hex": PowerComponent("Fuel Cell", 2.83, 51, 3, 1),
-    "hts_gen": PowerComponent("HTS Motor", 20, 99.9, 4),
-    "hts_pow": PowerComponent("HTS Motor", 20, 99.9, 4),
+    "gt": PowerComponent("Gas Turbine", 10, 35, 5, power_density_std=5, efficiency_std=5),
+    "fc_with_hex": PowerComponent("Fuel Cell", 2.83, 51, 3, power_density_std=1, efficiency_std=1),
+    "hts_gen": PowerComponent("HTS Motor", 20, 99.9, 4, power_density_std=5),
+    "hts_pow": PowerComponent("HTS Motor", 20, 99.9, 4, power_density_std=5),
     "gt_hex": PowerComponent("Gas Turbine + HEX ", 9.62, 39.5, 3),
     "dc_dc_1": PowerComponent("DC-DC Converter 1", 17, 99.47, 3),
     "dc_dc_2": PowerComponent("DC-DC Converter 2", 17, 99.47, 3),
@@ -61,7 +62,7 @@ component_params = {
     "dc_ac": PowerComponent("DC-AC Inverter", 21.1, 98.9, 3),
 
     # Battery
-    "bt": StorageComponent("Battery", 0.510,1.53, 90, 3),
+    "bt": StorageComponent("Battery", 0.510, 1.53, 90, 3, energy_density_std=0.1, power_density_std=0.3, efficiency_std=3),
 
     # Pipes
     "pipe": PipingComponent("Pipe", 9.89, 1.801, 6),
