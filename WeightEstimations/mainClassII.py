@@ -75,6 +75,7 @@ class ClassIIResult:
     tail_rechecked: TailSizingBreakdown    # rerun with computed T_TO
     iteration_log: list = None             # per-iteration MTOW trace
     total_prop_efficiency: float = 1.0
+    bt_charging_ratio: float = 0.0
 
     def summary(self):
         status_color = "green" if self.converged else "red"
@@ -196,6 +197,7 @@ def run_class_ii(
     wt_bd   = WeightBreakdown()
     mis_bd  = MissionFuelBreakdown()
     converged = False
+    bt_charging_ratio = 0.0
     it = 0
     iteration_log: list[dict] = []
 
@@ -206,9 +208,6 @@ def run_class_ii(
         hump_tank = True
     else:
         hump_tank = False
-
-    
-    
 
     for it in range(1, max_iter + 1):
 
@@ -273,13 +272,15 @@ def run_class_ii(
             t_climb=t_climb,
             t_cruise=t_cruise,
             t_reserve=t_reserve,
-            base_params=False
+            base_params=False,
+            bt_charging_ratio = bt_charging_ratio,
         )
         wt_bd = weightEstimation(wt_inp, comp).compute()
 
         # Close the loop
         MZFW_new = wt_bd.W_empty + cfg.W_payload + cfg.W_fixed
         MTOW_new = MZFW_new + W_fuel
+        bt_charging_ratio = wt_bd.bt_charging_ratio
         delta    = abs(MTOW_new - MTOW)
 
         iteration_log.append(dict(
@@ -305,6 +306,7 @@ def run_class_ii(
             P_TO_kW      = P_TO_kW,
             W_fuel_kg    = W_fuel,
             OEW_kg       = wt_bd.W_empty,
+            bt_ch_ratio  = bt_charging_ratio
         ))
 
         if verbose:

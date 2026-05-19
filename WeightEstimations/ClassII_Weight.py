@@ -90,6 +90,7 @@ class ClassII_Input:
     t_cruise: float = 0.0
     t_climb: float = 0.0
     t_reserve: float = 0.0
+    bt_charging_ratio: float = 0.0
 
 
 
@@ -117,7 +118,8 @@ class ClassII_Input:
         t_climb: float = 0.0,
         t_reserve: float = 0.0,
         N_engines: float = 0.0,
-        base_params=False
+        base_params: bool = False,
+        bt_charging_ratio: float = 0.0
     ) -> "ClassII_Input":
         """
         Build the weight-estimator input from a shared AircraftConfig.
@@ -184,6 +186,7 @@ class ClassII_Input:
             t_climb   = t_climb,
             t_reserve = t_reserve,
             N_engines = N_engines,
+            bt_charging_ratio = bt_charging_ratio,
         )
 
 
@@ -240,7 +243,8 @@ class WeightBreakdown:
     cruise_efficiency: float = 0.0
     t_cruise: float = 0.0,
     t_climb  : float = 0.0,
-    t_reserve: float = 0.0
+    t_reserve: float = 0.0,
+    bt_charging_ratio: float = 0.0
 
 
     @property
@@ -512,6 +516,7 @@ class weightEstimation:
         pipe_len = cfg_data["lengths"]["pipe"]
         cable_len = cfg_data["lengths"]["cable"]
         total_mass = 0.0
+        print(g.bt_charging_ratio, g.P_climb_KW)
 
         for comp_key in component_list:
             if comp_key not in comp:
@@ -524,18 +529,16 @@ class weightEstimation:
                 elif comp_key == "pipe":
                     mass = pipe_len * comp[comp_key].mass_per_length   
                 elif comp_key != "cable" and comp_key != "pipe":
-                    # 5% of cruise power but put this in some input file!
-                    bt_charging_ratio = 0.12 
                     pd = comp[comp_key].power_density
 
                     # maximum power that flows to the motors (most likely takeoff)
-                    P_req_tot = max((g.P_cruise_KW*(1+bt_charging_ratio)), 
+                    P_req_tot = max((g.P_cruise_KW*(1+g.bt_charging_ratio)), 
                                     g.P_climb_KW, 
                                     g.P_reserve_KW, 
                                     g.P_TO_KW)
 
                     # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
-                    P_req_primary = max(g.P_cruise_KW*(1+bt_charging_ratio), 
+                    P_req_primary = max(g.P_cruise_KW*(1+g.bt_charging_ratio), 
                                         g.P_TO_OEI_KW)
                     
                     # secondary power source requirement is to sustain TO 
@@ -572,18 +575,16 @@ class weightEstimation:
                 elif comp_key == "pipe":
                     mass = pipe_len * comp[comp_key].mass_per_length   
                 elif comp_key != "cable" and comp_key != "pipe":
-                    # 12% of cruise power but put this in some input file!
-                    bt_charging_ratio = 0.12 
                     pd = comp[comp_key].power_density
 
                     # maximum power that flows to the motors (most likely takeoff)
-                    P_req_tot = max((g.P_cruise_KW*(1+bt_charging_ratio)), 
+                    P_req_tot = max((g.P_cruise_KW*(1+g.bt_charging_ratio)), 
                                     g.P_climb_KW, 
                                     g.P_reserve_KW, 
                                     g.P_TO_KW)
 
                     # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
-                    P_req_primary = max(g.P_cruise_KW*(1+bt_charging_ratio), 
+                    P_req_primary = max(g.P_cruise_KW*(1+g.bt_charging_ratio), 
                                         g.P_TO_OEI_KW)
 
                     # secondary power source requirement is to sustain TO 
@@ -699,10 +700,16 @@ class weightEstimation:
                         max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
                         mass = max_P_per_string / pd 
                 total_mass += mass
-        eff=efficiency["Total_eff"]
-        eff_cruise=efficiency["Cruise_average_eff"]
-        eff_climb=efficiency["Climb_eff"]
-        return total_mass, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff,eff_climb, eff_cruise
+
+        eff = efficiency["Total_eff"]
+        eff_cruise = efficiency["Cruise_average_eff"]
+        eff_climb = efficiency["Climb_eff"]
+        if "BAT_charging_frac" in efficiency:
+            bt_charging_ratio = efficiency["BAT_charging_frac"]
+        else:
+            bt_charging_ratio = g.bt_charging_ratio
+
+        return total_mass, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff,eff_climb, eff_cruise, bt_charging_ratio
     
     def _h2_tank_weight(self) -> float:
         return self.g.W_fuel * (1 / self.g.grav_density - 1)
@@ -712,7 +719,8 @@ class weightEstimation:
         g = self.g
 
         h2_tank_weight   = self._h2_tank_weight()
-        W_engine_total, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary, total_prop_efficiency,climb_eff,cruise_eff = self._propulsion_weight()
+        W_engine_total, P_req_primary, P_req_secondary, P_req_tot, W_primary, W_secondary,\
+            total_prop_efficiency, climb_eff,cruise_eff, bt_charging_ratio = self._propulsion_weight()
 
         return WeightBreakdown(
             W_wing   = self._wing_weight(),
@@ -742,7 +750,8 @@ class weightEstimation:
             P_max_KW=  P_req_tot,
             total_prop_efficiency = total_prop_efficiency,
             climb_efficiency=climb_eff,
-            cruise_efficiency=cruise_eff
+            cruise_efficiency=cruise_eff,
+            bt_charging_ratio=bt_charging_ratio
         )
 
 
