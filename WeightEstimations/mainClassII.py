@@ -128,157 +128,174 @@ def run_class_ii(
     iteration_log: list[dict] = []
     config = int(input("Enter config for power unit weight estimation (1-4): "))
 
-    # TODO: automate looping through all components
-    param_varying = ["gt", "fc_with_hex"]
-    comp_init = comp_params
+    n_repeats = 3
+
+    # define sensitivity analysis scenarios
+    #   none = don't vary anything
+    #   all = vary everything at once to see resultsuncertainties
+    #   *components = vary one component at a time
+    sensitivity_config = {
+        "none": None,
+        "all": list(comp_params.keys())
+    }
+    for component in comp_params.keys():
+        sensitivity_config[component] = [component]
+
+    sensitivity_results = {}
+
+    for varying_component, params_varying in sensitivity_config.items():
+        comp = comp_params.copy()
+        if params_varying is not None:
+            for param in params_varying:
+                match comp[param]:
+                    case PowerComponent():
+                        print(comp[param].power_density)
+                        comp[param].power_density += np.random.normal(0.0, comp[param].power_density_std)
+                        print(comp[param].power_density)
+                    case StorageComponent():
+                        comp[param].energy_density += np.random.normal(0.0, comp[param].energy_density_std)
+                    case PipingComponent():
+                        comp[param].mass_per_length += np.random.normal(0.0, comp[param].mass_per_length_std)
+                    case CableComponent():
+                        comp[param].power_density += np.random.normal(0.0, comp[param].power_density_std)
+                    case HeatExchangeComponent():
+                        pass
+                    case _:
+                        pass
+
+        sensitivity_results[varying_component] = {}
+
+        for run in range(1, 2 if params_varying is None else n_repeats + 1):
+            for it in range(1, max_iter + 1):
+
+                # Drag at current MTOW with sized tails
+                drag_inp = ClassII_Drag_Input.from_config(
+                    cfg,
+                    MTOW = MTOW,
+                    S_h  = tail_bd.S_h,
+                    S_v  = tail_bd.S_v,
+                )
+                drag_bd = DragEstimation(drag_inp).compute()
+
+                # Mission power -> LH2 fuel mass
+                mis_bd = MissionPower(cfg, drag_bd, MTOW).compute()
+                W_fuel = mis_bd.m_LH2_total
+                P_max_kw = mis_bd.P_max / 1000
+                P_cruise_kw = mis_bd.P_cruise_shaft / 1000
+                P_reserve_kw = mis_bd.P_reserve_shaft / 1000
+                t_cruise = mis_bd.t_cruise
+                t_climb = mis_bd.t_climb
+                t_reserve = mis_bd.t_reserve
+
+                # Performance & CS-25 Requirements
+                pwr_bd = PowerSizing(cfg, mis_bd, MTOW).compute()
+                P_TO_kW = pwr_bd.P_TO_total / 1000.0
+                P_TO_OEI_kW = pwr_bd.P_total_OEI / 1000.0
+                P_climb_kW = pwr_bd.P_from_climb / 1000.0
+
+
+
+                # Weight at current MTOW with sized tails
+                wt_inp = ClassII_Input.from_config(
+                    cfg,
+                    comp=comp,
+                    MTOW = MTOW,
+                    MZFW = MTOW - W_fuel,
+                    S_h  = tail_bd.S_h,
+                    S_v  = tail_bd.S_v,
+                    b_v  = tail_bd.b_v,
+                    P_TO_KW = P_TO_kW,
+                    P_TO_OEI_KW = P_TO_OEI_kW,
+                    P_cruise_KW=P_cruise_kw,
+                    P_max_KW = P_max_kw,
+                    P_climb_KW=P_climb_kW,
+                    P_reserve_KW=P_reserve_kw,
+                    W_fuel = W_fuel,
+                    configuration=config,
+                    t_climb=t_climb,
+                    t_cruise=t_cruise,
+                    t_reserve=t_reserve,
+                    base_params=False
+                )
+                wt_bd = weightEstimation(wt_inp).compute()
+
+                # Close the loop
+                MZFW_new = wt_bd.W_empty + cfg.W_payload + cfg.W_fixed
+                MTOW_new = MZFW_new + W_fuel
+                delta    = abs(MTOW_new - MTOW)
+
+                iteration_log.append(dict(
+                    iter         = it,
+                    MTOW_in_kg   = MTOW,
+                    MTOW_out_kg  = MTOW_new,
+                    delta_kg     = delta,
+                    L_over_D     = drag_bd.L_over_D,
+                    P_cruise_kW  = mis_bd.P_cruise_shaft / 1000,
+                    P_max_kW     = mis_bd.P_max / 1000,
+                    P_TO_kW      = P_TO_kW,
+                    W_fuel_kg    = W_fuel,
+                    OEW_kg       = wt_bd.W_empty,
+                ))
+
+                if verbose:
+                    print(f"  iter {it:2d}: MTOW {MTOW:8.1f} -> {MTOW_new:8.1f} kg  "
+                        f"(L/D={drag_bd.L_over_D:5.2f}, "
+                        f"P_cr={mis_bd.P_cruise_shaft/1000:5.0f} kW, "
+                        f"fuel={W_fuel:6.1f} kg, "
+                        f"OEW={wt_bd.W_empty:7.1f} kg)")
+
+                MTOW = MTOW_new
+
+                if delta < tol:
+                    converged = True
+                    break
+
+            MZFW = wt_bd.W_empty + cfg.W_payload + cfg.W_fixed
+
+            # -----------------------------------------------------------------
+            # Step 3 (post-loop): power & takeoff thrust sizing
+            # -----------------------------------------------------------------
+            pwr_bd = PowerSizing(cfg, mis_bd, MTOW).compute()
+
+            if verbose:
+                print()
+                print(pwr_bd.summary())
+
+            # -----------------------------------------------------------------
+            # Step 4 (post-loop): re-run tail sizing with computed T_TO
+            # so the OEI rudder check uses a self-consistent thrust value
+            # rather than the user-supplied initial guess.
+            # -----------------------------------------------------------------
+            cfg_recheck = replace_T_TO(cfg, pwr_bd.T_static_per_engine)
+            tail_inp_recheck = TailSizing_Input.from_config(cfg_recheck, MTOW=MTOW)
+            tail_bd_recheck  = TailSizingEstimator(tail_inp_recheck).compute()
+
+            if verbose:
+                print()
+                print("Tail sizing rechecked with computed T_TO:")
+                print(tail_bd_recheck.summary())
+
+            sensitivity_results[varying_component][run] = ClassIIResult(
+                MTOW       = MTOW,
+                MZFW       = MZFW,
+                W_empty    = wt_bd.W_empty,
+                W_fuel     = mis_bd.m_LH2_total,
+                W_payload  = cfg.W_payload,
+                W_fixed    = cfg.W_fixed,
+                L_over_D   = drag_bd.L_over_D,
+                CL_cruise  = drag_bd.CL_cruise,
+                iterations = it,
+                converged  = converged,
+                tail       = tail_bd,
+                drag       = drag_bd,
+                weight     = wt_bd,
+                mission    = mis_bd,
+                power      = pwr_bd,
+                tail_rechecked = tail_bd_recheck,
+                iteration_log  = iteration_log,
+            )
     
-    comp = comp_init.copy()
-    if param_varying is not None:
-        for param in param_varying:
-            match comp[param]:
-                case PowerComponent():
-                    print(comp[param].power_density)
-                    comp[param].power_density += np.random.normal(0.0, comp[param].power_density_std)
-                    print(comp[param].power_density)
-                case StorageComponent():
-                    comp[param].energy_density += np.random.normal(0.0, comp[param].energy_density_std)
-                case PipingComponent():
-                    comp[param].mass_per_length += np.random.normal(0.0, comp[param].mass_per_length_std)
-                case CableComponent():
-                    comp[param].power_density += np.random.normal(0.0, comp[param].power_density_std)
-                case HeatExchangeComponent():
-                    pass
-                case _:
-                    pass
-
-    for it in range(1, max_iter + 1):
-
-        # Drag at current MTOW with sized tails
-        drag_inp = ClassII_Drag_Input.from_config(
-            cfg,
-            MTOW = MTOW,
-            S_h  = tail_bd.S_h,
-            S_v  = tail_bd.S_v,
-        )
-        drag_bd = DragEstimation(drag_inp).compute()
-
-        # Mission power -> LH2 fuel mass
-        mis_bd = MissionPower(cfg, drag_bd, MTOW).compute()
-        W_fuel = mis_bd.m_LH2_total
-        P_max_kw = mis_bd.P_max / 1000
-        P_cruise_kw = mis_bd.P_cruise_shaft / 1000
-        P_reserve_kw = mis_bd.P_reserve_shaft / 1000
-        t_cruise = mis_bd.t_cruise
-        t_climb = mis_bd.t_climb
-        t_reserve = mis_bd.t_reserve
-
-        # Performance & CS-25 Requirements
-        pwr_bd = PowerSizing(cfg, mis_bd, MTOW).compute()
-        P_TO_kW = pwr_bd.P_TO_total / 1000.0
-        P_TO_OEI_kW = pwr_bd.P_total_OEI / 1000.0
-        P_climb_kW = pwr_bd.P_from_climb / 1000.0
-
-
-
-        # Weight at current MTOW with sized tails
-        wt_inp = ClassII_Input.from_config(
-            cfg,
-            comp=comp,
-            MTOW = MTOW,
-            MZFW = MTOW - W_fuel,
-            S_h  = tail_bd.S_h,
-            S_v  = tail_bd.S_v,
-            b_v  = tail_bd.b_v,
-            P_TO_KW = P_TO_kW,
-            P_TO_OEI_KW = P_TO_OEI_kW,
-            P_cruise_KW=P_cruise_kw,
-            P_max_KW = P_max_kw,
-            P_climb_KW=P_climb_kW,
-            P_reserve_KW=P_reserve_kw,
-            W_fuel = W_fuel,
-            configuration=config,
-            t_climb=t_climb,
-            t_cruise=t_cruise,
-            t_reserve=t_reserve,
-            base_params=False
-        )
-        wt_bd = weightEstimation(wt_inp).compute()
-
-        # Close the loop
-        MZFW_new = wt_bd.W_empty + cfg.W_payload + cfg.W_fixed
-        MTOW_new = MZFW_new + W_fuel
-        delta    = abs(MTOW_new - MTOW)
-
-        iteration_log.append(dict(
-            iter         = it,
-            MTOW_in_kg   = MTOW,
-            MTOW_out_kg  = MTOW_new,
-            delta_kg     = delta,
-            L_over_D     = drag_bd.L_over_D,
-            P_cruise_kW  = mis_bd.P_cruise_shaft / 1000,
-            P_max_kW     = mis_bd.P_max / 1000,
-            P_TO_kW      = P_TO_kW,
-            W_fuel_kg    = W_fuel,
-            OEW_kg       = wt_bd.W_empty,
-        ))
-
-        if verbose:
-            print(f"  iter {it:2d}: MTOW {MTOW:8.1f} -> {MTOW_new:8.1f} kg  "
-                  f"(L/D={drag_bd.L_over_D:5.2f}, "
-                  f"P_cr={mis_bd.P_cruise_shaft/1000:5.0f} kW, "
-                  f"fuel={W_fuel:6.1f} kg, "
-                  f"OEW={wt_bd.W_empty:7.1f} kg)")
-
-        MTOW = MTOW_new
-
-        if delta < tol:
-            converged = True
-            break
-
-    MZFW = wt_bd.W_empty + cfg.W_payload + cfg.W_fixed
-
-    # -----------------------------------------------------------------
-    # Step 3 (post-loop): power & takeoff thrust sizing
-    # -----------------------------------------------------------------
-    pwr_bd = PowerSizing(cfg, mis_bd, MTOW).compute()
-
-    if verbose:
-        print()
-        print(pwr_bd.summary())
-
-    # -----------------------------------------------------------------
-    # Step 4 (post-loop): re-run tail sizing with computed T_TO
-    # so the OEI rudder check uses a self-consistent thrust value
-    # rather than the user-supplied initial guess.
-    # -----------------------------------------------------------------
-    cfg_recheck = replace_T_TO(cfg, pwr_bd.T_static_per_engine)
-    tail_inp_recheck = TailSizing_Input.from_config(cfg_recheck, MTOW=MTOW)
-    tail_bd_recheck  = TailSizingEstimator(tail_inp_recheck).compute()
-
-    if verbose:
-        print()
-        print("Tail sizing rechecked with computed T_TO:")
-        print(tail_bd_recheck.summary())
-
-    return ClassIIResult(
-        MTOW       = MTOW,
-        MZFW       = MZFW,
-        W_empty    = wt_bd.W_empty,
-        W_fuel     = mis_bd.m_LH2_total,
-        W_payload  = cfg.W_payload,
-        W_fixed    = cfg.W_fixed,
-        L_over_D   = drag_bd.L_over_D,
-        CL_cruise  = drag_bd.CL_cruise,
-        iterations = it,
-        converged  = converged,
-        tail       = tail_bd,
-        drag       = drag_bd,
-        weight     = wt_bd,
-        mission    = mis_bd,
-        power      = pwr_bd,
-        tail_rechecked = tail_bd_recheck,
-        iteration_log  = iteration_log,
-    )
+    return sensitivity_results["none"][1]
 
 
 def replace_T_TO(cfg: AircraftConfig, T_TO_new: float) -> AircraftConfig:
