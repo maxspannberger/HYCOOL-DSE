@@ -51,18 +51,18 @@ class HeatExchangeComponent(Component):
 # TODO: adjust standard deviations
 component_params = {
     # Power Components
-    "gt": PowerComponent("Gas Turbine", 10, 35, 5, power_density_std=5, efficiency_std=5),
-    "fc_with_hex": PowerComponent("Fuel Cell", 2.83, 51, 3, power_density_std=1, efficiency_std=1),
-    "hts_gen": PowerComponent("HTS Motor", 20, 99.9, 4, power_density_std=5),
-    "hts_pow": PowerComponent("HTS Motor", 20, 99.9, 4, power_density_std=5),
-    "gt_hex": PowerComponent("Gas Turbine + HEX ", 9.62, 39.5, 3, power_density_std=5, efficiency_std=5),
+    "gt": PowerComponent("Gas Turbine", 10, 35, 5, power_density_std=1, efficiency_std=3.5),
+    "fc_with_hex": PowerComponent("Fuel Cell", 2.83, 51, 3, power_density_std=0.283, efficiency_std=5.1),
+    "hts_gen": PowerComponent("HTS Motor", 20, 99.9, 4, power_density_std=4),
+    "hts_pow": PowerComponent("HTS Motor", 20, 99.9, 4, power_density_std=4),
+    "gt_hex": PowerComponent("Gas Turbine + HEX ", 9.62, 39.5, 3, power_density_std=1, efficiency_std=3.95),
     "dc_dc_1": PowerComponent("DC-DC Converter 1", 17, 99.47, 3),
     "dc_dc_2": PowerComponent("DC-DC Converter 2", 17, 99.47, 3),
     "ac_dc": PowerComponent("AC-DC Rectifier", 21.1, 98.9, 3),
     "dc_ac": PowerComponent("DC-AC Inverter", 21.1, 98.9, 3),
 
     # Battery
-    "bt": StorageComponent("Battery", 0.510, 1.53, 90, 3, energy_density_std=0.1, power_density_std=0.3, efficiency_std=3),
+    "bt": StorageComponent("Battery", 0.510, 1.53, 90, 3, energy_density_std=0.05, power_density_std=0.153, efficiency_std=9),
 
     # Pipes
     "pipe": PipingComponent("Pipe", 9.89, 1.801, 6),

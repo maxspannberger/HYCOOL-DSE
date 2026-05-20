@@ -16,6 +16,9 @@ from Climate_Impact.Average_Temp_Response import get_results as get_climate_resu
 from TMS.mainTMS import design_phase_table, design_score_table
 
 from rich import print
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import multiprocessing
+import copy
 
 
 def TRL_per_design(TRL, config):
@@ -32,13 +35,84 @@ def TRL_per_design(TRL, config):
             raise ValueError("Invalid configuration")
 
 
+def _single_sensitivity_run(
+        run: int,
+        cfg,
+        comp_params,
+        sensitivity_config,
+        designs_to_consider,
+        TRL_base,
+        TRL_std
+    ):
+    try:
+        comp = copy.deepcopy(comp_params)
+        results = {}
+
+        if sensitivity_config == "all":
+            for param in comp:
+                match comp[param]:
+
+                    case PowerComponent():
+                        comp[param].power_density += comp[param].power_density_std * np.clip(np.random.normal(0.0, 1.0), -1.0, 1.0)
+                        comp[param].power_density = max(comp[param].power_density, 0.1)
+
+                        comp[param].efficiency += comp[param].efficiency_std * np.clip(np.random.normal(0.0, 1.0), -1.0, 1.0)
+                        comp[param].efficiency = min(max(comp[param].efficiency, 0.1), 0.9999)
+
+                    case StorageComponent():
+                        comp[param].energy_density += comp[param].energy_density_std * np.clip(np.random.normal(0.0, 1.0), -1.0, 1.0)
+                        comp[param].energy_density = max(comp[param].energy_density, 0.1)
+                        
+                        comp[param].power_density += comp[param].power_density_std * np.clip(np.random.normal(0.0, 1.0), -1.0, 1.0)
+                        comp[param].power_density = max(comp[param].power_density, 0.1)
+
+                        comp[param].efficiency += comp[param].efficiency_std * np.clip(np.random.normal(0.0, 1.0), -1.0, 1.0)
+                        comp[param].efficiency = min(max(comp[param].efficiency, 0.1), 0.9999)
+                            
+                    case _:
+                        pass
+
+            TRL = {}
+            for component in TRL_base:
+                TRL[component] = max(0, TRL_base[component] + TRL_std[component] * np.clip(np.random.normal(0.0, 1.0), -1.0, 1.0))
+
+        print(f"Performing run {run}")
+
+        climate_results = get_climate_results(comp=comp)
+        design_names = list(climate_results.keys())
+        for config in designs_to_consider:
+            class_II_results = run_class_ii(config=config, comp=comp, verbose=False, cfg=cfg)
+
+            # TMS already has built-in scores
+            TMS_results = design_phase_table(config=config, comp=comp, class_II_results=class_II_results)
+            TMS_score = design_score_table(TMS_results)["FinalThermalScore"].iloc[0]
+
+            TRL_year = TRL_per_design(TRL, config=config)
+
+            results[design_names[config-1]] = {
+                "OEW": class_II_results.W_empty,
+                "prop_frac": class_II_results.W_prop / class_II_results.W_empty,
+                "eff": class_II_results.total_prop_efficiency,
+                "atr_ratio": 1 - climate_results[design_names[config-1]] / climate_results["Baseline"],
+                "TMS_score": TMS_score,
+                "TRL_year": TRL_year
+            }
+
+        return run, results, False
+        
+    except ValueError:
+        print(f"Run {run} failed.")
+        return run, {}, True
+
+
+
 def sensitivity_analysis(
         cfg:            AircraftConfig,
         n_repeats:      int = 1,
         comp_params:    dict = comp_params,
         sensitivity_config: str = "none",
         designs_to_consider:list = [1, 2, 3, 4]
-) -> dict:
+    ) -> dict:
     
     sensitivity_results = {}
     print(f"Starting sensitivity analysis...")
@@ -67,71 +141,36 @@ def sensitivity_analysis(
         "Belly_FC_TRL_penalty": 0.5,
     }
 
+    sensitivity_results = {}
     n_skipped = 0
-    for run in range(1, max_runs + 1):
-        comp = comp_params.copy()
-        sensitivity_results[run] = {}
+    
+    n_cores = multiprocessing.cpu_count()
+    n_workers = max(1, int(n_cores * 0.8))
+    print(f"Using {n_workers}/{n_cores} CPU cores")
 
-        if sensitivity_config == "all":
-            for param in comp:
-                match comp[param]:
+    with ProcessPoolExecutor(max_workers=n_workers) as executor:
+        futures = [
+            executor.submit(
+                _single_sensitivity_run,
+                run,
+                cfg,
+                comp_params,
+                sensitivity_config,
+                designs_to_consider,
+                TRL_base,
+                TRL_std
+            )
+            for run in range(1, max_runs + 1)
+        ]
 
-                    case PowerComponent():
-                        comp[param].power_density += comp[param].power_density_std * np.clip(np.random.normal(0.0, 1.0), -1.0, 1.0)
-                        if comp[param].power_density <= 0.1:
-                            comp[param].power_density = 0.1
-                        comp[param].efficiency += comp[param].efficiency_std * np.clip(np.random.normal(0.0, 1.0), -1.0, 1.0)
-                        if comp[param].efficiency <= 0.1:
-                            comp[param].efficiency = 0.1
-                        elif comp[param].efficiency >= 0.9999:
-                            comp[param].efficiency = 0.9999
+        for future in as_completed(futures):
+            run, result, failed = future.result()
+            if failed:
+                n_skipped += 1
+            else:
+                sensitivity_results[run] = result
 
-                    case StorageComponent():
-                        comp[param].energy_density += comp[param].energy_density_std * np.clip(np.random.normal(0.0, 1.0), -1.0, 1.0)
-                        if comp[param].energy_density <= 0.1:
-                            comp[param].energy_density = 0.1
-                        comp[param].power_density += comp[param].power_density_std * np.clip(np.random.normal(0.0, 1.0), -1.0, 1.0)
-                        if comp[param].power_density <= 0.1:
-                            comp[param].power_density = 0.1
-                        comp[param].efficiency += comp[param].efficiency_std * np.clip(np.random.normal(0.0, 1.0), -1.0, 1.0)
-                        if comp[param].efficiency <= 0.1:
-                            comp[param].efficiency = 0.1
-                        elif comp[param].efficiency > 0.9999:
-                            comp[param].efficiency = 0.9999
-                            
-                    case _:
-                        pass
-
-            TRL = {}
-            for component in TRL_base:
-                TRL[component] = max(0, TRL_base[component] + TRL_std[component]) * np.clip(np.random.normal(0.0, 1.0), -1.0, 1.0)
-
-        print(f"Performing run {run} out of {max_runs}")
-        try:
-            climate_results = get_climate_results(comp=comp)
-            design_names = list(climate_results.keys())
-            for config in designs_to_consider:
-                class_II_results = run_class_ii(config=config, comp=comp, verbose=False, cfg=cfg)
-
-                # TMS already has built-in scores
-                TMS_results = design_phase_table(config=config, comp=comp, class_II_results=class_II_results)
-                TMS_score = design_score_table(TMS_results)["FinalThermalScore"].iloc[0]
-
-                TRL_year = TRL_per_design(TRL, config=config)
-
-                sensitivity_results[run][design_names[config-1]] = {
-                    "OEW": class_II_results.W_empty,
-                    "prop_frac": class_II_results.W_prop / class_II_results.W_empty,
-                    "eff": class_II_results.total_prop_efficiency,
-                    "atr_ratio": 1 - climate_results[design_names[config-1]] / climate_results["Baseline"],
-                    "TMS_score": TMS_score,
-                    "TRL_year": TRL_year
-                }
-        except ValueError:
-            n_skipped += 1
-            print(f"Run {run} failed.")
-
-    print(f"Sensitivity analysis finished.\n")
+    print("Sensitivity analysis finished.\n")
     return sensitivity_results, n_skipped
 
 
@@ -300,7 +339,7 @@ def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False):
 
 if __name__ == "__main__":
     cfg = default_q400_hycool()
-    n_repeats = 10
+    n_repeats = 100
     designs_to_consider = [1, 2, 3, 4]
 
     sensitivity_results, n_skipped = sensitivity_analysis(cfg=cfg, n_repeats=n_repeats, sensitivity_config="all", designs_to_consider=designs_to_consider)
