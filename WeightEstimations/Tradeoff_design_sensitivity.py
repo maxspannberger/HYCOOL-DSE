@@ -11,6 +11,7 @@ from General.component_parameters import PowerComponent, StorageComponent, Pipin
 from Aircraft_Config import AircraftConfig, default_q400_hycool
 from mainClassII import run_class_ii
 from Climate_Impact.Average_Temp_Response import get_results as get_climate_results
+from TMS.mainTMS import design_phase_table, design_score_table
 
 from rich import print
 from rich.console import Console
@@ -71,11 +72,16 @@ def sensitivity_analysis(
         for config in designs_to_consider:
             class_II_results = run_class_ii(config=config, comp=comp, verbose=False, cfg=cfg)
 
+            # TMS already has built-in scores
+            TMS_results = design_phase_table(config=config, comp=comp)
+            TMS_score = design_score_table(TMS_results)["FinalThermalScore"].iloc[0]
+
             sensitivity_results[run][design_names[config-1]] = {
                 "OEW": class_II_results.W_empty,
                 "prop_frac": class_II_results.W_prop / class_II_results.W_empty,
                 "eff": class_II_results.total_prop_efficiency,
-                "atr_ratio": 1 - climate_results[design_names[config-1]] / climate_results["Baseline"]
+                "atr_ratio": 1 - climate_results[design_names[config-1]] / climate_results["Baseline"],
+                "TMS_score": TMS_score
             }
 
     print(f"Sensitivity analysis finished.\n")
@@ -115,6 +121,7 @@ def assign_scores(sizing_outputs):
     prop_frac = sizing_outputs["prop_frac"]
     eff = sizing_outputs["eff"]
     atr_ratio = sizing_outputs["atr_ratio"]
+    thermal_score = round(sizing_outputs["TMS_score"], 2)
 
     # mass scoring
     # TODO: decide if we choose OEW or prop_frac

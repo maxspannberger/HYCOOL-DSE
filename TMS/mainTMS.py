@@ -7,7 +7,7 @@ from pathlib import Path
 root = Path(__file__).resolve().parent.parent
 sys.path.append(str(root))
 
-import pipe_python
+from TMS import pipe_python
 from Propulsion.efficiency import get_throttle, GT_BAT_efficiency, FC_BAT_efficiency, GT_GT_efficiency, GT_FC_efficiency
 from WeightEstimations.Aircraft_Config import default_q400_hycool
 from General.component_parameters import component_params as comp_params
@@ -424,9 +424,8 @@ def thermal_ratio_score(ratio):
     else:
         return 1
 
-def design_phase_table(POWER_MAP, config) -> 'pd.DataFrame':
-    import pandas as pd
-
+def design_phase_table(config, comp=comp_params) -> 'pd.DataFrame':
+    POWER_MAP = TMS_input(config, comp=comp)
     states = compute_states(POWER_MAP, config)
 
     # Placeholder for piping losses (kW). Modify this later when data is
@@ -624,7 +623,6 @@ def design_phase_table(POWER_MAP, config) -> 'pd.DataFrame':
     return df
 
 def design_score_table(df=None):
-    import pandas as pd
 
     if df is None:
         df = design_phase_table()
@@ -678,8 +676,7 @@ if __name__ == "__main__":
     cfg = default_q400_hycool()
 
     for config in [1, 2, 3, 4]:
-        POWER_MAP = TMS_input(config, comp=comp)
-        table = design_phase_table(POWER_MAP, config)
+        table = design_phase_table(config, comp=comp)
         scores = design_score_table(table)
 
         with pd.option_context("display.float_format", "{:,.2f}".format):
