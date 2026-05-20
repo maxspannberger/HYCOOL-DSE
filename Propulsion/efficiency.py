@@ -538,7 +538,7 @@ def GT_FC_efficiency(
         "Climb_eff": climb_eff,
         "Cruise_average_eff": cruise_eff,
         "Total_eff": gt_fc_eff,
-        "FC_P": 0.5 * P_fc * only_gt_efficiency,
+        "FC_P": 0.5 * P_fc * only_fc_efficiency,
         "GT_P_opt": 0.5 * P_optimal_gt * only_gt_efficiency,
         "GT_throttle_climb": climb_throttle,
         "GT_throttle_cruise": cruise_throttle

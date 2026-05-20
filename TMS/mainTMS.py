@@ -86,44 +86,45 @@ def TMS_input(config, comp=comp_params, class_II_results=None):
     POWER_MAP = {}
     
     if config == 1:
-        efficiencies = GT_BAT_efficiency(comp, t_climb, t_cruise, P_cl, P_cr)
-        POWER_MAP["gt_cl"] = efficiencies["GT_P_opt"]*efficiencies["GT_throttle_climb"] * efficiencies["GT-MOT_eff"]/efficiencies["LH2-GT-MOT_eff"]
-        POWER_MAP["gt_cr"] = efficiencies["GT_P_opt"]*efficiencies["GT_throttle_cruise"] * efficiencies["GT-MOT_eff"]/efficiencies["LH2-GT-MOT_eff"]
-        POWER_MAP["bat"] = efficiencies["BAT_P_discharge"]
+        efficiencies = GT_BAT_efficiency(comp, t_climb, t_cruise, P_cl*1000, P_cr*1000)
+        POWER_MAP["gt_cl"] = 0.001*efficiencies["GT_P_opt"]*efficiencies["GT_throttle_climb"] * efficiencies["GT-MOT_eff"]/efficiencies["LH2-GT-MOT_eff"]
+        POWER_MAP["gt_cr"] = 0.001*efficiencies["GT_P_opt"]*efficiencies["GT_throttle_cruise"] * efficiencies["GT-MOT_eff"]/efficiencies["LH2-GT-MOT_eff"]
+        POWER_MAP["bat"] = 0.001*efficiencies["BAT_P_discharge"]
 
-        throttle_OEI, eff_factor_OEI = get_throttle(efficiencies["GT-MOT_eff"]*efficiencies["GT_P_opt"]/P_OEI)
-        POWER_MAP["gt_oei"] = efficiencies["GT_P_opt"]*throttle_OEI  * efficiencies["GT-MOT_eff"]/efficiencies["LH2-GT-MOT_eff"]
+        POWER_MAP["bat_rem"] = POWER_MAP["bat"] / 2
+        P_turbine_out_OEI = P_OEI - POWER_MAP["bat_rem"]*efficiencies["BAT-MOT_eff"]
+        throttle_OEI, eff_factor_OEI = get_throttle(efficiencies["GT-MOT_eff"]*efficiencies["GT_P_opt"]/(1000*P_turbine_out_OEI))
+        POWER_MAP["gt_oei"] = 0.001*efficiencies["GT_P_opt"]*throttle_OEI * efficiencies["GT-MOT_eff"]/efficiencies["LH2-GT-MOT_eff"]
         POWER_MAP["bat_oei"] = P_OEI / efficiencies["BAT-MOT_eff"]
         POWER_MAP["gt_res"] = P_res / efficiencies["LH2-GT-MOT_eff"]
 
     elif config == 2:
-        efficiencies = FC_BAT_efficiency(comp, t_climb, t_cruise, P_cl, P_cr)
+        efficiencies = FC_BAT_efficiency(comp, t_climb, t_cruise, P_cl*1000, P_cr*1000)
 
-        POWER_MAP["fc_cr"] = efficiencies["FC_P"] * efficiencies["FC-MOT_eff"]/efficiencies["LH2-FC-MOT_eff"]
+        POWER_MAP["fc_cr"] = 0.001*efficiencies["FC_P"] * efficiencies["FC-MOT_eff"]/efficiencies["LH2-FC-MOT_eff"]
         POWER_MAP["fc_cl"] = POWER_MAP["fc_cr"] # for now
-        POWER_MAP["bat"] = efficiencies["BAT_P_discharge"]
+        POWER_MAP["bat"] = 0.001*efficiencies["BAT_P_discharge"]
 
-        # one of the 2 batteries fails
-        POWER_MAP["bat_rem"] = POWER_MAP["bat"] / 2
-        POWER_MAP["fc_oei"] = (P_OEI - POWER_MAP["bat_rem"]*efficiencies["BAT-MOT_eff"]) / efficiencies["LH2-FC-MOT_eff"]
-        POWER_MAP["bat_oei"] = P_OEI / efficiencies["BAT-MOT_eff"]
+        POWER_MAP["fc_rem"] = POWER_MAP["fc_cl"] / 2
+        POWER_MAP["bat_oei"] = (P_OEI - POWER_MAP["fc_rem"]*efficiencies["FC-MOT_eff"]) / efficiencies["BAT-MOT_eff"]
+        POWER_MAP["fc_oei"] = P_OEI / efficiencies["FC-MOT_eff"]
         POWER_MAP["fc_res"] = P_res / efficiencies["LH2-FC-MOT_eff"]
 
     elif config == 3:
-        efficiencies = GT_GT_efficiency(comp, t_climb, t_cruise, P_cl, P_cr)
+        efficiencies = GT_GT_efficiency(comp, t_climb, t_cruise, P_cl*1000, P_cr*1000)
     
-        POWER_MAP["gt_cl"] = efficiencies["GT_P_opt"]*efficiencies["GT_throttle_climb"] * efficiencies["GT-MOT_eff"]/efficiencies["LH2-GT-MOT_eff"]
-        POWER_MAP["gt_cr"] = efficiencies["GT_P_opt"]*efficiencies["GT_throttle_cruise"] * efficiencies["GT-MOT_eff"]/efficiencies["LH2-GT-MOT_eff"]
+        POWER_MAP["gt_cl"] = 0.001*efficiencies["GT_P_opt"]*efficiencies["GT_throttle_climb"] * efficiencies["GT-MOT_eff"]/efficiencies["LH2-GT-MOT_eff"]
+        POWER_MAP["gt_cr"] = 0.001*efficiencies["GT_P_opt"]*efficiencies["GT_throttle_cruise"] * efficiencies["GT-MOT_eff"]/efficiencies["LH2-GT-MOT_eff"]
 
         POWER_MAP["gt_oei"] = P_OEI / efficiencies["LH2-GT-MOT_eff"]
         POWER_MAP["gt_res"] = P_res / efficiencies["LH2-GT-MOT_eff"]
 
     elif config == 4:
-        efficiencies = GT_FC_efficiency(comp, t_climb, t_cruise, P_cl, P_cr, P_OEI)
+        efficiencies = GT_FC_efficiency(comp, t_climb, t_cruise, P_cl*1000, P_cr*1000, P_OEI*1000)
 
-        POWER_MAP["gt_cl"] = efficiencies["GT_P_opt"]*efficiencies["GT_throttle_climb"] * efficiencies["GT-MOT_eff"]/efficiencies["LH2-GT-MOT_eff"]
-        POWER_MAP["gt_cr"] = efficiencies["GT_P_opt"]*efficiencies["GT_throttle_cruise"] * efficiencies["GT-MOT_eff"]/efficiencies["LH2-GT-MOT_eff"]
-        POWER_MAP["fc"] = efficiencies["FC_P"] * efficiencies["FC-MOT_eff"]/efficiencies["LH2-FC-MOT_eff"]
+        POWER_MAP["gt_cl"] = 0.001*efficiencies["GT_P_opt"]*efficiencies["GT_throttle_climb"] * efficiencies["GT-MOT_eff"]/efficiencies["LH2-GT-MOT_eff"]
+        POWER_MAP["gt_cr"] = 0.001*efficiencies["GT_P_opt"]*efficiencies["GT_throttle_cruise"] * efficiencies["GT-MOT_eff"]/efficiencies["LH2-GT-MOT_eff"]
+        POWER_MAP["fc"] = 0.001*efficiencies["FC_P"] * efficiencies["FC-MOT_eff"]/efficiencies["LH2-FC-MOT_eff"]
 
         # only one turbine failing considered here because more FC power is worse for thermal
         POWER_MAP["gt_rem"] = POWER_MAP["gt_cl"] / 2
@@ -173,6 +174,11 @@ def compute_states(POWER_MAP, config) -> dict:
             "power_kw": POWER_MAP["gt_oei"],
             "system": "gt",
         }
+        # ?. p_rem from bat
+        states["p_rem_bat"] = {
+            "power_kw": POWER_MAP["bat_rem"],
+            "system": "bat",
+        }
         # ?. p_res from gt
         states["p_res_gt"] = {
             "power_kw": POWER_MAP["gt_res"],
@@ -206,9 +212,9 @@ def compute_states(POWER_MAP, config) -> dict:
             "system": "fc",
         }
         # ?. p_rem from bat
-        states["p_rem_bat"] = {
-            "power_kw": POWER_MAP["bat_rem"],
-            "system": "bat",
+        states["p_rem_fc"] = {
+            "power_kw": POWER_MAP["fc_rem"],
+            "system": "fc",
         }
         # ?. p_res from fc
         states["p_res_fc"] = {
@@ -366,7 +372,7 @@ def compute_piping_losses(state_keys, states, config: int, flight_condition: str
         full_length = 18.0
         half_length = 16.0
         extra_length = 0.0
-    elif config == 5:
+    elif config == 4:
         # Full and half lengths for design D are fixed
         full_length = 18.0
         half_length = 16.0
@@ -455,7 +461,7 @@ def design_phase_table(config, comp=comp_params, class_II_results=None) -> 'pd.D
         design_conditions.append({
             "design": 1,
             "flight_condition": "OEI_bat",
-            "states": ["p_oei_gt"],
+            "states": ["p_oei_gt", "p_rem_bat"],
         })
 
     elif config == 2:
@@ -480,12 +486,12 @@ def design_phase_table(config, comp=comp_params, class_II_results=None) -> 'pd.D
         design_conditions.append({
             "design": 2,
             "flight_condition": "OEI",
-            "states": ["p_oei_fc", "p_rem_bat"],
+            "states": ["p_oei_fc"],
         })
         design_conditions.append({
             "design": 2,
             "flight_condition": "OEI_fc",
-            "states": ["p_oei_bat"],
+            "states": ["p_oei_bat", "p_rem_fc"],
         })
 
     elif config == 3:
