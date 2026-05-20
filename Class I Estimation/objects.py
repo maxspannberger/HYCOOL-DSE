@@ -12,7 +12,7 @@ class Atmosphere:
     G = 9.80665          # Gravity (m/s^2)
     R = 287.0528         # Specific gas constant for dry air (J/(kg·K))
     GAMMA = 1.4          # Specific heat ratio for air
-    S = 110.4            # Sutherland's temperature (K)
+    S = 113.            # Sutherland's temperature (K)
     MU_REF = 1.716e-5    # Reference dynamic viscosity (kg/(m·s))
     T_REF = 273.15       # Reference temperature (K)
 
