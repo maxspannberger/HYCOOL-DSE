@@ -53,6 +53,17 @@ def sensitivity_analysis(
         "Hump_TRL_penalty": 5,
         "Belly_FC_TRL_penalty": 2,
     }
+    # TODO: add documented uncertainties
+    TRL_std = {
+        "GT_TRL_base": 1,
+        "FC_TRL_base": 2,
+        "BAT_TRL_base": 2,
+        "GT_hex_TRL_penalty": 0.5,
+        "FC_hex_TRL_penalty": 1,
+        "S_duct_TRL_penalty": 0.2,
+        "Hump_TRL_penalty": 1,
+        "Belly_FC_TRL_penalty": 0.5,
+    }
 
 
     for run in range(1, max_runs + 1):
@@ -89,8 +100,9 @@ def sensitivity_analysis(
                     case _:
                         pass
 
-            # TODO: add here TRL7 year variation.
-            TRL = TRL_base.copy()
+            TRL = {}
+            for component in TRL_base:
+                TRL[component] = max(0, TRL_base[component] + np.random.normal(0.0, TRL_std[component]))
 
         print(f"Performing run {run} out of {max_runs}")
         
