@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 from statistics import mean, stdev
 import matplotlib.pyplot as plt
+import json
 
 # Add parent directory to path so General module can be imported
 root = Path(__file__).resolve().parent.parent
@@ -129,15 +130,15 @@ def sensitivity_analysis(
         "Hump_TRL_penalty": 5,
         "Belly_FC_TRL_penalty": 2,
     }
-    # TODO: add documented uncertainties
+    # uncertainties eyeballed by Francisco
     TRL_std = {
         "GT_TRL_base": 1,
-        "FC_TRL_base": 2,
+        "FC_TRL_base": 1,
         "BAT_TRL_base": 2,
-        "GT_hex_TRL_penalty": 0.5,
-        "FC_hex_TRL_penalty": 1,
+        "GT_hex_TRL_penalty": 1,
+        "FC_hex_TRL_penalty": 2,
         "S_duct_TRL_penalty": 0.2,
-        "Hump_TRL_penalty": 1,
+        "Hump_TRL_penalty": 3,
         "Belly_FC_TRL_penalty": 0.5,
     }
 
@@ -145,7 +146,7 @@ def sensitivity_analysis(
     n_skipped = 0
     
     n_cores = multiprocessing.cpu_count()
-    n_workers = max(1, int(n_cores * 0.8))
+    n_workers = max(1, int(n_cores * 0.9))
     print(f"Using {n_workers}/{n_cores} CPU cores")
 
     with ProcessPoolExecutor(max_workers=n_workers) as executor:
@@ -226,13 +227,13 @@ def assign_scores(sizing_outputs):
         mass_score = 1
 
     # efficiency scoring
-    if eff < 0.40:
+    if eff < 0.30:
         eff_score = 1
-    elif eff < 0.45:
+    elif eff < 0.37:
         eff_score = 2
-    elif eff < 0.50:
+    elif eff < 0.44:
         eff_score = 3
-    elif eff < 0.5:
+    elif eff < 0.51:
         eff_score = 5
     else:
         eff_score = 5
@@ -250,13 +251,13 @@ def assign_scores(sizing_outputs):
         climate_score = 5
 
     # TRL scoring
-    if TRL_year < 2035:
+    if TRL_year <= 2035:
         TRL_score = 5
-    elif TRL_year < 2038:
+    elif TRL_year <= 2038:
         TRL_score = 4
-    elif TRL_year < 2041:
+    elif TRL_year <= 2041:
         TRL_score = 3
-    elif TRL_year < 2044:
+    elif TRL_year <= 2044:
         TRL_score = 2
     else:
         TRL_score = 1
@@ -299,13 +300,17 @@ def tradeoff_sensitivity(sensitivity_results):
     return tradeoff_table_history
 
 
-def get_score_list(tradeoff_table_history):
+def get_score_list(tradeoff_table_history, n_repeats=1):
     design_scores = {}
     for table in tradeoff_table_history:
         for config in table:
             if config not in design_scores:
                 design_scores[config] = []
             design_scores[config].append(table[config]["overall"])
+
+    with open(f"design_score_lists_{n_repeats}_runs.json", "w") as f:
+        json.dump(design_scores, f, indent=4)
+    
     return design_scores
 
 
@@ -339,7 +344,7 @@ def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False):
 
 if __name__ == "__main__":
     cfg = default_q400_hycool()
-    n_repeats = 100
+    n_repeats = 1000
     designs_to_consider = [1, 2, 3, 4]
 
     sensitivity_results, n_skipped = sensitivity_analysis(cfg=cfg, n_repeats=n_repeats, sensitivity_config="all", designs_to_consider=designs_to_consider)
@@ -351,7 +356,7 @@ if __name__ == "__main__":
     tradeoff_table_history = tradeoff_sensitivity(sensitivity_results)
     # print(tradeoff_table_history)
 
-    design_scores = get_score_list(tradeoff_table_history)
+    design_scores = get_score_list(tradeoff_table_history, n_repeats=n_repeats)
     # print(design_scores)
 
     results = get_score_uncertainties(design_scores)

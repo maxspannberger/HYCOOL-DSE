@@ -558,40 +558,52 @@ def design_phase_table(config, comp=comp_params, class_II_results=None) -> 'pd.D
         power_other_kw = 0.0
         m_dot_total_kg_s = 0.0
         sp_kj_per_kg = LHV_H2 * 1000.0
+
         # Accumulate values over all states composing this flight condition
         for state_key in cond["states"]:
             state = states[state_key]
             system = state["system"]
             p_kw = state["power_kw"]
+
             # Sum the output power and heat rejection contributions
             power_total_kw += p_kw
             heat_total_kw += state["heat_kw"]
+
             # Tally power for electrical penalty calculation
             if system == "gt":
                 power_gt_kw += p_kw
             else:
                 power_other_kw += p_kw
+
             # Compute heat absorbed by hydrogen for this state
             heat_abs_total_kw += heat_absorption(p_kw, system)
+
             # Accumulate hydrogen mass flow (batteries consume no hydrogen)
             if system in POWER_MAP and system != "bat":
                 penalty = PENALTY_MAP[system]
                 m_dot_total_kg_s += (p_kw / (1.0 - penalty)) / sp_kj_per_kg
+
         # Electrical system thermal contribution: apply 3.13 % to gas turbine power
         # and 1.83 % to all other power sources.  This heat adds to the component
         # heat that must be rejected.
         heat_elec_kw = power_gt_kw * PENALTY_MAP["gt"] + power_other_kw * PENALTY_MAP["fc"]
+
         # Add electrical heat into the total heat to reject from components
         heat_total_kw += heat_elec_kw
+
         # Compute piping losses (kW) based on the component mass flows, design and flight condition
         pipe_loss_kw = compute_piping_losses(cond["states"], states, cond["design"], cond["flight_condition"])
+
         # Sum heat rejection (including electrical contributions) and piping losses
         total_heat_kw = heat_total_kw + pipe_loss_kw
+        
         # Ratio of heat to reject to heat absorbed; infinite if no absorption available
         ratio_rej_abs = (heat_total_kw / heat_abs_total_kw) if heat_abs_total_kw > 0 else float('inf')
         thermal_score = thermal_ratio_score(ratio_rej_abs)
+
         # Net heat is positive if there is still heat left to reject after hydrogen has absorbed all it can
         net_heat_kw = total_heat_kw - heat_abs_total_kw
+        
         # Determine heat status: positive means there is still heat left to reject,
         # negative means the hydrogen cooling capacity exceeds the heat load.
         heat_status = "Positive" if net_heat_kw > 0 else "Negative"
