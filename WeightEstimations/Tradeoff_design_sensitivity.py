@@ -1,6 +1,8 @@
 import numpy as np
 import sys
 from pathlib import Path
+from statistics import mean, stdev
+import matplotlib.pyplot as plt
 
 # Add parent directory to path so General module can be imported
 root = Path(__file__).resolve().parent.parent
@@ -65,7 +67,7 @@ def sensitivity_analysis(
         "Belly_FC_TRL_penalty": 0.5,
     }
 
-
+    n_skipped = 0
     for run in range(1, max_runs + 1):
         comp = comp_params.copy()
         sensitivity_results[run] = {}
@@ -75,59 +77,62 @@ def sensitivity_analysis(
                 match comp[param]:
 
                     case PowerComponent():
-                        comp[param].power_density += np.random.normal(0.0, comp[param].power_density_std)
-                        if comp[param].power_density <= 0.0:
-                            comp[param].power_density = 0.00001
-                        comp[param].efficiency += np.random.normal(0.0, comp[param].efficiency_std)
-                        if comp[param].efficiency <= 0.0:
-                            comp[param].efficiency = 0.00001
-                        elif comp[param].efficiency >= 1.0:
-                            comp[param].efficiency = 0.99999
+                        comp[param].power_density += comp[param].power_density_std * np.clip(np.random.normal(0.0, 1.0), -1.0, 1.0)
+                        if comp[param].power_density <= 0.1:
+                            comp[param].power_density = 0.1
+                        comp[param].efficiency += comp[param].efficiency_std * np.clip(np.random.normal(0.0, 1.0), -1.0, 1.0)
+                        if comp[param].efficiency <= 0.1:
+                            comp[param].efficiency = 0.1
+                        elif comp[param].efficiency >= 0.9999:
+                            comp[param].efficiency = 0.9999
 
                     case StorageComponent():
-                        comp[param].energy_density += np.random.normal(0.0, comp[param].energy_density_std)
-                        if comp[param].energy_density <= 0.0:
-                            comp[param].energy_density = 0.00001
-                        comp[param].power_density += np.random.normal(0.0, comp[param].power_density_std)
-                        if comp[param].power_density <= 0.0:
-                            comp[param].power_density = 0.00001
-                        comp[param].efficiency += np.random.normal(0.0, comp[param].efficiency_std)
-                        if comp[param].efficiency <= 0.0:
-                            comp[param].efficiency = 0.00001
-                        elif comp[param].efficiency > 1.0:
-                            comp[param].efficiency = 0.99999
+                        comp[param].energy_density += comp[param].energy_density_std * np.clip(np.random.normal(0.0, 1.0), -1.0, 1.0)
+                        if comp[param].energy_density <= 0.1:
+                            comp[param].energy_density = 0.1
+                        comp[param].power_density += comp[param].power_density_std * np.clip(np.random.normal(0.0, 1.0), -1.0, 1.0)
+                        if comp[param].power_density <= 0.1:
+                            comp[param].power_density = 0.1
+                        comp[param].efficiency += comp[param].efficiency_std * np.clip(np.random.normal(0.0, 1.0), -1.0, 1.0)
+                        if comp[param].efficiency <= 0.1:
+                            comp[param].efficiency = 0.1
+                        elif comp[param].efficiency > 0.9999:
+                            comp[param].efficiency = 0.9999
                             
                     case _:
                         pass
 
             TRL = {}
             for component in TRL_base:
-                TRL[component] = max(0, TRL_base[component] + np.random.normal(0.0, TRL_std[component]))
+                TRL[component] = max(0, TRL_base[component] + TRL_std[component]) * np.clip(np.random.normal(0.0, 1.0), -1.0, 1.0)
 
         print(f"Performing run {run} out of {max_runs}")
-        
-        climate_results = get_climate_results(comp=comp)
-        design_names = list(climate_results.keys())
-        for config in designs_to_consider:
-            class_II_results = run_class_ii(config=config, comp=comp, verbose=False, cfg=cfg)
+        try:
+            climate_results = get_climate_results(comp=comp)
+            design_names = list(climate_results.keys())
+            for config in designs_to_consider:
+                class_II_results = run_class_ii(config=config, comp=comp, verbose=False, cfg=cfg)
 
-            # TMS already has built-in scores
-            TMS_results = design_phase_table(config=config, comp=comp, class_II_results=class_II_results)
-            TMS_score = design_score_table(TMS_results)["FinalThermalScore"].iloc[0]
+                # TMS already has built-in scores
+                TMS_results = design_phase_table(config=config, comp=comp, class_II_results=class_II_results)
+                TMS_score = design_score_table(TMS_results)["FinalThermalScore"].iloc[0]
 
-            TRL_year = TRL_per_design(TRL, config=config)
+                TRL_year = TRL_per_design(TRL, config=config)
 
-            sensitivity_results[run][design_names[config-1]] = {
-                "OEW": class_II_results.W_empty,
-                "prop_frac": class_II_results.W_prop / class_II_results.W_empty,
-                "eff": class_II_results.total_prop_efficiency,
-                "atr_ratio": 1 - climate_results[design_names[config-1]] / climate_results["Baseline"],
-                "TMS_score": TMS_score,
-                "TRL_year": TRL_year
-            }
+                sensitivity_results[run][design_names[config-1]] = {
+                    "OEW": class_II_results.W_empty,
+                    "prop_frac": class_II_results.W_prop / class_II_results.W_empty,
+                    "eff": class_II_results.total_prop_efficiency,
+                    "atr_ratio": 1 - climate_results[design_names[config-1]] / climate_results["Baseline"],
+                    "TMS_score": TMS_score,
+                    "TRL_year": TRL_year
+                }
+        except ValueError:
+            n_skipped += 1
+            print(f"Run {run} failed.")
 
     print(f"Sensitivity analysis finished.\n")
-    return sensitivity_results
+    return sensitivity_results, n_skipped
 
 
 def stats_calculator(sensitivity_results):
@@ -248,21 +253,69 @@ def numerical_tradeoff(single_variation_results):
 
 
 def tradeoff_sensitivity(sensitivity_results):
+    tradeoff_table_history = []
     for run in sensitivity_results:
         tradeoff_table = numerical_tradeoff(sensitivity_results[run])
-        print(tradeoff_table)
+        tradeoff_table_history.append(tradeoff_table)
+    return tradeoff_table_history
 
+
+def get_score_list(tradeoff_table_history):
+    design_scores = {}
+    for table in tradeoff_table_history:
+        for config in table:
+            if config not in design_scores:
+                design_scores[config] = []
+            design_scores[config].append(table[config]["overall"])
+    return design_scores
+
+
+def get_score_uncertainties(design_scores):
+    results = {}
+    for config in design_scores:
+        if config not in results:
+            results[config] = {}
+        results[config]["mean"] = round(mean(design_scores[config]), 4)
+        results[config]["std"] = round(stdev(design_scores[config]), 4)
+    return results
+
+
+def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False):
+    fig, ax = plt.subplots()
+    ax.boxplot(design_scores.values(), tick_labels=design_scores.keys())
+
+    ax.set_ylim((0, 5))
+    if n_skipped > 0:
+        ax.set_title(f"Tradeoff sensitivity analysis for {n_repeats} runs ({n_skipped} skipped)")
+    else:
+        ax.set_title(f"Tradeoff sensitivity analysis for {n_repeats} runs")
+    ax.set_xlabel("Design")
+    ax.set_ylabel("Score")
+
+    plt.savefig(f"Tradeoff_design_sensitivity_analysis_{n_repeats}_runs")
+    
+    if show:
+        plt.show()
 
 
 if __name__ == "__main__":
     cfg = default_q400_hycool()
-    n_repeats = 3
+    n_repeats = 10
     designs_to_consider = [1, 2, 3, 4]
 
-    sensitivity_results = sensitivity_analysis(cfg=cfg, n_repeats=n_repeats, sensitivity_config="all", designs_to_consider=designs_to_consider)
-    print(sensitivity_results)
+    sensitivity_results, n_skipped = sensitivity_analysis(cfg=cfg, n_repeats=n_repeats, sensitivity_config="all", designs_to_consider=designs_to_consider)
+    # print(sensitivity_results)
     
     results_stats = stats_calculator(sensitivity_results)
-    print(results_stats)
+    # print(results_stats)
 
-    tradeoff_sensitivity(sensitivity_results)
+    tradeoff_table_history = tradeoff_sensitivity(sensitivity_results)
+    # print(tradeoff_table_history)
+
+    design_scores = get_score_list(tradeoff_table_history)
+    # print(design_scores)
+
+    results = get_score_uncertainties(design_scores)
+    print(results)
+
+    plot_scores(design_scores, n_repeats=n_repeats, n_skipped=n_skipped, show=True)

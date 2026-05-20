@@ -86,7 +86,7 @@ def golden_power_search(P_1, P_2, t_1, t_2):
     b = max(P_1, P_2)
    
     i = 0
-    while b - a > 1e-6 and i < 1000:
+    while b - a > 1e-6 and i < 100:
         c = b - (b - a) * invphi
         d = a + (b - a) * invphi
         if find_optimal_point(c, P_1, P_2, t_1, t_2) > find_optimal_point(d, P_1, P_2, t_1, t_2):
