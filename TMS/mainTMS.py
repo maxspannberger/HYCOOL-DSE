@@ -128,8 +128,7 @@ def TMS_input(config, comp=comp_params, class_II_results=None):
         # only one turbine failing considered here because more FC power is worse for thermal
         POWER_MAP["gt_rem"] = POWER_MAP["gt_cl"] / 2
         POWER_MAP["fc_oei"] = (P_OEI - POWER_MAP["gt_rem"]*efficiencies["LH2-GT-MOT_eff"]) / efficiencies["LH2-FC-MOT_eff"]
-        POWER_MAP["fc_rem"] = POWER_MAP["fc"] / 2
-        POWER_MAP["gt_oei"] = (P_OEI - POWER_MAP["fc_rem"]*efficiencies["LH2-FC-MOT_eff"]) / efficiencies["LH2-GT-MOT_eff"]
+        POWER_MAP["gt_oei"] = P_OEI / efficiencies["LH2-GT-MOT_eff"]
         POWER_MAP["gt_res"] = P_res / efficiencies["LH2-GT-MOT_eff"]
 
     else:
@@ -269,11 +268,6 @@ def compute_states(POWER_MAP, config) -> dict:
         states["p_rem_gt"] = {
             "power_kw": POWER_MAP["gt_rem"],
             "system": "gt",
-        }
-        # ?. p_rem from fc
-        states["p_rem_fc"] = {
-            "power_kw": POWER_MAP["fc_rem"],
-            "system": "fc",
         }
         # ?. p_res from gt
         states["p_res_gt"] = {
@@ -543,12 +537,12 @@ def design_phase_table(config, comp=comp_params, class_II_results=None) -> 'pd.D
         design_conditions.append({
             "design": 4,
             "flight_condition": "OEI",
-            "states": ["p_oei_gt", "p_rem_fc"],
+            "states": ["p_oei_gt"],
         })
         design_conditions.append({
             "design": 4,
             "flight_condition": "OEI_gt",
-            "states": ["p_oei_fc"],
+            "states": ["p_oei_fc", "p_rem_gt"],
         })
 
     else:
