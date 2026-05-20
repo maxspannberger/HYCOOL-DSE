@@ -61,24 +61,21 @@ PENALTY_MAP = {
 }
 
 
-def TMS_input(config, geo=None, comp=comp_params, class_II_results=None):
-    if geo is not None:
-        t_climb = geo.t_climb
-        t_cruise = geo.t_cruise
-    else:
-        t_climb = 1000
-        t_cruise = 3500
-    
+def TMS_input(config, comp=comp_params, class_II_results=None):
     if class_II_results is not None:
-        P_cl = class_II_results.P_climb_kw # 5099.5
-        P_cr = class_II_results.P_cruise_kw # 3792
-        P_res = class_II_results.P_reserve_kw # 1281.8
-        P_OEI = class_II_results.P_TO_OEI_kW # 3100
+        P_cl = class_II_results.P_climb_KW
+        P_cr = class_II_results.P_cruise_KW
+        P_res = class_II_results.P_reserve_KW
+        P_OEI = class_II_results.P_TO_OEI_KW
+        t_climb = class_II_results.t_climb
+        t_cruise = class_II_results.t_cruise
     else:
         P_cl = 5099.5
         P_cr = 3792
         P_res = 1281.8
         P_OEI = 3100
+        t_climb = 1000
+        t_cruise = 4826
 
     # Mapping of prime mover efficiencies.  These values represent the
     # electrical/shaft efficiency of each device, not including additional
@@ -424,8 +421,8 @@ def thermal_ratio_score(ratio):
     else:
         return 1
 
-def design_phase_table(config, comp=comp_params) -> 'pd.DataFrame':
-    POWER_MAP = TMS_input(config, comp=comp)
+def design_phase_table(config, comp=comp_params, class_II_results=None) -> 'pd.DataFrame':
+    POWER_MAP = TMS_input(config, comp=comp, class_II_results=class_II_results)
     states = compute_states(POWER_MAP, config)
 
     # Placeholder for piping losses (kW). Modify this later when data is

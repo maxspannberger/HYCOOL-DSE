@@ -7,16 +7,13 @@ root = Path(__file__).resolve().parent.parent
 sys.path.append(str(root))
 
 from General.component_parameters import component_params as comp_params
-from General.component_parameters import PowerComponent, StorageComponent, PipingComponent, CableComponent, HeatExchangeComponent
+from General.component_parameters import PowerComponent, StorageComponent
 from Aircraft_Config import AircraftConfig, default_q400_hycool
 from mainClassII import run_class_ii
 from Climate_Impact.Average_Temp_Response import get_results as get_climate_results
 from TMS.mainTMS import design_phase_table, design_score_table
 
 from rich import print
-from rich.console import Console
-from rich.panel import Panel
-from rich.columns import Columns
 
 
 def sensitivity_analysis(
@@ -73,7 +70,7 @@ def sensitivity_analysis(
             class_II_results = run_class_ii(config=config, comp=comp, verbose=False, cfg=cfg)
 
             # TMS already has built-in scores
-            TMS_results = design_phase_table(config=config, comp=comp)
+            TMS_results = design_phase_table(config=config, comp=comp, class_II_results=class_II_results)
             TMS_score = design_score_table(TMS_results)["FinalThermalScore"].iloc[0]
 
             sensitivity_results[run][design_names[config-1]] = {

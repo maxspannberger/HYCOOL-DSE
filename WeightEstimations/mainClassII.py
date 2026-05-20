@@ -84,6 +84,9 @@ class ClassIIResult:
     P_climb_KW: float = 0.0
     P_reserve_KW: float = 0.0
 
+    t_climb: float = 0.0
+    t_cruise: float = 0.0
+
     def summary(self):
         status_color = "green" if self.converged else "red"
         main_info = (
@@ -385,7 +388,9 @@ def run_class_ii(
         P_cruise_KW = P_cruise_kw,
         P_max_KW    = P_max_kw,
         P_climb_KW  = P_climb_kW,
-        P_reserve_KW= P_reserve_kw
+        P_reserve_KW= P_reserve_kw,
+        t_climb=t_climb,
+        t_cruise=t_cruise
     )
 
 
