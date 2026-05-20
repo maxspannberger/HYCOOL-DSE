@@ -36,7 +36,7 @@ def TRL_per_design(TRL, config):
             raise ValueError("Invalid configuration")
 
 
-def _single_sensitivity_run(
+def single_sensitivity_run(
         run: int,
         cfg,
         comp_params,
@@ -152,7 +152,7 @@ def sensitivity_analysis(
     with ProcessPoolExecutor(max_workers=n_workers) as executor:
         futures = [
             executor.submit(
-                _single_sensitivity_run,
+                single_sensitivity_run,
                 run,
                 cfg,
                 comp_params,
@@ -175,7 +175,7 @@ def sensitivity_analysis(
     return sensitivity_results, n_skipped
 
 
-def stats_calculator(sensitivity_results):
+def stats_calculator(sensitivity_results, n_repeats=1):
     criterion_result = {}
     criterion_stats = {}
 
@@ -185,7 +185,7 @@ def stats_calculator(sensitivity_results):
                 criterion_result[config] = {}
 
             for criterion in sensitivity_results[run][config]:
-                if criterion in criterion_result:
+                if criterion in criterion_result[config]:
                     criterion_result[config][criterion].append(sensitivity_results[run][config][criterion])
                 else:
                     criterion_result[config][criterion] = [sensitivity_results[run][config][criterion]]
@@ -194,9 +194,12 @@ def stats_calculator(sensitivity_results):
         criterion_stats[config] = {}
         for criterion in criterion_result[config]:
             criterion_stats[config][criterion] = {
-                "mean": np.mean(np.array(criterion_result[config][criterion])),
-                "std": np.std(np.array(criterion_result[config][criterion]))
+                "mean": mean(criterion_result[config][criterion]),
+                "std": stdev(criterion_result[config][criterion])
             }
+
+    with open(f"tradeoff_quantity_stats_{n_repeats}_runs.json", "w") as f:
+        json.dump(criterion_stats, f, indent=4)
 
     return criterion_stats
 
@@ -314,13 +317,17 @@ def get_score_list(tradeoff_table_history, n_repeats=1):
     return design_scores
 
 
-def get_score_uncertainties(design_scores):
+def get_score_uncertainties(design_scores, n_repeats=1):
     results = {}
     for config in design_scores:
         if config not in results:
             results[config] = {}
         results[config]["mean"] = round(mean(design_scores[config]), 4)
         results[config]["std"] = round(stdev(design_scores[config]), 4)
+
+    with open(f"tradeoff_scores_stats_{n_repeats}_runs.json", "w") as f:
+        json.dump(results, f, indent=4)
+
     return results
 
 
@@ -344,14 +351,14 @@ def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False):
 
 if __name__ == "__main__":
     cfg = default_q400_hycool()
-    n_repeats = 1000
+    n_repeats = 10
     designs_to_consider = [1, 2, 3, 4]
 
     sensitivity_results, n_skipped = sensitivity_analysis(cfg=cfg, n_repeats=n_repeats, sensitivity_config="all", designs_to_consider=designs_to_consider)
     # print(sensitivity_results)
     
-    results_stats = stats_calculator(sensitivity_results)
-    # print(results_stats)
+    results_stats = stats_calculator(sensitivity_results, n_repeats=n_repeats)
+    print(results_stats)
 
     tradeoff_table_history = tradeoff_sensitivity(sensitivity_results)
     # print(tradeoff_table_history)
@@ -359,7 +366,7 @@ if __name__ == "__main__":
     design_scores = get_score_list(tradeoff_table_history, n_repeats=n_repeats)
     # print(design_scores)
 
-    results = get_score_uncertainties(design_scores)
+    results = get_score_uncertainties(design_scores, n_repeats=n_repeats)
     print(results)
 
     plot_scores(design_scores, n_repeats=n_repeats, n_skipped=n_skipped, show=True)
