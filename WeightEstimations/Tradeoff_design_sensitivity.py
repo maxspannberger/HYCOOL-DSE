@@ -507,7 +507,7 @@ def weight_sensitivity_analysis(cfg, n_repeats=1, designs_to_consider=[1,2,3,4,5
 
 if __name__ == "__main__":
     cfg = default_q400_hycool()
-    n_repeats = 1000
+    n_repeats = 10
     designs_to_consider = [1, 2, 3, 4, 5]
     weights={
         "mass": 0.25,
