@@ -353,7 +353,7 @@ def get_score_uncertainties(design_scores, n_repeats=1, prefix=""):
     return results
 
 
-def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False, prefix="", for_weights=False):
+def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False, prefix="", for_weights=False, legend=False):
     if for_weights:
         name = "weight"
     else:
@@ -378,7 +378,8 @@ def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False, prefix="", 
     for i, box in enumerate(plot['boxes']):
         box.set_facecolor(plt.cm.tab10(i))
         
-    plt.legend(plot['boxes'], ticks)
+    if legend:
+        plt.legend(plot['boxes'], ticks)
 
     plt.savefig(f"sensitivity_outputs/{n_repeats}_runs/{prefix}_{name}_design_sensitivity_analysis_{n_repeats}_runs")
     
@@ -386,7 +387,7 @@ def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False, prefix="", 
         plt.show()
 
 
-def perform_sensitivity_analysis(cfg, n_repeats=1, designs_to_consider=[1,2,3,4,5], weights=None, from_file=True, show=False, prefix=""):
+def perform_sensitivity_analysis(cfg, n_repeats=1, designs_to_consider=[1,2,3,4,5], weights=None, from_file=True, show=False, prefix="", legend=False):
     if weights is None:
         weights={
             "mass": 0.25,
@@ -414,7 +415,7 @@ def perform_sensitivity_analysis(cfg, n_repeats=1, designs_to_consider=[1,2,3,4,
     if show:
         print(results_stats_scores)
 
-    plot_scores(design_scores, n_repeats=n_repeats, n_skipped=n_skipped, show=show, prefix=prefix)
+    plot_scores(design_scores, n_repeats=n_repeats, n_skipped=n_skipped, show=show, prefix=prefix, legend=legend)
 
     return results_stats_metrics, results_stats_scores
 
@@ -523,7 +524,8 @@ if __name__ == "__main__":
                                                                                designs_to_consider=designs_to_consider,
                                                                                weights=weights,
                                                                                from_file=False,
-                                                                               show=True)
+                                                                               show=True,
+                                                                               legend=True)
     
     eliminate_criteria(cfg=cfg, n_repeats=n_repeats, designs_to_consider=designs_to_consider, base_weights=weights)
 
