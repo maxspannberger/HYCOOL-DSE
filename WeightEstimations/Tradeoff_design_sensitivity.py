@@ -358,9 +358,9 @@ def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False, prefix=""):
 
     ax.set_ylim((0, 5))
     if n_skipped > 0:
-        ax.set_title(f"Tradeoff sensitivity analysis for {n_repeats} runs ({n_skipped} skipped)")
+        ax.set_title(f"{prefix} Tradeoff sensitivity analysis for {n_repeats} runs ({n_skipped} skipped)")
     else:
-        ax.set_title(f"Tradeoff sensitivity analysis for {n_repeats} runs")
+        ax.set_title(f"{prefix} Tradeoff sensitivity analysis for {n_repeats} runs")
     ax.set_xlabel("Design")
     ax.set_ylabel("Score")
 
