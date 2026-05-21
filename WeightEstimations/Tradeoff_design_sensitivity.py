@@ -174,6 +174,10 @@ def sensitivity_analysis(
                 sensitivity_results[run] = result
 
     print("Sensitivity analysis finished.\n")
+
+    with open(f"sensitivity_outputs/_sensitivity_raw_{n_repeats}_runs.json", "w") as f:
+        json.dump(sensitivity_results, f, indent=4)
+
     return sensitivity_results, n_skipped
 
 
@@ -267,12 +271,19 @@ def assign_scores(sizing_outputs, weights):
     else:
         TRL_score = 1
 
-    overall_score = round(
-        weights["thermal"] * TMS_score +\
-        weights["TRL"] * TRL_score +\
-        weights["mass"] * mass_score +\
-        weights["efficiency"] * eff_score +\
-        weights["climate"] * climate_score, 2)
+    overall_score = 0.0
+    for criterion in weights:
+        match criterion:
+            case "mass":
+                overall_score += weights[criterion] * mass_score
+            case "thermal":
+                overall_score += weights[criterion] * TMS_score
+            case "efficiency":
+                overall_score += weights[criterion] * eff_score
+            case "climate":
+                overall_score += weights[criterion] * climate_score
+            case "TRL":
+                overall_score += weights[criterion] * TRL_score
 
     return {
         "mass": mass_score,
@@ -359,7 +370,7 @@ def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False, prefix=""):
         plt.show()
 
 
-def perform_sensitivity_analysis(cfg, n_repeats=1, designs_to_consider=[1,2,3,4,5], weights=None, show=False, prefix=""):
+def perform_sensitivity_analysis(cfg, n_repeats=1, designs_to_consider=[1,2,3,4,5], weights=None, from_file=True, show=False, prefix=""):
     if weights is None:
         weights={
             "mass": 0.25,
@@ -369,7 +380,12 @@ def perform_sensitivity_analysis(cfg, n_repeats=1, designs_to_consider=[1,2,3,4,
             "TRL": 0.15,
         }
 
-    sensitivity_results, n_skipped = sensitivity_analysis(cfg=cfg, n_repeats=n_repeats, sensitivity_config="all", designs_to_consider=designs_to_consider)
+    if from_file is True:
+        with open(f"sensitivity_outputs/_sensitivity_raw_{n_repeats}_runs.json", "r") as f:
+            sensitivity_results = json.load(f)
+            n_skipped = 0
+    else:
+        sensitivity_results, n_skipped = sensitivity_analysis(cfg=cfg, n_repeats=n_repeats, sensitivity_config="all", designs_to_consider=designs_to_consider)
     
     results_stats_metrics = stats_calculator(sensitivity_results, n_repeats=n_repeats, prefix=prefix)
     if show:
@@ -385,6 +401,41 @@ def perform_sensitivity_analysis(cfg, n_repeats=1, designs_to_consider=[1,2,3,4,
     plot_scores(design_scores, n_repeats=n_repeats, n_skipped=n_skipped, show=show, prefix=prefix)
 
     return results_stats_metrics, results_stats_scores
+
+
+def eliminate_weight_criterion(base_weights, criterion=None):
+    if criterion in base_weights:
+        weights = base_weights.copy()
+        del weights[criterion]
+        sum_weights = sum(weights.values())
+        for kept_criterion in weights:
+            weights[kept_criterion] /= sum_weights
+    else:
+        raise ValueError(f"Criterion '{criterion}' invalid.")
+    
+    return weights
+
+
+def eliminate_criteria(cfg, n_repeats=1, designs_to_consider=[1,2,3,4,5], base_weights=None):
+    if base_weights is None:
+        base_weights={
+            "mass": 0.25,
+            "thermal": 0.25,
+            "efficiency": 0.20,
+            "climate": 0.15,
+            "TRL": 0.15,
+        }
+    
+    for criterion in base_weights:
+        weights = eliminate_weight_criterion(base_weights, criterion=criterion)
+
+        results_stats_metrics, results_stats_scores = perform_sensitivity_analysis(cfg=cfg,
+                                                                            n_repeats=n_repeats,
+                                                                            designs_to_consider=designs_to_consider,
+                                                                            weights=weights,
+                                                                            from_file=True,
+                                                                            show=False,
+                                                                            prefix=f"NO_{criterion}")
 
 
 if __name__ == "__main__":
@@ -403,5 +454,8 @@ if __name__ == "__main__":
                                                                                n_repeats=n_repeats,
                                                                                designs_to_consider=designs_to_consider,
                                                                                weights=weights,
+                                                                               from_file=False,
                                                                                show=True)
+    
+    eliminate_criteria(cfg=cfg, n_repeats=n_repeats, designs_to_consider=designs_to_consider, base_weights=weights)
 
