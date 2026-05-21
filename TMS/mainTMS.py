@@ -402,21 +402,17 @@ def compute_piping_losses(state_keys, states, config: int, flight_condition: str
     return total_heat_w / 1000.0
 
 def thermal_ratio_score(ratio):
-    # Asymmetric margin bands (upper / lower tolerance around 1.0):
-    #   Score 5: +0.25 / -0.50  -> [0.50, 1.25]
-    #   Score 4: +0.50 / -1.00  -> [0.00, 1.50]
-    #   Score 3: +0.75 / -1.00  -> [0.00, 1.75]
-    #   Score 2: +1.00 / -1.00  -> [0.00, 2.00]
-    #   Score 1: +1.25 / -1.00  -> [0.00, 2.25]
+    # Applied to heat_rejected / heat_absorbed. Lower is better (< 1 means
+    # hydrogen absorbs more than needs rejecting).
     if not np.isfinite(ratio):
         return 0
     if 0 <= ratio <= 1:
         return 5
-    elif 1 <= ratio <= 1.50:
+    elif ratio <= 1.50:
         return 4
-    elif 1.5 <= ratio <= 2:
+    elif ratio <= 2.00:
         return 3
-    elif 2 <= ratio <= 2.5:
+    elif ratio <= 2.50:
         return 2
     else:
         return 1
@@ -455,12 +451,12 @@ def design_phase_table(config, comp=comp_params, class_II_results=None) -> 'pd.D
         # battery‑only operation.
         design_conditions.append({
             "design": 1,
-            "flight_condition": "OEI",
+            "flight_condition": "OEI_bat",
             "states": ["p_oei_bat"],
         })
         design_conditions.append({
             "design": 1,
-            "flight_condition": "OEI_bat",
+            "flight_condition": "OEI_gt",
             "states": ["p_oei_gt", "p_rem_bat"],
         })
 
@@ -485,12 +481,12 @@ def design_phase_table(config, comp=comp_params, class_II_results=None) -> 'pd.D
         # the charging cruise power) and the battery supplying the remainder.
         design_conditions.append({
             "design": 2,
-            "flight_condition": "OEI",
+            "flight_condition": "OEI_fc",
             "states": ["p_oei_fc"],
         })
         design_conditions.append({
             "design": 2,
-            "flight_condition": "OEI_fc",
+            "flight_condition": "OEI_bat",
             "states": ["p_oei_bat", "p_rem_fc"],
         })
 
@@ -542,12 +538,12 @@ def design_phase_table(config, comp=comp_params, class_II_results=None) -> 'pd.D
         # modelled by states 'p_cr_half_gt' (half of P_ch) and 'p_rem_fc'.
         design_conditions.append({
             "design": 4,
-            "flight_condition": "OEI",
+            "flight_condition": "OEI_gt",
             "states": ["p_oei_gt"],
         })
         design_conditions.append({
             "design": 4,
-            "flight_condition": "OEI_gt",
+            "flight_condition": "OEI_fc",
             "states": ["p_oei_fc", "p_rem_gt"],
         })
 
@@ -603,30 +599,22 @@ def design_phase_table(config, comp=comp_params, class_II_results=None) -> 'pd.D
         # Sum heat rejection (including electrical contributions) and piping losses
         total_heat_kw = heat_total_kw + pipe_loss_kw
         
-        # Ratio of heat to reject to heat absorbed; infinite if no absorption available
+        # Ratio: heat_rejected / heat_absorbed. Lower is better (< 1 means
+        # hydrogen can absorb more than needs rejecting). inf when no H2 flow.
         ratio_rej_abs = (heat_total_kw / heat_abs_total_kw) if heat_abs_total_kw > 0 else float('inf')
         thermal_score = thermal_ratio_score(ratio_rej_abs)
 
-        # Net heat is positive if there is still heat left to reject after hydrogen has absorbed all it can
         net_heat_kw = total_heat_kw - heat_abs_total_kw
-        
-        # Determine heat status: positive means there is still heat left to reject,
-        # negative means the hydrogen cooling capacity exceeds the heat load.
-        heat_status = "Positive" if net_heat_kw > 0 else "Negative"
+
         rows.append({
             "Design": cond["design"],
             "FlightCondition": cond["flight_condition"],
-            # "States": "+".join(cond["states"]),
             "TotalPower_kW": power_total_kw,
-            # "MassFlow_kg_s": m_dot_total_kg_s,
-            # "HeatElec_kW": heat_elec_kw,
             "HeatToReject_kW": heat_total_kw,
-            # "PipingLoss_kW": pipe_loss_kw,
             "HeatAbsorbed_KW": heat_abs_total_kw,
             "RatioRejAbs": ratio_rej_abs,
             "ThermalScore": thermal_score,
             "NetHeat_kW": net_heat_kw,
-            # "HeatStatus": heat_status,
         })
     df = pd.DataFrame(rows)
     return df
@@ -647,50 +635,69 @@ def design_score_table(df=None):
     for design in sorted(df["Design"].unique()):
         design_df = df[df["Design"] == design]
 
-        cruise_score = design_df.loc[
-            design_df["FlightCondition"] == "Cruise", "ThermalScore"
+        cruise_ratio = design_df.loc[
+            design_df["FlightCondition"] == "Cruise", "RatioRejAbs"
         ].iloc[0]
 
-        climb_score = design_df.loc[
-            design_df["FlightCondition"] == "Climb", "ThermalScore"
+        climb_ratio = design_df.loc[
+            design_df["FlightCondition"] == "Climb", "RatioRejAbs"
         ].iloc[0]
 
-        oei_scores = design_df.loc[
-            design_df["FlightCondition"].str.contains("OEI"), "ThermalScore"
-        ]
+        # Worst-case OEI = highest rej/abs ratio
+        oei_ratio = design_df.loc[
+            design_df["FlightCondition"].str.contains("OEI"), "RatioRejAbs"
+        ].max()
 
-        oei_score = oei_scores.min()
+        # Invert each ratio (inf -> 0), take weighted average, invert back.
+        # This is a weighted harmonic mean and stays finite even when a phase
+        # has no H2 flow (battery-only -> ratio = inf -> inv = 0).
+        cruise_inv = 1.0 / cruise_ratio if np.isfinite(cruise_ratio) and cruise_ratio > 0 else 0.0
+        climb_inv  = 1.0 / climb_ratio  if np.isfinite(climb_ratio)  and climb_ratio  > 0 else 0.0
+        oei_inv    = 1.0 / oei_ratio    if np.isfinite(oei_ratio)    and oei_ratio    > 0 else 0.0
 
-        final_score = (
-            weights["Cruise"] * cruise_score
-            + weights["Climb"] * climb_score
-            + weights["OEI"] * oei_score
+        avg_inv = (
+            weights["Cruise"] * cruise_inv
+            + weights["Climb"] * climb_inv
+            + weights["OEI"]   * oei_inv
         )
+
+        final_ratio = 1.0 / avg_inv if avg_inv > 0 else float('inf')
 
         rows.append({
             "Design": design,
-            "CruiseScore": cruise_score,
-            "ClimbScore": climb_score,
-            "OEIScore": oei_score,
-            "FinalThermalScore": final_score,
+            "CruiseRatio": cruise_ratio,
+            "ClimbRatio": climb_ratio,
+            "OEIRatio": oei_ratio,
+            "FinalRatio": final_ratio,
+            "FinalThermalScore": thermal_ratio_score(final_ratio),
         })
 
     return pd.DataFrame(rows)
 
 if __name__ == "__main__":
-    # When run as a script, compute and display the state table. This allows
-    # quick testing from the command line (e.g. `python mainTMS.py`).
-
     comp = comp_params
-    cfg = default_q400_hycool()
 
+    all_scores = []
     for config in [1, 2, 3, 4]:
         table = design_phase_table(config, comp=comp)
         scores = design_score_table(table)
 
         with pd.option_context("display.float_format", "{:,.2f}".format):
-            print("\nDetailed thermal table:")
+            print(f"\n{'='*60}")
+            print(f"  Config {config} — detailed thermal table")
+            print(f"{'='*60}")
             print(table.to_string(index=False))
 
-            print("\nDesign thermal scores:")
-            print(scores.to_string(index=False))
+        all_scores.append(scores)
+
+    summary = pd.concat(all_scores, ignore_index=True)
+    summary["Design"] = ["GT-BAT", "FC-BAT", "GT-GT", "GT-FC"]
+
+    print(f"\n{'='*60}")
+    print("  THERMAL BALANCE SUMMARY — all configurations")
+    print(f"{'='*60}")
+    print(f"  Weights: Cruise 40%  |  Climb 40%  |  OEI (worst case) 20%")
+    print(f"{'='*60}")
+    with pd.option_context("display.float_format", "{:.3f}".format):
+        print(summary[["Design", "CruiseRatio", "ClimbRatio", "OEIRatio",
+                        "FinalRatio", "FinalThermalScore"]].to_string(index=False))
