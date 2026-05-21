@@ -243,7 +243,7 @@ def run_class_ii(
         drag_bd = DragEstimation(drag_inp).compute()
 
         # Mission power -> LH2 fuel mass
-        mis_bd = MissionPower(cfg_iter, drag_bd, MTOW, S_ref=S_ref).compute()
+        mis_bd = MissionPower(cfg_iter, drag_bd, config=config, MTOW=MTOW, S_ref=S_ref).compute()
         W_fuel = mis_bd.m_LH2_total
         P_max_kw = mis_bd.P_max / 1000
         P_cruise_kw = mis_bd.P_cruise_shaft / 1000

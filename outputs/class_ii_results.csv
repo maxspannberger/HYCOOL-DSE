@@ -1,11 +1,11 @@
 Section,Parameter,Value
-Summary,MTOW [kg],33518.4
-Summary,MZFW [kg],32900.7
-Summary,W_empty (OEW) [kg],17400.7
-Summary,W_fuel (LH2) [kg],617.792
+Summary,MTOW [kg],33538.3
+Summary,MZFW [kg],33141.6
+Summary,W_empty (OEW) [kg],17641.6
+Summary,W_fuel (LH2) [kg],396.727
 Summary,W_payload [kg],10000
 Summary,W_fixed [kg],5500
-Summary,Cruise L/D [-],17.2428
+Summary,Cruise L/D [-],17.2598
 Summary,CL_cruise [-],0.280647
 Summary,iterations [-],9
 Summary,converged [-],True
@@ -35,54 +35,54 @@ Tail Sizing (initial),Sa_Sref,0.027
 Tail Sizing (initial),p_achieved,0.177541
 Tail Sizing (initial),p_required,0.0747998
 Tail Sizing (initial),roll_ok,True
-Tail Sizing (rechecked w/ T_TO),S_h,14.5986
-Tail Sizing (rechecked w/ T_TO),S_v,18.548
-Tail Sizing (rechecked w/ T_TO),b_h,8.10517
-Tail Sizing (rechecked w/ T_TO),b_v,5.61531
-Tail Sizing (rechecked w/ T_TO),S_h_stability,14.5986
-Tail Sizing (rechecked w/ T_TO),S_h_control,4.12226
+Tail Sizing (rechecked w/ T_TO),S_h,14.6116
+Tail Sizing (rechecked w/ T_TO),S_v,18.5554
+Tail Sizing (rechecked w/ T_TO),b_h,8.10878
+Tail Sizing (rechecked w/ T_TO),b_v,5.61642
+Tail Sizing (rechecked w/ T_TO),S_h_stability,14.6116
+Tail Sizing (rechecked w/ T_TO),S_h_control,4.12593
 Tail Sizing (rechecked w/ T_TO),S_h_driver,stability (V_h)
-Tail Sizing (rechecked w/ T_TO),S_v_stability,14.4804
-Tail Sizing (rechecked w/ T_TO),S_v_control,18.548
+Tail Sizing (rechecked w/ T_TO),S_v_stability,14.4933
+Tail Sizing (rechecked w/ T_TO),S_v_control,18.5554
 Tail Sizing (rechecked w/ T_TO),S_v_driver,control (OEI rudder)
 Tail Sizing (rechecked w/ T_TO),V_h,0.95
-Tail Sizing (rechecked w/ T_TO),V_v,0.12809
+Tail Sizing (rechecked w/ T_TO),V_v,0.128027
 Tail Sizing (rechecked w/ T_TO),V_h_ok,True
 Tail Sizing (rechecked w/ T_TO),V_v_ok,True
-Tail Sizing (rechecked w/ T_TO),S_elevator,4.52558
+Tail Sizing (rechecked w/ T_TO),S_elevator,4.52961
 Tail Sizing (rechecked w/ T_TO),Se_Sh,0.31
-Tail Sizing (rechecked w/ T_TO),S_rudder,6.49181
+Tail Sizing (rechecked w/ T_TO),S_rudder,6.49438
 Tail Sizing (rechecked w/ T_TO),Sr_Sv,0.35
-Tail Sizing (rechecked w/ T_TO),M_engine,2.692181e+05
-Tail Sizing (rechecked w/ T_TO),M_rudder,2.692181e+05
+Tail Sizing (rechecked w/ T_TO),M_engine,2.693246e+05
+Tail Sizing (rechecked w/ T_TO),M_rudder,2.693246e+05
 Tail Sizing (rechecked w/ T_TO),OEI_ok,True
-Tail Sizing (rechecked w/ T_TO),S_aileron,2.3294
+Tail Sizing (rechecked w/ T_TO),S_aileron,2.33078
 Tail Sizing (rechecked w/ T_TO),Sa_Sref,0.027
-Tail Sizing (rechecked w/ T_TO),p_achieved,0.172739
+Tail Sizing (rechecked w/ T_TO),p_achieved,0.172688
 Tail Sizing (rechecked w/ T_TO),p_required,0.0747998
 Tail Sizing (rechecked w/ T_TO),roll_ok,True
-Drag Breakdown (cruise),CD0_wing,0.00519544
-Drag Breakdown (cruise),CD0_htail,7.729179e-04
-Drag Breakdown (cruise),CD0_vtail,7.007301e-04
-Drag Breakdown (cruise),CD0_fus,0.00575658
+Drag Breakdown (cruise),CD0_wing,0.00519531
+Drag Breakdown (cruise),CD0_htail,7.724590e-04
+Drag Breakdown (cruise),CD0_vtail,7.003141e-04
+Drag Breakdown (cruise),CD0_fus,0.00574247
 Drag Breakdown (cruise),CD_misc,1.06
-Drag Breakdown (cruise),CD_i,0.00310501
+Drag Breakdown (cruise),CD_i,0.003105
 Drag Breakdown (cruise),CD_wL,0
 Drag Breakdown (cruise),CD_wave,0
-Drag Breakdown (cruise),e,0.807436
+Drag Breakdown (cruise),e,0.807439
 Drag Breakdown (cruise),CL_cruise,0.280647
-Drag Breakdown (cruise),"CD0 (total, with misc factor) [-]",0.0131712
-Drag Breakdown (cruise),CD_lift_dep [-],0.00310501
-Drag Breakdown (cruise),CD_total [-],0.0162762
-Drag Breakdown (cruise),L_over_D [-],17.2428
-Weight Breakdown,W_wing,4034.39
+Drag Breakdown (cruise),"CD0 (total, with misc factor) [-]",0.0131552
+Drag Breakdown (cruise),CD_lift_dep [-],0.003105
+Drag Breakdown (cruise),CD_total [-],0.0162602
+Drag Breakdown (cruise),L_over_D [-],17.2598
+Weight Breakdown,W_wing,4056.92
 Weight Breakdown,W_htail,301.229
 Weight Breakdown,W_vtail,314.711
-Weight Breakdown,W_fus,5667.78
-Weight Breakdown,W_lg,1481.43
-Weight Breakdown,W_sc,778.053
-Weight Breakdown,W_engine,4823.06
-Weight Breakdown,W_total_prop,5205.32
+Weight Breakdown,W_fus,6379.65
+Weight Breakdown,W_lg,1482.25
+Weight Breakdown,W_sc,778.361
+Weight Breakdown,W_engine,4328.5
+Weight Breakdown,W_total_prop,4573.97
 Weight Breakdown,W_turbine,0
 Weight Breakdown,W_battery,0
 Weight Breakdown,W_fc,0
@@ -93,7 +93,7 @@ Weight Breakdown,W_generator,0
 Weight Breakdown,W_motor,0
 Weight Breakdown,W_cable,0
 Weight Breakdown,W_pipe,0
-Weight Breakdown,W_h2_tank,382.259
+Weight Breakdown,W_h2_tank,245.475
 Weight Breakdown,rho_turb,0
 Weight Breakdown,rho_bat,0
 Weight Breakdown,rho_fc,0
@@ -104,61 +104,61 @@ Weight Breakdown,rho_dc_dc,0
 Weight Breakdown,rho_dc_ac,0
 Weight Breakdown,rho_cable,0
 Weight Breakdown,rho_pipe,0
-Weight Breakdown,P_TO_KW,6293.65
-Weight Breakdown,P_max_KW,6293.65
-Weight Breakdown,P_cruise_KW,3953.18
-Weight Breakdown,P_TO_OEI_KW,3146.83
+Weight Breakdown,P_TO_KW,6297.39
+Weight Breakdown,P_max_KW,6297.39
+Weight Breakdown,P_cruise_KW,3951.78
+Weight Breakdown,P_TO_OEI_KW,3148.69
 Weight Breakdown,P_climb_KW,0
 Weight Breakdown,P_reserve_KW,0
-Weight Breakdown,P_primary_KW,4493.58
-Weight Breakdown,P_secondary_KW,3146.83
-Weight Breakdown,W_fuel,617.792
-Weight Breakdown,W_primary,638.017
-Weight Breakdown,W_secondary,2206
+Weight Breakdown,P_primary_KW,4492.77
+Weight Breakdown,P_secondary_KW,1804.62
+Weight Breakdown,W_fuel,396.727
+Weight Breakdown,W_primary,1615.38
+Weight Breakdown,W_secondary,1265.08
 Weight Breakdown,grav_density,0.64
 Weight Breakdown,configuration,1
-Weight Breakdown,total_prop_efficiency,0.400566
-Weight Breakdown,climb_efficiency,0.472317
-Weight Breakdown,cruise_efficiency,0.3843
+Weight Breakdown,total_prop_efficiency,0.522493
+Weight Breakdown,climb_efficiency,0.616369
+Weight Breakdown,cruise_efficiency,0.501215
 Weight Breakdown,t_cruise,"(0.0,)"
 Weight Breakdown,t_climb,"(0.0,)"
 Weight Breakdown,t_reserve,"(0.0,)"
-Weight Breakdown,bt_charging_ratio,0.136702
-Weight Breakdown,W_structure [kg],12577.6
-Weight Breakdown,W_empty (OEW) [kg],17400.7
-Mission Power & Fuel,P_cruise_shaft,3.953184e+06
-Mission Power & Fuel,P_reserve_shaft,1.648539e+06
-Mission Power & Fuel,P_climb_shaft,5.629692e+06
+Weight Breakdown,bt_charging_ratio,0.136902
+Weight Breakdown,W_structure [kg],13313.1
+Weight Breakdown,W_empty (OEW) [kg],17641.6
+Mission Power & Fuel,P_cruise_shaft,3.951778e+06
+Mission Power & Fuel,P_reserve_shaft,1.649271e+06
+Mission Power & Fuel,P_climb_shaft,5.630530e+06
 Mission Power & Fuel,P_TO_shaft,2.592000e+06
-Mission Power & Fuel,mdot_cruise,0.082358
-Mission Power & Fuel,mdot_reserve,0.0343446
-Mission Power & Fuel,mdot_climb,0.117285
+Mission Power & Fuel,mdot_cruise,0.0329315
+Mission Power & Fuel,mdot_reserve,0.0137439
+Mission Power & Fuel,mdot_climb,0.0469211
 Mission Power & Fuel,t_cruise,4826.25
 Mission Power & Fuel,t_reserve,2700
 Mission Power & Fuel,t_climb,1000
-Mission Power & Fuel,m_LH2_cruise,397.481
-Mission Power & Fuel,m_LH2_reserve,92.7303
-Mission Power & Fuel,m_LH2_climb,117.285
-Mission Power & Fuel,m_LH2_TO_taxi,10.2953
+Mission Power & Fuel,m_LH2_cruise,305.646
+Mission Power & Fuel,m_LH2_reserve,37.1086
+Mission Power & Fuel,m_LH2_climb,46.9211
+Mission Power & Fuel,m_LH2_TO_taxi,7.05133
 Mission Power & Fuel,CL_cruise,0.307164
 Mission Power & Fuel,CL_reserve,1.55833
 Mission Power & Fuel,CL_climb,0.364391
-Mission Power & Fuel,LD_cruise,18.1854
-Mission Power & Fuel,LD_reserve,14.3092
-Mission Power & Fuel,LD_climb,19.7977
+Mission Power & Fuel,LD_cruise,18.2027
+Mission Power & Fuel,LD_reserve,14.3113
+Mission Power & Fuel,LD_climb,19.815
 Mission Power & Fuel,V_reserve_TAS,64.5889
 Mission Power & Fuel,V_climb_TAS,157.395
-Mission Power & Fuel,m_LH2_total [kg],617.792
-Mission Power & Fuel,"P_max (shaft, across phases) [W]",5.629692e+06
-Power & Thrust Sizing,P_TO_total,6.293735e+06
-Power & Thrust Sizing,P_TO_per_engine,3.146867e+06
-Power & Thrust Sizing,P_from_climb,5.629692e+06
-Power & Thrust Sizing,P_from_CS25_121,6.293735e+06
+Mission Power & Fuel,m_LH2_total [kg],396.727
+Mission Power & Fuel,"P_max (shaft, across phases) [W]",5.630530e+06
+Power & Thrust Sizing,P_TO_total,6.297470e+06
+Power & Thrust Sizing,P_TO_per_engine,3.148735e+06
+Power & Thrust Sizing,P_from_climb,5.630530e+06
+Power & Thrust Sizing,P_from_CS25_121,6.297470e+06
 Power & Thrust Sizing,driving_case,CS-25.121 second segment
-Power & Thrust Sizing,T_per_engine_V2,37771
+Power & Thrust Sizing,T_per_engine_V2,37793.5
 Power & Thrust Sizing,V_2,58.32
 Power & Thrust Sizing,LD_takeoff,11
 Power & Thrust Sizing,gamma_min,0.024
-Power & Thrust Sizing,P_total_OEI,3.146867e+06
-Power & Thrust Sizing,T_static_total,1.076872e+05
-Power & Thrust Sizing,T_static_per_engine,53843.6
+Power & Thrust Sizing,P_total_OEI,3.148735e+06
+Power & Thrust Sizing,T_static_total,1.077298e+05
+Power & Thrust Sizing,T_static_per_engine,53864.9
