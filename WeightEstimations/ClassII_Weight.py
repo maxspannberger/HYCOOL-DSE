@@ -512,6 +512,7 @@ class weightEstimation:
         pipe_len = cfg_data["lengths"]["pipe"]
         cable_len = cfg_data["lengths"]["cable"]
         total_mass = 0.0
+        nacelle_factor=1/0.75       #gas turbine correction factor to account for nacelle mass add on
 
         for comp_key in component_list:
             if comp_key not in comp:
@@ -544,7 +545,7 @@ class weightEstimation:
                     efficiency=GT_BAT_efficiency(t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
 
                     if comp_key == "gt_hex":
-                        mass = P_req_primary/efficiency["GT-MOT-eff"] / pd
+                        mass = P_req_primary/efficiency["GT-MOT-eff"] / pd * nacelle_factor
                         W_primary = mass
                     elif comp_key == "hts_gen":
                         mass = P_req_primary/efficiency["GEN_eff"] / pd
@@ -639,7 +640,7 @@ class weightEstimation:
                                           g.P_TO_OEI_KW)
                     
                     if comp_key == "gt_hex": #or comp_key == "ac_dc" or comp_key == "hts_gen" or comp_key == "hts_pow" or comp_key == "dc_ac":
-                        mass = P_req_primary / pd / efficiency["GT-MOT-eff"]
+                        mass = P_req_primary / pd / efficiency["GT-MOT-eff"] *nacelle_factor
                         if comp_key == "gt_hex":
                             W_primary = mass        #gt_hex is in there twice but taken into account in W_primary
                             W_secondary = mass
@@ -679,7 +680,7 @@ class weightEstimation:
                     # secondary power source requirement is to sustain TO 
                     #P_req_secondary = max((P_req_tot - P_req_primary), (g.P_TO_OEI_KW-(1/2)*P_req_primary))
                     if comp_key == "gt_hex": #or comp_key == "hts_gen" or comp_key == "ac_dc":
-                        mass = (P_req_primary/2) / pd / efficiency["GT-MOT-eff"]
+                        mass = (P_req_primary/2) / pd / efficiency["GT-MOT-eff"] * nacelle_factor
                         if comp_key == "gt_hex":
                             W_primary = mass*2
                     elif comp_key == "hts_gen":
