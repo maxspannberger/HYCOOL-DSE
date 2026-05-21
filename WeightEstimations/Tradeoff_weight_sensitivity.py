@@ -47,7 +47,7 @@ def calculate_static_performance(
 # =============================================================================
 # Calculate the baseline weights for the trade-off
 # =============================================================================
-def assign_scores(sizing_outputs, noise_scores):
+def assign_scores(sizing_outputs, noise_weights):
     thermal_score = TRL_score = mass_score = eff_score = climate_score = 0
 
     prop_frac = sizing_outputs["prop_frac"]
@@ -77,11 +77,11 @@ def assign_scores(sizing_outputs, noise_scores):
 
     # Dot product calculation for final trade-off score
     overall_score = round(
-        noise_scores[0] * thermal_score + \
-        noise_scores[1] * TRL_score + \
-        noise_scores[2] * mass_score + \
-        noise_scores[3] * eff_score + \
-        noise_scores[4] * climate_score, 3)
+        noise_weights[0] * thermal_score + \
+        noise_weights[1] * TRL_score + \
+        noise_weights[2] * mass_score + \
+        noise_weights[3] * eff_score + \
+        noise_weights[4] * climate_score, 3)
     
     return {
         "mass": mass_score,
@@ -105,13 +105,13 @@ def weight_sensitivity_analysis(performance, n_repeats=1000, ssd_fraction=0.7, p
         # Generate random noice scores. The noice is clipped to the domain 
         # (0, 1) and is normalized to add to 1
         noise = np.random.normal(0.0, ssd_fraction * initial_weights)
-        raw_noise_scores = initial_weights + noise
-        clipped_noise_scores = np.clip(raw_noise_scores, 0, 1)
-        noise_scores = clipped_noise_scores / np.sum(clipped_noise_scores)
+        raw_noise_weights = initial_weights + noise
+        clipped_noise_weights = np.clip(raw_noise_weights, 0, 1)
+        noise_weights = clipped_noise_weights / np.sum(clipped_noise_weights)
 
-        # Score all configurations using the weight of the current configuration
+        # Score all configurations using the weight of the current run
         for design_name in performance:
-            scores = assign_scores(performance[design_name], noise_scores)
+            scores = assign_scores(performance[design_name], noise_weights)
             tradeoff_history[design_name].append(scores["overall"])
 
     # Compute ssd and mean per configuration and print
