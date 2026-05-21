@@ -93,7 +93,7 @@ def single_sensitivity_run(
             TRL_year = TRL_per_design(TRL, config=config)
 
             results[design_names[config-1]] = {
-                "OEW": class_II_results.W_empty,
+                # "OEW": class_II_results.W_empty,
                 "prop_frac": class_II_results.W_prop / class_II_results.W_empty,
                 "eff": class_II_results.total_prop_efficiency,
                 "atr_ratio": 1 - climate_results[design_names[config-1]] / climate_results["Baseline"],
@@ -207,9 +207,9 @@ def stats_calculator(sensitivity_results, n_repeats=1):
 
 
 def assign_scores(sizing_outputs):
-    thermal_score = TRL_score = mass_score = eff_score = climate_score = 0
+    TMS_score = TRL_score = mass_score = eff_score = climate_score = 0
 
-    OEW = sizing_outputs["OEW"]
+    # OEW = sizing_outputs["OEW"]
     prop_frac = sizing_outputs["prop_frac"]
     eff = sizing_outputs["eff"]
     atr_ratio = sizing_outputs["atr_ratio"]
@@ -268,7 +268,7 @@ def assign_scores(sizing_outputs):
         TRL_score = 1
 
     overall_score = round(
-        0.25 * thermal_score +\
+        0.25 * TMS_score +\
         0.15 * TRL_score +\
         0.25 * mass_score +\
         0.20 * eff_score +\
@@ -276,7 +276,7 @@ def assign_scores(sizing_outputs):
 
     return {
         "mass": mass_score,
-        "thermal": thermal_score,
+        "thermal": TMS_score,
         "efficiency": eff_score,
         "climate": climate_score,
         "TRL": TRL_score,
@@ -310,8 +310,11 @@ def get_score_list(tradeoff_table_history, n_repeats=1):
     for table in tradeoff_table_history:
         for config in table:
             if config not in design_scores:
-                design_scores[config] = []
-            design_scores[config].append(table[config]["overall"])
+                design_scores[config] = {}
+            for metric in table[config]:
+                if metric not in design_scores[config]:
+                    design_scores[config][metric] = []
+                design_scores[config][metric].append(table[config][metric])
 
     with open(f"design_score_lists_{n_repeats}_runs.json", "w") as f:
         json.dump(design_scores, f, indent=4)
@@ -324,8 +327,11 @@ def get_score_uncertainties(design_scores, n_repeats=1):
     for config in design_scores:
         if config not in results:
             results[config] = {}
-        results[config]["mean"] = round(mean(design_scores[config]), 4)
-        results[config]["std"] = round(stdev(design_scores[config]), 4)
+        for metric in design_scores[config]:
+            if metric not in results[config]:
+                results[config][metric] = {}
+            results[config][metric]["mean"] = round(mean(design_scores[config][metric]), 4)
+            results[config][metric]["std"] = round(stdev(design_scores[config][metric]), 4)
 
     with open(f"tradeoff_scores_stats_{n_repeats}_runs.json", "w") as f:
         json.dump(results, f, indent=4)
@@ -335,7 +341,9 @@ def get_score_uncertainties(design_scores, n_repeats=1):
 
 def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False):
     fig, ax = plt.subplots()
-    ax.boxplot(design_scores.values(), tick_labels=design_scores.keys())
+    ticks = list(design_scores.keys())
+    values = [design_scores[tick]["overall"] for tick in ticks]
+    ax.boxplot(values, tick_labels=ticks)
 
     ax.set_ylim((0, 5))
     if n_skipped > 0:
@@ -349,6 +357,10 @@ def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False):
     
     if show:
         plt.show()
+
+
+def perform_sensitivity_analysis(cfg, n_repeats):
+    pass
 
 
 if __name__ == "__main__":
