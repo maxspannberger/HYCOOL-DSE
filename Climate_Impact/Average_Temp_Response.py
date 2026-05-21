@@ -197,6 +197,10 @@ def build_designs(eff):
             'cruise': {'source': 'Jet', 'eta': 0.33},
             'to_climb': {'primary': 'Jet', 'eta_primary': 0.33, 'p_primary': eff['D_P_gt_climb'] / 2, 'secondary': 'Jet', 'eta_secondary': 0.33, 'p_secondary': eff['D_P_gt_climb'] / 2}
         },
+        'GT-GT-BAT': {
+            'cruise': {'source': 'GT', 'eta': eff['A_cruise_eff_c']},
+            'to_climb': {'primary': 'GT', 'eta_primary': eff['A_gt_eff'], 'p_primary': eff['A_P_gt'], 'secondary': 'BAT', 'eta_secondary': eff['A_bt_eff_d'], 'p_secondary': eff['A_P_bt_discharge']}
+        },
     }
 source_props = {
     'GT': {'nox': True, 'h2o': True, 'contrail': True, 'co2': False},
