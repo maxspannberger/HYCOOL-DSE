@@ -132,6 +132,20 @@ def TMS_input(config, comp=comp_params, class_II_results=None):
         POWER_MAP["gt_oei"] = P_OEI / efficiencies["LH2-GT-MOT_eff"]
         POWER_MAP["gt_res"] = P_res / efficiencies["LH2-GT-MOT_eff"]
 
+    elif config == 5:
+        efficiencies = GT_BAT_efficiency(comp, t_climb, t_cruise, P_cl*1000, P_cr*1000)
+        POWER_MAP["gt_cl"] = 0.001*efficiencies["GT_P_opt"]*efficiencies["GT_throttle_climb"] * efficiencies["GT-MOT_eff"]/efficiencies["LH2-GT-MOT_eff"]
+        POWER_MAP["gt_cr"] = 0.001*efficiencies["GT_P_opt"]*efficiencies["GT_throttle_cruise"] * efficiencies["GT-MOT_eff"]/efficiencies["LH2-GT-MOT_eff"]
+        POWER_MAP["bat"] = 0.001*efficiencies["BAT_P_discharge"]
+
+        POWER_MAP["bat_rem"] = POWER_MAP["bat"] / 2
+        P_turbine_out_OEI = P_OEI - POWER_MAP["bat_rem"]*efficiencies["BAT-MOT_eff"]
+        throttle_OEI, eff_factor_OEI = get_throttle(efficiencies["GT-MOT_eff"]*efficiencies["GT_P_opt"]/(1000*P_turbine_out_OEI))
+        POWER_MAP["gt_oei"] = 0.001*efficiencies["GT_P_opt"]*throttle_OEI * efficiencies["GT-MOT_eff"]/efficiencies["LH2-GT-MOT_eff"]
+        POWER_MAP["gt_rem"] = POWER_MAP["gt_cl"] / 2
+        POWER_MAP["bat_oei"] = (P_OEI - POWER_MAP["gt_rem"]*efficiencies["LH2-GT-MOT_eff"]) / efficiencies["BAT-MOT_eff"]
+        POWER_MAP["gt_res"] = P_res / efficiencies["LH2-GT-MOT_eff"]
+
     else:
         pass
 
@@ -280,6 +294,47 @@ def compute_states(POWER_MAP, config) -> dict:
             "power_kw": POWER_MAP["gt_res"],
             "system": "gt",
         }
+    elif config == 5:
+        # 2. p_extra from bat
+        states["p_extra_bat"] = {
+            "power_kw": POWER_MAP["bat"],
+            "system": "bat",
+        }
+        # 11. p_cr for gt
+        states["p_cr_gt"] = {
+            "power_kw": POWER_MAP["gt_cr"],
+            "system": "gt",
+        }
+        # 12. p_cl for gt
+        states["p_cl_gt"] = {
+            "power_kw": POWER_MAP["gt_cl"],
+            "system": "gt",
+        }
+        # 5. p_oei from bat
+        states["p_oei_bat"] = {
+            "power_kw": POWER_MAP["bat_oei"],
+            "system": "bat",
+        }
+        # 4. p_oei from gt
+        states["p_oei_gt"] = {
+            "power_kw": POWER_MAP["gt_oei"],
+            "system": "gt",
+        }
+        # ?. p_rem from bat
+        states["p_rem_bat"] = {
+            "power_kw": POWER_MAP["bat_rem"],
+            "system": "bat",
+        }
+        # ?. p_rem from bat
+        states["p_rem_gt"] = {
+            "power_kw": POWER_MAP["gt_rem"],
+            "system": "gt",
+        }
+        # ?. p_res from gt
+        states["p_res_gt"] = {
+            "power_kw": POWER_MAP["gt_res"],
+            "system": "gt",
+        }
 
     else:
         pass
@@ -378,6 +433,10 @@ def compute_piping_losses(state_keys, states, config: int, flight_condition: str
         half_length = 16.0
         # Additional segment (14 m) carries fuel cell mass flow in climb and OEI
         extra_length = 14.0 if flight_condition in ("Climb", "OEI") else 0.0
+    elif config == 5:
+        full_length = 18.0
+        half_length = 16.0
+        extra_length = 0.0
     else:
         # Unknown design: no piping losses
         return 0.0
@@ -452,12 +511,12 @@ def design_phase_table(config, comp=comp_params, class_II_results=None) -> 'pd.D
         design_conditions.append({
             "design": 1,
             "flight_condition": "OEI_bat",
-            "states": ["p_oei_bat"],
+            "states": ["p_oei_gt", "p_rem_bat"],
         })
         design_conditions.append({
             "design": 1,
             "flight_condition": "OEI_gt",
-            "states": ["p_oei_gt", "p_rem_bat"],
+            "states": ["p_oei_bat"],
         })
 
     elif config == 2:
@@ -482,12 +541,12 @@ def design_phase_table(config, comp=comp_params, class_II_results=None) -> 'pd.D
         design_conditions.append({
             "design": 2,
             "flight_condition": "OEI_fc",
-            "states": ["p_oei_fc"],
+            "states": ["p_oei_bat", "p_rem_fc"],
         })
         design_conditions.append({
             "design": 2,
             "flight_condition": "OEI_bat",
-            "states": ["p_oei_bat", "p_rem_fc"],
+            "states": ["p_oei_fc"],
         })
 
     elif config == 3:
@@ -539,13 +598,45 @@ def design_phase_table(config, comp=comp_params, class_II_results=None) -> 'pd.D
         design_conditions.append({
             "design": 4,
             "flight_condition": "OEI_gt",
-            "states": ["p_oei_gt"],
+            "states": ["p_oei_fc", "p_rem_gt"],
         })
         design_conditions.append({
             "design": 4,
             "flight_condition": "OEI_fc",
-            "states": ["p_oei_fc", "p_rem_gt"],
+            "states": ["p_oei_gt"],
         })
+
+    elif config == 5:
+        # Design 5
+        design_conditions.append({
+            "design": 5,
+            "flight_condition": "Cruise",
+            "states": ["p_cr_gt"],
+        })
+        design_conditions.append({
+            "design": 5,
+            "flight_condition": "Climb",
+            "states": ["p_cl_gt", "p_extra_bat"],
+        })
+        design_conditions.append({
+            "design": 5,
+            "flight_condition": "Reserve",
+            "states": ["p_res_gt"],
+        })
+        # For OEI in design 1 we assume the remaining gas turbine continues to
+        # supply power. If desired, change 'p_oei_gt' to 'p_oei_bat' to model
+        # battery‑only operation.
+        design_conditions.append({
+            "design": 5,
+            "flight_condition": "OEI_bat",
+            "states": ["p_oei_gt", "p_rem_bat"],
+        })
+        design_conditions.append({
+            "design": 5,
+            "flight_condition": "OEI_gt",
+            "states": ["p_oei_bat", "p_rem_gt"],
+        })
+
 
     else:
         pass
@@ -678,7 +769,7 @@ if __name__ == "__main__":
     comp = comp_params
 
     all_scores = []
-    for config in [1, 2, 3, 4]:
+    for config in [1, 2, 3, 4, 5]:
         table = design_phase_table(config, comp=comp)
         scores = design_score_table(table)
 
@@ -691,7 +782,7 @@ if __name__ == "__main__":
         all_scores.append(scores)
 
     summary = pd.concat(all_scores, ignore_index=True)
-    summary["Design"] = ["GT-BAT", "FC-BAT", "GT-GT", "GT-FC"]
+    summary["Design"] = ["GT-BAT", "FC-BAT", "GT-GT", "GT-FC", "GT-GT-BAT"]
 
     print(f"\n{'='*60}")
     print("  THERMAL BALANCE SUMMARY — all configurations")
