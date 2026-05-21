@@ -77,6 +77,16 @@ class ClassIIResult:
     total_prop_efficiency: float = 1.0
     bt_charging_ratio: float = 0.0
 
+    P_TO_KW: float = 0.0
+    P_TO_OEI_KW: float = 0.0
+    P_cruise_KW: float = 0.0
+    P_max_KW: float = 0.0
+    P_climb_KW: float = 0.0
+    P_reserve_KW: float = 0.0
+
+    t_climb: float = 0.0
+    t_cruise: float = 0.0
+
     def summary(self):
         status_color = "green" if self.converged else "red"
         main_info = (
@@ -202,7 +212,7 @@ def run_class_ii(
     iteration_log: list[dict] = []
 
     if config is None:
-        config = int(input("Enter config for power unit weight estimation (1-4): "))
+        config = int(input("Enter config for power unit weight estimation (1-5): "))
 
     if config == 1:
         hump_tank = True
@@ -233,7 +243,7 @@ def run_class_ii(
         drag_bd = DragEstimation(drag_inp).compute()
 
         # Mission power -> LH2 fuel mass
-        mis_bd = MissionPower(cfg_iter, drag_bd, MTOW, S_ref=S_ref).compute()
+        mis_bd = MissionPower(cfg_iter, drag_bd, config=config, MTOW=MTOW, S_ref=S_ref).compute()
         W_fuel = mis_bd.m_LH2_total
         P_max_kw = mis_bd.P_max / 1000
         P_cruise_kw = mis_bd.P_cruise_shaft / 1000
@@ -373,6 +383,14 @@ def run_class_ii(
         tail_rechecked = tail_bd_recheck,
         iteration_log  = iteration_log,
         total_prop_efficiency = wt_bd.total_prop_efficiency,
+        P_TO_KW     = P_TO_kW,
+        P_TO_OEI_KW = P_TO_OEI_kW,
+        P_cruise_KW = P_cruise_kw,
+        P_max_KW    = P_max_kw,
+        P_climb_KW  = P_climb_kW,
+        P_reserve_KW= P_reserve_kw,
+        t_climb=t_climb,
+        t_cruise=t_cruise
     )
 
 

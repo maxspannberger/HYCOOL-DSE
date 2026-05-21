@@ -85,13 +85,15 @@ def golden_power_search(P_1, P_2, t_1, t_2):
     a = min(P_1, P_2)
     b = max(P_1, P_2)
    
-    while b - a > 1e-6:
+    i = 0
+    while b - a > 1e-6 and i < 100:
         c = b - (b - a) * invphi
         d = a + (b - a) * invphi
         if find_optimal_point(c, P_1, P_2, t_1, t_2) > find_optimal_point(d, P_1, P_2, t_1, t_2):
             b = d
         else:  # f(c) > f(d) to find the maximum
             a = c
+        i += 1
 
     return (b + a) / 2
 
@@ -176,7 +178,7 @@ def GT_BAT_efficiency(
     error = np.inf
     climb_eff_factor = 1.0
     cruise_eff_factor = 1.0
-    bt_c_frac = t_climb/t_charge
+    bt_c_frac = min(t_climb/t_charge, 0.5)
     P_optimal_gt = P_cruise
     i = 0
     while error > 1 and i < 1000:
@@ -227,7 +229,7 @@ def GT_BAT_efficiency(
     results_GT_BAT = {
         "LH2-GT-MOT_eff": gt_eff,
         "LH2-GT-BAT_eff": bt_eff_c,
-        "GT-MOT-eff": gt_eff1,
+        "GT-MOT_eff": gt_eff1,
         "BAT-MOT_eff": bt_eff_d,
         "GEN_eff": gen_eff,
         "ACDC_eff": acdc_eff,
@@ -251,14 +253,15 @@ def GT_BAT_efficiency(
 # =============================================================================
 # Fuel Cell + Battery powertrain
 # =============================================================================
-def FC_BAT_efficiency(comp: dict,
-    t_charge=1800,
-    cable_efficiency=1.0,
-    show=False,
+def FC_BAT_efficiency(
+    comp: dict,
     t_climb: Optional[float] = None,
     t_cruise: Optional[float] = None,
     P_climb: Optional[float] = None,
     P_cruise: Optional[float] = None,
+    t_charge=1800,
+    cable_efficiency=1.0,
+    show=False,
 ):
 
     only_fc_efficiency = comp["fc_with_hex"].efficiency
@@ -305,7 +308,7 @@ def FC_BAT_efficiency(comp: dict,
 
     # iterate to obtain battery charge fraction and optimal power
     error = np.inf
-    bt_c_frac = t_climb/t_charge
+    bt_c_frac = min(t_climb/t_charge, 0.5)
     i = 0
     while error > 1e-8 and i < 1000:
         bt_c_frac_old = bt_c_frac
@@ -371,12 +374,12 @@ def FC_BAT_efficiency(comp: dict,
 # =============================================================================
 def GT_GT_efficiency(
     comp: dict,
-    cable_efficiency=1.0,
-    show=False,
     t_climb: Optional[float] = None,
     t_cruise: Optional[float] = None,
     P_climb: Optional[float] = None,
     P_cruise: Optional[float] = None,
+    cable_efficiency=1.0,
+    show=False,
 ):
 
     only_gt_efficiency = comp["gt_hex"].efficiency
@@ -430,7 +433,7 @@ def GT_GT_efficiency(
 
     results_GT_GT = {
         "LH2-GT-MOT_eff": gt_eff,
-        "GT-MOT-eff": gt_eff1,
+        "GT-MOT_eff": gt_eff1,
         "Climb_eff": climb_eff,
         "Cruise_average_eff": cruise_eff,
         "Total_eff": gt_gt_eff,
@@ -445,12 +448,15 @@ def GT_GT_efficiency(
 # =============================================================================
 # Gas Turbine + Fuel Cell powertrain
 # =============================================================================
-def GT_FC_efficiency(comp: dict, P_OEI_out=2.6e6, cable_efficiency=1.0,
-    show=False,
+def GT_FC_efficiency(
+    comp: dict,
     t_climb: Optional[float] = None,
     t_cruise: Optional[float] = None,
     P_climb: Optional[float] = None,
     P_cruise: Optional[float] = None,
+    P_OEI_out=2.6e6, 
+    cable_efficiency=1.0,
+    show=False,
 ):
 
     only_gt_efficiency = comp["gt_hex"].efficiency
@@ -527,12 +533,12 @@ def GT_FC_efficiency(comp: dict, P_OEI_out=2.6e6, cable_efficiency=1.0,
     results_GT_FC = {
         "LH2-GT-MOT_eff": gt_eff,
         "LH2-FC-MOT_eff": fc_eff,
-        "GT-MOT-eff": gt1_eff,
-        "FC-MOT-eff": fc_eff1,
+        "GT-MOT_eff": gt1_eff,
+        "FC-MOT_eff": fc_eff1,
         "Climb_eff": climb_eff,
         "Cruise_average_eff": cruise_eff,
         "Total_eff": gt_fc_eff,
-        "FC_P": 0.5 * P_fc * only_gt_efficiency,
+        "FC_P": 0.5 * P_fc * only_fc_efficiency,
         "GT_P_opt": 0.5 * P_optimal_gt * only_gt_efficiency,
         "GT_throttle_climb": climb_throttle,
         "GT_throttle_cruise": cruise_throttle

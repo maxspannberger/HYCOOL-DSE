@@ -122,10 +122,13 @@ class MissionPower:
         drag_bd:    DragBreakdown,
         MTOW:       float,
         S_ref:      Optional[float] = None,
+        config:     int = 1
     ):
         self.cfg     = cfg
         self.drag    = drag_bd
         self.MTOW    = MTOW
+        self.config   = config
+       
         # S_ref is updated each MTOW iteration via S_ref = MTOW*g/Loading
         self.S_ref   = S_ref if S_ref is not None else cfg.S_ref
 
@@ -172,7 +175,7 @@ class MissionPower:
 
     def _mdot(self, P_shaft: float) -> float:
         """Convert shaft power to fuel mass flow."""
-        P_fuel = P_shaft / self.cfg.eta_thermal
+        P_fuel = P_shaft
         return P_fuel / self.cfg.LHV_fuel
 
     # ---------- per-phase ------------------------------------------------
@@ -186,7 +189,18 @@ class MissionPower:
         P, CL, LD = self._shaft_power_level(W_cruise, V, rho)
         mdot      = self._mdot(P)
         t         = cfg.range_m / V
-        m         = mdot * t
+        
+       
+        
+
+        config=self.config
+        if config==1:
+            m = mdot * t *1/0.4         #needs to be adjusted according to proper calculation
+        elif config==2:            m = mdot * t * 1/0.52
+        elif config==3:            m = mdot * t * 1/0.37
+        elif config==4:            m = mdot * t * 1/0.47
+        elif config==5:            m = mdot * t * 1/0.41
+
         return P, mdot, t, m, CL, LD
 
     def _reserve(self) -> tuple[float, float, float, float, float, float, float]:

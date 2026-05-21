@@ -91,6 +91,7 @@ class ClassII_Input:
     t_climb: float = 0.0
     t_reserve: float = 0.0
     bt_charging_ratio: float = 0.0
+    mass_margin: float = 1.1
 
 
 
@@ -119,7 +120,8 @@ class ClassII_Input:
         t_reserve: float = 0.0,
         N_engines: float = 0.0,
         base_params: bool = False,
-        bt_charging_ratio: float = 0.0
+        bt_charging_ratio: float = 0.0,
+        mass_margin: float = 1.1
     ) -> "ClassII_Input":
         """
         Build the weight-estimator input from a shared AircraftConfig.
@@ -187,6 +189,7 @@ class ClassII_Input:
             t_reserve = t_reserve,
             N_engines = N_engines,
             bt_charging_ratio = bt_charging_ratio,
+            mass_margin = mass_margin,
         )
 
 
@@ -406,7 +409,7 @@ class weightEstimation:
                 * (1 + np.sqrt(self.b_ref / b_s))
                 * g.n_ult**0.55
                 * ((b_s / g.t_r) / (g.MZFW / g.S_w))**0.3
-                * 1.02)
+                * 1.02) *g.mass_margin
 
     def _htail_weight(self) -> float:
         g     = self.g
@@ -414,7 +417,7 @@ class weightEstimation:
         V_kt  = g.V_dive * 1.94384
         x     = S_ft2**0.2 * V_kt / 1000 / np.sqrt(np.cos(g.sweep_h))
         w_per_area_lb_ft2 = Tail_Interp.get_weight_factor(x)
-        return w_per_area_lb_ft2 * S_ft2 * 0.453592
+        return w_per_area_lb_ft2 * S_ft2 * 0.453592 * g.mass_margin
 
     def _vtail_weight(self) -> float:
         g     = self.g
@@ -427,7 +430,7 @@ class weightEstimation:
             k_v = 1 + 0.15 * g.S_h * g.h_h / (g.S_v * g.b_v)
         else:
             k_v = 1.0
-        return w_per_area_lb_ft2 * S_ft2 * k_v * 0.453592
+        return w_per_area_lb_ft2 * S_ft2 * k_v * 0.453592 * g.mass_margin
 
     def _fuselage_weight(self) -> float:
         g       = self.g
@@ -438,7 +441,7 @@ class weightEstimation:
                    * (1.0 + 1.0 / sigma**2))
         return (g.k_wf
                 * np.sqrt(g.V_dive * g.l_t / (g.b_f + g.h_f))
-                * S_f_wet ** 1.2)
+                * S_f_wet ** 1.2) * g.mass_margin
 
     def _LDG_weight(self) -> float:
         g    = self.g
@@ -448,14 +451,14 @@ class weightEstimation:
             return (c["A"]
                     + c["B"] * g.MTOW**0.75
                     + c["C"] * g.MTOW
-                    + c["D"] * g.MTOW**1.5)
+                    + c["D"] * g.MTOW**1.5) * g.mass_margin
 
         return k_LG * (_leg(self._LG_main) + _leg(self._LG_nose))
 
     def _surface_control_weight(self) -> float:
         g    = self.g
         k_SC = 0.567 if g.has_flap_slat else 0.472
-        return 1.2 * k_SC * g.MTOW ** (2 / 3)
+        return 1.2 * k_SC * g.MTOW ** (2 / 3) * g.mass_margin
 
     def _propulsion_weight(self) -> float:
 
@@ -506,6 +509,13 @@ class weightEstimation:
                 ],
                 "lengths": {"pipe": 48.0, "cable": 19.0},
             },
+            5: {
+                "components": [
+                    "gt_hex", "bt", "hts_gen", "ac_dc", "dc_dc_2", "dc_ac",
+                    "hts_pow", "hts_pow", "cable", "pipe",
+                ],
+                "lengths": {"pipe": 34.0, "cable": 19.0},
+            },
         }
 
         if config not in component_lists:
@@ -516,7 +526,7 @@ class weightEstimation:
         pipe_len = cfg_data["lengths"]["pipe"]
         cable_len = cfg_data["lengths"]["cable"]
         total_mass = 0.0
-        print(g.bt_charging_ratio, g.P_climb_KW)
+        nacelle_factor = 1/0.75 # to account for additional mass of nacelle and integration, estimated as 25% of component mass#
 
         for comp_key in component_list:
             if comp_key not in comp:
@@ -547,7 +557,7 @@ class weightEstimation:
                     efficiency=GT_BAT_efficiency(comp=comp,t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
 
                     if comp_key == "gt_hex":
-                        mass = P_req_primary/efficiency["GT-MOT-eff"] / pd
+                        mass = P_req_primary/efficiency["GT-MOT_eff"] / pd *nacelle_factor
                         W_primary = mass
                     elif comp_key == "hts_gen":
                         mass = P_req_primary/efficiency["GEN_eff"] / pd
@@ -640,7 +650,7 @@ class weightEstimation:
                                           g.P_TO_OEI_KW)
                     
                     if comp_key == "gt_hex": #or comp_key == "ac_dc" or comp_key == "hts_gen" or comp_key == "hts_pow" or comp_key == "dc_ac":
-                        mass = P_req_primary / pd / efficiency["GT-MOT-eff"]
+                        mass = P_req_primary / pd / efficiency["GT-MOT_eff"] *nacelle_factor
                         if comp_key == "gt_hex":
                             W_primary = mass        #gt_hex is in there twice but taken into account in W_primary
                             W_secondary = mass
@@ -680,7 +690,7 @@ class weightEstimation:
                     # secondary power source requirement is to sustain TO 
                     #P_req_secondary = max((P_req_tot - P_req_primary), (g.P_TO_OEI_KW-(1/2)*P_req_primary))
                     if comp_key == "gt_hex": #or comp_key == "hts_gen" or comp_key == "ac_dc":
-                        mass = (P_req_primary/2) / pd / efficiency["GT-MOT-eff"]
+                        mass = (P_req_primary/2) / pd / efficiency["GT-MOT_eff"] *nacelle_factor
                         if comp_key == "gt_hex":
                             W_primary = mass*2
                     elif comp_key == "hts_gen":
@@ -688,7 +698,7 @@ class weightEstimation:
                     elif comp_key == "ac_dc":
                         mass = (P_req_primary/2) / pd / efficiency2["ACDC_eff"]
                     elif comp_key == "fc_with_hex": #or comp_key == "dc_dc_2":
-                        mass = P_req_secondary / pd / efficiency["FC-MOT-eff"]
+                        mass = P_req_secondary / pd / efficiency["FC-MOT_eff"]
                         if comp_key == "fc_with_hex":
                             W_secondary = mass
                     elif comp_key == "dc_dc_2":
@@ -700,6 +710,52 @@ class weightEstimation:
                         max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
                         mass = max_P_per_string / pd 
                 total_mass += mass
+        
+            elif config == 5:
+                if comp_key == "cable":
+                    mass = cable_len * comp[comp_key].mass_per_length
+                elif comp_key == "pipe":
+                    mass = pipe_len * comp[comp_key].mass_per_length   
+                elif comp_key != "cable" and comp_key != "pipe":
+                    pd = comp[comp_key].power_density
+
+                    # maximum power that flows to the motors (most likely takeoff)
+                    P_req_tot = max((g.P_cruise_KW*(1+g.bt_charging_ratio)), 
+                                    g.P_climb_KW, 
+                                    g.P_reserve_KW, 
+                                    g.P_TO_KW)
+
+                    # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
+                    P_req_primary = max(g.P_cruise_KW*(1+g.bt_charging_ratio), 
+                                        g.P_TO_OEI_KW)
+                    
+                    # secondary power source requirement is to sustain TO 
+                    P_req_secondary = max((g.P_TO_KW - P_req_primary),
+                                          (g.P_TO_OEI_KW-(1/2)*P_req_primary))
+
+                    efficiency=GT_BAT_efficiency(comp=comp,t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
+
+                    if comp_key == "gt_hex":
+                        mass = P_req_primary/efficiency["GT-MOT_eff"] / pd *nacelle_factor
+                        W_primary = mass
+                    elif comp_key == "hts_gen":
+                        mass = P_req_primary/efficiency["GEN_eff"] / pd
+                    elif comp_key == "ac_dc":
+                        mass = P_req_primary/efficiency["ACDC_eff"] / pd
+                    elif comp_key == "bt":
+                        energy_required_kWh = P_req_secondary/efficiency["BAT-MOT_eff"] * (g.t_climb / 3600)  # Convert seconds to hours
+                        ed = comp[comp_key].energy_density
+                        mass = max(energy_required_kWh / ed, P_req_secondary/efficiency["BAT-MOT_eff"] / pd)
+                        W_secondary = mass
+                    elif comp_key == "dc_dc_2":
+                        mass = P_req_secondary/efficiency["Dcdc_eff"] / pd
+                    elif comp_key == "dc_ac": 
+                        max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
+                        mass = max_P_per_string /efficiency["Dcac_eff"] / pd 
+                    elif comp_key == "hts_pow":
+                        max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
+                        mass = max_P_per_string / pd      
+                total_mass += mass
 
         eff = efficiency["Total_eff"]
         eff_cruise = efficiency["Cruise_average_eff"]
@@ -709,10 +765,10 @@ class weightEstimation:
         else:
             bt_charging_ratio = g.bt_charging_ratio
 
-        return total_mass, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff,eff_climb, eff_cruise, bt_charging_ratio
+        return total_mass * g.mass_margin, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff,eff_climb, eff_cruise, bt_charging_ratio
     
     def _h2_tank_weight(self) -> float:
-        return self.g.W_fuel * (1 / self.g.grav_density - 1)
+        return self.g.W_fuel * (1 / self.g.grav_density - 1)* self.g.mass_margin
 
     def compute(self) -> WeightBreakdown:
         self._validate()
