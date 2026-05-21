@@ -1,15 +1,15 @@
 {
     "GT-BAT": {
         "mass": {
-            "mean": 1.7,
-            "std": 0.483
+            "mean": 1.6,
+            "std": 0.5164
         },
         "thermal": {
             "mean": 3,
             "std": 0.0
         },
         "efficiency": {
-            "mean": 2.6,
+            "mean": 2.4,
             "std": 0.5164
         },
         "climate": {
@@ -17,12 +17,12 @@
             "std": 0.0
         },
         "TRL": {
-            "mean": 1.3,
-            "std": 0.483
+            "mean": 1.4,
+            "std": 0.5164
         },
         "overall": {
-            "mean": 2.19,
-            "std": 0.1997
+            "mean": 2.14,
+            "std": 0.2025
         }
     },
     "FC-BAT": {
@@ -43,12 +43,12 @@
             "std": 0.0
         },
         "TRL": {
-            "mean": 2.3,
-            "std": 0.483
+            "mean": 2.7,
+            "std": 0.6749
         },
         "overall": {
-            "mean": 2.895,
-            "std": 0.1066
+            "mean": 2.955,
+            "std": 0.1343
         }
     },
     "GT-GT": {
@@ -61,20 +61,20 @@
             "std": 0.0
         },
         "efficiency": {
-            "mean": 2.5,
-            "std": 0.527
+            "mean": 2.1,
+            "std": 0.3162
         },
         "climate": {
             "mean": 2,
             "std": 0.0
         },
         "TRL": {
-            "mean": 3.7,
-            "std": 0.6749
+            "mean": 4,
+            "std": 0.0
         },
         "overall": {
-            "mean": 3.355,
-            "std": 0.1571
+            "mean": 3.32,
+            "std": 0.0632
         }
     },
     "GT-FC": {
@@ -87,20 +87,20 @@
             "std": 0.0
         },
         "efficiency": {
-            "mean": 4.6,
-            "std": 0.8433
+            "mean": 4.8,
+            "std": 0.6325
         },
         "climate": {
             "mean": 3,
             "std": 0.0
         },
         "TRL": {
-            "mean": 2.2,
-            "std": 0.7888
+            "mean": 2,
+            "std": 0.8165
         },
         "overall": {
-            "mean": 2.7,
-            "std": 0.2186
+            "mean": 2.71,
+            "std": 0.1329
         }
     },
     "GT-GT-BAT": {
@@ -113,7 +113,7 @@
             "std": 0.0
         },
         "efficiency": {
-            "mean": 2.6,
+            "mean": 2.4,
             "std": 0.5164
         },
         "climate": {
@@ -121,12 +121,12 @@
             "std": 0.0
         },
         "TRL": {
-            "mean": 2.3,
-            "std": 0.483
+            "mean": 3,
+            "std": 0.4714
         },
         "overall": {
-            "mean": 2.665,
-            "std": 0.1313
+            "mean": 2.73,
+            "std": 0.0949
         }
     }
 }

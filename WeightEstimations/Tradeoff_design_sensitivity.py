@@ -177,7 +177,7 @@ def sensitivity_analysis(
     return sensitivity_results, n_skipped
 
 
-def stats_calculator(sensitivity_results, n_repeats=1):
+def stats_calculator(sensitivity_results, n_repeats=1, prefix=""):
     criterion_result = {}
     criterion_stats = {}
 
@@ -200,7 +200,7 @@ def stats_calculator(sensitivity_results, n_repeats=1):
                 "std": stdev(criterion_result[config][criterion])
             }
 
-    with open(f"tradeoff_quantity_stats_{n_repeats}_runs.json", "w") as f:
+    with open(f"{prefix}_tradeoff_quantity_stats_{n_repeats}_runs.json", "w") as f:
         json.dump(criterion_stats, f, indent=4)
 
     return criterion_stats
@@ -305,7 +305,7 @@ def tradeoff_sensitivity(sensitivity_results):
     return tradeoff_table_history
 
 
-def get_score_list(tradeoff_table_history, n_repeats=1):
+def get_score_list(tradeoff_table_history, n_repeats=1, prefix=""):
     design_scores = {}
     for table in tradeoff_table_history:
         for config in table:
@@ -316,13 +316,13 @@ def get_score_list(tradeoff_table_history, n_repeats=1):
                     design_scores[config][metric] = []
                 design_scores[config][metric].append(table[config][metric])
 
-    with open(f"design_score_lists_{n_repeats}_runs.json", "w") as f:
+    with open(f"{prefix}_tradeoff_score_lists_{n_repeats}_runs.json", "w") as f:
         json.dump(design_scores, f, indent=4)
     
     return design_scores
 
 
-def get_score_uncertainties(design_scores, n_repeats=1):
+def get_score_uncertainties(design_scores, n_repeats=1, prefix=""):
     results = {}
     for config in design_scores:
         if config not in results:
@@ -333,13 +333,13 @@ def get_score_uncertainties(design_scores, n_repeats=1):
             results[config][metric]["mean"] = round(mean(design_scores[config][metric]), 4)
             results[config][metric]["std"] = round(stdev(design_scores[config][metric]), 4)
 
-    with open(f"tradeoff_scores_stats_{n_repeats}_runs.json", "w") as f:
+    with open(f"{prefix}_tradeoff_scores_stats_{n_repeats}_runs.json", "w") as f:
         json.dump(results, f, indent=4)
 
     return results
 
 
-def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False):
+def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False, prefix=""):
     fig, ax = plt.subplots()
     ticks = list(design_scores.keys())
     values = [design_scores[tick]["overall"] for tick in ticks]
@@ -353,14 +353,29 @@ def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False):
     ax.set_xlabel("Design")
     ax.set_ylabel("Score")
 
-    plt.savefig(f"Tradeoff_design_sensitivity_analysis_{n_repeats}_runs")
+    plt.savefig(f"{prefix}_tradeoff_design_sensitivity_analysis_{n_repeats}_runs")
     
     if show:
         plt.show()
 
 
-def perform_sensitivity_analysis(cfg, n_repeats):
-    pass
+def perform_sensitivity_analysis(cfg, n_repeats=1, designs_to_consider=[1,2,3,4,5], show=False, prefix=""):
+    sensitivity_results, n_skipped = sensitivity_analysis(cfg=cfg, n_repeats=n_repeats, sensitivity_config="all", designs_to_consider=designs_to_consider)
+    
+    results_stats_metrics = stats_calculator(sensitivity_results, n_repeats=n_repeats, prefix=prefix)
+    if show:
+        print(results_stats_metrics)  
+
+    tradeoff_table_history = tradeoff_sensitivity(sensitivity_results)
+    design_scores = get_score_list(tradeoff_table_history, n_repeats=n_repeats, prefix=prefix)
+
+    results_stats_scores = get_score_uncertainties(design_scores, n_repeats=n_repeats, prefix=prefix)
+    if show:
+        print(results_stats_scores)
+
+    plot_scores(design_scores, n_repeats=n_repeats, n_skipped=n_skipped, show=show, prefix=prefix)
+
+    return results_stats_metrics, results_stats_scores
 
 
 if __name__ == "__main__":
@@ -368,19 +383,8 @@ if __name__ == "__main__":
     n_repeats = 10
     designs_to_consider = [1, 2, 3, 4, 5]
 
-    sensitivity_results, n_skipped = sensitivity_analysis(cfg=cfg, n_repeats=n_repeats, sensitivity_config="all", designs_to_consider=designs_to_consider)
-    # print(sensitivity_results)
-    
-    results_stats = stats_calculator(sensitivity_results, n_repeats=n_repeats)
-    print(results_stats)
+    results_stats_metrics, results_stats_scores = perform_sensitivity_analysis(cfg=cfg,
+                                                                               n_repeats=n_repeats,
+                                                                               designs_to_consider=designs_to_consider,
+                                                                               show=True)
 
-    tradeoff_table_history = tradeoff_sensitivity(sensitivity_results)
-    # print(tradeoff_table_history)
-
-    design_scores = get_score_list(tradeoff_table_history, n_repeats=n_repeats)
-    # print(design_scores)
-
-    results = get_score_uncertainties(design_scores, n_repeats=n_repeats)
-    print(results)
-
-    plot_scores(design_scores, n_repeats=n_repeats, n_skipped=n_skipped, show=True)
