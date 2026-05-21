@@ -440,7 +440,7 @@ def eliminate_criteria(cfg, n_repeats=1, designs_to_consider=[1,2,3,4,5], base_w
 
 if __name__ == "__main__":
     cfg = default_q400_hycool()
-    n_repeats = 10
+    n_repeats = 100
     designs_to_consider = [1, 2, 3, 4, 5]
     weights={
         "mass": 0.25,
