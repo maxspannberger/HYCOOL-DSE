@@ -22,6 +22,31 @@ import multiprocessing
 import copy
 
 
+# TRL
+TRL_base = {
+    "GT_TRL_base": 2035,
+    "FC_TRL_base": 2035,
+    "BAT_TRL_base": 2040,
+    "GT_hex_TRL_penalty": 2,
+    "FC_hex_TRL_penalty": 5,
+    "S_duct_TRL_penalty": 1,
+    "Hump_TRL_penalty": 5,
+    "Belly_FC_TRL_penalty": 2,
+}
+
+# uncertainties eyeballed by Francisco
+TRL_std = {
+    "GT_TRL_base": 1,
+    "FC_TRL_base": 1,
+    "BAT_TRL_base": 2,
+    "GT_hex_TRL_penalty": 1,
+    "FC_hex_TRL_penalty": 2,
+    "S_duct_TRL_penalty": 0.2,
+    "Hump_TRL_penalty": 3,
+    "Belly_FC_TRL_penalty": 0.5,
+}
+
+
 def TRL_per_design(TRL, config):
     match config:
         case 1:
@@ -43,9 +68,7 @@ def single_sensitivity_run(
         cfg,
         comp_params,
         sensitivity_config,
-        designs_to_consider,
-        TRL_base,
-        TRL_std
+        designs_to_consider
     ):
     try:
         comp = copy.deepcopy(comp_params)
@@ -79,7 +102,12 @@ def single_sensitivity_run(
             for component in TRL_base:
                 TRL[component] = max(0, TRL_base[component] + TRL_std[component] * np.clip(np.random.normal(0.0, 1.0), -1.0, 1.0))
 
-        print(f"Performing run {run}")
+            print(f"Performing run {run}")
+
+        elif sensitivity_config == "none":
+            TRL = TRL_base.copy()
+        else:
+            raise ValueError("Invalid sensitivity configuration")
 
         climate_results = get_climate_results(comp=comp)
         design_names = list(climate_results.keys())
@@ -121,29 +149,6 @@ def sensitivity_analysis(
     print(f"Starting sensitivity analysis...")
     max_runs = 1 if sensitivity_config == "none" else n_repeats
 
-    # TRL
-    TRL_base = {
-        "GT_TRL_base": 2035,
-        "FC_TRL_base": 2035,
-        "BAT_TRL_base": 2040,
-        "GT_hex_TRL_penalty": 2,
-        "FC_hex_TRL_penalty": 5,
-        "S_duct_TRL_penalty": 1,
-        "Hump_TRL_penalty": 5,
-        "Belly_FC_TRL_penalty": 2,
-    }
-    # uncertainties eyeballed by Francisco
-    TRL_std = {
-        "GT_TRL_base": 1,
-        "FC_TRL_base": 1,
-        "BAT_TRL_base": 2,
-        "GT_hex_TRL_penalty": 1,
-        "FC_hex_TRL_penalty": 2,
-        "S_duct_TRL_penalty": 0.2,
-        "Hump_TRL_penalty": 3,
-        "Belly_FC_TRL_penalty": 0.5,
-    }
-
     sensitivity_results = {}
     n_skipped = 0
     
@@ -159,9 +164,7 @@ def sensitivity_analysis(
                 cfg,
                 comp_params,
                 sensitivity_config,
-                designs_to_consider,
-                TRL_base,
-                TRL_std
+                designs_to_consider
             )
             for run in range(1, max_runs + 1)
         ]
@@ -175,7 +178,7 @@ def sensitivity_analysis(
 
     print("Sensitivity analysis finished.\n")
 
-    with open(f"sensitivity_outputs/_sensitivity_raw_{n_repeats}_runs.json", "w") as f:
+    with open(f"sensitivity_outputs/{n_repeats}_runs/_sensitivity_raw_{n_repeats}_runs.json", "w") as f:
         json.dump(sensitivity_results, f, indent=4)
 
     return sensitivity_results, n_skipped
@@ -204,7 +207,7 @@ def stats_calculator(sensitivity_results, n_repeats=1, prefix=""):
                 "std": stdev(criterion_result[config][criterion])
             }
 
-    with open(f"sensitivity_outputs/{prefix}_tradeoff_quantity_stats_{n_repeats}_runs.json", "w") as f:
+    with open(f"sensitivity_outputs/{n_repeats}_runs/{prefix}_tradeoff_quantity_stats_{n_repeats}_runs.json", "w") as f:
         json.dump(criterion_stats, f, indent=4)
 
     return criterion_stats
@@ -327,7 +330,7 @@ def get_score_list(tradeoff_table_history, n_repeats=1, prefix=""):
                     design_scores[config][metric] = []
                 design_scores[config][metric].append(table[config][metric])
 
-    with open(f"sensitivity_outputs/{prefix}_tradeoff_score_lists_{n_repeats}_runs.json", "w") as f:
+    with open(f"sensitivity_outputs/{n_repeats}_runs/{prefix}_tradeoff_score_lists_{n_repeats}_runs.json", "w") as f:
         json.dump(design_scores, f, indent=4)
     
     return design_scores
@@ -344,27 +347,40 @@ def get_score_uncertainties(design_scores, n_repeats=1, prefix=""):
             results[config][metric]["mean"] = round(mean(design_scores[config][metric]), 4)
             results[config][metric]["std"] = round(stdev(design_scores[config][metric]), 4)
 
-    with open(f"sensitivity_outputs/{prefix}_tradeoff_scores_stats_{n_repeats}_runs.json", "w") as f:
+    with open(f"sensitivity_outputs/{n_repeats}_runs/{prefix}_tradeoff_scores_stats_{n_repeats}_runs.json", "w") as f:
         json.dump(results, f, indent=4)
 
     return results
 
 
-def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False, prefix=""):
+def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False, prefix="", for_weights=False):
+    if for_weights:
+        name = "weight"
+    else:
+        name = "tradeoff"
+
     fig, ax = plt.subplots()
     ticks = list(design_scores.keys())
-    values = [design_scores[tick]["overall"] for tick in ticks]
-    ax.boxplot(values, tick_labels=ticks)
+    if "overall" in design_scores[ticks[0]]:
+        values = [design_scores[tick]["overall"] for tick in ticks]
+    else:
+        values = [design_scores[tick] for tick in ticks]
+    plot = ax.boxplot(values, tick_labels=ticks, patch_artist=True)
 
     ax.set_ylim((0, 5))
     if n_skipped > 0:
-        ax.set_title(f"{prefix} Tradeoff sensitivity analysis for {n_repeats} runs ({n_skipped} skipped)")
+        ax.set_title(f"{prefix} {name} sensitivity analysis for {n_repeats} runs ({n_skipped} skipped)")
     else:
-        ax.set_title(f"{prefix} Tradeoff sensitivity analysis for {n_repeats} runs")
+        ax.set_title(f"{prefix} {name} sensitivity analysis for {n_repeats} runs")
     ax.set_xlabel("Design")
     ax.set_ylabel("Score")
 
-    plt.savefig(f"sensitivity_outputs/{prefix}_tradeoff_design_sensitivity_analysis_{n_repeats}_runs")
+    for i, box in enumerate(plot['boxes']):
+        box.set_facecolor(plt.cm.tab10(i))
+        
+    plt.legend(plot['boxes'], ticks)
+
+    plt.savefig(f"sensitivity_outputs/{n_repeats}_runs/{prefix}_{name}_design_sensitivity_analysis_{n_repeats}_runs")
     
     if show:
         plt.show()
@@ -381,7 +397,7 @@ def perform_sensitivity_analysis(cfg, n_repeats=1, designs_to_consider=[1,2,3,4,
         }
 
     if from_file is True:
-        with open(f"sensitivity_outputs/_sensitivity_raw_{n_repeats}_runs.json", "r") as f:
+        with open(f"sensitivity_outputs/{n_repeats}_runs/_sensitivity_raw_{n_repeats}_runs.json", "r") as f:
             sensitivity_results = json.load(f)
             n_skipped = 0
     else:
@@ -438,6 +454,57 @@ def eliminate_criteria(cfg, n_repeats=1, designs_to_consider=[1,2,3,4,5], base_w
                                                                             prefix=f"NO_{criterion}")
 
 
+def weight_sensitivity_analysis(cfg, n_repeats=1, designs_to_consider=[1,2,3,4,5], base_weights=None, ssd_fraction=0.7, plot=True, prefix=""):
+    if base_weights is None:
+        base_weights={
+            "mass": 0.25,
+            "thermal": 0.25,
+            "efficiency": 0.20,
+            "climate": 0.15,
+            "TRL": 0.15,
+        }
+
+    performance = single_sensitivity_run(0, cfg, comp_params=comp_params, sensitivity_config="none", designs_to_consider=designs_to_consider)[1]
+    tradeoff_history = {design: [] for design in performance.keys()}
+    
+    print(f"\n[bold blue]Run simulation {n_repeats} times with varying weights...[/bold blue]")
+    for run in range(n_repeats):
+        # Generate random noice scores. The noice is clipped to the domain 
+        # (0, 1) and is normalized to add to 1
+        clipped_noise_weights = {}
+        for metric in base_weights:
+            noise = np.random.normal(0.0, ssd_fraction * base_weights[metric])
+            raw_noise_weights = base_weights[metric] + noise
+            clipped_noise_weights[metric] = np.clip(raw_noise_weights, 0.0, 1.0)
+        
+        weights = {}
+        weights_sum_initial = sum(list(clipped_noise_weights.values()))
+        for metric in base_weights:
+            weights[metric] = clipped_noise_weights[metric] / weights_sum_initial
+
+        # Score all configurations using the weight of the current run
+        for design_name in performance:
+            scores = assign_scores(performance[design_name], weights=weights)
+            tradeoff_history[design_name].append(scores["overall"])
+
+    # Compute ssd and mean per configuration and print
+    results_dict = {}
+    print("\n[yellow]Weight Sensitivity Summary Results:")
+    for design_name, results in tradeoff_history.items():
+        results_dict[design_name] = {
+            "mean": round(np.mean(results), 4),
+            "std": round(np.std(results), 4)
+        }
+        print(f"{design_name:25} -> Mean Score: {results_dict[design_name]["mean"]} | Standard Dev: {results_dict[design_name]["std"]}")
+
+    with open(f"sensitivity_outputs/{n_repeats}_runs/{prefix}_tradeoff_weight_stats_{n_repeats}_runs.json", "w") as f:
+        json.dump(results_dict, f, indent=4)
+        
+    plot_scores(tradeoff_history, n_repeats=n_repeats, n_skipped=0, show=plot, prefix=prefix, for_weights=True)
+
+    return results_dict
+
+
 if __name__ == "__main__":
     cfg = default_q400_hycool()
     n_repeats = 100
@@ -449,6 +516,7 @@ if __name__ == "__main__":
         "climate": 0.15,
         "TRL": 0.15,
     }
+    noise = 0.7
 
     results_stats_metrics, results_stats_scores = perform_sensitivity_analysis(cfg=cfg,
                                                                                n_repeats=n_repeats,
@@ -458,4 +526,7 @@ if __name__ == "__main__":
                                                                                show=True)
     
     eliminate_criteria(cfg=cfg, n_repeats=n_repeats, designs_to_consider=designs_to_consider, base_weights=weights)
+
+    weight_sensitivity_analysis(cfg=cfg, n_repeats=n_repeats, designs_to_consider=designs_to_consider, base_weights=weights,
+                                ssd_fraction=noise, plot=True)
 
