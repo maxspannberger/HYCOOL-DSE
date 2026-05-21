@@ -91,6 +91,7 @@ class ClassII_Input:
     t_climb: float = 0.0
     t_reserve: float = 0.0
     bt_charging_ratio: float = 0.0
+    mass_margin: float = 1.1
 
 
 
@@ -119,7 +120,8 @@ class ClassII_Input:
         t_reserve: float = 0.0,
         N_engines: float = 0.0,
         base_params: bool = False,
-        bt_charging_ratio: float = 0.0
+        bt_charging_ratio: float = 0.0,
+        mass_margin: float = 1.1
     ) -> "ClassII_Input":
         """
         Build the weight-estimator input from a shared AircraftConfig.
@@ -187,6 +189,7 @@ class ClassII_Input:
             t_reserve = t_reserve,
             N_engines = N_engines,
             bt_charging_ratio = bt_charging_ratio,
+            mass_margin = mass_margin,
         )
 
 
@@ -406,7 +409,7 @@ class weightEstimation:
                 * (1 + np.sqrt(self.b_ref / b_s))
                 * g.n_ult**0.55
                 * ((b_s / g.t_r) / (g.MZFW / g.S_w))**0.3
-                * 1.02)
+                * 1.02) *g.mass_margin
 
     def _htail_weight(self) -> float:
         g     = self.g
@@ -414,7 +417,7 @@ class weightEstimation:
         V_kt  = g.V_dive * 1.94384
         x     = S_ft2**0.2 * V_kt / 1000 / np.sqrt(np.cos(g.sweep_h))
         w_per_area_lb_ft2 = Tail_Interp.get_weight_factor(x)
-        return w_per_area_lb_ft2 * S_ft2 * 0.453592
+        return w_per_area_lb_ft2 * S_ft2 * 0.453592 * g.mass_margin
 
     def _vtail_weight(self) -> float:
         g     = self.g
@@ -427,7 +430,7 @@ class weightEstimation:
             k_v = 1 + 0.15 * g.S_h * g.h_h / (g.S_v * g.b_v)
         else:
             k_v = 1.0
-        return w_per_area_lb_ft2 * S_ft2 * k_v * 0.453592
+        return w_per_area_lb_ft2 * S_ft2 * k_v * 0.453592 * g.mass_margin
 
     def _fuselage_weight(self) -> float:
         g       = self.g
@@ -438,7 +441,7 @@ class weightEstimation:
                    * (1.0 + 1.0 / sigma**2))
         return (g.k_wf
                 * np.sqrt(g.V_dive * g.l_t / (g.b_f + g.h_f))
-                * S_f_wet ** 1.2)
+                * S_f_wet ** 1.2) * g.mass_margin
 
     def _LDG_weight(self) -> float:
         g    = self.g
@@ -448,14 +451,14 @@ class weightEstimation:
             return (c["A"]
                     + c["B"] * g.MTOW**0.75
                     + c["C"] * g.MTOW
-                    + c["D"] * g.MTOW**1.5)
+                    + c["D"] * g.MTOW**1.5) * g.mass_margin
 
         return k_LG * (_leg(self._LG_main) + _leg(self._LG_nose))
 
     def _surface_control_weight(self) -> float:
         g    = self.g
         k_SC = 0.567 if g.has_flap_slat else 0.472
-        return 1.2 * k_SC * g.MTOW ** (2 / 3)
+        return 1.2 * k_SC * g.MTOW ** (2 / 3) * g.mass_margin
 
     def _propulsion_weight(self) -> float:
 
@@ -762,10 +765,10 @@ class weightEstimation:
         else:
             bt_charging_ratio = g.bt_charging_ratio
 
-        return total_mass, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff,eff_climb, eff_cruise, bt_charging_ratio
+        return total_mass * g.mass_margin, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff,eff_climb, eff_cruise, bt_charging_ratio
     
     def _h2_tank_weight(self) -> float:
-        return self.g.W_fuel * (1 / self.g.grav_density - 1)
+        return self.g.W_fuel * (1 / self.g.grav_density - 1)* self.g.mass_margin
 
     def compute(self) -> WeightBreakdown:
         self._validate()
