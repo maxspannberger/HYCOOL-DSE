@@ -58,8 +58,11 @@ component_params = {
     "gt_hex": PowerComponent("Gas Turbine + HEX ", 9.62, 39.5, 3, power_density_std=1, efficiency_std=3.95),
     "dc_dc_1": PowerComponent("DC-DC Converter 1", 17, 99.47, 3),
     "dc_dc_2": PowerComponent("DC-DC Converter 2", 17, 99.47, 3),
-    "ac_dc": PowerComponent("AC-DC Rectifier", 21.1, 98.9, 3),
-    "dc_ac": PowerComponent("DC-AC Inverter", 21.1, 98.9, 3),
+    #"ac_dc": PowerComponent("AC-DC Rectifier", 21.1, 98.9, 3),
+    #"dc_ac": PowerComponent("DC-AC Inverter", 21.1, 98.9, 3),
+
+    "ac_dc": PowerComponent("AC-DC Rectifier", 52.9, 98.9, 3),
+    "dc_ac": PowerComponent("DC-AC Inverter", 52.9, 98.9, 3),
 
     # Battery
     "bt": StorageComponent("Battery", 0.510, 1.53, 90, 3, energy_density_std=0.05, power_density_std=0.153, efficiency_std=9),

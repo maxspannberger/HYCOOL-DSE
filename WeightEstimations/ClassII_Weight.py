@@ -500,7 +500,7 @@ class weightEstimation:
                     "gt_hex", "gt_hex", "hts_gen", "hts_gen", "ac_dc", "ac_dc",
                     "dc_ac", "dc_ac", "hts_pow", "hts_pow", "cable", "pipe",
                 ],
-                "lengths": {"pipe": 34.0, "cable": 5.0},
+                "lengths": {"pipe": 34.0, "cable": 19.0},
             },
             4: {
                 "components": [
