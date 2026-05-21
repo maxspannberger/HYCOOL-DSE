@@ -200,13 +200,13 @@ def stats_calculator(sensitivity_results, n_repeats=1, prefix=""):
                 "std": stdev(criterion_result[config][criterion])
             }
 
-    with open(f"{prefix}_tradeoff_quantity_stats_{n_repeats}_runs.json", "w") as f:
+    with open(f"sensitivity_outputs/{prefix}_tradeoff_quantity_stats_{n_repeats}_runs.json", "w") as f:
         json.dump(criterion_stats, f, indent=4)
 
     return criterion_stats
 
 
-def assign_scores(sizing_outputs):
+def assign_scores(sizing_outputs, weights):
     TMS_score = TRL_score = mass_score = eff_score = climate_score = 0
 
     # OEW = sizing_outputs["OEW"]
@@ -268,11 +268,11 @@ def assign_scores(sizing_outputs):
         TRL_score = 1
 
     overall_score = round(
-        0.25 * TMS_score +\
-        0.15 * TRL_score +\
-        0.25 * mass_score +\
-        0.20 * eff_score +\
-        0.15 * climate_score, 2)
+        weights["thermal"] * TMS_score +\
+        weights["TRL"] * TRL_score +\
+        weights["mass"] * mass_score +\
+        weights["efficiency"] * eff_score +\
+        weights["climate"] * climate_score, 2)
 
     return {
         "mass": mass_score,
@@ -284,23 +284,23 @@ def assign_scores(sizing_outputs):
     }
 
 
-def numerical_tradeoff(single_variation_results):
+def numerical_tradeoff(single_variation_results, weights):
     tradeoff_table = {}
     for config in single_variation_results:
         if config not in tradeoff_table:
             tradeoff_table[config] = {}
 
-        scores = assign_scores(single_variation_results[config])
+        scores = assign_scores(single_variation_results[config], weights)
         for criterion in scores:
             tradeoff_table[config][criterion] = scores[criterion]
 
     return tradeoff_table
 
 
-def tradeoff_sensitivity(sensitivity_results):
+def tradeoff_sensitivity(sensitivity_results, weights):
     tradeoff_table_history = []
     for run in sensitivity_results:
-        tradeoff_table = numerical_tradeoff(sensitivity_results[run])
+        tradeoff_table = numerical_tradeoff(sensitivity_results[run], weights)
         tradeoff_table_history.append(tradeoff_table)
     return tradeoff_table_history
 
@@ -316,7 +316,7 @@ def get_score_list(tradeoff_table_history, n_repeats=1, prefix=""):
                     design_scores[config][metric] = []
                 design_scores[config][metric].append(table[config][metric])
 
-    with open(f"{prefix}_tradeoff_score_lists_{n_repeats}_runs.json", "w") as f:
+    with open(f"sensitivity_outputs/{prefix}_tradeoff_score_lists_{n_repeats}_runs.json", "w") as f:
         json.dump(design_scores, f, indent=4)
     
     return design_scores
@@ -333,7 +333,7 @@ def get_score_uncertainties(design_scores, n_repeats=1, prefix=""):
             results[config][metric]["mean"] = round(mean(design_scores[config][metric]), 4)
             results[config][metric]["std"] = round(stdev(design_scores[config][metric]), 4)
 
-    with open(f"{prefix}_tradeoff_scores_stats_{n_repeats}_runs.json", "w") as f:
+    with open(f"sensitivity_outputs/{prefix}_tradeoff_scores_stats_{n_repeats}_runs.json", "w") as f:
         json.dump(results, f, indent=4)
 
     return results
@@ -353,20 +353,29 @@ def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False, prefix=""):
     ax.set_xlabel("Design")
     ax.set_ylabel("Score")
 
-    plt.savefig(f"{prefix}_tradeoff_design_sensitivity_analysis_{n_repeats}_runs")
+    plt.savefig(f"sensitivity_outputs/{prefix}_tradeoff_design_sensitivity_analysis_{n_repeats}_runs")
     
     if show:
         plt.show()
 
 
-def perform_sensitivity_analysis(cfg, n_repeats=1, designs_to_consider=[1,2,3,4,5], show=False, prefix=""):
+def perform_sensitivity_analysis(cfg, n_repeats=1, designs_to_consider=[1,2,3,4,5], weights=None, show=False, prefix=""):
+    if weights is None:
+        weights={
+            "mass": 0.25,
+            "thermal": 0.25,
+            "efficiency": 0.20,
+            "climate": 0.15,
+            "TRL": 0.15,
+        }
+
     sensitivity_results, n_skipped = sensitivity_analysis(cfg=cfg, n_repeats=n_repeats, sensitivity_config="all", designs_to_consider=designs_to_consider)
     
     results_stats_metrics = stats_calculator(sensitivity_results, n_repeats=n_repeats, prefix=prefix)
     if show:
         print(results_stats_metrics)  
 
-    tradeoff_table_history = tradeoff_sensitivity(sensitivity_results)
+    tradeoff_table_history = tradeoff_sensitivity(sensitivity_results, weights)
     design_scores = get_score_list(tradeoff_table_history, n_repeats=n_repeats, prefix=prefix)
 
     results_stats_scores = get_score_uncertainties(design_scores, n_repeats=n_repeats, prefix=prefix)
@@ -382,9 +391,17 @@ if __name__ == "__main__":
     cfg = default_q400_hycool()
     n_repeats = 10
     designs_to_consider = [1, 2, 3, 4, 5]
+    weights={
+        "mass": 0.25,
+        "thermal": 0.25,
+        "efficiency": 0.20,
+        "climate": 0.15,
+        "TRL": 0.15,
+    }
 
     results_stats_metrics, results_stats_scores = perform_sensitivity_analysis(cfg=cfg,
                                                                                n_repeats=n_repeats,
                                                                                designs_to_consider=designs_to_consider,
+                                                                               weights=weights,
                                                                                show=True)
 
