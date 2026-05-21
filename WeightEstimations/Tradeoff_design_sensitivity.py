@@ -14,7 +14,7 @@ from General.component_parameters import PowerComponent, StorageComponent
 from Aircraft_Config import AircraftConfig, default_q400_hycool
 from mainClassII import run_class_ii
 from Climate_Impact.Average_Temp_Response import get_results as get_climate_results
-from TMS.mainTMS import design_phase_table, design_score_table
+from TMS.mainTMS import design_phase_table, design_score_table, thermal_ratio_score
 
 from rich import print
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -32,6 +32,8 @@ def TRL_per_design(TRL, config):
             return TRL["GT_TRL_base"] + TRL["GT_hex_TRL_penalty"]
         case 4:
             return max(TRL["GT_TRL_base"] + TRL["GT_hex_TRL_penalty"], TRL["FC_TRL_base"] + TRL["FC_hex_TRL_penalty"] + TRL["Belly_FC_TRL_penalty"])
+        case 5:
+            return max(TRL["GT_TRL_base"] + TRL["GT_hex_TRL_penalty"], TRL["BAT_TRL_base"])
         case _:
             raise ValueError("Invalid configuration")
 
@@ -86,7 +88,7 @@ def single_sensitivity_run(
 
             # TMS already has built-in scores
             TMS_results = design_phase_table(config=config, comp=comp, class_II_results=class_II_results)
-            TMS_score = design_score_table(TMS_results)["FinalThermalScore"].iloc[0]
+            TMS_ratio = design_score_table(TMS_results)["FinalRatio"].iloc[0]
 
             TRL_year = TRL_per_design(TRL, config=config)
 
@@ -95,7 +97,7 @@ def single_sensitivity_run(
                 "prop_frac": class_II_results.W_prop / class_II_results.W_empty,
                 "eff": class_II_results.total_prop_efficiency,
                 "atr_ratio": 1 - climate_results[design_names[config-1]] / climate_results["Baseline"],
-                "TMS_score": TMS_score,
+                "TMS_ratio": TMS_ratio,
                 "TRL_year": TRL_year
             }
 
@@ -112,7 +114,7 @@ def sensitivity_analysis(
         n_repeats:      int = 1,
         comp_params:    dict = comp_params,
         sensitivity_config: str = "none",
-        designs_to_consider:list = [1, 2, 3, 4]
+        designs_to_consider:list = [1, 2, 3, 4, 5]
     ) -> dict:
     
     sensitivity_results = {}
@@ -211,13 +213,10 @@ def assign_scores(sizing_outputs):
     prop_frac = sizing_outputs["prop_frac"]
     eff = sizing_outputs["eff"]
     atr_ratio = sizing_outputs["atr_ratio"]
+    TMS_ratio = round(sizing_outputs["TMS_ratio"], 2)
     TRL_year = sizing_outputs["TRL_year"]
 
-    # thermal scoring
-    thermal_score = round(sizing_outputs["TMS_score"], 2)
-
-    # mass scoring
-    # TODO: decide if we choose OEW or prop_frac
+    # mass fraction scoring
     if prop_frac < 0.15:
         mass_score = 5
     elif prop_frac < 0.20:
@@ -252,6 +251,9 @@ def assign_scores(sizing_outputs):
         climate_score = 4
     else:
         climate_score = 5
+
+    # thermal scoring
+    TMS_score = thermal_ratio_score(TMS_ratio)
 
     # TRL scoring
     if TRL_year <= 2035:
@@ -352,7 +354,7 @@ def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False):
 if __name__ == "__main__":
     cfg = default_q400_hycool()
     n_repeats = 10
-    designs_to_consider = [1, 2, 3, 4]
+    designs_to_consider = [1, 2, 3, 4, 5]
 
     sensitivity_results, n_skipped = sensitivity_analysis(cfg=cfg, n_repeats=n_repeats, sensitivity_config="all", designs_to_consider=designs_to_consider)
     # print(sensitivity_results)
