@@ -21,7 +21,7 @@ def calculate_static_performance(
         comp_params: dict = comp_params,
         designs_to_consider: list = [1, 2, 3, 4]
 ) -> dict:
-    print("[bold green]Harvesting aircraft configuration performance metrics (Once)...[/bold green]")
+    print("\n[bold blue]Harvesting aircraft configuration performance metrics (Once)...")
     
     performance = {}
     climate_results = get_climate_results(comp=comp_params)
@@ -74,6 +74,7 @@ def assign_scores(sizing_outputs, noise_weights):
     elif atr_ratio <= 0.50: climate_score = 3
     elif atr_ratio <= 0.75: climate_score = 4
     else: climate_score = 5
+    
 
     # Dot product calculation for final trade-off score
     overall_score = round(
@@ -93,7 +94,7 @@ def assign_scores(sizing_outputs, noise_weights):
     }
 
 # =============================================================================
-# Introduce Gaussian noice in the weights
+# Introduce Gaussian noise in the weights
 # =============================================================================
 def weight_sensitivity_analysis(performance, n_repeats=1000, ssd_fraction=0.7, plot=True):
     print(f"\n[bold blue]Run simulation {n_repeats} times with varying weights...[/bold blue]")
@@ -126,7 +127,7 @@ def weight_sensitivity_analysis(performance, n_repeats=1000, ssd_fraction=0.7, p
             combined_results.append(results)
             labels.append(design_name)
             
-        plot = plt.boxplot(combined_results, labels=labels, patch_artist=True)
+        plot = plt.boxplot(combined_results, tick_labels=labels, patch_artist=True)
         
         # Set distinct colours to each box
         for i, box in enumerate(plot['boxes']):
