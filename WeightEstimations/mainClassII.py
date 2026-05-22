@@ -87,6 +87,9 @@ class ClassIIResult:
     t_climb: float = 0.0
     t_cruise: float = 0.0
 
+    Wing_Area: float = 0.0
+    Wing_span: float = 0.0
+
     def summary(self):
         status_color = "green" if self.converged else "red"
         main_info = (
@@ -94,7 +97,9 @@ class ClassIIResult:
             f"OEW:  {self.W_empty/1000:.2f} t\n"
             f"Fuel: {self.W_fuel:.1f} kg\n"
             f"Payload: {self.W_payload/1000:.1f} t\n"
-            f"Iterations: {self.iterations}"
+            f"Iterations: {self.iterations} \n"
+            f"Wing Area: {self.Wing_Area:.2f} m^2\n"
+            f"Wing Span: {self.Wing_span:.2f} m"
         )
         
         perf_info = (
@@ -390,7 +395,9 @@ def run_class_ii(
         P_climb_KW  = P_climb_kW,
         P_reserve_KW= P_reserve_kw,
         t_climb=t_climb,
-        t_cruise=t_cruise
+        t_cruise=t_cruise,
+        Wing_Area=S_ref,
+        Wing_span=b
     )
 
 
