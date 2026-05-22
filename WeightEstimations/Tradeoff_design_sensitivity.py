@@ -328,7 +328,7 @@ def get_score_list(tradeoff_table_history, n_repeats=1, prefix=""):
             for metric in table[config]:
                 if metric not in design_scores[config]:
                     design_scores[config][metric] = []
-                design_scores[config][metric].append(table[config][metric])
+                design_scores[config][metric].append(round(table[config][metric], 4))
 
     with open(f"sensitivity_outputs/{n_repeats}_runs/{prefix}_tradeoff_score_lists_{n_repeats}_runs.json", "w") as f:
         json.dump(design_scores, f, indent=4)
@@ -387,6 +387,29 @@ def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False, prefix="", 
         plt.show()
 
 
+def count_winner(design_scores, n_repeats=1, prefix=""):
+    scores = {}
+    winner_count = {}
+    for design in design_scores:
+        scores[design] = design_scores[design]["overall"]
+        winner_count[design] = 0
+        n_runs = len(design_scores[design]["overall"])
+
+    for i in range(n_runs):
+        winner_score = 0
+        for design in scores:
+            if scores[design][i] > winner_score:
+                winner = design
+                winner_score = scores[design][i]
+        winner_count[winner] += 1
+
+    with open(f"sensitivity_outputs/{n_repeats}_runs/{prefix}_winner_stats_{n_repeats}_runs.json", "w") as f:
+        json.dump(winner_count, f, indent=4)
+
+    return winner_count
+
+
+
 def perform_sensitivity_analysis(cfg, n_repeats=1, designs_to_consider=[1,2,3,4,5], weights=None, from_file=True, show=False, prefix="", legend=False):
     if weights is None:
         weights={
@@ -410,6 +433,8 @@ def perform_sensitivity_analysis(cfg, n_repeats=1, designs_to_consider=[1,2,3,4,
 
     tradeoff_table_history = tradeoff_sensitivity(sensitivity_results, weights)
     design_scores = get_score_list(tradeoff_table_history, n_repeats=n_repeats, prefix=prefix)
+
+    count_winner(design_scores, n_repeats=n_repeats, prefix=prefix)
 
     results_stats_scores = get_score_uncertainties(design_scores, n_repeats=n_repeats, prefix=prefix)
     if show:
@@ -506,6 +531,7 @@ def weight_sensitivity_analysis(cfg, n_repeats=1, designs_to_consider=[1,2,3,4,5
     return results_dict
 
 
+
 def save_tradeoff(cfg, designs_to_consider=[1,2,3,4,5]):
     tradeoff_metrics = single_sensitivity_run(0, cfg=cfg, comp_params=comp_params, sensitivity_config="none", designs_to_consider=designs_to_consider)[1]
     with open(f"sensitivity_outputs/tradeoff_metrics.json", "w") as f:
@@ -535,7 +561,7 @@ if __name__ == "__main__":
                                                                                n_repeats=n_repeats,
                                                                                designs_to_consider=designs_to_consider,
                                                                                weights=weights,
-                                                                               from_file=False,
+                                                                               from_file=True,
                                                                                show=True,
                                                                                legend=True)
     
