@@ -531,18 +531,18 @@ if __name__ == "__main__":
     }
     noise = 0.5
 
-    # results_stats_metrics, results_stats_scores = perform_sensitivity_analysis(cfg=cfg,
-    #                                                                            n_repeats=n_repeats,
-    #                                                                            designs_to_consider=designs_to_consider,
-    #                                                                            weights=weights,
-    #                                                                            from_file=True,
-    #                                                                            show=True,
-    #                                                                            legend=True)
+    results_stats_metrics, results_stats_scores = perform_sensitivity_analysis(cfg=cfg,
+                                                                               n_repeats=n_repeats,
+                                                                               designs_to_consider=designs_to_consider,
+                                                                               weights=weights,
+                                                                               from_file=False,
+                                                                               show=True,
+                                                                               legend=True)
     
-    # eliminate_criteria(cfg=cfg, n_repeats=n_repeats, designs_to_consider=designs_to_consider, base_weights=weights)
+    eliminate_criteria(cfg=cfg, n_repeats=n_repeats, designs_to_consider=designs_to_consider, base_weights=weights)
 
-    # weight_sensitivity_analysis(cfg=cfg, n_repeats=n_repeats, designs_to_consider=designs_to_consider, base_weights=weights,
-    #                             ssd_fraction=noise, plot=True)
+    weight_sensitivity_analysis(cfg=cfg, n_repeats=n_repeats, designs_to_consider=designs_to_consider, base_weights=weights,
+                                ssd_fraction=noise, plot=True)
     
     save_tradeoff(cfg, designs_to_consider=designs_to_consider)
 
