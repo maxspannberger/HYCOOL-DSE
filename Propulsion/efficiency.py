@@ -549,7 +549,7 @@ def GT_FC_efficiency(
 
 
 if __name__ == "__main__":
-    t_charge = 30*60 # 45 min charge time
+    t_charge = 30*60 # 30 min charge time
     cable_efficiency = 1 # change later
     t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
 
