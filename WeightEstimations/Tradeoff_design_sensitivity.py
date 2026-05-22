@@ -243,7 +243,7 @@ def assign_scores(sizing_outputs, weights):
     elif eff < 0.44:
         eff_score = 3
     elif eff < 0.51:
-        eff_score = 5
+        eff_score = 4
     else:
         eff_score = 5
 
@@ -506,6 +506,18 @@ def weight_sensitivity_analysis(cfg, n_repeats=1, designs_to_consider=[1,2,3,4,5
     return results_dict
 
 
+def save_tradeoff(cfg, designs_to_consider=[1,2,3,4,5]):
+    tradeoff_metrics = single_sensitivity_run(0, cfg=cfg, comp_params=comp_params, sensitivity_config="none", designs_to_consider=designs_to_consider)[1]
+    with open(f"sensitivity_outputs/tradeoff_metrics.json", "w") as f:
+        json.dump(tradeoff_metrics, f, indent=4)
+
+    tradeoff_scores = {}
+    for design in tradeoff_metrics:
+        tradeoff_scores[design] = assign_scores(tradeoff_metrics[design], weights=weights)
+    with open(f"sensitivity_outputs/tradeoff_scores.json", "w") as f:
+        json.dump(tradeoff_scores, f, indent=4)
+
+
 if __name__ == "__main__":
     cfg = default_q400_hycool()
     n_repeats = 1000
@@ -514,21 +526,23 @@ if __name__ == "__main__":
         "mass": 0.25,
         "thermal": 0.25,
         "efficiency": 0.20,
-        "climate": 0.15,
-        "TRL": 0.15,
+        "climate": 0.20,
+        "TRL": 0.10,
     }
-    noise = 0.7
+    noise = 0.5
 
-    results_stats_metrics, results_stats_scores = perform_sensitivity_analysis(cfg=cfg,
-                                                                               n_repeats=n_repeats,
-                                                                               designs_to_consider=designs_to_consider,
-                                                                               weights=weights,
-                                                                               from_file=False,
-                                                                               show=True,
-                                                                               legend=True)
+    # results_stats_metrics, results_stats_scores = perform_sensitivity_analysis(cfg=cfg,
+    #                                                                            n_repeats=n_repeats,
+    #                                                                            designs_to_consider=designs_to_consider,
+    #                                                                            weights=weights,
+    #                                                                            from_file=True,
+    #                                                                            show=True,
+    #                                                                            legend=True)
     
-    eliminate_criteria(cfg=cfg, n_repeats=n_repeats, designs_to_consider=designs_to_consider, base_weights=weights)
+    # eliminate_criteria(cfg=cfg, n_repeats=n_repeats, designs_to_consider=designs_to_consider, base_weights=weights)
 
-    weight_sensitivity_analysis(cfg=cfg, n_repeats=n_repeats, designs_to_consider=designs_to_consider, base_weights=weights,
-                                ssd_fraction=noise, plot=True)
+    # weight_sensitivity_analysis(cfg=cfg, n_repeats=n_repeats, designs_to_consider=designs_to_consider, base_weights=weights,
+    #                             ssd_fraction=noise, plot=True)
+    
+    save_tradeoff(cfg, designs_to_consider=designs_to_consider)
 

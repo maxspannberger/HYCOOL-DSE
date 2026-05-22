@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 
 root = Path(__file__).resolve().parent.parent
 sys.path.append(str(root))
-from General.component_parameters import component_params as c
+from General.component_parameters import component_params as comp_param
 
 # =============================================================================
 # Loading results from Class 2 and calculating the mission phase power and 
@@ -553,14 +553,14 @@ if __name__ == "__main__":
     cable_efficiency = 1 # change later
     t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
 
-    results_GT_BAT = GT_BAT_efficiency(t_charge=t_charge, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
+    results_GT_BAT = GT_BAT_efficiency(comp=comp_param, t_charge=t_charge, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
     # print(results_GT_BAT)
 
-    results_FC_BAT = FC_BAT_efficiency(t_charge=t_charge, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
+    results_FC_BAT = FC_BAT_efficiency(comp=comp_param, t_charge=t_charge, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
     # #print(results_FC_BAT)
 
-    results_GT_GT = GT_GT_efficiency(cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
+    results_GT_GT = GT_GT_efficiency(comp=comp_param, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
     # #print(results_GT_GT)
 
-    results_GT_FC = GT_FC_efficiency(cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
+    results_GT_FC = GT_FC_efficiency(comp=comp_param, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
     # # print(results_GT_FC)
