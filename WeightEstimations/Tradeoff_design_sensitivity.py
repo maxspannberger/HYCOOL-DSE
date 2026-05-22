@@ -123,9 +123,9 @@ def single_sensitivity_run(
             results[design_names[config-1]] = {
                 # "OEW": class_II_results.W_empty,
                 "prop_frac": class_II_results.W_prop / class_II_results.W_empty,
+                "TMS_ratio": TMS_ratio,
                 "eff": class_II_results.total_prop_efficiency,
                 "atr_ratio": 1 - climate_results[design_names[config-1]] / climate_results["Baseline"],
-                "TMS_ratio": TMS_ratio,
                 "TRL_year": TRL_year
             }
 
