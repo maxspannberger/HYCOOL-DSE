@@ -9,8 +9,8 @@ from pathlib import Path
 root = Path(__file__).resolve().parent.parent
 sys.path.append(str(root))
 
-import Tail_Interpolation as Tail_Interp
-from Aircraft_Config import AircraftConfig
+import WeightEstimations.Tail_Interpolation as Tail_Interp
+from WeightEstimations.Aircraft_Config import AircraftConfig
 from General.component_parameters import component_params as comp_params
 from Propulsion.efficiency import GT_BAT_efficiency, GT_FC_efficiency, GT_GT_efficiency,FC_BAT_efficiency
 

@@ -10,6 +10,7 @@ sys.path.append(str(root))
 from TMS import pipe_python
 from Propulsion.efficiency import get_throttle, GT_BAT_efficiency, FC_BAT_efficiency, GT_GT_efficiency, GT_FC_efficiency
 from WeightEstimations.Aircraft_Config import default_q400_hycool
+from WeightEstimations.mainClassII import run_class_ii
 from General.component_parameters import component_params as comp_params
 
 
@@ -767,10 +768,12 @@ def design_score_table(df=None):
 
 if __name__ == "__main__":
     comp = comp_params
+    cfg = default_q400_hycool()
 
     all_scores = []
     for config in [1, 2, 3, 4, 5]:
-        table = design_phase_table(config, comp=comp)
+        class_II_results = run_class_ii(config=config, comp=comp, verbose=False, cfg=cfg)
+        table = design_phase_table(config, comp=comp, class_II_results=class_II_results)
         scores = design_score_table(table)
 
         with pd.option_context("display.float_format", "{:,.2f}".format):

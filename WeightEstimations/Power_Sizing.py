@@ -40,8 +40,8 @@ CS-25.121 second-segment requirement:
 import numpy as np
 from dataclasses import dataclass
 
-from Aircraft_Config import AircraftConfig
-from Mission_Power   import MissionFuelBreakdown
+from WeightEstimations.Aircraft_Config import AircraftConfig
+from WeightEstimations.Mission_Power   import MissionFuelBreakdown
 
 from rich.table import Table
 from rich.panel import Panel

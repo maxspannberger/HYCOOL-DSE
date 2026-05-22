@@ -29,8 +29,8 @@ S_v sizing per Torenbeek's OEI rudder formulation:
 import numpy as np
 from dataclasses import dataclass
 from typing import Optional
-from ISA import isa
-from Aircraft_Config import AircraftConfig
+from WeightEstimations.ISA import isa
+from WeightEstimations.Aircraft_Config import AircraftConfig
 
 from rich.table import Table
 from rich.console import Group

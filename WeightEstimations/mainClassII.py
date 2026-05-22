@@ -35,13 +35,13 @@ from pathlib import Path
 root = Path(__file__).resolve().parent.parent
 sys.path.append(str(root))
 
-from Aircraft_Config   import AircraftConfig, default_q400_hycool
-from ClassII_Tail       import TailSizing_Input,  TailSizingEstimator, TailSizingBreakdown
-from ClassII_Drag   import ClassII_Drag_Input, DragEstimation,      DragBreakdown
-from ClassII_Weight import ClassII_Input,      weightEstimation,    WeightBreakdown
-from Mission_Power     import MissionPower,       MissionFuelBreakdown
-from Power_Sizing      import PowerSizing,        PowerSizingBreakdown
-from Export_Results    import export_results
+from WeightEstimations.Aircraft_Config   import AircraftConfig, default_q400_hycool
+from WeightEstimations.ClassII_Tail       import TailSizing_Input,  TailSizingEstimator, TailSizingBreakdown
+from WeightEstimations.ClassII_Drag   import ClassII_Drag_Input, DragEstimation,      DragBreakdown
+from WeightEstimations.ClassII_Weight import ClassII_Input,      weightEstimation,    WeightBreakdown
+from WeightEstimations.Mission_Power     import MissionPower,       MissionFuelBreakdown
+from WeightEstimations.Power_Sizing      import PowerSizing,        PowerSizingBreakdown
+from WeightEstimations.Export_Results    import export_results
 from General.component_parameters import component_params as comp_params
 
 from rich import print

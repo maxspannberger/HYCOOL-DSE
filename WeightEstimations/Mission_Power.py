@@ -29,9 +29,9 @@ import numpy as np
 from dataclasses import dataclass
 from typing import Optional
 
-from ISA import isa
-from Aircraft_Config   import AircraftConfig
-from ClassII_Drag   import DragBreakdown
+from WeightEstimations.ISA import isa
+from WeightEstimations.Aircraft_Config   import AircraftConfig
+from WeightEstimations.ClassII_Drag   import DragBreakdown
 
 from rich.table import Table
 
