@@ -94,7 +94,7 @@ class ClassIIResult:
         status_color = "green" if self.converged else "red"
         main_info = (
             f"MTOW: {self.MTOW/1000:.2f} t\n"
-            f"OEW:  {self.W_empty/1000:.2f} t\n"
+            f"OEW:  {(self.W_empty+cfg.W_fixed)/1000:.2f} t\n"
             f"Fuel: {self.W_fuel:.1f} kg\n"
             f"Payload: {self.W_payload/1000:.1f} t\n"
             f"Iterations: {self.iterations} \n"
@@ -320,7 +320,7 @@ def run_class_ii(
             P_max_kW     = mis_bd.P_max / 1000,
             P_TO_kW      = P_TO_kW,
             W_fuel_kg    = W_fuel,
-            OEW_kg       = wt_bd.W_empty,
+            OEW_kg       = wt_bd.W_empty+cfg.W_fixed,
             bt_ch_ratio  = bt_charging_ratio
         ))
 
@@ -332,7 +332,7 @@ def run_class_ii(
                 f"L/D={drag_bd.L_over_D:5.2f}, "
                 f"P_cr={mis_bd.P_cruise_shaft/1000:5.0f} kW, "
                 f"fuel={W_fuel:6.1f} kg, "
-                f"OEW={wt_bd.W_empty:7.1f} kg)")
+                f"OEW={wt_bd.W_empty+cfg.W_fixed:7.1f} kg)")
 
         MTOW = MTOW_new
 
