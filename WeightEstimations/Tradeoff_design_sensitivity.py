@@ -360,7 +360,6 @@ def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False, prefix="", 
         name = "tradeoff"
 
     fig, ax = plt.subplots()
-    plt.style.use('ggplot')
     ticks = list(design_scores.keys())
     if "overall" in design_scores[ticks[0]]:
         values = [design_scores[tick]["overall"] for tick in ticks]
