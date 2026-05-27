@@ -146,7 +146,7 @@ def sensitivity_analysis(
     ) -> dict:
     
     sensitivity_results = {}
-    print(f"Starting sensitivity analysis...")
+    print("Starting sensitivity analysis...")
     max_runs = 1 if sensitivity_config == "none" else n_repeats
 
     sensitivity_results = {}
@@ -360,6 +360,7 @@ def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False, prefix="", 
         name = "tradeoff"
 
     fig, ax = plt.subplots()
+    plt.style.use('ggplot')
     ticks = list(design_scores.keys())
     if "overall" in design_scores[ticks[0]]:
         values = [design_scores[tick]["overall"] for tick in ticks]
@@ -377,6 +378,9 @@ def plot_scores(design_scores, n_repeats=1, n_skipped=0, show=False, prefix="", 
 
     for i, box in enumerate(plot['boxes']):
         box.set_facecolor(plt.cm.tab10(i))
+        
+    for median in plot['medians']:
+        median.set_color('white')
         
     if legend:
         plt.legend(plot['boxes'], ticks)
@@ -534,13 +538,13 @@ def weight_sensitivity_analysis(cfg, n_repeats=1, designs_to_consider=[1,2,3,4,5
 
 def save_tradeoff(cfg, designs_to_consider=[1,2,3,4,5]):
     tradeoff_metrics = single_sensitivity_run(0, cfg=cfg, comp_params=comp_params, sensitivity_config="none", designs_to_consider=designs_to_consider)[1]
-    with open(f"sensitivity_outputs/tradeoff_metrics.json", "w") as f:
+    with open("sensitivity_outputs/tradeoff_metrics.json", "w") as f:
         json.dump(tradeoff_metrics, f, indent=4)
 
     tradeoff_scores = {}
     for design in tradeoff_metrics:
         tradeoff_scores[design] = assign_scores(tradeoff_metrics[design], weights=weights)
-    with open(f"sensitivity_outputs/tradeoff_scores.json", "w") as f:
+    with open("sensitivity_outputs/tradeoff_scores.json", "w") as f:
         json.dump(tradeoff_scores, f, indent=4)
 
 
