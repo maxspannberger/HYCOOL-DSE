@@ -75,6 +75,8 @@ class ClassIIResult:
     tail_rechecked: TailSizingBreakdown    # rerun with computed T_TO
     iteration_log: list = None             # per-iteration MTOW trace
     total_prop_efficiency: float = 1.0
+    climb_eff: float = 1.0
+    cruise_eff: float = 1.0
     bt_charging_ratio: float = 0.0
 
     P_TO_KW: float = 0.0
@@ -89,6 +91,7 @@ class ClassIIResult:
 
     Wing_Area: float = 0.0
     Wing_span: float = 0.0
+    l_f_m: float = 0.0
 
     def summary(self):
         status_color = "green" if self.converged else "red"
@@ -388,6 +391,8 @@ def run_class_ii(
         tail_rechecked = tail_bd_recheck,
         iteration_log  = iteration_log,
         total_prop_efficiency = wt_bd.total_prop_efficiency,
+        climb_eff = wt_bd.climb_eff,
+        cruise_eff = wt_bd.cruise_eff,
         P_TO_KW     = P_TO_kW,
         P_TO_OEI_KW = P_TO_OEI_kW,
         P_cruise_KW = P_cruise_kw,
@@ -397,7 +402,8 @@ def run_class_ii(
         t_climb=t_climb,
         t_cruise=t_cruise,
         Wing_Area=S_ref,
-        Wing_span=b
+        Wing_span=b,
+        l_f_m=cfg_iter.l_f
     )
 
 

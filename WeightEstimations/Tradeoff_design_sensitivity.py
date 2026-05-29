@@ -68,7 +68,8 @@ def single_sensitivity_run(
         cfg,
         comp_params,
         sensitivity_config,
-        designs_to_consider
+        designs_to_consider,
+        more_than_tradeoff=False
     ):
     try:
         comp = copy.deepcopy(comp_params)
@@ -120,14 +121,35 @@ def single_sensitivity_run(
 
             TRL_year = TRL_per_design(TRL, config=config)
 
-            results[design_names[config-1]] = {
-                # "OEW": class_II_results.W_empty,
-                "prop_frac": class_II_results.W_prop / class_II_results.W_empty,
-                "TMS_ratio": TMS_ratio,
-                "eff": class_II_results.total_prop_efficiency,
-                "atr_ratio": 1 - climate_results[design_names[config-1]] / climate_results["Baseline"],
-                "TRL_year": TRL_year
-            }
+            if more_than_tradeoff:
+                results[design_names[config-1]] = {
+                    "MTOW": class_II_results.MTOW,
+                    "OEW": class_II_results.W_empty,
+                    "M_fuel": class_II_results.W_fuel,
+                    "M_tank": class_II_results.weight.W_h2_tank,
+                    "M_power": class_II_results.W_prop,
+                    "P_peak": class_II_results.P_max_KW,
+                    "CL_cruise": class_II_results.CL_cruise,
+                    "CD_0": class_II_results.drag.CD0,
+                    "CD_cruise": class_II_results.drag.CD_total,
+                    "S": class_II_results.Wing_Area,
+                    "b": class_II_results.Wing_span,
+                    "L_fus": class_II_results.l_f_m,
+                    "Eff_tot": class_II_results.total_prop_efficiency,
+                    "Eff_climb": class_II_results.climb_eff,
+                    "Eff_cruise": class_II_results.cruise_eff,
+                    "L/D_cruise": class_II_results.L_over_D,
+                    "T_static": class_II_results.power.T_static_total
+                }
+            else:
+                results[design_names[config-1]] = {
+                    # "OEW": class_II_results.W_empty,
+                    "prop_frac": class_II_results.W_prop / class_II_results.W_empty,
+                    "TMS_ratio": TMS_ratio,
+                    "eff": class_II_results.total_prop_efficiency,
+                    "atr_ratio": 1 - climate_results[design_names[config-1]] / climate_results["Baseline"],
+                    "TRL_year": TRL_year
+                }
 
         return run, results, False
         
@@ -142,7 +164,8 @@ def sensitivity_analysis(
         n_repeats:      int = 1,
         comp_params:    dict = comp_params,
         sensitivity_config: str = "none",
-        designs_to_consider:list = [1, 2, 3, 4, 5]
+        designs_to_consider:list = [1, 2, 3, 4, 5],
+        more_than_tradeoff=False
     ) -> dict:
     
     sensitivity_results = {}
@@ -164,7 +187,8 @@ def sensitivity_analysis(
                 cfg,
                 comp_params,
                 sensitivity_config,
-                designs_to_consider
+                designs_to_consider,
+                more_than_tradeoff
             )
             for run in range(1, max_runs + 1)
         ]
@@ -178,13 +202,17 @@ def sensitivity_analysis(
 
     print("Sensitivity analysis finished.\n")
 
-    with open(f"sensitivity_outputs/{n_repeats}_runs/_sensitivity_raw_{n_repeats}_runs.json", "w") as f:
+    if more_than_tradeoff:
+        filename = f"sensitivity_outputs/_final_outputs_{n_repeats}.json"
+    else:
+        filename = f"sensitivity_outputs/{n_repeats}_runs/_sensitivity_raw_{n_repeats}_runs.json"
+    with open(filename, "w") as f:
         json.dump(sensitivity_results, f, indent=4)
 
     return sensitivity_results, n_skipped
 
 
-def stats_calculator(sensitivity_results, n_repeats=1, prefix=""):
+def stats_calculator(sensitivity_results, n_repeats=1, prefix="", more_than_tradeoff=False):
     criterion_result = {}
     criterion_stats = {}
 
@@ -207,7 +235,12 @@ def stats_calculator(sensitivity_results, n_repeats=1, prefix=""):
                 "std": stdev(criterion_result[config][criterion])
             }
 
-    with open(f"sensitivity_outputs/{n_repeats}_runs/{prefix}_tradeoff_quantity_stats_{n_repeats}_runs.json", "w") as f:
+    if more_than_tradeoff:
+        filename = f"sensitivity_outputs/_final_stats_{n_repeats}.json"
+    else:
+        filename = f"sensitivity_outputs/{n_repeats}_runs/{prefix}_tradeoff_quantity_stats_{n_repeats}_runs.json"
+
+    with open(filename, "w") as f:
         json.dump(criterion_stats, f, indent=4)
 
     return criterion_stats
@@ -560,18 +593,22 @@ if __name__ == "__main__":
     }
     noise = 0.5
 
-    results_stats_metrics, results_stats_scores = perform_sensitivity_analysis(cfg=cfg,
-                                                                               n_repeats=n_repeats,
-                                                                               designs_to_consider=designs_to_consider,
-                                                                               weights=weights,
-                                                                               from_file=True,
-                                                                               show=True,
-                                                                               legend=True)
+    # results_stats_metrics, results_stats_scores = perform_sensitivity_analysis(cfg=cfg,
+    #                                                                            n_repeats=n_repeats,
+    #                                                                            designs_to_consider=designs_to_consider,
+    #                                                                            weights=weights,
+    #                                                                            from_file=True,
+    #                                                                            show=True,
+    #                                                                            legend=True)
     
-    eliminate_criteria(cfg=cfg, n_repeats=n_repeats, designs_to_consider=designs_to_consider, base_weights=weights)
+    # eliminate_criteria(cfg=cfg, n_repeats=n_repeats, designs_to_consider=designs_to_consider, base_weights=weights)
 
-    weight_sensitivity_analysis(cfg=cfg, n_repeats=n_repeats, designs_to_consider=designs_to_consider, base_weights=weights,
-                                ssd_fraction=noise, plot=True)
+    # weight_sensitivity_analysis(cfg=cfg, n_repeats=n_repeats, designs_to_consider=designs_to_consider, base_weights=weights,
+    #                             ssd_fraction=noise, plot=True)
     
-    save_tradeoff(cfg, designs_to_consider=designs_to_consider)
+    # save_tradeoff(cfg, designs_to_consider=designs_to_consider)
+
+
+    final_results, _ = sensitivity_analysis(cfg=cfg, n_repeats=n_repeats, sensitivity_config="all", designs_to_consider=[3], more_than_tradeoff=True)
+    final_stats = stats_calculator(final_results, n_repeats=n_repeats, more_than_tradeoff=True)
 

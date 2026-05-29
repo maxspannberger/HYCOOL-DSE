@@ -241,7 +241,9 @@ class WeightBreakdown:
     W_secondary: float = 0.0
     grav_density:float = 0.64
     configuration: int = 1
-    total_prop_efficiency: float = 0.0
+    total_prop_efficiency: float = 1.0
+    climb_eff: float = 1.0
+    cruise_eff: float = 1.0
     climb_efficiency: float = 0.0
     cruise_efficiency: float = 0.0
     t_cruise: float = 0.0,
@@ -805,6 +807,8 @@ class weightEstimation:
             P_secondary_KW = P_req_secondary,
             P_max_KW=  P_req_tot,
             total_prop_efficiency = total_prop_efficiency,
+            climb_eff = climb_eff,
+            cruise_eff = cruise_eff,
             climb_efficiency=climb_eff,
             cruise_efficiency=cruise_eff,
             bt_charging_ratio=bt_charging_ratio
