@@ -26,8 +26,8 @@ PR_HPC          = 30                        # Pressure ratio for the HP Compress
 eta_HPC         = 0.88                      # Isentropic efficiency for HPC. ADD
 
 Pc              = P_ambient * PR_HPC        # Combustion pressure
-eta_CC          = 1.0                       # Combustive efficiency for CC. ADD
-eta_CC_p        = 1.0                       # Pressure drop across combustor
+eta_CC          = 0.995                     # Combustive efficiency for CC. ADD
+eta_CC_p        = 0.99                      # Pressure drop across combustor
 
 PR_HPT          = 11                        # Pressure ratio for the HP Turbine
 eta_HPT         = 0.92                      # Isentropic efficiency for HPT. ADD
@@ -57,10 +57,10 @@ Rs_ideal            = 8.314 / (ideal_params[0] / 1000)
 mdot_tot            = mdot_f * (ideal_OF+1)
 gamma_ideal         = PropsSI('CPMASS','P',Pc*1e5,'T',ideal_temp,'Air') / PropsSI('CVMASS','P',Pc*1e5,'T',ideal_temp,'Air')
 
-print(f"\nStoichiometric Temperature: {peak_temp:.2f} K")
-print(f"Stoichiometric O/F Ratio: {of_stoic:.2f}")
-print(f"Stoichiometric Gamma: {gamma_stoic:.2f}")
-print(f"Stoichiometric Specific Gas Constant: {Rs_stoic:.2f}\n ")
+# print(f"\nStoichiometric Temperature: {peak_temp:.2f} K")
+# print(f"Stoichiometric O/F Ratio: {of_stoic:.2f}")
+# print(f"Stoichiometric Gamma: {gamma_stoic:.2f}")
+# print(f"Stoichiometric Specific Gas Constant: {Rs_stoic:.2f}\n ")
 
 print(f"Ideal Temperature: {ideal_temp:.2f} K")
 print(f"Ideal O/F Ratio: {ideal_OF:.2f}")
@@ -106,24 +106,35 @@ print(f"Cp_HPT: {Cp_HPT:.2f} J/kg-K")
 print(f"Net Power Output: {(P_HPT-P_HPC)/1e6:.3f} MW")
 
 
+# -------------------------- Expander Turbine Section -------------------------------
 
-# fig, ax = plt.subplots(figsize=(10, 6))
+# Things that need to be determined:
+# Pump pressure for GH2 at turbine inlet
+#       -> Expander Turbine can power Pumps
+#       -> Want big pressure drop i.e. 150 bar -> 40 bar
+#       -> Small Turbine PR ~ 3.75 (single/double stage turbine)
+# Para / Ortho Hydrogen
+# Temperature of GH2 before HEX
+# Pump Efficiency
+# HEX Efficiency
 
-# color = 'tab:red'
-# ax.set_ylabel('Combustion Temperature (K)', color=color)
-# ax.plot(of_ratios, tc_vals, color=color, linewidth=2, linestyle='--', label='Tc')
-# ax.tick_params(axis='y', labelcolor=color)
+# Discretise HEX into segments
+# Supercritical Hydrogen is non linear when crossing "pseudo-critical Widom region"
+# Check with Chiara how tf to approach this / if CoolProp can do this
 
-# fig.suptitle('Air/GH2: O/F Ratio vs Isp and Combustion Temperature')
-# fig.tight_layout()
-# plt.show()
+fluid       = "ParaHydrogen"             # Ask Matthis wtf I should use
+P_tank      = 10                         # Bar, guess
+T_tank      = 20                         # K, guess
+P_pump      = 150                        # Bar, guess
+T_pump      = 20                         # K, guess
+eta_pump    = 1                          # TBD
+eta_H2T     = 1                          # TBD
 
+h1 = PropsSI("H", "P", P_tank*1e5, "T", T_tank, fluid)
+s1 = PropsSI("S", "P", P_tank*1e5, "T", T_tank, fluid)
 
-# Combustion chamber parameters:
-# TIT Gamma / R / Temperature (T4)
-# Need T3 / Inlet parameters -> After HPC
-# Look first at sizing HPT
-# O/F 80, Mdot 155g/s -> Total Mdot = 12.56kg/s
-# Entire flow of 12.56kg/s at 1500K, ideally want to extract all energy from this
-# I guess a big pressure drop then? Try to fully expand from 11 bar combustion pressure to 1 bar, any extra pressure difference from alt is just more thrust. 
-# => HPT Pressure ratio = 11, Temperature ratio =
+h2s = PropsSI("H", "P", P_pump*1e5, "S", s1, fluid)
+h2  = h1 + (h2s - h1) / eta_pump
+W_pump = h2 - h1                            # Work that has to be done by the pump
+
+# HEX Sizing section
