@@ -118,6 +118,8 @@ Weight Breakdown,W_secondary,399.911
 Weight Breakdown,grav_density,0.64
 Weight Breakdown,configuration,1
 Weight Breakdown,total_prop_efficiency,0.37572
+Weight Breakdown,climb_eff,0.375095
+Weight Breakdown,cruise_eff,0.388876
 Weight Breakdown,climb_efficiency,0.375095
 Weight Breakdown,cruise_efficiency,0.388876
 Weight Breakdown,t_cruise,"(0.0,)"

@@ -220,7 +220,7 @@ def run_class_ii(
     iteration_log: list[dict] = []
 
     if config is None:
-        config = int(input("Enter config for power unit weight estimation (1-5): "))
+        config = 3
 
     if config == 1:
         hump_tank = True
