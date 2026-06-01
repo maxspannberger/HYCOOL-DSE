@@ -161,7 +161,7 @@ def default_q400_hycool() -> AircraftConfig:
         taper            = 0.4,                 # lambda, typical transport
 
         #aerodynamic considerations of airfoil
-        CL_max=1.3,                             # taken from diagram, clean configuration, needs adjustment
+        CL_max=1.92,                             # taken from diagram, clean configuration, needs adjustment
 
         # Horizontal tail
         S_h_initial      = 24,                  # Referenced

@@ -483,8 +483,10 @@ def find_optimal_cl_mach(cfg: AircraftConfig, force_recompute: bool = False) -> 
             "half_sweep": cfg_updated.sweep_half,
             "LE_sweep": cfg_updated.sweep_tc,
             "root_chord": cfg_updated.c_root,
-            "span": cfg_updated.S_ref,
-            "taper": result.Wing_taper
+            "Wing_area": cfg_updated.S_ref,
+            "span": cfg_updated.b,
+            "taper": result.Wing_taper,
+            "Aileron_Area_ratio": result.tail_rechecked.Sa_Sref,
         })
 
         iterations+=1
@@ -561,7 +563,7 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
     deltaClmax_TO=deltaClmax_LD*0.6
 
     #get increase in Clmax for landing and takeoff according to LE HLD use, takeoff lower deflection wanted
-    le_flap_area_wing_ratio = 0.8           #assume 80% of wing area used for slats
+    le_flap_area_wing_ratio = 0.7          #assume 80% of wing area used for slats
     deltaClmax_LE_LD=0.3
     deltaCLmax_LE_LD=0.9*deltaClmax_LE_LD*le_flap_area_wing_ratio*np.cos(best_row['LE_sweep'])
     deltaCLmax_LE_TO=deltaCLmax_LE_LD*0.6
@@ -591,6 +593,8 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
     best_row["TE_flap_area_wing"] = te_flap_area_wing
     best_row["hinge_sweep_deg"] = hinge_sweep * 180 / np.pi
 
+    print(best_row["Aileron_Area_ratio"])
+
     print()
     print("[bold]Optimal Flight Conditions:[/bold]")
     table = Table(show_header=True, header_style="bold blue")
@@ -616,7 +620,6 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
 
     print("[bold]Wing Aerodynamics:[/bold]")
     table = Table(show_header=True, header_style="bold blue")
-    table.add_column("Stall Speed [m/s]", justify="right")
     table.add_column("CL_max_TO", justify="right")
     table.add_column("CL_max_LD", justify="right")
     table.add_column("delta CL_max_TO", justify="right")
@@ -648,6 +651,7 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
         m_LH2_cruise=best_row['m_LH2_cruise'],
         fuel_savings=best_row['fuel_savings'],
         W_landing=M_landing,
+        CL_max_LD=best_row["CL_max_LD"],
     )
 
 if __name__ == "__main__":
@@ -673,6 +677,6 @@ if __name__ == "__main__":
     # for label, p in paths.items():
     #     print(f"  {label}: {p}")
 
-    best_row = get_optimal_cl_mach(cfg)
+    best_row = get_optimal_cl_mach(cfg, force_recompute=True)
     cfg = apply_optimal_cl_mach(cfg, best_row)
     compute_additional_aerodynamic_parameters(best_row, cfg)
