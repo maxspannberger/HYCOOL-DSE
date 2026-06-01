@@ -43,28 +43,6 @@ except ImportError:  # fallback for running the file directly inside WeightEstim
 G = 9.80665
 
 
-def sweep_at_chord_fraction(
-    sweep_known: float,
-    x_known: float,
-    x_target: float,
-    aspect_ratio: float,
-    taper: float,
-) -> float:
-    """
-    Convert sweep from one chord fraction to another for a trapezoidal wing.
-
-    x = 0.25 gives quarter-chord sweep.
-    x = 0.50 gives half-chord sweep.
-
-    tan(Lambda_x2) = tan(Lambda_x1)
-                      + 4/AR * (x1 - x2) * (1 - taper)/(1 + taper)
-    """
-    return np.arctan(
-        np.tan(sweep_known)
-        + (4.0 / aspect_ratio) * (x_known - x_target) * (1.0 - taper) / (1.0 + taper)
-    )
-
-
 @dataclass
 class ScissorPlotInput:
     # ---------------- Aircraft geometry from converged Class II result ----------------
@@ -195,23 +173,14 @@ class ScissorPlotInput:
         tail_taper_use = float(tail_taper) if tail_taper is not None else cfg.taper
 
         sweep50 = float(cfg.sweep_half)
-        sweep25 = sweep_at_chord_fraction(
-            sweep_known=sweep50,
-            x_known=0.50,
-            x_target=0.25,
-            aspect_ratio=cfg.AR,
-            taper=wing_taper,
-        )
+        sweep25 = float(cfg.sweep_tc)
 
         sweep50_tail = float(cfg.sweep_h_half)
-        AR_h = bh**2 / Sh
-        sweep25_tail = sweep_at_chord_fraction(
-            sweep_known=sweep50_tail,
-            x_known=0.50,
-            x_target=0.25,
-            aspect_ratio=AR_h,
-            taper=tail_taper_use,
-        )
+        sweep25_tail = float(cfg.sweep_h_tc)
+
+        A = float(cfg.AR)
+        Ah = bh**2/Sh
+
 
         Vlanding_use = float(Vlanding) if Vlanding is not None else 1.3 * cfg.V_stall
         M_max_landing_use = float(M_max_landing) if M_max_landing is not None else result.MZFW
@@ -343,8 +312,8 @@ class ScissorPlotEstimator:
         bn = d.bn
         ln = d.ln
         bh = d.bh
-        Ah = bh**2 / Sh
-        A = b**2 / S + d.winglet_AR_increment
+        Ah = d.Ah
+        A = d.A
         Mcruise = d.Mcruise
         S_net = S - bf * cr
         lh = d.lh
@@ -365,6 +334,7 @@ class ScissorPlotEstimator:
         rho_landing = 1.225
         CL = M_max_landing * G / (0.5 * rho_landing * Vlanding**2 * S)
         CLA_h = CL
+        
 
         # ------------------------------------- STABILITY CONDITION --------------------------------------------------
 
