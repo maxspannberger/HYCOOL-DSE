@@ -1,132 +1,132 @@
 {
     "GT-BAT": {
         "mass": {
-            "mean": 1.951,
-            "std": 0.2338
+            "mean": 1.894,
+            "std": 0.308
         },
         "thermal": {
-            "mean": 2.784,
-            "std": 0.4117
+            "mean": 2.744,
+            "std": 0.4366
         },
         "efficiency": {
-            "mean": 3.277,
-            "std": 1.2569
+            "mean": 3.04,
+            "std": 0.8456
         },
         "climate": {
             "mean": 2,
             "std": 0.0
         },
         "TRL": {
-            "mean": 1.425,
-            "std": 0.5922
+            "mean": 1.439,
+            "std": 0.5989
         },
         "overall": {
-            "mean": 2.3817,
-            "std": 0.2083
+            "mean": 2.3114,
+            "std": 0.1624
         }
     },
     "FC-BAT": {
         "mass": {
-            "mean": 2.477,
-            "std": 0.4997
+            "mean": 2.464,
+            "std": 0.499
         },
         "thermal": {
             "mean": 1,
             "std": 0.0
         },
         "efficiency": {
-            "mean": 5,
-            "std": 0.0
+            "mean": 4.584,
+            "std": 0.4931
         },
         "climate": {
             "mean": 5,
             "std": 0.0
         },
         "TRL": {
-            "mean": 2.505,
-            "std": 0.5534
+            "mean": 2.521,
+            "std": 0.5365
         },
         "overall": {
-            "mean": 3.1197,
-            "std": 0.135
+            "mean": 3.0349,
+            "std": 0.1684
         }
     },
     "GT-GT": {
         "mass": {
-            "mean": 5,
-            "std": 0.0
+            "mean": 4.954,
+            "std": 0.2096
         },
         "thermal": {
             "mean": 4,
             "std": 0.0
         },
         "efficiency": {
-            "mean": 2.729,
-            "std": 1.354
+            "mean": 2.598,
+            "std": 1.0495
         },
         "climate": {
             "mean": 2,
             "std": 0.0
         },
         "TRL": {
-            "mean": 3.844,
-            "std": 0.4334
+            "mean": 3.847,
+            "std": 0.4333
         },
         "overall": {
-            "mean": 3.5802,
-            "std": 0.2768
+            "mean": 3.5428,
+            "std": 0.2222
         }
     },
     "GT-FC": {
         "mass": {
-            "mean": 4,
-            "std": 0.0
+            "mean": 3.998,
+            "std": 0.0447
         },
         "thermal": {
             "mean": 1,
             "std": 0.0
         },
         "efficiency": {
-            "mean": 4.598,
-            "std": 0.8019
+            "mean": 4.055,
+            "std": 0.6726
         },
         "climate": {
-            "mean": 2.791,
-            "std": 0.4068
+            "mean": 2.881,
+            "std": 0.324
         },
         "TRL": {
-            "mean": 2.193,
-            "std": 0.6342
+            "mean": 2.163,
+            "std": 0.6441
         },
         "overall": {
-            "mean": 2.9471,
-            "std": 0.1859
+            "mean": 2.853,
+            "std": 0.1657
         }
     },
     "GT-GT-BAT": {
         "mass": {
-            "mean": 3.665,
-            "std": 0.4722
+            "mean": 3.526,
+            "std": 0.4996
         },
         "thermal": {
             "mean": 3,
             "std": 0.0
         },
         "efficiency": {
-            "mean": 3.271,
-            "std": 1.2558
+            "mean": 3.04,
+            "std": 0.8456
         },
         "climate": {
             "mean": 2,
             "std": 0.0
         },
         "TRL": {
-            "mean": 2.819,
-            "std": 0.6623
+            "mean": 2.828,
+            "std": 0.6187
         },
         "overall": {
-            "mean": 3.0023,
-            "std": 0.2811
+            "mean": 2.9223,
+            "std": 0.2234
         }
     }
 }
