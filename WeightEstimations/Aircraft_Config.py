@@ -29,6 +29,7 @@ class AircraftConfig:
     sweep_tc:       float
     Loading:        float
     taper:          float          # lambda = c_tip / c_root
+    CL_max:         float          # maximum lift coefficient, clean configuration
 
     # --- Horizontal tail -----------------------------------------------
     S_h_initial:    float
@@ -158,6 +159,9 @@ def default_q400_hycool() -> AircraftConfig:
         sweep_tc         = np.deg2rad(24.0),    # Referenced
         Loading          = WingLoading_Target,  # Class I Value
         taper            = 0.4,                 # lambda, typical transport
+
+        #aerodynamic considerations of airfoil
+        CL_max=1.3,                             # taken from diagram, clean configuration, needs adjustment
 
         # Horizontal tail
         S_h_initial      = 24,                  # Referenced
