@@ -1,0 +1,4 @@
+CoolProp
+scipy
+numpy
+matplotlib

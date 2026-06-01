@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: hycool-pipe
+Version: 0.1.0
+Summary: HYCOOL cryogenic hydrogen pipe sizing tool
+Requires-Python: >=3.10
+Requires-Dist: CoolProp
+Requires-Dist: scipy
+Requires-Dist: numpy
+Requires-Dist: matplotlib

@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hycool-pipe"
+version = "0.1.0"
+description = "HYCOOL cryogenic hydrogen pipe sizing tool"
+requires-python = ">=3.10"
+dependencies = [
+    "CoolProp",
+    "scipy",
+    "numpy",
+    "matplotlib",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["hycool_pipe*"]
