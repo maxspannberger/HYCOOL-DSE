@@ -536,7 +536,6 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
     a_cruise=np.sqrt(1.4*287.05*T) # speed of sound at cruise altitude
     v_cruise=best_row['M_cruise']*a_cruise
     Reynolds=rho*v_cruise*cfg_updated.MAC/mu_alt
-   
 
     #Calculate the maximum Lift coefficient for landing configuration
     rho_ground=1.225        # sea level standard density in kg/m^3
