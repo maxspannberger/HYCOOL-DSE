@@ -18,7 +18,7 @@ LHV_H2 = 120  # lower heating value of hydrogen [MJ/kg]
 
 T_start = 20.3
 T_use_fc = 433
-T_use_gt = 318.9
+T_use_gt = 423
 
 ###############################################################################
 # Cooling and piping parameters
