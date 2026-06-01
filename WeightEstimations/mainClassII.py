@@ -519,7 +519,7 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
     CL_adjusted = best_row['CL_cruise'] / np.sqrt(beta)
 
         # get CLalpha for the current Mach number and aspect ratio with datcom equation
-    airfoilefficiency=0.90
+    airfoilefficiency=0.95
     CLalpha=2*np.pi*cfg.AR/(2+np.sqrt(4+(cfg_updated.AR*np.sqrt(beta)/airfoilefficiency)**2*(1+np.tan(best_row['half_sweep'])**2)/(beta**2)))
 
         #find trim angle to fly at CL_cruise with the adjusted CLalpha, define lift angle of attack as alpha0 according to the chosen airfoil
