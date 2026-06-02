@@ -524,8 +524,9 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
     airfoilefficiency=0.95
     CLalpha=2*np.pi*cfg.AR/(2+np.sqrt(4+(cfg_updated.AR*np.sqrt(beta)/airfoilefficiency)**2*(1+np.tan(best_row['half_sweep'])**2)/(beta**2)))
 
-        #find trim angle to fly at CL_cruise with the adjusted CLalpha, define lift angle of attack as alpha0 according to the chosen airfoil
+    #find trim angle to fly at CL_cruise with the adjusted CLalpha, define lift angle of attack as alpha0 according to the chosen airfoil
 
+    CL_alpha0_clean=0.281
     alpha0=-2.5 * np.pi/180 # for example, for a typical airfoil, TODO: replace with actual alpha0 for the chosen airfoil
 
     alpha_trim=CL_adjusted/CLalpha+alpha0
@@ -651,8 +652,9 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
         fuel_savings=best_row['fuel_savings'],
         W_landing=M_landing,
         CL_max_LD=best_row["CL_max_LD"],
-        delta_CL_flap=deltaCL_max_LD+deltaCLmax_LE_LD,
-        CL_alpha0=0.4       #placeholder for the CL at zero angle of attack, which depends on the airfoil shape
+        delta_CL_flap=deltaCL_max_LD,
+        CL_alpha0_clean=CL_alpha0_clean,       #according to XFLR5 data for the chosen airfoil
+        CL_alpha0_flapped=CL_alpha0_clean+deltaCL_max_LD
     )
 
 if __name__ == "__main__":
