@@ -50,10 +50,10 @@ class Pipe:
         self.eps       = 1 # STILL HAS TO BE IMPLEMENTED
      
     # Function that loops over the pipe segments and tracks the state if H2
-    def solve_H2_state(self, p_in, T_in, T_amb, m_dot, PLOT=False):
-        h = CP.PropsSI('H', 'P', p_in, 'T', T_in, self.fluid)
-        p = p_in
-        T = T_in
+    def solve_H2_state(self, states, T_amb, m_dot, PLOT=False):
+        p = states['p'][-1][-1] # Access the last pressure from the last component
+        T = states['T'][-1][-1] # Access the last temperature from the last component
+        h = CP.PropsSI('H', 'P', p, 'T', T, self.fluid)
         
         # Store results
         results = {'T':   np.zeros(self.segments), 
