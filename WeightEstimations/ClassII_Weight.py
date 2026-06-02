@@ -91,6 +91,7 @@ class ClassII_Input:
     t_climb: float = 0.0
     t_reserve: float = 0.0
     bt_charging_ratio: float = 0.0
+    P_opt: float = 0.0
     mass_margin: float = 1.1
 
 
@@ -121,6 +122,7 @@ class ClassII_Input:
         N_engines: float = 0.0,
         base_params: bool = False,
         bt_charging_ratio: float = 0.0,
+        P_opt: float = 0.0,
         mass_margin: float = 1.1
     ) -> "ClassII_Input":
         """
@@ -189,6 +191,7 @@ class ClassII_Input:
             t_reserve = t_reserve,
             N_engines = N_engines,
             bt_charging_ratio = bt_charging_ratio,
+            P_opt = P_opt,
             mass_margin = mass_margin,
         )
 
@@ -249,7 +252,8 @@ class WeightBreakdown:
     t_cruise: float = 0.0,
     t_climb  : float = 0.0,
     t_reserve: float = 0.0,
-    bt_charging_ratio: float = 0.0
+    bt_charging_ratio: float = 0.0,
+    P_opt: float = 0.0
 
 
     @property
@@ -767,7 +771,12 @@ class weightEstimation:
         else:
             bt_charging_ratio = g.bt_charging_ratio
 
-        return total_mass * g.mass_margin, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff,eff_climb, eff_cruise, bt_charging_ratio
+        if "GT_P_opt" in efficiency:
+            P_opt = efficiency["GT_P_opt"]/1000
+        else:
+            P_opt = g.P_opt/1000
+
+        return total_mass * g.mass_margin, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff,eff_climb, eff_cruise, bt_charging_ratio, P_opt
     
     def _h2_tank_weight(self) -> float:
         return self.g.W_fuel * (1 / self.g.grav_density - 1)* self.g.mass_margin
@@ -778,7 +787,7 @@ class weightEstimation:
 
         h2_tank_weight   = self._h2_tank_weight()
         W_engine_total, P_req_primary, P_req_secondary, P_req_tot, W_primary, W_secondary,\
-            total_prop_efficiency, climb_eff,cruise_eff, bt_charging_ratio = self._propulsion_weight()
+            total_prop_efficiency, climb_eff,cruise_eff, bt_charging_ratio, P_opt = self._propulsion_weight()
 
         return WeightBreakdown(
             W_wing   = self._wing_weight(),
@@ -811,7 +820,8 @@ class weightEstimation:
             cruise_eff = cruise_eff,
             climb_efficiency=climb_eff,
             cruise_efficiency=cruise_eff,
-            bt_charging_ratio=bt_charging_ratio
+            bt_charging_ratio=bt_charging_ratio,
+            P_opt=P_opt
         )
 
 

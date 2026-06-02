@@ -139,7 +139,8 @@ def single_sensitivity_run(
                     "Eff_climb": class_II_results.climb_eff,
                     "Eff_cruise": class_II_results.cruise_eff,
                     "L/D_cruise": class_II_results.L_over_D,
-                    "T_static": class_II_results.power.T_static_total
+                    "T_static": class_II_results.power.T_static_total,
+                    "P_opt": class_II_results.weight.P_opt
                 }
             else:
                 results[design_names[config-1]] = {

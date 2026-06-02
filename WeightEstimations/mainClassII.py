@@ -291,7 +291,7 @@ def run_class_ii(
             t_cruise=t_cruise,
             t_reserve=t_reserve,
             base_params=False,
-            bt_charging_ratio = bt_charging_ratio,
+            bt_charging_ratio = bt_charging_ratio
         )
         wt_bd = weightEstimation(wt_inp, comp).compute()
 
