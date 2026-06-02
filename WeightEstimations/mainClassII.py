@@ -44,7 +44,7 @@ from WeightEstimations.Mission_Power     import MissionPower,       MissionFuelB
 from WeightEstimations.Power_Sizing      import PowerSizing,        PowerSizingBreakdown
 from WeightEstimations.Export_Results    import export_results
 from General.component_parameters import component_params as comp_params
-from ISA import isa
+from WeightEstimations.ISA import isa
 
 from rich import print
 from rich.console import Console
@@ -522,7 +522,7 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
 
         # get CLalpha for the current Mach number and aspect ratio with datcom equation
     airfoilefficiency=0.95
-    CLalpha=2*np.pi*cfg.AR/(2+np.sqrt(4+(cfg_updated.AR*np.sqrt(beta)/airfoilefficiency)**2*(1+np.tan(best_row['half_sweep'])**2)/(beta**2)))
+    CLalpha=2*np.pi*cfg_updated.AR/(2+np.sqrt(4+(cfg_updated.AR*np.sqrt(beta)/airfoilefficiency)**2*(1+np.tan(best_row['half_sweep'])**2)/(beta**2)))
 
     #find trim angle to fly at CL_cruise with the adjusted CLalpha, define lift angle of attack as alpha0 according to the chosen airfoil
 
@@ -650,7 +650,7 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
         fuel_savings=best_row['fuel_savings'],
         W_landing=M_landing,
         CL_max_LD=best_row["CL_max_LD"],
-        delta_CL_flap=deltaCL_max_LD,
+        delta_Cl_flap=deltaCL_max_LD,
         CL_alpha0_flapped=cfg_updated.CL_alpha0_clean+deltaCL_max_LD,
         cdash_c=cdash_c,
         TE_flap_area_wing=te_flap_area_wing,

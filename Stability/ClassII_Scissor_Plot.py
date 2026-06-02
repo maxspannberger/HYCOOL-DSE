@@ -23,21 +23,22 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import numpy as np
 
+import json
+
 # Allow running both from inside WeightEstimations and from the project root.
 root = Path(__file__).resolve().parent.parent
 if str(root) not in sys.path:
     sys.path.append(str(root))
 
-try:
-    from WeightEstimations.Aircraft_Config import AircraftConfig, default_q400_hycool
-    from WeightEstimations.mainClassII import ClassIIResult, run_class_ii
-    from WeightEstimations.ISA import isa
-    from General.component_parameters import component_params as comp_params
-except ImportError:  # fallback for running the file directly inside WeightEstimations
-    from Aircraft_Config import AircraftConfig, default_q400_hycool
-    from mainClassII import ClassIIResult, run_class_ii
-    from ISA import isa
-    from General.component_parameters import component_params as comp_params
+#try:
+from WeightEstimations.Aircraft_Config import AircraftConfig, default_q400_hycool
+from WeightEstimations.mainClassII import ClassIIResult, run_class_ii
+from General.component_parameters import component_params as comp_params
+from WeightEstimations.mainClassII import compute_additional_aerodynamic_parameters
+#except ImportError:  # fallback for running the file directly inside WeightEstimations
+#    from Aircraft_Config import AircraftConfig, default_q400_hycool
+#    from mainClassII import ClassIIResult, run_class_ii
+#    from General.component_parameters import component_params as comp_params
 
 
 G = 9.80665
@@ -71,17 +72,23 @@ class ScissorPlotInput:
 
     Mcruise: float                  # cruise Mach number for stability condition [-]
     Vlanding: float                 # landing or approach speed [m/s]
-    M_max_landing: float            # landing mass used for CL calculation [kg]
+
+    CL: float                       #wing lift coefficient at landing
+    CL0: float                      #CL at 0 angle of attack for flapped wing (landing), Roskam for deltaCL0 + first year adsee book
+    delta_cl_max: float             #increase in airfoil CL due to landing flaps
+    cdash_c: float                  #the ratio between the chord of the airfoil with extended flap and the chord in clean configuration (see next slides)
+    Swf_S: float                    #ratio between flapped wing area (with only TE flaps), and clean wing area
+    Cm0_airfoil: float              #moment coefficient airfoil at zero angle of attack
+    CLA_h: float                    #lift coefficient of aircraft without tail, found with calculation see notes
+
+    A: float                        #aspect ratio horizontal tail
+    Ah: float                       #aspect ratio main wing, not purely geometric to take winglet into account
 
     # ---------------- Controllability inputs from old scissor plot ----------------
-    CL0: float = 1.4                # CL at zero AoA for flapped wing
+    
     mu1: float = 0.215
     mu2: float = 0.79
     mu3: float = 0.045
-    cdash_c: float = 1.2917
-    delta_cl_max: float = 1.8
-    Swf_S: float = 0.621113839
-    Cm0_airfoil: float = -0.11
 
     # ---------------- CG range ----------------
     # Replace these with the final loading diagram output when available.
@@ -99,31 +106,22 @@ class ScissorPlotInput:
     S_M: float = 0.05               # stability margin
     xac_w: float = 0.25             # assumed wing aerodynamic centre wrt LEMAC
 
-    # ---------------- Optional modelling assumptions ----------------
-    winglet_AR_increment: float = 0.0
-
     @classmethod
     def from_class_ii(
         cls,
         cfg: AircraftConfig,
         result: ClassIIResult,
         *,
+        aero_dict: dict,
         xcg_lower: Optional[float] = None,
         xcg_upper: Optional[float] = None,
         lfn: Optional[float] = None,
         bn: Optional[float] = None,
         ln: Optional[float] = None,
-        tail_taper: Optional[float] = None,
         Vlanding: Optional[float] = None,
-        M_max_landing: Optional[float] = None,
-        CL0: float = 1.4,
         mu1: float = 0.215,
         mu2: float = 0.79,
         mu3: float = 0.045,
-        cdash_c: float = 1.2917,
-        delta_cl_max: float = 1.8,
-        Swf_S: float = 0.621113839,
-        Cm0_airfoil: float = -0.11,
     ) -> "ScissorPlotInput":
         """
         Build scissor plot inputs from the converged Class II output.
@@ -143,9 +141,12 @@ class ScissorPlotInput:
 
         S = float(result.Wing_Area)
         b = float(result.Wing_span)
-        c = float(final["MAC_m"])
-        cr = float(final["c_root_m"])
-        ct = float(final["c_tip_m"])
+        c = aero_dict["MAC"]        #Mean aerodynamic chord
+
+        wing_taper = aero_dict["taper"]
+
+        cr = float(cfg.c_root)
+        ct = wing_taper * cr
 
         Sh = float(result.tail_rechecked.S_h)
         bh = float(result.tail_rechecked.b_h)
@@ -161,16 +162,13 @@ class ScissorPlotInput:
 
         # Current config does not store the wing longitudinal location directly.
         # lfn is estimated from fuselage length minus tail arm unless provided.
-        lfn_use = float(lfn) if lfn is not None else max(lf - cfg.l_t, 0.0)
+        lfn_use = float(lfn) if lfn is not None else 25
 
         # Current config does not store nacelle diameter and nacelle longitudinal arm separately.
         # bn defaults to propfan disk diameter. ln defaults to 0, meaning no nacelle a.c. shift.
         # Replace these if you have better nacelle geometry.
-        bn_use = float(bn) if bn is not None else float(cfg.D_propfan)
-        ln_use = float(ln) if ln is not None else 0.0
-
-        wing_taper = cfg.taper
-        tail_taper_use = float(tail_taper) if tail_taper is not None else cfg.taper
+        bn_use = float(bn) if bn is not None else (cfg.D_propfan/2)
+        ln_use = float(ln) if ln is not None else 1
 
         sweep50 = float(cfg.sweep_half)
         sweep25 = float(cfg.sweep_tc)
@@ -181,9 +179,20 @@ class ScissorPlotInput:
         A = float(cfg.AR)
         Ah = bh**2/Sh
 
+        Mcruise = cfg.M_cruise
 
         Vlanding_use = float(Vlanding) if Vlanding is not None else 1.3 * cfg.V_stall
-        M_max_landing_use = float(M_max_landing) if M_max_landing is not None else result.MZFW
+
+        CL = aero_dict["CL_max_LD"]     #wing lift coefficient at landing, I just took clmax landing
+        CLA_h = CL
+        CL0 = aero_dict["CL_alpha0_flapped"]
+        delta_cl_max = aero_dict["delta_Cl_flap"]
+        cdash_c = aero_dict["cdash_c"]
+        Swf_S = aero_dict["TE_flap_area_wing"]
+        Cm0_airfoil = float(cfg.Cm_alpha0_clean)                  #moment coefficient airfoil at zero angle of attack
+
+        lh = float(cfg.l_h)      
+        hh = 4.3            #placeholder
 
         kwargs = dict(
             bf=bf,
@@ -203,12 +212,13 @@ class ScissorPlotInput:
             bn=bn_use,
             ln=ln_use,
             bh=bh,
-            lh=float(cfg.l_h),
-            hh=float(cfg.h_h),
-            Mcruise=float(cfg.M_cruise),
+            lh=lh,      #vertical distance between stabilizer plane and wing plane, measured from scaled drawing airport manual
+            hh=hh,
+            Mcruise=Mcruise,
             Vlanding=Vlanding_use,
-            M_max_landing=M_max_landing_use,
             CL0=CL0,
+            CL=CL,
+            CLA_h=CLA_h,
             mu1=mu1,
             mu2=mu2,
             mu3=mu3,
@@ -216,6 +226,8 @@ class ScissorPlotInput:
             delta_cl_max=delta_cl_max,
             Swf_S=Swf_S,
             Cm0_airfoil=Cm0_airfoil,
+            A=A,
+            Ah=Ah,
         )
 
         if xcg_lower is not None:
@@ -275,7 +287,7 @@ class ScissorPlotEstimator:
             bf=d.bf, hf=d.hf, lf=d.lf, lfn=d.lfn,
             S=d.S, Sh=d.Sh, b=d.b, c=d.c, ct=d.ct, cr=d.cr,
             bh=d.bh, lh=d.lh, hh=d.hh,
-            Mcruise=d.Mcruise, Vlanding=d.Vlanding, M_max_landing=d.M_max_landing,
+            Mcruise=d.Mcruise, Vlanding=d.Vlanding,
         )
         missing = [name for name, value in required.items() if value <= 0]
         if missing:
@@ -317,8 +329,10 @@ class ScissorPlotEstimator:
         Mcruise = d.Mcruise
         S_net = S - bf * cr
         lh = d.lh
-        hh = d.hh
+        hh = d.hh 
         CL0 = d.CL0
+        CL = d.CL
+        CLA_h = d.CLA_h
         mu1 = d.mu1
         mu2 = d.mu2
         mu3 = d.mu3
@@ -327,14 +341,7 @@ class ScissorPlotEstimator:
         Swf_S = d.Swf_S
         Cm0_airfoil = d.Cm0_airfoil
         Vlanding = d.Vlanding
-        M_max_landing = d.M_max_landing
 
-        # Landing lift coefficient from final landing mass and final wing area.
-        # This replaces the old hard-coded CL = 1.661 while preserving the equation usage.
-        rho_landing = 1.225
-        CL = M_max_landing * G / (0.5 * rho_landing * Vlanding**2 * S)
-        CLA_h = CL
-        
 
         # ------------------------------------- STABILITY CONDITION --------------------------------------------------
 
@@ -503,11 +510,17 @@ class ScissorPlotEstimator:
         print(f'downwash gradient {bd.depsilon_dalpha}')
         print(f'wing aspect ratio {bd.A}')
         print(f'actual Sh/S {bd.actual_ShS}')
+        print(f'cdash_c {d.cdash_c}')
+        print(f'wing area {d.S}, net wing area {bd.S_net}, tail area {d.Sh}')
+        print(f'CL at landing {d.CL}, CL0 flapped {d.CL0}, CLA_h {bd.CLA_h}')
 
 
 if __name__ == "__main__":
     cfg = default_q400_hycool()
     result = run_class_ii(cfg, comp=comp_params, tol=1.0, max_iter=100, verbose=True)
+    with open("WeightEstimations/outputs/optimal_cl_mach_cache.json", "r") as file:
+        best_row = json.load(file)
+    aero_dict = compute_additional_aerodynamic_parameters(best_row, cfg)
 
     inp = ScissorPlotInput.from_class_ii(
         cfg,
@@ -517,6 +530,7 @@ if __name__ == "__main__":
         xcg_upper=0.640 * 1.02,
         # Replace these with actual nacelle geometry when available.
         ln=0.0,
+        aero_dict=aero_dict
     )
 
     estimator = ScissorPlotEstimator(inp)

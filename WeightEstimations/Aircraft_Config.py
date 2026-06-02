@@ -201,8 +201,8 @@ def default_q400_hycool() -> AircraftConfig:
 
         # Flight envelope
         altitude_cruise  = 7_620,               # From Mission Definition
-        M_cruise         = 0.7,                 # From Mission Definition
-        V_cruise         = 0.7 * 296.0,         # From Mission Definition
+        M_cruise         = 0.68,                 # From Mission Definition
+        V_cruise         = 0.68 * 296.0,         # From Mission Definition
         V_dive           = 213.5,               # --- TBD ---
         V_stall          = 48.6,                # Class I Value
 

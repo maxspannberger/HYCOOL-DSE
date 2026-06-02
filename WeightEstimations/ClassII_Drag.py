@@ -2,8 +2,8 @@ import numpy as np
 from math import cos
 from dataclasses import dataclass, field
 from typing import Optional
-from ISA import isa
-from Aircraft_Config import AircraftConfig
+from WeightEstimations.ISA import isa
+from WeightEstimations.Aircraft_Config import AircraftConfig
 
 from rich.table import Table
 
