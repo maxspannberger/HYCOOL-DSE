@@ -4,6 +4,8 @@ root = Path(__file__).resolve().parent
 sys.path.append(str(root))
 
 from h2_components import Tank, Pipe
+from rich import print as rich_print
+from rich.tree import Tree
 
 '''
 The wall of the components Pipe and Tank should be defined in the following manner.
@@ -35,6 +37,18 @@ def solve_system(system, m_dot, T_amb):
         
     return states
 
+def print_tree(states):
+    tree = Tree("[bold blue]System States")
+    
+    for key, values in states.items():
+        branch = tree.add(f"[bold magenta]{key.upper()}")
+        for comp_idx, data in enumerate(values):
+            comp_node = branch.add(f"Component {comp_idx}")
+            # Format the array for readability
+            comp_node.add(str(data))
+            
+    rich_print(tree)
+
 
 if __name__ == "__main__":
     wall = [('ss-316l',      0.01), 
@@ -47,7 +61,7 @@ if __name__ == "__main__":
         ]
     
     states = solve_system(system, 0.03, 307)
-    print(states)
+    print_tree(states)
 
 
 
