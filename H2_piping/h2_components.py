@@ -31,7 +31,7 @@ class Tank:
         
         # The state of the hydrogen in the tank
         self.p   = 6*101325
-        self.T   = 15
+        self.T   = 29.8
         self.rho = CP.PropsSI('D', 'P', self.p, 'T', self.T, self.fluid)
         self.h   = CP.PropsSI('H', 'P', self.p, 'T', self.T, self.fluid)
     
@@ -136,34 +136,34 @@ class Pipe:
         
         # Plot the state variables allong the pipe.
         if PLOT:
-                fig, axes = plt.subplots(2, 2, sharex=True)
-                
-                # Flatten axes for 0-3 indexing
-                ax = axes.flatten()
-                
-                # Define plot data and styling
-                plot_data = [
-                    (results['T'], 'Temperature (K)', 'tab:red'),
-                    (results['p'], 'Pressure (Pa)', 'tab:blue'),
-                    (results['rho'], 'Density (kg/m³)', 'tab:green'),
-                    (results['h'], 'Enthalpy (J/kg)', 'tab:purple')
-                ]
-                
-                # Create a list of x positions. It starts after the first segment 
-                # and ends at the end of the pipe
-                x_values = np.linspace(0, self.length, self.segments + 1)[1:]
-                
-                # Iterate to fill the axis with the correct data
-                for i, (data, label, color) in enumerate(plot_data):
-                    ax[i].plot(x_values, data, color=color, linewidth=2)
-                    ax[i].set_ylabel(label)
-                    ax[i].grid(True, linestyle='--', alpha=0.7)
-                
-                # Tighten the layout, adjust the title size and plot
-                fig.suptitle('H2 state accros pipe', fontsize=16)
-                fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-                plt.show()
-               
+            fig, axes = plt.subplots(2, 2, sharex=True)
+            
+            # Flatten axes for 0-3 indexing
+            ax = axes.flatten()
+            
+            # Define plot data and styling
+            plot_data = [
+                (results['T'], 'Temperature (K)', 'tab:red'),
+                (results['p'], 'Pressure (Pa)', 'tab:blue'),
+                (results['rho'], 'Density (kg/m³)', 'tab:green'),
+                (results['h'], 'Enthalpy (J/kg)', 'tab:purple')
+            ]
+            
+            # Create a list of x positions. It starts after the first segment 
+            # and ends at the end of the pipe
+            x_values = np.linspace(0, self.length, self.segments + 1)[1:]
+            
+            # Iterate to fill the axis with the correct data
+            for i, (data, label, color) in enumerate(plot_data):
+                ax[i].plot(x_values, data, color=color, linewidth=2)
+                ax[i].set_ylabel(label)
+                ax[i].grid(True, linestyle='--', alpha=0.7)
+            
+            # Tighten the layout, adjust the title size and plot
+            fig.suptitle('H2 state accros pipe', fontsize=16)
+            fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+            plt.show()
+           
         # Return the results dictionary
         return results 
  

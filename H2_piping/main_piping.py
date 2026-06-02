@@ -7,8 +7,6 @@ from h2_components import Tank, Pipe
 from rich import print as rich_print
 from rich.tree import Tree
 import matplotlib.pyplot as plt
-import numpy as np
-from itertools import chain
 
 '''
 The wall of the components Pipe and Tank should be defined in the following manner.
@@ -31,7 +29,7 @@ def solve_system(system, m_dot, T_amb):
     
     
     for comp in system:
-        component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=False)
+        component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=True)
         
         states['p'].append(component_result['p'])
         states['T'].append(component_result['T'])
@@ -42,37 +40,47 @@ def solve_system(system, m_dot, T_amb):
 
 
 def print_tree(states):
-    tree = Tree("[bold blue]System States")
+    tree = Tree("\n[bold blue]System States")
     
     for key, values in states.items():
-        branch = tree.add(f"[bold yellow]{key.upper()}")
+        branch = tree.add(f"[bold red]{key.upper()}")
         for comp_idx, data in enumerate(values):
-            comp_node = branch.add(f"Component {comp_idx}")
+            comp_node = branch.add(f"[bold yellow]Component {comp_idx}")
             # Format the array for readability
             comp_node.add(str(data))
             
     rich_print(tree)
 
 def plot_states(states):
-    continuous_states = {
-        prop: np.fromiter(chain.from_iterable(states[prop]), dtype=float)
-        for prop in states.keys()
-    }
-    
+    # Flatten the lists into simple lists for plotting
+    # We take every piece of data from the list of arrays and put them in one line
+    flat_states = {}
+    for prop in ['p', 'T', 'rho', 'h']:
+        temp_list = []
+        for component_data in states[prop]:
+            # Add all values from this component to our flat list
+            for value in component_data:
+                temp_list.append(value)
+        flat_states[prop] = temp_list
+
+    # Plot the flattened data
     fig, axes = plt.subplots(2, 2, figsize=(12, 8))
     axes = axes.flatten()
+    
     properties = ['p', 'T', 'rho', 'h']
     titles = ['Pressure (Pa)', 'Temperature (K)', 'Density (kg/m³)', 'Enthalpy (J/kg)']
     colors = ['tab:blue', 'tab:red', 'tab:green', 'tab:purple']
 
     for i, prop in enumerate(properties):
-        axes[i].plot(continuous_states[prop], color=colors[i], marker='.', linestyle='-')
+        axes[i].plot(flat_states[prop], color=colors[i], marker='.', linestyle='-')
         axes[i].set_title(titles[i])
-        axes[i].grid(True, linestyle='--', alpha=0.6)
+        axes[i].grid(True, linestyle='--', alpha=0.7)
+        axes[i].set_ylabel(titles[i])
         axes[i].set_xlabel("Total System Step (Index)")
 
-    plt.suptitle("Hydrogen State Profile", fontsize=16)
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    # Tighten layout and show plot
+    fig.suptitle('Hydrogen State Profile', fontsize=16)
+    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.show()
 
 
