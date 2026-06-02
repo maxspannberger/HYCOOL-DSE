@@ -45,9 +45,9 @@ class Tank:
         
         # The state of the hydrogen in the tank
         self.p   = 6*101325
-        self.T   = 29.8
-        self.rho = CP.PropsSI('D', 'P', self.p, 'T', self.T, self.fluid)
-        self.h   = CP.PropsSI('H', 'P', self.p, 'T', self.T, self.fluid)
+        self.T   = CP.PropsSI('T', 'P', self.p, 'Q', 0, self.fluid)
+        self.rho = CP.PropsSI('D', 'P', self.p, 'Q', 0, self.fluid)
+        self.h   = CP.PropsSI('H', 'P', self.p, 'Q', 0, self.fluid)
         self.frac= calc_frac(self.p, self.h)
     
     def solve_H2_state(self, states, T_amb, m_dot, PLOT=False):
@@ -84,8 +84,10 @@ class Pipe:
         self.d         = diameter
         self.N         = N         # number of MLI layers
         self.N_bar     = N_bar     # layer density [layers/cm]
-        self.P_mli     = P_mli     # residual gas pressure [torr I think?]
+        self.P_mli     = P_mli     # residual gas pressure [Pa]
         self.eps_pipe  = eps_pipe  # pipe wall roughness [m]
+        # Note: P_mli must be supplied in Pa; converted to Torr internally
+        # because the Lockheed C_G constant was fitted with pressure in Torr
         self.cs        = 1.93 * 10**-6 # MLI conductivity coefficient [W/(m*K^(3.63))]
         self.cr        = 3.88 * 10**-10 # MLI radiation coefficient [W/(m^2*K^(4.67))]
         self.cg        = 5.5 * 10**4 # MLI gas conduction coefficient [W/(m^2*Pa*K^(0.52))]
@@ -95,7 +97,7 @@ class Pipe:
     def solve_H2_state(self, states, T_amb, m_dot, PLOT=True):
         p = states['p'][-1][-1] # Access the last pressure from the last component
         T = states['T'][-1][-1] # Access the last temperature from the last component
-        h = CP.PropsSI('H', 'P', p, 'T', T, self.fluid)
+        h = CP.PropsSI('H', 'P', p, 'Q', 0, self.fluid)
         
         # Store results
         results = {'T':   np.zeros(self.segments), 
@@ -112,8 +114,8 @@ class Pipe:
         # Loop over the pipe segments and adjust the state variables
         for i in range(self.segments):
             # Fluid properties at segment inlet
-            rho = CP.PropsSI('D', 'P', p, 'T', T, self.fluid)
-            mu  = CP.PropsSI('V', 'P', p, 'T', T, self.fluid)
+            rho = CP.PropsSI('D', 'P', p, 'Q', 0, self.fluid)
+            mu  = CP.PropsSI('V', 'P', p, 'Q', 0, self.fluid)
 
             # MLI heat leak (Lockheed three-term equation)
             T_h   = T_amb
@@ -122,7 +124,7 @@ class Pipe:
             Q_dot = A_seg * (
                 (self.cs * T_m * self.N_bar**2.63 * (T_h - T_c)) / (self.N - 1)
               + (self.cr * self.eps * (T_h**4.67 - T_c**4.67)) / self.N
-              + (self.cg * self.P_mli * (T_h**0.52 - T_c**0.52)) / self.N
+              + (self.cg * (self.P_mli / 133.322) * (T_h**0.52 - T_c**0.52)) / self.N
             )
 
             # Flow velocity and Reynolds number
