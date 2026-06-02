@@ -18,13 +18,36 @@ eg. the inner layer is ss-326l and the outer layer is polyurethene
 
 '''
 
-wall = [('ss-316l',      0.01), 
-        ('polyurethene', 0.02)]
+def solve_system(system, m_dot, T_amb):
+    states = {'p'   : [],
+              'T'   : [],
+              'rho' : [],
+              'h'   : []}
+    
+    
+    for comp in system:
+        component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=False)
+        
+        states['p'].append(component_result['p'])
+        states['T'].append(component_result['T'])
+        states['rho'].append(component_result['rho'])
+        states['h'].append(component_result['h'])
+        
+    return states
 
-system = [
-    Tank(diameter=0.1, wall=wall), 
-    Pipe(position=1, length=1.0, diameter=0.1, wall=wall, segments=10)
-    ]
+
+if __name__ == "__main__":
+    wall = [('ss-316l',      0.01), 
+            ('polyurethene', 0.02)]
+
+    system = [
+        Tank(diameter=0.1, wall=wall), 
+        Pipe(position=1, length=1.0, diameter=0.1, wall=wall, segments=10)
+        ]
+    
+    states = solve_system(system, 0.03, 307)
+    print(states)
+
 
 
           
