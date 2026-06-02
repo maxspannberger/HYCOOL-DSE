@@ -636,7 +636,6 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
         f"{best_row['LE_flap_area_wing']:.2f}",
         f"{best_row['TE_flap_area_wing']:.2f}",
         f"{best_row['hinge_sweep_deg']:.2f}",
-        f"{best_row['hinge_sweep_deg']:.2f}",
         f"  {driving}",
         f"{Reynolds:.0f}"
     )
@@ -656,6 +655,7 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
         cdash_c=cdash_c,
         TE_flap_area_wing=te_flap_area_wing,
         taper=best_row['taper'],
+        MAC=cfg_updated.MAC,
         
     )
 
