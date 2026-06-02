@@ -52,10 +52,10 @@ class Pipe:
         self.N_bar     = N_bar     # layer density [layers/cm]
         self.P_mli     = P_mli     # residual gas pressure [Pa]
         self.eps_pipe  = eps_pipe  # pipe wall roughness [m]
-        self.cs        = 1 # STILL HAS TO BE IMPLEMENTED
-        self.cr        = 1 # STILL HAS TO BE IMPLEMENTED
+        self.cs        = 1.93 * 10**-6 # MLI conductivity coefficient [W/(m*K^(3.63))]
+        self.cr        = 3.88 * 10**-10 # MLI radiation coefficient [W/(m^2*K^(4.67))]
         self.cg        = 1 # STILL HAS TO BE IMPLEMENTED
-        self.eps       = 1 # STILL HAS TO BE IMPLEMENTED
+        self.eps       = 0.03 # MLI emissivity, typical value for aluminized Mylar
      
     # Function that loops over the pipe segments and tracks the state if H2
     def solve_H2_state(self, states, T_amb, m_dot, PLOT=False):
