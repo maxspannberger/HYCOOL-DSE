@@ -6,6 +6,9 @@ sys.path.append(str(root))
 from h2_components import Tank, Pipe
 from rich import print as rich_print
 from rich.tree import Tree
+import matplotlib.pyplot as plt
+import numpy as np
+from itertools import chain
 
 '''
 The wall of the components Pipe and Tank should be defined in the following manner.
@@ -37,17 +40,40 @@ def solve_system(system, m_dot, T_amb):
         
     return states
 
+
 def print_tree(states):
     tree = Tree("[bold blue]System States")
     
     for key, values in states.items():
-        branch = tree.add(f"[bold magenta]{key.upper()}")
+        branch = tree.add(f"[bold yellow]{key.upper()}")
         for comp_idx, data in enumerate(values):
             comp_node = branch.add(f"Component {comp_idx}")
             # Format the array for readability
             comp_node.add(str(data))
             
     rich_print(tree)
+
+def plot_states(states):
+    continuous_states = {
+        prop: np.fromiter(chain.from_iterable(states[prop]), dtype=float)
+        for prop in states.keys()
+    }
+    
+    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+    axes = axes.flatten()
+    properties = ['p', 'T', 'rho', 'h']
+    titles = ['Pressure (Pa)', 'Temperature (K)', 'Density (kg/m³)', 'Enthalpy (J/kg)']
+    colors = ['tab:blue', 'tab:red', 'tab:green', 'tab:purple']
+
+    for i, prop in enumerate(properties):
+        axes[i].plot(continuous_states[prop], color=colors[i], marker='.', linestyle='-')
+        axes[i].set_title(titles[i])
+        axes[i].grid(True, linestyle='--', alpha=0.6)
+        axes[i].set_xlabel("Total System Step (Index)")
+
+    plt.suptitle("Hydrogen State Profile", fontsize=16)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.show()
 
 
 if __name__ == "__main__":
@@ -62,6 +88,7 @@ if __name__ == "__main__":
     
     states = solve_system(system, 0.03, 307)
     print_tree(states)
+    plot_states(states)
 
 
 
