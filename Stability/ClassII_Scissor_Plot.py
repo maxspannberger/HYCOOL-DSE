@@ -86,9 +86,9 @@ class ScissorPlotInput:
 
     # ---------------- Controllability inputs from old scissor plot ----------------
     
-    mu1: float = 0.215
-    mu2: float = 0.79
-    mu3: float = 0.045
+    mu1: float = 0.2035
+    mu2: float = 1.2
+    mu3: float = 0.0295
 
     # ---------------- CG range ----------------
     # Replace these with the final loading diagram output when available.
@@ -513,6 +513,7 @@ class ScissorPlotEstimator:
         print(f'cdash_c {d.cdash_c}')
         print(f'wing area {d.S}, net wing area {bd.S_net}, tail area {d.Sh}')
         print(f'CL at landing {d.CL}, CL0 flapped {d.CL0}, CLA_h {bd.CLA_h}')
+        print(f'Swf_S {d.Swf_S}')
 
 
 if __name__ == "__main__":
