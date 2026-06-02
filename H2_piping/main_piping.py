@@ -7,6 +7,7 @@ from h2_components import Tank, Pipe
 from rich import print as rich_print
 from rich.tree import Tree
 import matplotlib.pyplot as plt
+import numpy as np
 
 '''
 The wall of the components Pipe and Tank should be defined in the following manner.
@@ -25,7 +26,8 @@ def solve_system(system, m_dot, T_amb):
     states = {'p'   : [],
               'T'   : [],
               'rho' : [],
-              'h'   : []}
+              'h'   : [],
+              'frac': []}
     
     
     for comp in system:
@@ -35,6 +37,8 @@ def solve_system(system, m_dot, T_amb):
         states['T'].append(component_result['T'])
         states['rho'].append(component_result['rho'])
         states['h'].append(component_result['h'])
+        states['frac'].append(component_result['frac'])
+        
         
     return states
 
@@ -53,15 +57,18 @@ def print_tree(states):
 
 def plot_states(states):
     # Flatten the lists into simple lists for plotting
-    # We take every piece of data from the list of arrays and put them in one line
     flat_states = {}
-    for prop in ['p', 'T', 'rho', 'h']:
+    for prop in ['p', 'T', 'rho', 'h', 'frac']:
         temp_list = []
         for component_data in states[prop]:
-            # Add all values from this component to our flat list
             for value in component_data:
                 temp_list.append(value)
         flat_states[prop] = temp_list
+
+    # Prepare the gradient
+    # Map frac to a color where Blue=0 (Liquid) and Red=1 (Gas)
+    frac_arr = np.clip(flat_states['frac'], 0, 1)
+    gradient = np.tile(frac_arr, (100, 1)) 
 
     # Plot the flattened data
     fig, axes = plt.subplots(2, 2, figsize=(12, 8))
@@ -72,14 +79,20 @@ def plot_states(states):
     colors = ['tab:blue', 'tab:red', 'tab:green', 'tab:purple']
 
     for i, prop in enumerate(properties):
-        axes[i].plot(flat_states[prop], color=colors[i], marker='.', linestyle='-')
+        # Add the background gradient to each subplot
+        # Extent matches the data limits to ensure the colors align with indices
+        axes[i].imshow(gradient, aspect='auto', cmap='RdYlBu_r', 
+                       extent=[0, len(flat_states[prop]), min(flat_states[prop]), max(flat_states[prop])],
+                       alpha=0.2)
+        
+        # Plot the main data line
+        axes[i].plot(flat_states[prop], color=colors[i], marker=None, linestyle='-', linewidth=2)
         axes[i].set_title(titles[i])
         axes[i].grid(True, linestyle='--', alpha=0.7)
         axes[i].set_ylabel(titles[i])
         axes[i].set_xlabel("Total System Step (Index)")
 
-    # Tighten layout and show plot
-    fig.suptitle('Hydrogen State Profile', fontsize=16)
+    fig.suptitle('Hydrogen State Profile (Gradient: Blue=Liquid, Red=Gas)', fontsize=16)
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.show()
 
@@ -90,8 +103,8 @@ if __name__ == "__main__":
 
     system = [
         Tank(diameter=0.1, wall=wall), 
-        Pipe(position=1, length=1.0, diameter=0.1, wall=wall, segments=10,
-             N=3, N_bar=0.1, P_mli=0.1)
+        Pipe(position=1, length=1.0, diameter=0.01, wall=wall, segments=1000,
+             N=3, N_bar=0.1, P_mli=1)
         ]
     
     states = solve_system(system, 0.03, 307)
