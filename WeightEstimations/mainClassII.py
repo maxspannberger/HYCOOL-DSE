@@ -554,7 +554,7 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
     deltac_cf=0.55      #extracted from the figure in toreenbeek
 
     #get the fraction of the increase of the chord with extended fowler flaps with respect to original chord
-    deltac_c=deltac_cf+c_fowler_c_wing
+    deltac_c=deltac_cf*c_fowler_c_wing
     cdash_c=1+deltac_c
 
     #get increase in Clmax for landing and takeoff according to flap use, takeoff lower deflection wanted
@@ -650,7 +650,8 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
         fuel_savings=best_row['fuel_savings'],
         W_landing=M_landing,
         CL_max_LD=best_row["CL_max_LD"],
-        delta_Cl_flap=deltaCL_max_LD,
+        delta_CL_flap=deltaCL_max_LD,
+        delta_Cl_flap=deltaClmax_LD,
         CL_alpha0_flapped=cfg_updated.CL_alpha0_clean+deltaCL_max_LD,
         cdash_c=cdash_c,
         TE_flap_area_wing=te_flap_area_wing,
@@ -682,6 +683,7 @@ if __name__ == "__main__":
     # for label, p in paths.items():
     #     print(f"  {label}: {p}")
 
-    best_row = get_optimal_cl_mach(cfg, force_recompute=True)
+    best_row = get_optimal_cl_mach(cfg, force_recompute=False)
     cfg = apply_optimal_cl_mach(cfg, best_row)
-    compute_additional_aerodynamic_parameters(best_row, cfg)
+    result=compute_additional_aerodynamic_parameters(best_row, cfg)
+    print(result["cdash_c"])
