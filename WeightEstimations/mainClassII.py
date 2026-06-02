@@ -655,6 +655,7 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
         CL_alpha0_flapped=cfg_updated.CL_alpha0_clean+deltaCL_max_LD,
         cdash_c=cdash_c,
         TE_flap_area_wing=te_flap_area_wing,
+        taper=best_row['taper'],
         
     )
 

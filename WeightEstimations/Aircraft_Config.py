@@ -164,7 +164,7 @@ def default_q400_hycool() -> AircraftConfig:
         taper            = 0.4,                 # lambda, typical transport
 
         #aerodynamic values for chosen airfoil mix, 64A410 for the root and SC(2)-0612 for the tip
-        CL_max=1.92,                             # taken from diagram, clean configuration
+        CL_max=1.52,                             # taken from diagram, clean configuration
         CL_alpha0_clean=0.281,                   # according to XFLR5 data for the chosen airfoil
         Cm_alpha0_clean=-0.622,                   # according to XFLR5 data for the chosen airfoil
         alpha_CL0_clean=-3.13*np.pi/180,                       # according to XFLR5 data for the chosen airfoil
