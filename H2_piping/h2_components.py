@@ -32,11 +32,13 @@ class Tank:
 # Define the pipe class
 # =============================================================================
 class Pipe:
-    def __init__(self, position: int,    length: float, 
-                       diameter: float,   wall: list, 
-                       segments: int,     fluid: str = 'ParaHydrogen',  
+    def __init__(self, position: int,    length: float,
+                       diameter: float,   wall: list,
+                       segments: int,     N: int,
+                       N_bar: float,      P_mli: float,
+                       fluid: str = 'ParaHydrogen',
                        name: str = 'Pipe'):
-        
+
         # Initialise the pipe specific parameters
         self.name = name
         self.position = position
@@ -44,6 +46,9 @@ class Pipe:
         self.length    = length
         self.segments  = segments
         self.wall      = wall
+        self.N         = N       # number of MLI layers
+        self.N_bar     = N_bar   # layer density [layers/cm]
+        self.P_mli     = P_mli   # residual gas pressure [Pa]
         self.cs        = 1 # STILL HAS TO BE IMPLEMENTED
         self.cr        = 1 # STILL HAS TO BE IMPLEMENTED
         self.cg        = 1 # STILL HAS TO BE IMPLEMENTED
@@ -64,7 +69,16 @@ class Pipe:
         
         # Loop over the pipe segments and adjust the state variables
         for i in range(self.segments):
-            Q_dot = 1 # STILL HAS TO BE IMPLEMENTED function of T
+            T_h = T_amb
+            T_c = T
+            T_m = (T_h + T_c) / 2
+            A_seg = np.pi * self.d * (self.length / self.segments)
+
+            Q_dot = A_seg * (
+                (self.cs * T_m * self.N_bar**2.63 * (T_h - T_c)) / (self.N - 1)
+              + (self.cr * self.eps * (T_h**4.67 - T_c**4.67)) / self.N
+              + (self.cg * self.P_mli * (T_h**0.52 - T_c**0.52)) / self.N
+            )
             
             # Update state variables based on Q_dot and friction
             h  += (Q_dot / m_dot)
