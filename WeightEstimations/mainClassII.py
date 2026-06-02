@@ -651,6 +651,8 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
         fuel_savings=best_row['fuel_savings'],
         W_landing=M_landing,
         CL_max_LD=best_row["CL_max_LD"],
+        delta_CL_flap=deltaCL_max_LD+deltaCLmax_LE_LD,
+        CL_alpha0=0.4       #placeholder for the CL at zero angle of attack, which depends on the airfoil shape
     )
 
 if __name__ == "__main__":
