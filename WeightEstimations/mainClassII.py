@@ -654,7 +654,8 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
         CL_max_LD=best_row["CL_max_LD"],
         delta_CL_flap=deltaCL_max_LD,
         CL_alpha0_clean=CL_alpha0_clean,       #according to XFLR5 data for the chosen airfoil
-        CL_alpha0_flapped=CL_alpha0_clean+deltaCL_max_LD
+        CL_alpha0_flapped=CL_alpha0_clean+deltaCL_max_LD,
+        cdash_c=cdash_c,
     )
 
 if __name__ == "__main__":
