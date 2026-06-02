@@ -47,6 +47,7 @@ class Pipe:
         self.length    = length
         self.segments  = segments
         self.wall      = wall
+        self.d         = diameter
         self.N         = N         # number of MLI layers
         self.N_bar     = N_bar     # layer density [layers/cm]
         self.P_mli     = P_mli     # residual gas pressure [Pa]
