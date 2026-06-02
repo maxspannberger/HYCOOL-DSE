@@ -36,8 +36,9 @@ class Pipe:
                        diameter: float,   wall: list,
                        segments: int,     N: int,
                        N_bar: float,      P_mli: float,
-                       fluid: str = 'ParaHydrogen',
-                       name: str = 'Pipe'):
+                       eps_pipe: float    = 1.5e-5,
+                       fluid: str         = 'ParaHydrogen',
+                       name: str          = 'Pipe'):
 
         # Initialise the pipe specific parameters
         self.name = name
@@ -46,9 +47,10 @@ class Pipe:
         self.length    = length
         self.segments  = segments
         self.wall      = wall
-        self.N         = N       # number of MLI layers
-        self.N_bar     = N_bar   # layer density [layers/cm]
-        self.P_mli     = P_mli   # residual gas pressure [Pa]
+        self.N         = N         # number of MLI layers
+        self.N_bar     = N_bar     # layer density [layers/cm]
+        self.P_mli     = P_mli     # residual gas pressure [Pa]
+        self.eps_pipe  = eps_pipe  # pipe wall roughness [m]
         self.cs        = 1 # STILL HAS TO BE IMPLEMENTED
         self.cr        = 1 # STILL HAS TO BE IMPLEMENTED
         self.cg        = 1 # STILL HAS TO BE IMPLEMENTED
@@ -67,22 +69,43 @@ class Pipe:
                    'h':   np.zeros(self.segments),
                    }
         
+        # Pre-compute segment geometry (constant along pipe)
+        dz    = self.length / self.segments
+        A_cs  = np.pi * self.d**2 / 4
+        A_seg = np.pi * self.d * dz
+
         # Loop over the pipe segments and adjust the state variables
         for i in range(self.segments):
-            T_h = T_amb
-            T_c = T
-            T_m = (T_h + T_c) / 2
-            A_seg = np.pi * self.d * (self.length / self.segments)
+            # Fluid properties at segment inlet
+            rho = CP.PropsSI('D', 'P', p, 'T', T, self.fluid)
+            mu  = CP.PropsSI('V', 'P', p, 'T', T, self.fluid)
 
+            # MLI heat leak (Lockheed three-term equation)
+            T_h   = T_amb
+            T_c   = T
+            T_m   = (T_h + T_c) / 2
             Q_dot = A_seg * (
                 (self.cs * T_m * self.N_bar**2.63 * (T_h - T_c)) / (self.N - 1)
               + (self.cr * self.eps * (T_h**4.67 - T_c**4.67)) / self.N
               + (self.cg * self.P_mli * (T_h**0.52 - T_c**0.52)) / self.N
             )
-            
-            # Update state variables based on Q_dot and friction
-            h  += (Q_dot / m_dot)
-            p  += 300 # STILL HAS TO BE IMPLEMENTED BASED ON FRICTION
+
+            # Flow velocity and Reynolds number
+            u  = m_dot / (rho * A_cs)
+            Re = 4 * m_dot / (np.pi * self.d * mu)
+
+            # Friction factor: Hagen-Poiseuille (laminar) or Haaland (turbulent)
+            if Re < 2300:
+                f = 64 / Re
+            else:
+                f = (1 / (-1.8 * np.log10((self.eps_pipe / self.d / 3.7)**1.11 + 6.9 / Re)))**2
+
+            # Darcy-Weisbach pressure drop
+            dp = f * (dz / self.d) * 0.5 * rho * u**2
+
+            # Update state variables
+            h  += Q_dot / m_dot
+            p  -= dp
             T   = CP.PropsSI('T', 'P', p, 'H', h, self.fluid)
             rho = CP.PropsSI('D', 'P', p, 'H', h, self.fluid)
             
