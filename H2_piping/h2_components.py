@@ -106,9 +106,9 @@ class Pipe:
             T_c   = T
             T_m   = (T_h + T_c) / 2
             Q_dot = A_seg * (
-                (self.cs * T_m * self.N_bar**2.63 * (T_h - T_c)) / (self.N - 1)
-              + (self.cr * self.eps * (T_h**4.67 - T_c**4.67)) / self.N
-              + (self.cg * (self.P_mli / 133.322) * (T_h**0.52 - T_c**0.52)) / self.N
+            #    (self.cs * T_m * self.N_bar**2.63 * (T_h - T_c)) / (self.N - 1)
+            #  + (self.cr * self.eps * (T_h**4.67 - T_c**4.67)) / self.N
+               (self.cg * (self.P_mli / 133.322) * (T_h**0.52 - T_c**0.52)) / self.N
             )
 
             # Flow velocity and Reynolds number
