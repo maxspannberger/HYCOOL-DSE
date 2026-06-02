@@ -27,7 +27,7 @@ class Tank:
         self.position = position
         self.d = diameter
         self.wall = wall
-        self.fluid = 'ParaHydrogen'
+        self.fluid = 'Hydrogen'
         
         # The state of the hydrogen in the tank
         self.p   = 6*101325
@@ -55,13 +55,13 @@ class Pipe:
                        segments: int,     N: int,
                        N_bar: float,      P_mli: float,
                        eps_pipe: float    = 1.5e-5,
-                       fluid: str         = 'ParaHydrogen',
+                       fluid: str         = 'Hydrogen',
                        name: str          = 'Pipe'):
 
         # Initialise the pipe specific parameters
         self.name = name
         self.position = position
-        self.fluid     = 'ParaHydrogen'
+        self.fluid     = fluid
         self.length    = length
         self.segments  = segments
         self.wall      = wall
