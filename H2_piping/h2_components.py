@@ -32,7 +32,7 @@ class Tank:
         # The state of the hydrogen in the tank
         self.p   = 6*101325
         self.T   = 15
-        self.rho = CP.PropsSI('T', 'P', self.p, 'T', self.T, self.fluid)
+        self.rho = CP.PropsSI('D', 'P', self.p, 'T', self.T, self.fluid)
         self.h   = CP.PropsSI('H', 'P', self.p, 'T', self.T, self.fluid)
     
     def solve_H2_state(self, states, T_amb, m_dot, PLOT=False):
