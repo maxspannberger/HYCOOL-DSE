@@ -483,7 +483,6 @@ def find_optimal_cl_mach(cfg: AircraftConfig, force_recompute: bool = False) -> 
             "half_sweep": cfg_updated.sweep_half,
             "LE_sweep": cfg_updated.sweep_tc,
             "root_chord": cfg_updated.c_root,
-            "Wing_area": cfg_updated.S_ref,
             "span": cfg_updated.b,
             "taper": result.Wing_taper,
             "Aileron_Area_ratio": result.tail_rechecked.Sa_Sref,
@@ -535,7 +534,13 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
     T,p,rho=isa(cfg_updated.altitude_cruise)
     a_cruise=np.sqrt(1.4*287.05*T) # speed of sound at cruise altitude
     v_cruise=best_row['M_cruise']*a_cruise
-    Reynolds=rho*v_cruise*cfg_updated.MAC/mu_alt
+    Reynolds_cruise=rho*v_cruise*cfg_updated.MAC/mu_alt
+
+    #calculate Reynolds number at sea level for takeoff and landing
+    mu_ground=1.7894e-5   # dynamic viscosity of air at sea level in kg/(m*s)
+    a_ground=np.sqrt(1.4*287.05*288.15) # speed of sound at sea level
+    v_stall=best_row['Stall Speed']
+    Reynolds_ground=rho*v_stall*cfg_updated.MAC/mu_ground
 
     #Calculate the maximum Lift coefficient for landing configuration
     rho_ground=1.225        # sea level standard density in kg/m^3
@@ -544,7 +549,7 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
     CL_max_LD=2*(M_landing)*G/(rho_ground*best_row['Wing Area']*V_stall**2)
 
     #Calculate the increase in CL_max for takeoff and landing due to high-lift devices (flaps, slats). These are rough estimates and can be refined with more detailed aerodynamic analysis or empirical data.
-    c_fowler_c_wing=0.2 # assume fowler flaps make up 20% wing chord
+    c_fowler_c_wing=0.3 # assume fowler flaps make up 30% wing chord
     x_c_hinge=1-c_fowler_c_wing
 
     #calculate the hinge sweep angle
@@ -562,12 +567,12 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
     deltaClmax_TO=deltaClmax_LD*0.6
 
     #get increase in Clmax for landing and takeoff according to LE HLD use, takeoff lower deflection wanted
-    le_flap_area_wing_ratio = 0.6          #assume 60% of wing area used for slats
+    le_flap_area_wing_ratio = 0.7          #assume 70% of wing area used for slats
     deltaClmax_LE_LD=0.3
     deltaCLmax_LE_LD=0.9*deltaClmax_LE_LD*le_flap_area_wing_ratio*np.cos(best_row['LE_sweep'])
     deltaCLmax_LE_TO=deltaCLmax_LE_LD*0.6
 
-    #get wing deltaCLmax increases for takeoff and landing
+    #get wing deltaCLmax for flaps used for increases for takeoff and landing
     deltaCL_max_TO=best_row['CL_max_TO']-best_row['CL_max_clean']-deltaCLmax_LE_TO
     deltaCL_max_LD=CL_max_LD-best_row['CL_max_clean']-deltaCLmax_LE_LD
 
@@ -627,7 +632,8 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
     table.add_column("TE Area [m^2]", justify="right")
     table.add_column("Flap Hinge Sweep [degree]", justify="right")
     table.add_column("Driving Condition", justify="right")
-    table.add_column("Reynolds Number", justify="right")
+    table.add_column("Reynolds Number at cruise", justify="right")
+    table.add_column("Reynolds Number at ground", justify="right")
     table.add_row(
         f"{best_row['CL_max_TO']:.6f}",
         f"{best_row['CL_max_LD']:.6f}",
@@ -637,7 +643,8 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
         f"{best_row['TE_flap_area_wing']:.2f}",
         f"{best_row['hinge_sweep_deg']:.2f}",
         f"  {driving}",
-        f"{Reynolds:.0f}"
+        f"{Reynolds_cruise:.0f}",
+        f"{Reynolds_ground:.0f}"
     )
     print(table)
     return dict(
