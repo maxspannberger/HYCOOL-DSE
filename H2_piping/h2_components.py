@@ -72,7 +72,7 @@ class Pipe:
         self.eps_pipe  = eps_pipe  # pipe wall roughness [m]
         self.cs        = 1.93 * 10**-6 # MLI conductivity coefficient [W/(m*K^(3.63))]
         self.cr        = 3.88 * 10**-10 # MLI radiation coefficient [W/(m^2*K^(4.67))]
-        self.cg        = 1 # STILL HAS TO BE IMPLEMENTED
+        self.cg        = 1.46 * 10**4 # MLI gas conduction coefficient [W/(m^2*Pa*K^(0.52))]
         self.eps       = 0.03 # MLI emissivity, typical value for aluminized Mylar
      
     # Function that loops over the pipe segments and tracks the state if H2
