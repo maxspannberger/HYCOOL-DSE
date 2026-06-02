@@ -22,12 +22,30 @@ class Tank:
     def __init__(self, diameter: float,   wall: list,
                        name: str = 'Tank', position: int = 0):
         
-        # initialise the tank specific parameters
+        # Initialise the tank specific parameters
         self.name = name
         self.position = position
         self.d = diameter
         self.wall = wall
-  
+        self.fluid = 'ParaHydrogen'
+        
+        # The state of the hydrogen in the tank
+        self.p   = 6*101325
+        self.T   = 15
+        self.rho = CP.PropsSI('T', 'P', self.p, 'T', self.T, self.fluid)
+        self.h   = CP.PropsSI('H', 'P', self.p, 'T', self.T, self.fluid)
+    
+    def solve_H2_state(self, states, T_amb, m_dot, PLOT=False):
+        
+        # Store results
+        results = {'T':   np.array([self.T]), 
+                   'p':   np.array([self.p]),
+                   'rho': np.array([self.rho]),
+                   'h':   np.array([self.h])
+                   }
+        
+        return results
+            
 # =============================================================================
 # Define the pipe class
 # =============================================================================
@@ -50,7 +68,7 @@ class Pipe:
         self.eps       = 1 # STILL HAS TO BE IMPLEMENTED
      
     # Function that loops over the pipe segments and tracks the state if H2
-    def solve_H2_state(self, states, T_amb, m_dot, PLOT=False):
+    def solve_H2_state(self, states, T_amb, m_dot, PLOT=True):
         p = states['p'][-1][-1] # Access the last pressure from the last component
         T = states['T'][-1][-1] # Access the last temperature from the last component
         h = CP.PropsSI('H', 'P', p, 'T', T, self.fluid)
@@ -74,7 +92,7 @@ class Pipe:
             
             # Store the updated state variables
             results['T'][i]   = T
-            results['P'][i]   = p
+            results['p'][i]   = p
             results['rho'][i] = rho
             results['h'][i]   = h
         
@@ -88,7 +106,7 @@ class Pipe:
                 # Define plot data and styling
                 plot_data = [
                     (results['T'], 'Temperature (K)', 'tab:red'),
-                    (results['P'], 'Pressure (Pa)', 'tab:blue'),
+                    (results['p'], 'Pressure (Pa)', 'tab:blue'),
                     (results['rho'], 'Density (kg/m³)', 'tab:green'),
                     (results['h'], 'Enthalpy (J/kg)', 'tab:purple')
                 ]
