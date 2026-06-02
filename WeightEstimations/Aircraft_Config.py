@@ -30,6 +30,9 @@ class AircraftConfig:
     Loading:        float
     taper:          float          # lambda = c_tip / c_root
     CL_max:         float          # maximum lift coefficient, clean configuration
+    CL_alpha0_clean: float         # lift curve slope, clean configuration
+    Cm_alpha0_clean: float         # moment curve slope, clean configuration
+    alpha_CL0_clean: float         # angle of attack for zero lift, clean configuration
 
     # --- Horizontal tail -----------------------------------------------
     S_h_initial:    float
@@ -160,8 +163,11 @@ def default_q400_hycool() -> AircraftConfig:
         Loading          = WingLoading_Target,  # Class I Value
         taper            = 0.4,                 # lambda, typical transport
 
-        #aerodynamic considerations of airfoil
-        CL_max=1.92,                             # taken from diagram, clean configuration, needs adjustment
+        #aerodynamic values for chosen airfoil mix, 64A410 for the root and SC(2)-0612 for the tip
+        CL_max=1.92,                             # taken from diagram, clean configuration
+        CL_alpha0_clean=0.281,                   # according to XFLR5 data for the chosen airfoil
+        Cm_alpha0_clean=-0.622,                   # according to XFLR5 data for the chosen airfoil
+        alpha_CL0_clean=-3.13*np.pi/180,                       # according to XFLR5 data for the chosen airfoil
 
         # Horizontal tail
         S_h_initial      = 24,                  # Referenced
