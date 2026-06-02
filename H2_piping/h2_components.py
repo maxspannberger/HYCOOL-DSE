@@ -27,7 +27,7 @@ class Tank:
         self.position = position
         self.d = diameter
         self.wall = wall
-        self.fluid = 'ParaHydrogen'
+        self.fluid = 'Hydrogen'
         
         # The state of the hydrogen in the tank
         self.p   = 6*101325
@@ -55,13 +55,13 @@ class Pipe:
                        segments: int,     N: int,
                        N_bar: float,      P_mli: float,
                        eps_pipe: float    = 1.5e-5,
-                       fluid: str         = 'ParaHydrogen',
+                       fluid: str         = 'Hydrogen',
                        name: str          = 'Pipe'):
 
         # Initialise the pipe specific parameters
         self.name = name
         self.position = position
-        self.fluid     = 'ParaHydrogen'
+        self.fluid     = fluid
         self.length    = length
         self.segments  = segments
         self.wall      = wall
@@ -70,10 +70,10 @@ class Pipe:
         self.N_bar     = N_bar     # layer density [layers/cm]
         self.P_mli     = P_mli     # residual gas pressure [Pa]
         self.eps_pipe  = eps_pipe  # pipe wall roughness [m]
-        self.cs        = 1 # STILL HAS TO BE IMPLEMENTED
-        self.cr        = 1 # STILL HAS TO BE IMPLEMENTED
-        self.cg        = 1 # STILL HAS TO BE IMPLEMENTED
-        self.eps       = 1 # STILL HAS TO BE IMPLEMENTED
+        self.cs        = 1e-10 # STILL HAS TO BE IMPLEMENTED
+        self.cr        = 1e-10 # STILL HAS TO BE IMPLEMENTED
+        self.cg        = 1e-10 # STILL HAS TO BE IMPLEMENTED
+        self.eps       = 1e-10 # STILL HAS TO BE IMPLEMENTED
      
     # Function that loops over the pipe segments and tracks the state if H2
     def solve_H2_state(self, states, T_amb, m_dot, PLOT=True):
