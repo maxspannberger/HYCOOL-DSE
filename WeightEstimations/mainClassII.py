@@ -563,7 +563,7 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
     deltaClmax_TO=deltaClmax_LD*0.6
 
     #get increase in Clmax for landing and takeoff according to LE HLD use, takeoff lower deflection wanted
-    le_flap_area_wing_ratio = 0.7          #assume 80% of wing area used for slats
+    le_flap_area_wing_ratio = 0.5          #assume 80% of wing area used for slats
     deltaClmax_LE_LD=0.3
     deltaCLmax_LE_LD=0.9*deltaClmax_LE_LD*le_flap_area_wing_ratio*np.cos(best_row['LE_sweep'])
     deltaCLmax_LE_TO=deltaCLmax_LE_LD*0.6
@@ -656,6 +656,8 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
         CL_alpha0_clean=CL_alpha0_clean,       #according to XFLR5 data for the chosen airfoil
         CL_alpha0_flapped=CL_alpha0_clean+deltaCL_max_LD,
         cdash_c=cdash_c,
+        TE_flap_area_wing=te_flap_area_wing,
+        
     )
 
 if __name__ == "__main__":
