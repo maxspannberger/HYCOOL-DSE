@@ -83,6 +83,7 @@ class ClassIIResult:
     MTOW:        float
     MZFW:        float
     W_empty:     float
+    OEW:         float
     W_fuel:      float
     W_payload:   float
     W_fixed:     float
@@ -334,6 +335,7 @@ def run_class_ii(
         MTOW_new = MZFW_new + W_fuel
         bt_charging_ratio = wt_bd.bt_charging_ratio
         delta    = abs(MTOW_new - MTOW)
+        OEW_kg       = wt_bd.W_empty+cfg.W_fixed
 
         iteration_log.append(dict(
             iter         = it,
@@ -357,7 +359,7 @@ def run_class_ii(
             P_max_kW     = mis_bd.P_max / 1000,
             P_TO_kW      = P_TO_kW,
             W_fuel_kg    = W_fuel,
-            OEW_kg       = wt_bd.W_empty+cfg.W_fixed,
+            OEW_kg       = OEW_kg,
             bt_ch_ratio  = bt_charging_ratio
         ))
 
@@ -409,6 +411,7 @@ def run_class_ii(
         MTOW       = MTOW,
         MZFW       = MZFW,
         W_empty    = wt_bd.W_empty,
+        OEW        = OEW_kg,
         W_fuel     = mis_bd.m_LH2_total,
         W_payload  = cfg.W_payload,
         W_fixed    = cfg.W_fixed,

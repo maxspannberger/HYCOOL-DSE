@@ -128,6 +128,21 @@ class AircraftConfig:
     # --- Iteration control ---------------------------------------------
     MTOW_initial:     float = 0.0
 
+    # --- Layout & Passengers ---------------------------------------------
+    PaxWeight:          float = 0.0
+    Pax_count:          int = 0
+    Max_fwd_cargo_vol:  float = 0.0                   
+    Max_aft_cargo_vol:  float = 0.0         
+    Seats_abreast:      int = 0       
+    LEMAC:              float = 0.0
+
+    FirstWindow:        float = 0.0
+    LastWindow:         float = 0.0
+
+    OEW_cg:             float = 0.0
+    FUEL_cg:            float = 0.0
+    AftCargo_cg:        float = 0.0
+    FwdCargo_cg:        float = 0.0
 
     # ---------- Derived helpers ---------------------------------------
     @property
@@ -255,4 +270,21 @@ def default_q400_hycool() -> AircraftConfig:
 
         # Iteration
         MTOW_initial     = ClassI_MTOW,         # Class I Value
+
+        #Layout & Passengers
+        PaxWeight           = 84,                   # EASA
+        Pax_count           = 100,                  # Requirement
+        Max_fwd_cargo_vol   = 5,                    # Fwd cargo hold volume, placeholder for now
+        Max_aft_cargo_vol   = 1,                    # Aft cargo hold volume, placeholder for now
+        Seats_abreast       = 4,                    # Class I
+
+        FirstWindow         = 5.6,                  # Distance nose tip to first window [m], placeholder for now
+        LastWindow          = 27.56,                # Distance nose tip to last window [m], placeholder for now
+
+        LEMAC               = 19.23,                # Distance nose tip to LEMAC [m], placeholder for now
+
+        OEW_cg              = 20.93,                # Distance nose tip to OEW CG [m], placeholder for now
+        FUEL_cg             = 30,                   # Distance nose tip to Fuel CG [m], placeholder for now
+        AftCargo_cg         = 25,                   # Distance nose tip to Aft Cargo CG [m], placeholder for now
+        FwdCargo_cg         = 10,                   # Distance nose tip to Fwd Cargo CG [m], placeholder for now
     )
