@@ -145,7 +145,6 @@ class LoadingDiagramEstimator:
             MaxCargo=d.MaxCargo,
             MaxFwdCargoVol=d.MaxFwdCargoVol,
             MaxAftCargoVol=d.MaxAftCargoVol,
-            PaxWeightTot=d.PaxWeightTot,
             Pax_count=d.Pax_count,
             rows=d.rows,
             LEMAC=d.LEMAC,

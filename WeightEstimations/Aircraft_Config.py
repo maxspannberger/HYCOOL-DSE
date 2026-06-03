@@ -129,12 +129,15 @@ class AircraftConfig:
     MTOW_initial:     float = 0.0
 
     # --- Layout & Passengers ---------------------------------------------
-    Paxweight:          float = 0.0
+    PaxWeight:          float = 0.0
     Pax_count:          int = 0
     Max_fwd_cargo_vol:  float = 0.0                   
     Max_aft_cargo_vol:  float = 0.0         
     Seats_abreast:      int = 0       
     LEMAC:              float = 0.0
+
+    FirstWindow:        float = 0.0
+    LastWindow:         float = 0.0
 
     OEW_cg:             float = 0.0
     FUEL_cg:            float = 0.0
@@ -269,7 +272,7 @@ def default_q400_hycool() -> AircraftConfig:
         MTOW_initial     = ClassI_MTOW,         # Class I Value
 
         #Layout & Passengers
-        Paxweight           = 84,                   # EASA
+        PaxWeight           = 84,                   # EASA
         Pax_count           = 100,                  # Requirement
         Max_fwd_cargo_vol   = 5,                    # Fwd cargo hold volume, placeholder for now
         Max_aft_cargo_vol   = 1,                    # Aft cargo hold volume, placeholder for now
