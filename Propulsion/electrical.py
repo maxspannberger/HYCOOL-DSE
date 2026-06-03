@@ -13,6 +13,7 @@ from WeightEstimations.mainClassII import run_class_ii
 
 T_H2 = 20   # K
 T_J_design = 250    # K
+T_J_min = 77    # K
 R_th_26 = 14.3  # K/kW
 R_th = R_th_26/26
 
@@ -276,49 +277,61 @@ def get_powers_per_component(P_max, P_cruise, P_OEI, positions, component_order,
     return comp_powers
 
 
-
-
 def get_N(P, eff, T_J):
     Q = (1-eff) * P
     N = (T_J - T_H2) / (Q * R_th)
     return int(np.ceil(N))
+
 
 def get_deltaT(P, eff, N):
     Q = (1-eff) * P
     deltaT  = Q * N * R_th
     return deltaT
 
-def size_converter(comp, P_max, P_cruise, P_OEI):
+
+def get_P_idle(T_J, N):
+    P = (T_J - T_H2) / (R_th * N)
+    return P
+
+
+def size_converter(comp, powers):
     eff = comp.efficiency
+    P_OEI = max(powers["OEI_mot"], powers["OEI_gt"])
 
-    N = get_N(P_max, eff, T_J_design)
-    T_J_cruise = T_H2 + get_deltaT(P_cruise, eff, N)
+    N = get_N(powers["max"], eff, T_J_design)
+    T_J_cruise = T_H2 + get_deltaT(powers["cruise"], eff, N)
     T_J_OEI = T_H2 + get_deltaT(P_OEI, eff, N)
-    T_J_idle = T_H2 + get_deltaT(0.0, eff, N)
+    P_heat_idle = get_P_idle(T_J_min, N)
 
-    return N, T_J_cruise, T_J_OEI, T_J_idle
+    print(N, T_J_cruise, T_J_OEI, P_heat_idle)
+
+    return N, T_J_cruise, T_J_OEI, P_heat_idle
+
 
 
 if __name__ == "__main__":
+    # define electrical system architecture
     component_order = ["gt_hex", "hts_gen", "ac_dc", "cable", "dc_ac", "hts_pow"]
     positions = {"gt": [5], "mot": [10, 15]}
 
+    # get class II power results
+    print("Performing Class II estimations...")
     cfg = default_q400_hycool()
     class_II_results = run_class_ii(config=3, comp=comp_params, verbose=False, cfg=cfg)
-
     P_max = class_II_results.P_max_KW
     P_cruise = class_II_results.mission.P_cruise_shaft/1000.0
     P_OEI = class_II_results.weight.P_TO_OEI_KW
+    print("Class II estimations finished.")
 
-
+    # perform power sizing of electrical system
     powers = get_powers_per_component(P_max, P_cruise, P_OEI, positions, component_order, comp=comp_params)
-    print(powers)
-
     filename = "power_chain_results.json"
     with open(filename, "w") as f:
         json.dump(powers, f, indent=4)
+    print("Electrical system power sizing complete.")
 
-
-
-    inverter = comp_params["dc_ac"]
-    rectifier = comp_params["ac_dc"]
+    P_inverter = size_converter(comp_params["dc_ac"], powers["dc_ac"])[3]
+    P_rectifier = size_converter(comp_params["ac_dc"], powers["ac_dc"])[3]
+    P_total_idle = 2*len(positions["mot"]) * P_inverter + 2*len(positions["gt"]) * P_rectifier
+    print(f"Total heating power required for idle: {P_total_idle}")
+    print("Electrical components sizing complete.")
