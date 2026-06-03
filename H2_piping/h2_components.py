@@ -15,6 +15,20 @@ in the H2 infrastructure. Each component has a name and a position indicated
 with an index starting at 0, with 0 being the tank. 
 '''
 
+def calc_frac(p, h, fluid='Hydrogen'):
+    # Determine the phase
+    phase = CP.PhaseSI('P', p, 'H', h, fluid)
+    
+    if phase == 'twophase':
+        return CP.PropsSI('Q', 'P', p, 'H', h, fluid)
+    elif phase == 'liquid':
+        return 0.0
+    elif phase == 'gas' or phase == 'supercritical_gas':
+        return 1.0
+    else:
+        raise ValueError(f"Unknown phase '{phase}' encountered at p={p:.2f}, h={h:.2f}. "
+                         "Check if input states are within physical limits.")
+
 # =============================================================================
 # Define the tank class
 # =============================================================================
@@ -34,6 +48,7 @@ class Tank:
         self.T   = CP.PropsSI('T', 'P', self.p, 'Q', 0, self.fluid)
         self.rho = CP.PropsSI('D', 'P', self.p, 'Q', 0, self.fluid)
         self.h   = CP.PropsSI('H', 'P', self.p, 'Q', 0, self.fluid)
+        self.frac= calc_frac(self.p, self.h)
     
     def solve_H2_state(self, states, T_amb, m_dot, PLOT=False):
         
@@ -41,7 +56,8 @@ class Tank:
         results = {'T':   np.array([self.T]), 
                    'p':   np.array([self.p]),
                    'rho': np.array([self.rho]),
-                   'h':   np.array([self.h])
+                   'h':   np.array([self.h]),
+                   'frac':np.array([self.frac])
                    }
         
         return results
@@ -91,7 +107,7 @@ class Pipe:
                    'p':   np.zeros(self.segments),
                    'rho': np.zeros(self.segments),
                    'h':   np.zeros(self.segments),
-                   }
+                   'frac':np.zeros(self.segments)}
         
         # Pre-compute segment geometry (constant along pipe)
         dz    = self.length / self.segments
@@ -135,18 +151,17 @@ class Pipe:
             p  -= dp
             T   = CP.PropsSI('T', 'P', p, 'H', h, self.fluid)
             rho = CP.PropsSI('D', 'P', p, 'H', h, self.fluid)
+            frac= calc_frac(p, h, fluid='Hydrogen')
             
             # Store the updated state variables
             results['T'][i]   = T
             results['p'][i]   = p
             results['rho'][i] = rho
             results['h'][i]   = h
+            results['frac'][i]= frac
         
-        # Plot the state variables allong the pipe.
         if PLOT:
-            fig, axes = plt.subplots(2, 2, sharex=True)
-            
-            # Flatten axes for 0-3 indexing
+            fig, axes = plt.subplots(2, 2, figsize=(10, 8), sharex=True)
             ax = axes.flatten()
             
             # Define plot data and styling
@@ -157,23 +172,20 @@ class Pipe:
                 (results['h'], 'Enthalpy (J/kg)', 'tab:purple')
             ]
             
-            # Create a list of x positions. It starts after the first segment 
-            # and ends at the end of the pipe
-            x_values = np.linspace(0, self.length, self.segments + 1)[1:]
+            x_values = np.linspace(0, self.length, self.segments)
             
-            # Iterate to fill the axis with the correct data
+            # Iterate to fill the axis
             for i, (data, label, color) in enumerate(plot_data):
+                # Plot the main data
                 ax[i].plot(x_values, data, color=color, linewidth=2)
                 ax[i].set_ylabel(label)
-                ax[i].grid(True, linestyle='--', alpha=0.7)
+                ax[i].grid(True, linestyle='--', alpha=0.5)
             
-            # Tighten the layout, adjust the title size and plot
-            fig.suptitle('H2 state accros pipe', fontsize=16)
-            fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+            fig.suptitle('H2 State Across Pipe', fontsize=16)
+            plt.tight_layout(rect=[0, 0.03, 1, 0.95])
             plt.show()
-           
-        # Return the results dictionary
-        return results 
+            
+        return results
  
 # =============================================================================
 # Define the heat exchanger class             
