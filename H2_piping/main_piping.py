@@ -66,8 +66,8 @@ def plot_states(states):
         flat_states[prop] = temp_list
 
     # Prepare the gradient
-    # Map frac to a color where Blue=0 (Liquid) and Red=1 (Gas)
-    frac_arr = np.clip(flat_states['frac'], 0, 1)
+    # No clipping needed here if we use vmin/vmax in imshow
+    frac_arr = np.array(flat_states['frac'])
     gradient = np.tile(frac_arr, (100, 1)) 
 
     # Plot the flattened data
@@ -79,9 +79,9 @@ def plot_states(states):
     colors = ['tab:blue', 'tab:red', 'tab:green', 'tab:purple']
 
     for i, prop in enumerate(properties):
-        # Add the background gradient to each subplot
-        # Extent matches the data limits to ensure the colors align with indices
+        # Set vmin=0 and vmax=1 to lock the colors to the full range
         axes[i].imshow(gradient, aspect='auto', cmap='RdYlBu_r', 
+                       vmin=0, vmax=1,
                        extent=[0, len(flat_states[prop]), min(flat_states[prop]), max(flat_states[prop])],
                        alpha=0.2)
         
@@ -103,13 +103,8 @@ if __name__ == "__main__":
 
     system = [
         Tank(diameter=0.1, wall=wall), 
-<<<<<<< HEAD
-        Pipe(position=1, length=1.0, diameter=0.01, wall=wall, segments=1000,
-             N=3, N_bar=0.1, P_mli=1)
-=======
         Pipe(position=1, length=64.0, diameter=0.02, wall=wall, segments=200,
-             N=11, N_bar=5.5, P_mli=0.1)
->>>>>>> 869a4f2fb709ab48f7ef428d199ce057ba2b2cf9
+             N=11, N_bar=5.5, P_mli=0.000001)
         ]
     
     states = solve_system(system, 0.03, 307)
