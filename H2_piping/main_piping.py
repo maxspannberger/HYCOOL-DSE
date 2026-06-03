@@ -103,8 +103,8 @@ if __name__ == "__main__":
 
     system = [
         Tank(diameter=0.1, wall=wall), 
-        Pipe(position=1, length=64.0, diameter=0.02, wall=wall, segments=200,
-             N=11, N_bar=5.5, P_mli=0.000001)
+        Pipe(position=1,   length=64.0, diameter=0.02, wall=wall, 
+             segments=200, N=11,        N_bar=5.5,     P_mli=0.000001)
         ]
     
     states = solve_system(system, 0.03, 307)

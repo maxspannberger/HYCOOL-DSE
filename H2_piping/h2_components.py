@@ -10,9 +10,11 @@ import matplotlib.pyplot as plt
     
 
 '''
+===============================================================================
 This file contains classes that define all the components that can be present 
 in the H2 infrastructure. Each component has a name and a position indicated 
-with an index starting at 0, with 0 being the tank. 
+with an index starting at 0, with 0 being the tank by default. 
+===============================================================================
 '''
 
 def calc_frac(p, h, fluid='Hydrogen'):
@@ -44,11 +46,12 @@ class Tank:
         self.fluid = 'Hydrogen'
         
         # The state of the hydrogen in the tank
-        self.p   = 6*101325
+        self.p   = 6*101325.
+        self.frac= 0.
         self.T   = CP.PropsSI('T', 'P', self.p, 'Q', 0, self.fluid)
         self.rho = CP.PropsSI('D', 'P', self.p, 'Q', 0, self.fluid)
         self.h   = CP.PropsSI('H', 'P', self.p, 'Q', 0, self.fluid)
-        self.frac= calc_frac(self.p, self.h)
+      
     
     def solve_H2_state(self, states, T_amb, m_dot, PLOT=False):
         
@@ -66,7 +69,7 @@ class Tank:
 # Define the pipe class
 # =============================================================================
 class Pipe:
-    def __init__(self, position: int,    length: float,
+    def __init__(self, position: int,     length: float,
                        diameter: float,   wall: list,
                        segments: int,     N: int,
                        N_bar: float,      P_mli: float,
