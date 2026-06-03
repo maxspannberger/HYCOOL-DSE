@@ -103,7 +103,7 @@ class Pipe:
     def solve_H2_state(self, states, T_amb, m_dot, PLOT=True):
         p = states['p'][-1][-1] # Access the last pressure from the last component
         T = states['T'][-1][-1] # Access the last temperature from the last component
-        h = CP.PropsSI('H', 'P', p, 'Q', 0, self.fluid)
+        h = CP.PropsSI('H', 'P', p, 'T', T, self.fluid)
         
         # Store results
         results = {'T':   np.zeros(self.segments), 
@@ -120,8 +120,8 @@ class Pipe:
         # Loop over the pipe segments and adjust the state variables
         for i in range(self.segments):
             # Fluid properties at segment inlet
-            rho = CP.PropsSI('D', 'P', p, 'Q', 0, self.fluid)
-            mu  = CP.PropsSI('V', 'P', p, 'Q', 0, self.fluid)
+            rho = CP.PropsSI('D', 'P', p, 'T', T, self.fluid)
+            mu  = CP.PropsSI('V', 'P', p, 'T', T, self.fluid)
 
             # MLI heat leak (Lockheed three-term equation)
             T_h   = T_amb
