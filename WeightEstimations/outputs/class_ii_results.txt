@@ -148,6 +148,7 @@ Weight Breakdown
   t_climb                =  (0.0,)
   t_reserve              =  (0.0,)
   bt_charging_ratio      =  0
+  P_opt                  =  2000.93
   W_structure [kg]       =  12609.5
   W_empty (OEW) [kg]     =  14309.3
 

@@ -264,7 +264,8 @@ def run_class_ii(
         pwr_bd = PowerSizing(cfg, mis_bd, MTOW).compute()
         P_TO_kW = pwr_bd.P_TO_total / 1000.0
         P_TO_OEI_kW = pwr_bd.P_total_OEI / 1000.0
-        P_climb_kW = pwr_bd.P_from_climb / 1000.0
+        # P_climb_kW = pwr_bd.P_from_climb / 1000.0
+        P_climb_kW = mis_bd.P_climb_shaft / 1000
 
 
 
