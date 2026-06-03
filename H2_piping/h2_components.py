@@ -73,6 +73,7 @@ class Pipe:
                        diameter: float,   wall: list,
                        segments: int,     N: int,
                        N_bar: float,      P_mli: float,
+                       N_bend: int,       curv: float,
                        eps_pipe: float    = 1.5e-5,
                        fluid: str         = 'Hydrogen',
                        name: str          = 'Pipe'):
@@ -89,11 +90,13 @@ class Pipe:
         self.N_bar     = N_bar     # layer density [layers/cm]
         self.P_mli     = P_mli     # residual gas pressure [Pa]
         self.eps_pipe  = eps_pipe  # pipe wall roughness [m]
+        self.N_bend    = N_bend    # number of bends in the pipe
+        self.curv      = curv      # curvature of the bends, R/d
         # Note: P_mli must be supplied in Pa; converted to Torr internally
         # because the Lockheed C_G constant was fitted with pressure in Torr
         self.cs        = 1.93 * 10**-6 # MLI conductivity coefficient [W/(m*K^(3.63))]
         self.cr        = 3.88 * 10**-10 # MLI radiation coefficient [W/(m^2*K^(4.67))]
-        self.cg        = 5.5 * 10**4 # MLI gas conduction coefficient [W/(m^2*Pa*K^(0.52))]
+        self.cg        = 5.5 * 10**4 # MLI gas conduction coefficient [W/(m^2*Torr*K^(0.52))], H2 (= N2 value 1.46e4 * sqrt(M_N2/M_H2))
         self.eps       = 0.03 # MLI emissivity, typical value for aluminized Mylar
      
     # Function that loops over the pipe segments and tracks the state if H2
@@ -125,9 +128,9 @@ class Pipe:
             T_c   = T
             T_m   = (T_h + T_c) / 2
             Q_dot = A_seg * (
-            #    (self.cs * T_m * self.N_bar**2.63 * (T_h - T_c)) / (self.N - 1)
-            #  + (self.cr * self.eps * (T_h**4.67 - T_c**4.67)) / self.N
-               (self.cg * (self.P_mli / 133.322) * (T_h**0.52 - T_c**0.52)) / self.N
+                (self.cs * T_m * self.N_bar**2.63 * (T_h - T_c)) / (self.N - 1)
+              + (self.cr * self.eps * (T_h**4.67 - T_c**4.67)) / self.N
+              + (self.cg * (self.P_mli / 133.322) * (T_h**0.52 - T_c**0.52)) / self.N
             )
 
             # Flow velocity and Reynolds number
@@ -140,8 +143,11 @@ class Pipe:
             else:
                 f = (1 / (-1.8 * np.log10((self.eps_pipe / self.d / 3.7)**1.11 + 6.9 / Re)))**2
 
+            alpha = 0.95 + 4.42 * (self.curv)**(-1.96)
+            K_bend = 0.388 * alpha * (self.curv)**0.84 * Re ** (-0.17)
+
             # Darcy-Weisbach pressure drop
-            dp = f * (dz / self.d) * 0.5 * rho * u**2
+            dp = (f * (dz / self.d) + K_bend * self.N_bend)* 0.5 * rho * u**2
 
             # Update state variables
             h  += Q_dot / m_dot
@@ -183,7 +189,62 @@ class Pipe:
             plt.show()
             
         return results
- 
+    
+# =============================================================================
+# Define the pipe bend class
+# =============================================================================
+class Bend:
+    def __init__(self, N_bend: int,
+                      curv: float,
+                      diameter: float,
+                      fluid: str = 'Hydrogen',
+                      name:str = 'Bend'):
+        
+        self.N_bend = N_bend
+        self.curv = curv
+        self.d = diameter
+        self.fluid = fluid
+        self.name = name
+    
+    def solve_H2_state(self, states, T_amb, m_dot, PLOT=False):
+        # Extract states from end of previous component
+        T = states['T'][-1][-1]
+        p = states['p'][-1][-1]
+        
+        # Calculate physical properties with CoolProp
+        h = CP.PropsSI('H', 'P', p, 'T', T, self.fluid)    
+        rho = CP.PropsSI('D', 'P', p, 'T', T, self.fluid)
+        mu  = CP.PropsSI('V', 'P', p, 'T', T, self.fluid)
+        
+        # Geometric and Flow parameters
+        A_cs = np.pi * self.d**2 / 4
+        u = m_dot / (rho * A_cs)
+        Re = 4 * m_dot / (np.pi * self.d * mu)
+        
+        # Calculate the bend geometry factor
+        alpha = 0.95 + 4.42 * (self.curv)**(-1.96)
+        
+        # Calculate K_bend
+        K_bend = 0.388 * alpha * (self.curv)**0.84 * Re**(-0.17)
+        
+        # Calculate pressure drop (using K_bend)
+        dp = K_bend * self.N_bend * 0.5 * rho * u**2
+        
+        # Update pressure for the state
+        p -= dp
+        
+        frac = calc_frac(p, h) # Calculate fraction based on post-drop pressure
+        
+        # Store results
+        results = {'T':    np.array([T]), 
+                   'p':    np.array([p]),
+                   'rho':  np.array([rho]),
+                   'h':    np.array([h]),
+                   'frac': np.array([frac])
+                   }
+        
+        return results
+
 # =============================================================================
 # Define the heat exchanger class             
 # =============================================================================
