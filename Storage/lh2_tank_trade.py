@@ -41,7 +41,7 @@ def t_windenburg_trilling(p_diff: float, D: float, L: float,
                           E: float, nu: float,
                           SF: float = 3.0, # adjust safety factor if needed
                           t_min: float = 0.001) -> float:
-    knockdown_factor = 0.75  # constant for cylinder
+    knockdown_factor = 0.75**2  # constant for cylinder
     p_design = p_diff * SF / knockdown_factor   # design pressure including safety factor
 
     def residual(t):
