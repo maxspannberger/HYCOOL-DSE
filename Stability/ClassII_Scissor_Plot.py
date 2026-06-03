@@ -119,9 +119,9 @@ class ScissorPlotInput:
         bn: Optional[float] = None,
         ln: Optional[float] = None,
         Vlanding: Optional[float] = None,
-        mu1: float = 0.215,
-        mu2: float = 0.79,
-        mu3: float = 0.045,
+        mu1: float = 0.2035,
+        mu2: float = 1.2,
+        mu3: float = 0.0295,
     ) -> "ScissorPlotInput":
         """
         Build scissor plot inputs from the converged Class II output.
@@ -155,7 +155,7 @@ class ScissorPlotInput:
         # The current ClassIIResult stores l_f_m and d_f_m, but not separate b_f and h_f.
         # For the current circular fuselage this is equivalent. If b_f != h_f later,
         # pass bf and hf explicitly by extending this input class.
-        d_f_final = float(final.get("d_f_m", cfg.d_f))
+        d_f_final = float(final["d_f_m"])
         bf = d_f_final
         hf = d_f_final
         lf = float(result.l_f_m)
