@@ -1,8 +1,20 @@
 from scipy.optimize import brentq
 import numpy as np
+import properties
+from CoolProp.CoolProp import PropsSI
 
+#import calculated tank dimensions
+from geomDesign import GeomDesign
+gd = GeomDesign(p_vent=2.0, p_fill=1.2, y_max=0.97)
+geom = gd.calculateTankGeometry(V_tank=12.3, phi=1.0, psi=1.0, Lambda=0.5)
+
+# hard coded dimensions for testing
 D = 2.5 # m, inner diameter of the tank
 L = 2.8 # m, length of the tank
+
+D = geom.a * 2  # m, inner diameter of the tank (from geomDesign)
+L = geom.ls     # m, length of the cylindrical section of the tank (from geomDesign)
+
 spherical = False # boolean, whether the tank is spherical or cylindrical
 f_ullage = 0.1 # fraction of tank volume reserved for ullage (empty space to allow for expansion of the liquid)
 
@@ -104,53 +116,52 @@ def inner_volume_s(D):
 
 def calculate_LH2_mass_c(D, L, rho_h2):
     V = inner_volume_c(D, L)
-    m_LH2 = V * rho_h2 * 1/(1+f_ullage)  # account for ullage
+    m_LH2 = V * rho_h2 * (1 - f_ullage)  # account for ullage
     return m_LH2
 
 def calculate_LH2_mass_s(D, rho_h2):
     V = inner_volume_s(D)
-    m_LH2 = V * rho_h2 * 1/(1+f_ullage)  # account for ullage
+    m_LH2 = V * rho_h2 * (1 - f_ullage)  # account for ullage
     return m_LH2
 
 def gravimetric_eff(m_LH2, m_wall):
     return m_LH2 / (m_LH2 + m_wall)
 
-# Calculate masses and gravimetric efficiency for each case
+#different densities for LH2 at different conditions
+rho_LH2 = PropsSI('D', 'P', 1 * 100000, 'T', 20, 'parahydrogen')  # kg/m^3
+rho_cCH2 = PropsSI('D', 'P', 350 * 100000, 'T', 35, 'parahydrogen')  # kg/m^3
+rho_sLH2 = PropsSI('D', 'P', 0.3 * 100000, 'T', 16, 'parahydrogen')  # kg/m^3
+
+# Calculate H2 masses and gravimetric efficiency for each case
 m_wall_LH2 = calculate_tank_mass_c(t_LH2, D, L, mat['density'])
-m_LH2 = calculate_LH2_mass_c(D, L, 70.8)  # density of LH2 at 20K in kg/m^3
+m_LH2 = calculate_LH2_mass_c(D, L, rho_LH2)
 eff_LH2 = gravimetric_eff(m_LH2, m_wall_LH2)
 
 m_wall_cCH2 = calculate_tank_mass_c(t_cCH2, D, L, mat['density'])
-m_cCH2 = calculate_LH2_mass_c(D, L, 82)  # density of cCH2 at 100 bar in kg/m^3
+m_cCH2 = calculate_LH2_mass_c(D, L, rho_cCH2)
 eff_cCH2 = gravimetric_eff(m_cCH2, m_wall_cCH2)
 
 m_wall_sLH2 = calculate_tank_mass_c(t_sLH2, D, L, mat['density'])
-m_sLH2 = calculate_LH2_mass_c(D, L, 74.2)  # density of sLH2 at 1 bar in kg/m^3
+m_sLH2 = calculate_LH2_mass_c(D, L, rho_sLH2)
 eff_sLH2 = gravimetric_eff(m_sLH2, m_wall_sLH2)
 
 m_wall_LH2_s = calculate_tank_mass_s(t_LH2_s, D, mat['density'])
-m_LH2_s = calculate_LH2_mass_s(D, 70.8)  # density of LH2 at 20K in kg/m^3
+m_LH2_s = calculate_LH2_mass_s(D, rho_LH2)  # density of LH2 at 20K in kg/m^3
 eff_LH2_s = gravimetric_eff(m_LH2_s, m_wall_LH2_s)
 
 m_wall_cCH2_s = calculate_tank_mass_s(t_cCH2_s, D, mat['density'])
-m_cCH2_s = calculate_LH2_mass_s(D, 82)  # density of cCH2 at 100 bar in kg/m^3
+m_cCH2_s = calculate_LH2_mass_s(D, rho_cCH2)  # density of cCH2 at 100 bar in kg/m^3
 eff_cCH2_s = gravimetric_eff(m_cCH2_s, m_wall_cCH2_s)
 
 m_wall_sLH2_s = calculate_tank_mass_s(t_sLH2_s, D, mat['density'])
-m_sLH2_s = calculate_LH2_mass_s(D, 74.2)
+m_sLH2_s = calculate_LH2_mass_s(D, rho_sLH2)
 eff_sLH2_s = gravimetric_eff(m_sLH2_s, m_wall_sLH2_s)
 
-
 if __name__ == "__main__":
-    print('t_LH2 =', t_LH2)
-    print('t_cCH2 =', t_cCH2)
-    print('t_sLH2 =', t_sLH2)
-    print('t_LH2_s =', t_LH2_s)
-    print('t_cCH2_s =', t_cCH2_s)
-    print('t_sLH2_s =', t_sLH2_s)
-    print('Gravimetric efficiency (LH2):', eff_LH2)
-    print('Gravimetric efficiency (cCH2):', eff_cCH2)
-    print('Gravimetric efficiency (sLH2):', eff_sLH2)
-    print('Gravimetric efficiency (LH2, spherical):', eff_LH2_s)
-    print('Gravimetric efficiency (cCH2, spherical):', eff_cCH2_s)
-    print('Gravimetric efficiency (sLH2, spherical):', eff_sLH2_s)
+    print('LH2: t =', t_LH2, ", m_wall =", m_wall_LH2, ", m_H2 =", m_LH2, ", eff =", eff_LH2)
+    print('cCH2: t =', t_cCH2, ", m_wall =", m_wall_cCH2, ", m_H2 =", m_cCH2, ", eff =", eff_cCH2)
+    print('sLH2: t =', t_sLH2, ", m_wall =", m_wall_sLH2, ", m_H2 =", m_sLH2, ", eff =", eff_sLH2)
+    print('LH2 (spherical): t =', t_LH2_s, ", m_wall =", m_wall_LH2_s, ", m_H2 =", m_LH2_s, ", eff =", eff_LH2_s)
+    print('cCH2 (spherical): t =', t_cCH2_s, ", m_wall =", m_wall_cCH2_s, ", m_H2 =", m_cCH2_s, ", eff =", eff_cCH2_s)
+    print('sLH2 (spherical): t =', t_sLH2_s, ", m_wall =", m_wall_sLH2_s, ", m_H2 =", m_sLH2_s, ", eff =", eff_sLH2_s)
+    print('Densities (LH2, cCH2, sLH2):', rho_LH2, rho_cCH2, rho_sLH2)

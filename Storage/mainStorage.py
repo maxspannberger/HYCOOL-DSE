@@ -28,7 +28,6 @@ class MainStorage:
         return gravimetric_index
 
 
-
 if __name__ == "__main__":    # Example usage
     tank_volume = 1000 # m^3
     tank_inner_diameter = 5 # m
