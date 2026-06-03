@@ -3,7 +3,6 @@ import sys
 root = Path(__file__).resolve().parent
 sys.path.append(str(root))
 
-import insulation
 import numpy as np
 import CoolProp.CoolProp as CP
 import matplotlib.pyplot as plt
@@ -17,6 +16,9 @@ with an index starting at 0, with 0 being the tank by default.
 ===============================================================================
 '''
 
+# In order to track the gas fraction, this function outputs whether the coolprop
+# value should be used or a manually picked value should be used 
+# (mainly important for supercritical phases)
 def calc_frac(p, h, fluid='Hydrogen'):
     # Determine the phase
     phase = CP.PhaseSI('P', p, 'H', h, fluid)
@@ -45,17 +47,18 @@ class Tank:
         self.wall = wall
         self.fluid = 'Hydrogen'
         
-        # The state of the hydrogen in the tank
-        self.p   = 6*101325.
+        # The state of the hydrogen in the tank based on the assumption that
+        # the fluid is fully in a liquid state
+        self.p   = 5*101325.
         self.frac= 0.
-        self.T   = CP.PropsSI('T', 'P', self.p, 'Q', 0, self.fluid)
-        self.rho = CP.PropsSI('D', 'P', self.p, 'Q', 0, self.fluid)
-        self.h   = CP.PropsSI('H', 'P', self.p, 'Q', 0, self.fluid)
+        self.T   = CP.PropsSI('T', 'P', self.p, 'Q', self.frac, self.fluid)
+        self.rho = CP.PropsSI('D', 'P', self.p, 'Q', self.frac, self.fluid)
+        self.h   = CP.PropsSI('H', 'P', self.p, 'Q', self.frac, self.fluid)
       
-    
+    # Set the tank values as the initial values of the piping system
     def solve_H2_state(self, states, T_amb, m_dot, PLOT=False):
         
-        # Store results
+        # Store results in dictionary and return
         results = {'T':   np.array([self.T]), 
                    'p':   np.array([self.p]),
                    'rho': np.array([self.rho]),
@@ -102,8 +105,8 @@ class Pipe:
     # Function that loops over the pipe segments and tracks the state if H2
     def solve_H2_state(self, states, T_amb, m_dot, PLOT=True):
         p = states['p'][-1][-1] # Access the last pressure from the last component
-        T = states['T'][-1][-1] # Access the last temperature from the last component
-        h = CP.PropsSI('H', 'P', p, 'T', T, self.fluid)
+        T = states['T'][-1][-1] # Access the last temperature from the last component    
+        h = states['h'][-1][-1] # Access the last enthalpy from the last component  
         
         # Store results
         results = {'T':   np.zeros(self.segments), 
@@ -118,15 +121,18 @@ class Pipe:
         A_seg = np.pi * self.d * dz
 
         # Loop over the pipe segments and adjust the state variables
-        for i in range(self.segments):
+        for seg in range(self.segments):
             # Fluid properties at segment inlet
-            rho = CP.PropsSI('D', 'P', p, 'T', T, self.fluid)
-            mu  = CP.PropsSI('V', 'P', p, 'T', T, self.fluid)
+            rho = CP.PropsSI('D', 'P', p, 'H', h, self.fluid)
+            mu  = CP.PropsSI('V', 'P', p, 'H', h, self.fluid)
 
-            # MLI heat leak (Lockheed three-term equation)
-            T_h   = T_amb
-            T_c   = T
-            T_m   = (T_h + T_c) / 2
+            # Calculate different T, such as they are presented in the  
+            # Lockhead equation
+            T_h   = T_amb           # Hot
+            T_c   = T               # Cold
+            T_m   = (T_h + T_c) / 2 # Average
+            
+            # MLI heat leak equation Lockhead
             Q_dot = A_seg * (
                 (self.cs * T_m * self.N_bar**2.63 * (T_h - T_c)) / (self.N - 1)
               + (self.cr * self.eps * (T_h**4.67 - T_c**4.67)) / self.N
@@ -137,17 +143,15 @@ class Pipe:
             u  = m_dot / (rho * A_cs)
             Re = 4 * m_dot / (np.pi * self.d * mu)
 
-            # Friction factor: Hagen-Poiseuille (laminar) or Haaland (turbulent)
+            # Determine the Friction factor: 
+            # either Hagen-Poiseuille (laminar) or Haaland (turbulent)
             if Re < 2300:
                 f = 64 / Re
             else:
                 f = (1 / (-1.8 * np.log10((self.eps_pipe / self.d / 3.7)**1.11 + 6.9 / Re)))**2
 
-            alpha = 0.95 + 4.42 * (self.curv)**(-1.96)
-            K_bend = 0.388 * alpha * (self.curv)**0.84 * Re ** (-0.17)
-
             # Darcy-Weisbach pressure drop
-            dp = (f * (dz / self.d) + K_bend * self.N_bend)* 0.5 * rho * u**2
+            dp = f * (dz / self.d) * 0.5 * rho * u**2
 
             # Update state variables
             h  += Q_dot / m_dot
@@ -157,11 +161,11 @@ class Pipe:
             frac= calc_frac(p, h, fluid='Hydrogen')
             
             # Store the updated state variables
-            results['T'][i]   = T
-            results['p'][i]   = p
-            results['rho'][i] = rho
-            results['h'][i]   = h
-            results['frac'][i]= frac
+            results['T'][seg]   = T
+            results['p'][seg]   = p
+            results['rho'][seg] = rho
+            results['h'][seg]   = h
+            results['frac'][seg]= frac
         
         if PLOT:
             fig, axes = plt.subplots(2, 2, figsize=(10, 8), sharex=True)
@@ -193,13 +197,15 @@ class Pipe:
 # =============================================================================
 # Define the pipe bend class
 # =============================================================================
-class Bend:
-    def __init__(self, N_bend: int,
+class Corner:
+    def __init__(self, position: int,
+                      N_bend: int,
                       curv: float,
                       diameter: float,
                       fluid: str = 'Hydrogen',
                       name:str = 'Bend'):
         
+        self.position = position
         self.N_bend = N_bend
         self.curv = curv
         self.d = diameter
@@ -208,18 +214,18 @@ class Bend:
     
     def solve_H2_state(self, states, T_amb, m_dot, PLOT=False):
         # Extract states from end of previous component
-        T = states['T'][-1][-1]
-        p = states['p'][-1][-1]
+        T   = states['T'][-1][-1]
+        p   = states['p'][-1][-1]
+        h   = states['h'][-1][-1]
+        rho = states['rho'][-1][-1]
         
-        # Calculate physical properties with CoolProp
-        h = CP.PropsSI('H', 'P', p, 'T', T, self.fluid)    
-        rho = CP.PropsSI('D', 'P', p, 'T', T, self.fluid)
-        mu  = CP.PropsSI('V', 'P', p, 'T', T, self.fluid)
+        # Calculate viscocity and reqnolds number   
+        mu  = CP.PropsSI('V', 'P', p, 'H', h, self.fluid)
+        Re  = 4 * m_dot / (np.pi * self.d * mu)
         
-        # Geometric and Flow parameters
+        # Calculat the pipe cross-sectional area and the speed
         A_cs = np.pi * self.d**2 / 4
         u = m_dot / (rho * A_cs)
-        Re = 4 * m_dot / (np.pi * self.d * mu)
         
         # Calculate the bend geometry factor
         alpha = 0.95 + 4.42 * (self.curv)**(-1.96)
@@ -231,9 +237,10 @@ class Bend:
         dp = K_bend * self.N_bend * 0.5 * rho * u**2
         
         # Update pressure for the state
-        p -= dp
-        
-        frac = calc_frac(p, h) # Calculate fraction based on post-drop pressure
+        p  -= dp
+        T   = CP.PropsSI('T', 'P', p, 'H', h, self.fluid)
+        rho = CP.PropsSI('D', 'P', p, 'H', h, self.fluid)
+        frac= calc_frac(p, h, fluid='Hydrogen')
         
         # Store results
         results = {'T':    np.array([T]), 
