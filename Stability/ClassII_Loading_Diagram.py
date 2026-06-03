@@ -6,6 +6,11 @@ from typing import Optional
 
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
+
+root = Path(__file__).resolve().parent.parent
+if str(root) not in sys.path:
+    sys.path.append(str(root))
 
 @dataclass
 class LoadingDiagramInput:
@@ -49,16 +54,16 @@ class LoadingDiagramInput:
 
         final = result.iteration_log[-1]
 
-        Paxweight = float(cfg.Paxweight)
+        PaxWeight = float(cfg.PaxWeight)
         Pax_count = int(cfg.Pax_count)
-        Paxweight_Tot = Paxweight * Pax_count
-        MaxCargo = float(cfg.W_payload - Paxweight_Tot)
+        PaxWeight_Tot = PaxWeight * Pax_count
+        MaxCargo = float(cfg.W_payload - PaxWeight_Tot)
 
         MaxFwdCargoVol = float(cfg.Max_fwd_cargo_vol)
         MaxAftCargoVol = float(cfg.Max_aft_cargo_vol)
 
         Seats_abreast = cfg.Seats_abreast
-        rows = Pax_count/Seats_abreast
+        rows = int(np.ceil(Pax_count/Seats_abreast))
         
 
         return cls(
@@ -72,6 +77,7 @@ class LoadingDiagramInput:
             MaxFwdCargoVol=MaxFwdCargoVol,
             MaxAftCargoVol=MaxAftCargoVol,
 
+            PaxWeight=PaxWeight,
             Pax_count=Pax_count,
             rows=rows,
 
@@ -134,13 +140,13 @@ class LoadingDiagramEstimator:
         d = self.i
         required = dict(
             MTOW=d.MTOW,
-            EOW=d.EOW,
+            OEW=d.OEW,
             Fuel_MaxP=d.Fuel_MaxP,
             MaxCargo=d.MaxCargo,
             MaxFwdCargoVol=d.MaxFwdCargoVol,
             MaxAftCargoVol=d.MaxAftCargoVol,
             PaxWeightTot=d.PaxWeightTot,
-            noPax=d.noPax,
+            Pax_count=d.Pax_count,
             rows=d.rows,
             LEMAC=d.LEMAC,
             mac=d.mac,
@@ -156,7 +162,7 @@ class LoadingDiagramEstimator:
 
     def loading_pax(self, positions, cg_in, mass_in):
         d = self.i
-        PaxWeight = d.Paxweight
+        PaxWeight = d.PaxWeight
 
         updated_cg, updated_mass = [cg_in], [mass_in]
         for pos in positions:
@@ -236,7 +242,7 @@ class LoadingDiagramEstimator:
     def compute(self) -> LoadingDiagramBreakdown:
         d = self.i
 
-        EOW_CG_LEMAC = self.convert_global(d.EOW_CG_global)
+        OEW_CG_LEMAC = self.convert_global(d.OEW_CG_global)
 
         positions_mac = self.convert_global(
             np.linspace(d.FirstWindow, d.LastWindow, d.rows)
@@ -245,8 +251,8 @@ class LoadingDiagramEstimator:
         positions_aft = np.flip(positions_mac)
 
         # Both Fwd -> Aft and Aft -> Fwd Cargo Paths
-        up_cg_cargo_fwd, up_mass_cargo_fwd = self.loading_fwd_cargo(EOW_CG_LEMAC, d.EOW)
-        up_cg_cargo_aft, up_mass_cargo_aft = self.loading_aft_cargo(EOW_CG_LEMAC, d.EOW)
+        up_cg_cargo_fwd, up_mass_cargo_fwd = self.loading_fwd_cargo(OEW_CG_LEMAC, d.OEW)
+        up_cg_cargo_aft, up_mass_cargo_aft = self.loading_aft_cargo(OEW_CG_LEMAC, d.OEW)
 
         # Fwd -> Aft Path
         up_cg_win_fwd, up_mass_win_fwd = self.loading_pax(
@@ -280,7 +286,7 @@ class LoadingDiagramEstimator:
 
         leftmost_limit = np.min(up_cg_aisle_fwd) * np.ones(2)
         rightmost_limit = np.max(up_cg_cargo_aft) * np.ones(2)
-        lim_y = np.linspace(d.EOW, d.MTOW, 2)
+        lim_y = np.linspace(d.OEW, d.MTOW, 2)
 
         leftmost_limit_margin = leftmost_limit - d.margin_mac
         rightmost_limit_margin = rightmost_limit + d.margin_mac
