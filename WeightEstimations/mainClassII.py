@@ -525,9 +525,9 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
 
     #find trim angle to fly at CL_cruise with the adjusted CLalpha, define lift angle of attack as alpha0 according to the chosen airfoil
 
-    alpha0=-2.5 * np.pi/180 # for example, for a typical airfoil, TODO: replace with actual alpha0 for the chosen airfoil
+    alphaCL0=cfg_updated.alpha_CL0_clean 
 
-    alpha_trim=CL_adjusted/CLalpha+alpha0
+    alpha_trim=CL_adjusted/CLalpha+alphaCL0
 
     #calculate Reynolds number at cruise conditions
     mu_alt=1.158e-5       # dynamic viscosity of air at 7620 m in kg/(m*s)
