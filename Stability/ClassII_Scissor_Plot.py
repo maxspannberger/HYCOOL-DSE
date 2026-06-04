@@ -67,7 +67,7 @@ class ScissorPlotInput:
     bn: float                       # nacelle or propulsor equivalent diameter [m]
     ln: float                       # nacelle longitudinal arm relative to wing a.c. [m]
     bh: float                       # horizontal tail span after tail recheck [m]
-    lh: float                       # horizontal tail arm [m]
+    lh: float                       # horizontal tail arm [m], tail length
     hh: float                       # vertical distance between wing plane and horizontal tail plane [m]
 
     Mcruise: float                  # cruise Mach number for stability condition [-]
@@ -162,7 +162,7 @@ class ScissorPlotInput:
 
         # Current config does not store the wing longitudinal location directly.
         # lfn is estimated from fuselage length minus tail arm unless provided.
-        lfn_use = float(lfn) if lfn is not None else 25
+        lfn = float(cfg.lfn)
 
         # Current config does not store nacelle diameter and nacelle longitudinal arm separately.
         # bn defaults to propfan disk diameter. ln defaults to 0, meaning no nacelle a.c. shift.
@@ -192,13 +192,13 @@ class ScissorPlotInput:
         Cm0_airfoil = float(cfg.Cm_alpha0_clean)                  #moment coefficient airfoil at zero angle of attack
 
         lh = float(cfg.l_h)      
-        hh = 4.3            #placeholder
+        hh = float(cfg.hh)            
 
         kwargs = dict(
             bf=bf,
             hf=hf,
             lf=lf,
-            lfn=lfn_use,
+            lfn=lfn,
             S=S,
             Sh=Sh,
             b=b,
@@ -212,7 +212,7 @@ class ScissorPlotInput:
             bn=bn_use,
             ln=ln_use,
             bh=bh,
-            lh=lh,      #vertical distance between stabilizer plane and wing plane, measured from scaled drawing airport manual
+            lh=lh,      
             hh=hh,
             Mcruise=Mcruise,
             Vlanding=Vlanding_use,

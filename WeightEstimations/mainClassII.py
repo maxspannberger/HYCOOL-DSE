@@ -176,9 +176,12 @@ def compute_fuselage_geometry(W_fuel: float, cfg: AircraftConfig,hump_back: bool
     from dataclasses import replace as _replace
 
     V_tank = max(W_fuel, 0.0) / cfg.rho_LH2_eff
-    r_tank = (3.0 * V_tank / (10.0 * np.pi)) ** (1 / 3) if V_tank > 0 else 0.0
-    L_tank = 4.0 * r_tank
+    #r_tank = (3.0 * V_tank / (10.0 * np.pi)) ** (1 / 3) if V_tank > 0 else 0.0
+    # L_tank = 4.0 * r_tank
+    # d_tank = 2.0 * r_tank
+    r_tank = (3.0 * V_tank / (4.0 * np.pi)) ** (1 / 3) if V_tank > 0 else 0.0
     d_tank = 2.0 * r_tank
+    L_tank = d_tank
 
     if hump_back:
         l_f = cfg.l_f
@@ -691,14 +694,14 @@ if __name__ == "__main__":
     for label, path in paths.items():
         print(f"{label}: {path}")
 
-    # print()
-    # print(result1.drag.summary())
-    # print()
-    # print(result1.weight.summary())
-    # print()
-    # print(result1.mission.summary())
-    # print()
-    # print(result1.summary())
+    print()
+    print(result1.drag.summary())
+    print()
+    print(result1.weight.summary())
+    print()
+    print(result1.mission.summary())
+    print()
+    print(result1.summary())
 
     # paths = export_results(
     #     result1,
