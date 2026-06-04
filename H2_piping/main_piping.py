@@ -3,7 +3,7 @@ import sys
 root = Path(__file__).resolve().parent
 sys.path.append(str(root))
 
-from h2_components import Tank, Pipe, Bend
+from h2_components import Tank, Pipe, Corner
 from rich import print as rich_print
 from rich.tree import Tree
 import matplotlib.pyplot as plt
@@ -109,7 +109,7 @@ if __name__ == "__main__":
         Pipe(position=1, length=64.0, diameter=0.02, wall=wall, segments=200,
              N=11, N_bar=5.5, P_mli=0.001, N_bend=10, curv=2.5),
         
-        Bend(position=1, N_bend=1, diameter=0.02, curv=2.5)
+        Corner(position=1, N_bend=1, diameter=0.02, curv=2.5)
         ]
     
     states = solve_system(system, 0.03, 313)
