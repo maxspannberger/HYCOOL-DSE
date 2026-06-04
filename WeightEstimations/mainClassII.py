@@ -672,26 +672,26 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
 
 if __name__ == "__main__":
     cfg = default_q400_hycool()
-    # result1 = run_class_ii(cfg,comp=comp_params, tol=1.0, max_iter=100, verbose=True)
+    result1 = run_class_ii(cfg,comp=comp_params, tol=1.0, max_iter=100, verbose=True)
 
-    # print()
-    # print(result1.drag.summary())
-    # print()
-    # print(result1.weight.summary())
-    # print()
-    # print(result1.mission.summary())
-    # print()
-    # print(result1.summary())
+    print()
+    print(result1.drag.summary())
+    print()
+    print(result1.weight.summary())
+    print()
+    print(result1.mission.summary())
+    print()
+    print(result1.summary())
 
-    # paths = export_results(
-    #     result1,
-    #     output_dir = "outputs",
-    #     iterations = result1.iteration_log,
-    # )
-    # print()
-    # print("[bold]Results exported to:[/bold]")
-    # for label, p in paths.items():
-    #     print(f"  {label}: {p}")
+    paths = export_results(
+        result1,
+        output_dir = "outputs",
+        iterations = result1.iteration_log,
+    )
+    print()
+    print("[bold]Results exported to:[/bold]")
+    for label, p in paths.items():
+        print(f"  {label}: {p}")
 
     best_row = get_optimal_cl_mach(cfg, force_recompute=False)
     cfg = apply_optimal_cl_mach(cfg, best_row)
