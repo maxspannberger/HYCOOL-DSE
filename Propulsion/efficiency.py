@@ -553,7 +553,7 @@ if __name__ == "__main__":
     t_charge = 30*60 # 30 min charge time
     cable_efficiency = 1 # change later
     t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
-    P_climb, P_cruise = 5500000, 3500000
+    #P_climb, P_cruise = 5500000, 3500000
 
     # results_GT_BAT = GT_BAT_efficiency(comp=comp_param, t_charge=t_charge, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
     # # print(results_GT_BAT)

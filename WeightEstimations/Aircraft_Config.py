@@ -280,14 +280,14 @@ def default_q400_hycool() -> AircraftConfig:
         Max_aft_cargo_vol   = 1,                    # Aft cargo hold volume, placeholder for now
         Seats_abreast       = 4,                    # Class I
 
-        FirstWindow         = 5.6,                  # Distance nose tip to first window [m], placeholder for now
-        LastWindow          = 27.56,                # Distance nose tip to last window [m], placeholder for now
+        FirstWindow         = 6.74,                 # Distance nose tip to first window [m], placeholder for now
+        LastWindow          = 27.08,                # Distance nose tip to last window [m], placeholder for now
 
-        LEMAC               = 14.5,                 # Distance nose tip to LEMAC [m], placeholder for now
-        lfn                 = 12.5,                 # Distance nose tip to LE wing root
+        LEMAC               = 17.2,                 # Distance nose tip to LEMAC [m], placeholder for now
+        lfn                 = 15.5,                 # Distance nose tip to LE wing root
         hh                  = 4,                    # Normal distance from wing plane to tail plane, placeholder for now
 
-        OEW_cg              = 20.93,                # Distance nose tip to OEW CG [m], placeholder for now
+        OEW_cg              = 17.93,                # Distance nose tip to OEW CG [m], placeholder for now
         FUEL_cg             = 30,                   # Distance nose tip to Fuel CG [m], placeholder for now
         AftCargo_cg         = 25,                   # Distance nose tip to Aft Cargo CG [m], placeholder for now
         FwdCargo_cg         = 10,                   # Distance nose tip to Fwd Cargo CG [m], placeholder for now
