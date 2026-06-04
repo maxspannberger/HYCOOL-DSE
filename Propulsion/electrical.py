@@ -25,25 +25,48 @@ def get_cable_region_powers(N_motors, N_turbines, component, positions, previous
     comp_powers = {}
     maximum = {}
     if "in" in component:
-        for pos in positions["gt"]:
+        positions_gt = positions["gt"] + [-x for x in positions["gt"]]
+        for pos in positions_gt:
             comp_powers[pos] = {}
             comp_powers[pos]["length"] = abs(pos - positions["bus"])
-            for condition in ["max", "cruise", "OEI_mot", "OEI_gt"]:
-                comp_powers[pos][condition] = previous[condition] * (1.0 - cable_loss_per_m * comp_powers[pos]["length"])
+
+            for condition in ["max", "cruise", "OEI_mot", "OEI_gt", "OEI_bus"]:
+                if condition == "OEI_gt":
+                    comp_powers[pos][condition] = previous[condition] * (1.0 - cable_loss_per_m * comp_powers[pos]["length"])
+                elif condition == "OEI_bus":
+                    comp_powers[pos][condition] = 0.5 * previous[condition] * (1.0 - cable_loss_per_m * comp_powers[pos]["length"])
+                else:
+                    if pos < 0:
+                        comp_powers[pos][condition] = 0.0
+                    else:
+                        comp_powers[pos][condition] = previous[condition] * (1.0 - cable_loss_per_m * comp_powers[pos]["length"])
+                
                 if condition not in maximum:
                     maximum[condition] = 0.0
                 if comp_powers[pos][condition] > maximum[condition]:
                     maximum[condition] = comp_powers[pos][condition]
 
     elif "out" in component:
-        for pos in positions["mot"]:
+        positions_mot = positions["mot"] + [-x for x in positions["mot"]]
+        for pos in positions_mot:
             comp_powers[pos] = {}
             comp_powers[pos]["length"] = abs(pos - positions["bus"])
-            for condition in ["max", "cruise", "OEI_mot", "OEI_gt"]:
-                comp_powers[pos][condition] = previous[condition] * (1.0 - cable_loss_per_m * comp_powers[pos]["length"])
+
+            for condition in ["max", "cruise", "OEI_mot", "OEI_gt", "OEI_bus"]:
+                
+                if condition == "OEI_mot":
+                    comp_powers[pos][condition] = 0.5 * previous[condition] * (1.0 - cable_loss_per_m * comp_powers[pos]["length"])
+                elif condition == "OEI_bus":
+                    comp_powers[pos][condition] = previous[condition] * (1.0 - cable_loss_per_m * comp_powers[pos]["length"])
+                else:
+                    if pos < 0:
+                        comp_powers[pos][condition] = 0.0
+                    else:
+                            comp_powers[pos][condition] = previous[condition] * (1.0 - cable_loss_per_m * comp_powers[pos]["length"])
+
                 if condition == "OEI_mot":
                     maximum[condition] = previous[condition] * (N_motors - 1) / 2
-                elif condition == "OEI_gt":
+                elif condition == "OEI_bus":
                     maximum[condition] = previous[condition] * N_motors
                 else:
                     maximum[condition] = previous[condition] * N_motors / 2
@@ -72,6 +95,7 @@ def get_powers_per_component(P_max, P_cruise, P_OEI, positions, component_order,
         "cruise": P_cruise / N_motors,
         "OEI_mot": P_OEI / (N_motors - 1),
         "OEI_gt": P_OEI / N_motors,
+        "OEI_bus": P_OEI / N_motors
     }
     previous = comp_powers["out"].copy()
 
