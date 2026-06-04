@@ -76,7 +76,7 @@ class Pipe:
                        diameter: float,   wall: list,
                        segments: int,     N: int,
                        N_bar: float,      P_mli: float,
-                       N_bend: int,       curv: float,
+                       curv: float,
                        eps_pipe: float    = 1.5e-5,
                        fluid: str         = 'Hydrogen',
                        name: str          = 'Pipe'):
@@ -93,7 +93,6 @@ class Pipe:
         self.N_bar     = N_bar     # layer density [layers/cm]
         self.P_mli     = P_mli     # residual gas pressure [Pa]
         self.eps_pipe  = eps_pipe  # pipe wall roughness [m]
-        self.N_bend    = N_bend    # number of bends in the pipe
         self.curv      = curv      # curvature of the bends, R/d
         # Note: P_mli must be supplied in Pa; converted to Torr internally
         # because the Lockheed C_G constant was fitted with pressure in Torr
@@ -199,11 +198,11 @@ class Pipe:
 # =============================================================================
 class Corner:
     def __init__(self, position: int,
-                      N_bend: int,
                       curv: float,
                       diameter: float,
                       fluid: str = 'Hydrogen',
-                      name:str = 'Bend'):
+                      name:str = 'Bend',
+                      N_bend: int = 1):
         
         self.position = position
         self.N_bend = N_bend
