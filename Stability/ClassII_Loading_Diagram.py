@@ -383,6 +383,14 @@ if __name__ == "__main__":
 
     cfg = default_q400_hycool()
     result = run_class_ii(cfg, comp=comp_params, tol=1.0, max_iter=100, verbose=True)
+    # print()
+    # print(result.drag.summary())
+    # print()
+    # print(result.weight.summary())
+    # print()
+    # print(result.mission.summary())
+    # print()
+    # print(result.summary())
 
     inp = LoadingDiagramInput.from_class_ii(cfg, result)
     estimator = LoadingDiagramEstimator(inp)
