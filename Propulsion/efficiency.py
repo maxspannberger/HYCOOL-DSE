@@ -551,16 +551,38 @@ def GT_FC_efficiency(
 if __name__ == "__main__":
     t_charge = 30*60 # 30 min charge time
     cable_efficiency = 1 # change later
-    t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
+    t_climb1 =16.7
+    t_cruise1= 82.8
+    P_climb1=5974000
+    P_cruise1 = 3898000
+    
+    t_climb2 =16.7
+    t_cruise2= 82.8
+    P_climb2=5222000
+    P_cruise2 = 3547000
 
-    results_GT_BAT = GT_BAT_efficiency(comp=comp_param, t_charge=t_charge, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
-    # print(results_GT_BAT)
+    t_climb3 =49.7
+    t_cruise3= 82.8
+    P_climb3=5974000
+    P_cruise3 = 3898000
 
-    results_FC_BAT = FC_BAT_efficiency(comp=comp_param, t_charge=t_charge, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
-    # #print(results_FC_BAT)
+    # results_GT_BAT = GT_BAT_efficiency(comp=comp_param, t_charge=t_charge, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
+    # # print(results_GT_BAT)
 
-    results_GT_GT = GT_GT_efficiency(comp=comp_param, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
-    # #print(results_GT_GT)
+    # results_FC_BAT = FC_BAT_efficiency(comp=comp_param, t_charge=t_charge, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
+    # # #print(results_FC_BAT)
 
-    results_GT_FC = GT_FC_efficiency(comp=comp_param, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
-    # # print(results_GT_FC)
+    results_GT_GT = GT_GT_efficiency(comp=comp_param, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb1, t_cruise=t_cruise1, P_climb=P_climb1, P_cruise=P_cruise1)
+    print(results_GT_GT)
+
+
+    print("----------------")
+    results_GT_GT = GT_GT_efficiency(comp=comp_param, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb2, t_cruise=t_cruise2, P_climb=P_climb2, P_cruise=P_cruise2)
+    print(results_GT_GT)
+
+    print("----------------")
+    results_GT_GT = GT_GT_efficiency(comp=comp_param, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb3, t_cruise=t_cruise3, P_climb=P_climb3, P_cruise=P_cruise3)
+    print(results_GT_GT)
+
+    # results_GT_FC = GT_FC_efficiency(comp=comp_param, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
+    # # # print(results_GT_FC)
