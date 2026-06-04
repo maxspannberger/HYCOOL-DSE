@@ -81,8 +81,8 @@ class ScissorPlotInput:
     Cm0_airfoil: float              #moment coefficient airfoil at zero angle of attack
     CLA_h: float                    #lift coefficient of aircraft without tail, found with calculation see notes
 
-    A: float                        #aspect ratio horizontal tail
-    Ah: float                       #aspect ratio main wing, not purely geometric to take winglet into account
+    A: float                        #aspect ratio main wing, not purely geometric to take winglet into account
+    Ah: float                       #aspect ratio horizontal tail
 
     # ---------------- Controllability inputs from old scissor plot ----------------
     
@@ -143,9 +143,9 @@ class ScissorPlotInput:
         b = float(result.Wing_span)
         c = aero_dict["MAC"]        #Mean aerodynamic chord
 
-        wing_taper = aero_dict["taper"]
+        wing_taper = float(result.Wing_taper)
 
-        cr = float(cfg.c_root)
+        cr = float(final["c_root_m"])
         ct = wing_taper * cr
 
         Sh = float(result.tail_rechecked.S_h)

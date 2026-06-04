@@ -46,6 +46,8 @@ from WeightEstimations.Export_Results    import export_results
 from General.component_parameters import component_params as comp_params
 from WeightEstimations.ISA import isa
 
+from WeightEstimations.Export_Geometry import (print_final_geometry, export_final_geometry)
+
 from rich import print
 from rich.console import Console
 from rich.panel import Panel
@@ -672,7 +674,20 @@ def compute_additional_aerodynamic_parameters(best_row: dict | None, cfg_updated
 
 if __name__ == "__main__":
     cfg = default_q400_hycool()
-    # result1 = run_class_ii(cfg,comp=comp_params, tol=1.0, max_iter=100, verbose=True)
+    result1 = run_class_ii(cfg,comp=comp_params, tol=1.0, max_iter=100, verbose=True)
+
+    print_final_geometry(cfg, result1, show_sources=True)
+
+    paths = export_final_geometry(
+        cfg,
+        result1,
+        output_dir="outputs",
+        include_sources=True,
+    )
+
+    print("\nFinal geometry exported to:")
+    for label, path in paths.items():
+        print(f"{label}: {path}")
 
     # print()
     # print(result1.drag.summary())
