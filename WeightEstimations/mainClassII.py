@@ -677,6 +677,17 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig) -> di
         f"{Reynolds_ground:.0f}"
     )
     print(table)
+
+    print()
+    print(result.drag.summary())
+    print()
+    print(result.weight.summary())
+    print()
+    print(result.mission.summary())
+    print()
+    print(result.summary())
+
+
     return dict(
         CL_opt=aero['CL_cruise'],
         CD_Dmin=aero['CD_total'],
@@ -698,39 +709,39 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig) -> di
 
 if __name__ == "__main__":
     cfg = default_q400_hycool()
-    result1 = run_class_ii(cfg,comp=comp_params, tol=1.0, max_iter=100, verbose=True)
-    result1 = run_class_ii(cfg,comp=comp_params, tol=1.0, max_iter=100, verbose=True)
+    # result1 = run_class_ii(cfg,comp=comp_params, tol=1.0, max_iter=100, verbose=True)
+    # result1 = run_class_ii(cfg,comp=comp_params, tol=1.0, max_iter=100, verbose=True)
 
-    print_final_geometry(cfg, result1)
+    # print_final_geometry(cfg, result1)
 
-    paths = export_final_geometry(
-        cfg,
-        result1,
-        output_dir="outputs",
-    )
+    # paths = export_final_geometry(
+    #     cfg,
+    #     result1,
+    #     output_dir="outputs",
+    # )
 
-    print("\nFinal geometry exported to:")
-    for label, path in paths.items():
-        print(f"{label}: {path}")
+    # print("\nFinal geometry exported to:")
+    # for label, path in paths.items():
+    #     print(f"{label}: {path}")
 
-    print()
-    print(result1.drag.summary())
-    print()
-    print(result1.weight.summary())
-    print()
-    print(result1.mission.summary())
-    print()
-    print(result1.summary())
+    # print()
+    # print(result1.drag.summary())
+    # print()
+    # print(result1.weight.summary())
+    # print()
+    # print(result1.mission.summary())
+    # print()
+    # print(result1.summary())
 
-    paths = export_results(
-        result1,
-        output_dir = "outputs",
-        iterations = result1.iteration_log,
-    )
-    print()
-    print("[bold]Results exported to:[/bold]")
-    for label, p in paths.items():
-        print(f"  {label}: {p}")
+    # paths = export_results(
+    #     result1,
+    #     output_dir = "outputs",
+    #     iterations = result1.iteration_log,
+    # )
+    # print()
+    # print("[bold]Results exported to:[/bold]")
+    # for label, p in paths.items():
+    #     print(f"  {label}: {p}")
 
 
     result=compute_additional_aerodynamic_parameters( cfg)
