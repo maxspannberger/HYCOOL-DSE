@@ -33,7 +33,7 @@ def solve_system(system, m_dot, T_amb):
     
     
     for comp in system:
-        component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=True)
+        component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=False)
         
         states['p'].append(component_result['p'])
         states['T'].append(component_result['T'])
