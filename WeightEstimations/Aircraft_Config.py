@@ -135,6 +135,8 @@ class AircraftConfig:
     Max_aft_cargo_vol:  float = 0.0         
     Seats_abreast:      int = 0       
     LEMAC:              float = 0.0
+    lfn:                float = 0.0
+    hh:                 float = 0.0
 
     FirstWindow:        float = 0.0
     LastWindow:         float = 0.0
@@ -281,7 +283,9 @@ def default_q400_hycool() -> AircraftConfig:
         FirstWindow         = 5.6,                  # Distance nose tip to first window [m], placeholder for now
         LastWindow          = 27.56,                # Distance nose tip to last window [m], placeholder for now
 
-        LEMAC               = 19.23,                # Distance nose tip to LEMAC [m], placeholder for now
+        LEMAC               = 14.5,                 # Distance nose tip to LEMAC [m], placeholder for now
+        lfn                 = 12.5,                 # Distance nose tip to LE wing root
+        hh                  = 4,                    # Normal distance from wing plane to tail plane, placeholder for now
 
         OEW_cg              = 20.93,                # Distance nose tip to OEW CG [m], placeholder for now
         FUEL_cg             = 30,                   # Distance nose tip to Fuel CG [m], placeholder for now
