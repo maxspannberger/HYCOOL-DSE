@@ -111,21 +111,32 @@ def get_P_idle(T_J, N):
     return P
 
 
-def size_converter(comp, powers):
+def size_converter(comp, powers, N=0):
     eff = comp.efficiency
     P_OEI = max(powers["OEI_mot"], powers["OEI_gt"])
 
-    N = get_N(powers["max"], eff, T_J_design)
+    if N == 0:
+        N = get_N(powers["max"], eff, T_J_design)
+        T_J_max = 250
+    else:
+        T_J_max = T_H2 + get_deltaT(powers["max"], eff, N)
     T_J_cruise = T_H2 + get_deltaT(powers["cruise"], eff, N)
     T_J_OEI = T_H2 + get_deltaT(P_OEI, eff, N)
     P_heat_idle = get_P_idle(T_J_min, N)
 
     P_max = max(P_OEI, powers["max"])
     m = P_max / comp.power_density
+    max_cooling = P_max * (1 - eff)
 
-    print(N, T_J_cruise, T_J_OEI, P_heat_idle, m)
+    print(f"Number of chips: {N}")
+    print(f"Operating temperature: {T_J_max}")
+    print(f"Cruise temperature: {T_J_cruise}")
+    print(f"OEI temperature: {T_J_OEI}")
+    print(f"Idle extra heat: {P_heat_idle}")
+    print(f"Max cooling power: {max_cooling}")
+    print(f"Mass: {m}")
 
-    return N, T_J_cruise, T_J_OEI, P_heat_idle, m
+    return N, T_J_max, T_J_cruise, T_J_OEI, P_heat_idle, m, max_cooling
 
 
 
@@ -150,10 +161,17 @@ if __name__ == "__main__":
         json.dump(powers, f, indent=4)
     print("Electrical system power sizing complete.")
 
-    _, _, _, P_inverter, m_inverter = size_converter(comp_params["dc_ac"], powers["dc_ac"])
-    _, _, _, P_rectifier, m_rectifier = size_converter(comp_params["ac_dc"], powers["ac_dc"])
-    P_total_idle = 2*len(positions["mot"]) * P_inverter + 2*len(positions["gt"]) * P_rectifier
-    m_total = 2*len(positions["mot"]) * m_inverter + 2*len(positions["gt"]) * m_rectifier
-    print(f"Total heating power required for idle: {P_total_idle}")
+    print("\nINVERTER")
+    _, _, _, _, P_inverter, m_inverter, max_cooling_inverter = size_converter(comp_params["dc_ac"], powers["dc_ac"])
+    print("\nRECTIFIER")
+    _, _, _, _, P_rectifier, m_rectifier, max_cooling_rectifier = size_converter(comp_params["ac_dc"], powers["ac_dc"])
+    print("\nBUS")
+    _, _, _, _, P_bus, m_bus, max_cooling_bus = size_converter(comp_params["bus"], powers["bus"], N=24)
+    
+    P_total_idle = 2*len(positions["mot"]) * P_inverter + 2*len(positions["gt"]) * P_rectifier + 2*P_bus
+    m_total = 2*len(positions["mot"]) * m_inverter + 2*len(positions["gt"]) * m_rectifier + 2*m_bus
+    P_total_idle = 2*len(positions["mot"]) * max_cooling_inverter + 2*len(positions["gt"]) * max_cooling_rectifier + 2*max_cooling_bus
+
+    print(f"\nTotal heating power required for idle: {P_total_idle}")
     print(f"Total mass of converters: {m_total}")
     print("Electrical components sizing complete.")
