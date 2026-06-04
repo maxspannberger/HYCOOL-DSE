@@ -1,18 +1,18 @@
 group,parameter,value,source
-Masses,MTOW_kg,30286.426568494422,result.MTOW
-Masses,MZFW_kg,29803.289009694952,result.MZFW
-Masses,OEW_kg,19803.289009694952,result.OEW
-Masses,empty_weight_without_fixed_kg,14303.289009694952,result.W_empty
-Masses,fuel_mass_kg,483.1375587994694,result.W_fuel
+Masses,MTOW_kg,34574.91555584534,result.MTOW
+Masses,MZFW_kg,33902.473519766194,result.MZFW
+Masses,OEW_kg,23902.473519766194,result.OEW
+Masses,empty_weight_without_fixed_kg,18402.473519766194,result.W_empty
+Masses,fuel_mass_kg,672.4420360791472,result.W_fuel
 Masses,payload_kg,10000.0,result.W_payload
 Masses,fixed_equipment_kg,5500.0,result.W_fixed
-Masses,propulsion_system_with_tank_kg,1997.9094171899687,result.W_prop
-Wing,S_ref_m2,77.9565870157395,final['S_ref_m2']
-Wing,span_m,27.92070683484562,final['b_m']
+Masses,propulsion_system_with_tank_kg,5140.942794696242,result.W_prop
+Wing,S_ref_m2,88.99135532864167,final['S_ref_m2']
+Wing,span_m,29.831418894957324,final['b_m']
 Wing,aspect_ratio,10,cfg.AR
-Wing,root_chord_m,4.0965738002158645,final['c_root_m']
-Wing,tip_chord_m,1.48756756675326,final['c_tip_m']
-Wing,MAC_m,2.9952327299217116,final['MAC_m']
+Wing,root_chord_m,4.376916737502873,final['c_root_m']
+Wing,tip_chord_m,1.5893670414885916,final['c_tip_m']
+Wing,MAC_m,3.200207028522213,final['MAC_m']
 Wing,taper_ratio,0.36312480606961706,result.Wing_taper
 Wing,sweep_half_rad,0.4014257279586958,cfg.sweep_half
 Wing,sweep_half_deg,23.0,derived from cfg.sweep_half
@@ -20,11 +20,11 @@ Wing,sweep_tc_rad,0.4188790204786391,cfg.sweep_tc
 Wing,sweep_tc_deg,24.0,derived from cfg.sweep_tc
 Wing,thickness_to_chord_root,0.12,cfg.tc_root
 Wing,thickness_to_chord_mean,0.11,cfg.tc_mean
-Wing,root_thickness_m,0.49158885602590374,derived from cfg.tc_root * final['c_root_m']
+Wing,root_thickness_m,0.5252300085003447,derived from cfg.tc_root * final['c_root_m']
 Wing,LEMAC_m_from_nose,19.23,cfg.LEMAC
 Wing,loading_N_m2,3810,cfg.Loading
-Horizontal_tail,S_h_m2,12.675214657027423,result.tail_rechecked.S_h
-Horizontal_tail,span_h_m,7.55238147584081,result.tail_rechecked.b_h
+Horizontal_tail,S_h_m2,15.460550822934952,result.tail_rechecked.S_h
+Horizontal_tail,span_h_m,8.34101185128083,result.tail_rechecked.b_h
 Horizontal_tail,MAC_h_m,2.1,cfg.MAC_h
 Horizontal_tail,tail_arm_l_h_m,17.5,cfg.l_h
 Horizontal_tail,aspect_ratio_h,4.5,cfg.AR_h
@@ -34,11 +34,11 @@ Horizontal_tail,sweep_h_tc_rad,0.3490658503988659,cfg.sweep_h_tc
 Horizontal_tail,sweep_h_tc_deg,20.0,derived from cfg.sweep_h_tc
 Horizontal_tail,thickness_to_chord_h,0.12,cfg.tc_h
 Horizontal_tail,V_h,0.95,result.tail_rechecked.V_h
-Horizontal_tail,elevator_area_m2,3.929316543678501,result.tail_rechecked.S_elevator
+Horizontal_tail,elevator_area_m2,4.792770755109835,result.tail_rechecked.S_elevator
 Horizontal_tail,Se_Sh,0.31,result.tail_rechecked.Se_Sh
 Horizontal_tail,sizing_driver,stability (V_h),result.tail_rechecked.S_h_driver
-Vertical_tail,S_v_m2,17.335672968340287,result.tail_rechecked.S_v
-Vertical_tail,span_v_m,5.428687138358453,result.tail_rechecked.b_v
+Vertical_tail,S_v_m2,18.935761185631538,result.tail_rechecked.S_v
+Vertical_tail,span_v_m,5.673693154866028,result.tail_rechecked.b_v
 Vertical_tail,MAC_v_m,3.5,cfg.MAC_v
 Vertical_tail,tail_arm_l_v_m,17.5,cfg.l_v
 Vertical_tail,aspect_ratio_v,1.7,cfg.AR_v
@@ -47,26 +47,26 @@ Vertical_tail,sweep_v_half_deg,33.0,derived from cfg.sweep_v_half
 Vertical_tail,sweep_v_tc_rad,0.6108652381980153,cfg.sweep_v_tc
 Vertical_tail,sweep_v_tc_deg,35.0,derived from cfg.sweep_v_tc
 Vertical_tail,thickness_to_chord_v,0.12,cfg.tc_v
-Vertical_tail,V_v,0.1393840733317406,result.tail_rechecked.V_v
-Vertical_tail,rudder_area_m2,6.067485538919099,result.tail_rechecked.S_rudder
+Vertical_tail,V_v,0.12482040127444434,result.tail_rechecked.V_v
+Vertical_tail,rudder_area_m2,6.627516414971037,result.tail_rechecked.S_rudder
 Vertical_tail,Sr_Sv,0.3499999999999999,result.tail_rechecked.Sr_Sv
 Vertical_tail,sizing_driver,control (OEI rudder),result.tail_rechecked.S_v_driver
-Fuselage,length_m,38.51710171925306,final['l_f_m']
+Fuselage,length_m,38.92094262330223,final['l_f_m']
 Fuselage,diameter_equivalent_m,2.9,final['d_f_m']
 Fuselage,width_m,2.9,cfg.b_f
 Fuselage,height_m,2.9,cfg.h_f
-Fuselage,wetted_area_m2,316.52201158609887,final['S_wet_f_m2']
+Fuselage,wetted_area_m2,320.1954839018338,final['S_wet_f_m2']
 Fuselage,tail_length_l_t_m,17.5,cfg.l_t
 Fuselage,LEMAC_m_from_nose,19.23,cfg.LEMAC
-LH2_tank,fuel_mass_kg,483.1375587994694,result.W_fuel
+LH2_tank,fuel_mass_kg,672.4420360791472,result.W_fuel
 LH2_tank,effective_LH2_density_kg_m3,70.85,cfg.rho_LH2_eff
-LH2_tank,volume_m3,6.819161027515447,derived from result.W_fuel / cfg.rho_LH2_eff
-LH2_tank,radius_m,0.8667754298132669,final['r_tank_m']
-LH2_tank,diameter_m,1.7335508596265339,final['d_tank_m']
-LH2_tank,length_m,3.4671017192530678,final['L_tank_m']
+LH2_tank,volume_m3,9.491066140848938,derived from result.W_fuel / cfg.rho_LH2_eff
+LH2_tank,radius_m,0.9677356558255588,final['r_tank_m']
+LH2_tank,diameter_m,1.9354713116511175,final['d_tank_m']
+LH2_tank,length_m,3.870942623302235,final['L_tank_m']
 LH2_tank,hump_back_input_flag,True,cfg.hump_back
 LH2_tank,extra_wetted_area_hump_m2,0.0,final['S_wet_hump_m2']
-LH2_tank,tank_weight_kg,298.9413645071717,result.weight.W_h2_tank
+LH2_tank,tank_weight_kg,416.07350982397236,result.weight.W_h2_tank
 LH2_tank,gravimetric_density,0.64,result.weight.grav_density
 Layout_and_CG_inputs,PaxWeight_kg,84,cfg.PaxWeight
 Layout_and_CG_inputs,Pax_count,100,cfg.Pax_count
@@ -79,28 +79,28 @@ Layout_and_CG_inputs,AftCargo_cg_m_from_nose,25,cfg.AftCargo_cg
 Layout_and_CG_inputs,FwdCargo_cg_m_from_nose,10,cfg.FwdCargo_cg
 Layout_and_CG_inputs,Max_fwd_cargo_vol_m3,5,cfg.Max_fwd_cargo_vol
 Layout_and_CG_inputs,Max_aft_cargo_vol_m3,1,cfg.Max_aft_cargo_vol
-Aerodynamics,cruise_CL,0.2973985809082661,result.CL_cruise
-Aerodynamics,cruise_L_over_D,16.889132551545515,result.L_over_D
-Aerodynamics,CD0,0.014118821485588998,result.drag.CD0
-Aerodynamics,CD_total,0.017608872451004082,result.drag.CD_total
+Aerodynamics,cruise_CL,0.29739858090826604,result.CL_cruise
+Aerodynamics,cruise_L_over_D,17.946893805712655,result.L_over_D
+Aerodynamics,CD0,0.013083398995383624,result.drag.CD0
+Aerodynamics,CD_total,0.016571033635558785,result.drag.CD_total
 Aerodynamics,CD_wave,0.0,result.drag.CD_wave
-Aerodynamics,oswald_e,0.8066704386523925,result.drag.e
-Aerodynamics,CL_cruise_Dmin,0.34535170430313605,result.drag.CL_cruise_Dmin
-Aerodynamics,CD_cruise_Dmin,0.01882509531411866,result.drag.CD_cruise_Dmin
-Aerodynamics,v_dmin_m_s,195.40864397107674,result.drag.v_dmin
-Power_and_mission,P_cruise_kW,3547.7378833505622,result.P_cruise_KW
-Power_and_mission,P_climb_kW,5221.452852669171,result.P_climb_KW
-Power_and_mission,P_reserve_kW,1503.8337019028768,result.P_reserve_KW
-Power_and_mission,P_TO_kW,5686.979367482967,result.P_TO_KW
-Power_and_mission,P_TO_OEI_kW,2843.4896837414835,result.P_TO_OEI_KW
-Power_and_mission,P_max_kW,5221.452852669171,result.P_max_KW
-Power_and_mission,static_thrust_per_engine_kN,50.32421619986557,derived from result.power.T_static_per_engine / 1000
-Power_and_mission,static_thrust_total_kN,100.64843239973113,derived from result.power.T_static_total / 1000
+Aerodynamics,oswald_e,0.8072293212024058,result.drag.e
+Aerodynamics,CL_cruise_Dmin,0.33256233916063527,result.drag.CL_cruise_Dmin
+Aerodynamics,CD_cruise_Dmin,0.017444531993844832,result.drag.CD_cruise_Dmin
+Aerodynamics,v_dmin_m_s,199.13061711995124,result.drag.v_dmin
+Power_and_mission,P_cruise_kW,3820.1279060760157,result.P_cruise_KW
+Power_and_mission,P_climb_kW,5793.162090685717,result.P_climb_KW
+Power_and_mission,P_reserve_kW,1699.4980698607694,result.P_reserve_KW
+Power_and_mission,P_TO_kW,6491.972276007287,result.P_TO_KW
+Power_and_mission,P_TO_OEI_kW,3245.9861380036436,result.P_TO_OEI_KW
+Power_and_mission,P_max_kW,5793.162090685717,result.P_max_KW
+Power_and_mission,static_thrust_per_engine_kN,54.96915761822757,derived from result.power.T_static_per_engine / 1000
+Power_and_mission,static_thrust_total_kN,109.93831523645514,derived from result.power.T_static_total / 1000
 Power_and_mission,t_cruise_s,4968.203497615263,result.mission.t_cruise
 Power_and_mission,t_climb_s,1000.0,result.mission.t_climb
 Power_and_mission,t_reserve_s,2700.0,result.mission.t_reserve
-Power_and_mission,mission_fuel_total_kg,483.1375587994694,result.mission.m_LH2_total
-Iteration_info,iterations,7,result.iterations
+Power_and_mission,mission_fuel_total_kg,672.4420360791472,result.mission.m_LH2_total
+Iteration_info,iterations,9,result.iterations
 Iteration_info,converged,True,result.converged
-Iteration_info,final_delta_kg,0.633388776157517,final['delta_kg']
+Iteration_info,final_delta_kg,0.7170474734957679,final['delta_kg']
 Iteration_info,bt_charging_ratio,0.0,final['bt_ch_ratio']
