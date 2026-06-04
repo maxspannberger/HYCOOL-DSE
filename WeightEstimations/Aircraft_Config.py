@@ -95,6 +95,7 @@ class AircraftConfig:
     y_engine:         float = 0.0
     W_propulsion:     float = 0.0
     N_engines:        int   = 2
+    N_propellers:      int   = 4
     D_propfan:        float = 4.0
     eta_static_loss:  float = 0.80
     eta_prop_V2:      float = 0.70
@@ -239,6 +240,7 @@ def default_q400_hycool() -> AircraftConfig:
         y_engine         = 5.0,                 # Assumed
         W_propulsion     = 2_500.0,             # Assumed
         N_engines        = 2,                   # Class I Value
+        N_propellers      = 4,                   # Class I Value
         D_propfan        = 4.0,                 # Assumed
         eta_static_loss  = 0.80,                # Assumed
         eta_prop_V2      = 0.70,                # Assumed
