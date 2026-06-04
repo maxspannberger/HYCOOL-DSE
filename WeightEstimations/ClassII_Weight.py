@@ -79,7 +79,8 @@ class ClassII_Input:
     P_TO_OEI_KW: float = 0.0
     P_climb_KW:  float = 0.0
     P_reserve_KW: float = 0.0
-    max_Thrust_prop: float = 0.0
+    max_Thrust_prop_inner: float = 0.0
+    max_Thrust_prop_outer: float = 0.0
     W_fuel:      float = 0.0
     grav_density:float = 0.64
     configuration: int = 1
@@ -117,7 +118,8 @@ class ClassII_Input:
         P_climb_KW: float = 0.0,
         P_reserve_KW: float = 0.0,
         P_TO_OEI_KW: float = 0.0,
-        max_Thrust_prop: float = 0.0,
+        max_Thrust_prop_inner: float = 0.0,
+        max_Thrust_prop_outer: float = 0.0,
         t_cruise: float = 0.0,
         t_climb: float = 0.0,
         t_reserve: float = 0.0,
@@ -182,7 +184,8 @@ class ClassII_Input:
             P_max_KW      = P_max_KW,
             W_fuel        = W_fuel,
             configuration = configuration,
-            max_Thrust_prop    = max_Thrust_prop,
+            max_Thrust_prop_inner    = max_Thrust_prop_inner,
+            max_Thrust_prop_outer    = max_Thrust_prop_outer,
 
             P_cruise_KW  = P_cruise_KW,
             P_climb_KW   = P_climb_KW,
@@ -242,7 +245,8 @@ class WeightBreakdown:
     P_reserve_KW: float = 0.0
     P_primary_KW: float = 0.0
     P_secondary_KW: float = 0.0
-    max_Thrust: float = 0.0
+    max_Thrust_prop_inner: float = 0.0
+    max_Thrust_prop_outer: float = 0.0
     W_fuel:      float = 0.0
     W_primary:   float = 0.0
     W_secondary: float = 0.0
@@ -554,14 +558,14 @@ class weightEstimation:
                 elif comp_key == "pipe":
                     mass = pipe_len * comp[comp_key].mass_per_length
                 elif comp_key == "open_fan" and propeller_count<2 and g.N_propellers>2:
-                        mass = g.max_Thrust_prop / comp[comp_key].thrust_density *0.8
+                        mass = g.max_Thrust_prop_inner / comp[comp_key].thrust_density 
                         propeller_count+=1
                         fan_mass+=mass
                 elif comp_key == "open_fan" and propeller_count>=2 and g.N_propellers>2:
-                        mass = g.max_Thrust_prop / comp[comp_key].thrust_density  *0.2
+                        mass = g.max_Thrust_prop_outer / comp[comp_key].thrust_density 
                         fan_mass+=mass
                 elif comp_key == "open_fan" and g.N_propellers<=2:
-                        mass = g.max_Thrust_prop / comp[comp_key].thrust_density 
+                        mass = g.max_Thrust_prop_inner / comp[comp_key].thrust_density 
                         fan_mass+=mass
                 elif comp_key != "cable" and comp_key != "pipe" and comp_key != "open_fan":
                     pd = comp[comp_key].power_density
@@ -578,9 +582,11 @@ class weightEstimation:
                     elif comp_key == "hts_pow" and motor_count<2 and g.N_propellers>2:
                         mass = P_req_primary / pd *0.8
                         motor_count+=1
+                        fan_mass+=mass
                     elif comp_key == "hts_pow" and motor_count>=2 and g.N_propellers>2:
-                        mass = P_req_primary / pd *0.2
+                        mass = P_req_primary / pd *0.5
                         motor_count+=1
+                        fan_mass+=mass
                     elif comp_key == "hts_pow" and g.N_propellers<=2:
                         mass = P_req_primary / pd
                     

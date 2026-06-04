@@ -63,7 +63,7 @@ def get_throttle(r):
     b = 1.25318
     d = 0.37341
     
-    throttle = 1/r * (1 - (a + b*r + (d-1)*r**2) / (3*a + 2*b*r + d*r**2))
+    throttle = 1/r 
     eff_factor = a*r**2 + b*r + d
     
     return throttle, eff_factor
@@ -415,12 +415,12 @@ def GT_GT_efficiency(
     E_cruise_out = P_cruise * t_cruise
 
     # energy provided
-    E_climb_in = P_gt_climb * t_climb
-    E_cruise_in = P_gt_cruise * t_cruise
+    E_climb_in = P_gt_climb * t_climb/climb_eff_factor
+    E_cruise_in = P_gt_cruise * t_cruise/cruise_eff_factor
     
     # efficiencies
-    climb_eff = gt_eff * climb_eff_factor
-    cruise_eff = gt_eff * cruise_eff_factor
+    climb_eff = E_climb_out / E_climb_in
+    cruise_eff = E_cruise_out / E_cruise_in
     gt_gt_eff = (E_climb_out + E_cruise_out) / (E_climb_in + E_cruise_in)
 
     if show:

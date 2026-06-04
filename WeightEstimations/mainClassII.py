@@ -292,7 +292,7 @@ def run_class_ii(
         drag_bd = DragEstimation(drag_inp).compute()
 
         # Mission power -> LH2 fuel mass
-        mis_bd = MissionPower(cfg_iter, drag_bd, config=config, MTOW=MTOW, S_ref=S_ref).compute()
+        mis_bd = MissionPower(cfg_iter, drag_bd, config=config,comp=comp, MTOW=MTOW, S_ref=S_ref).compute()
         W_fuel = mis_bd.m_LH2_total
         P_max_kw = mis_bd.P_max / 1000
         P_cruise_kw = mis_bd.P_cruise_shaft / 1000
@@ -326,7 +326,8 @@ def run_class_ii(
             P_max_KW = P_max_kw,
             P_climb_KW=P_climb_kW,
             P_reserve_KW=P_reserve_kw,
-            max_Thrust_prop = pwr_bd.T_static_per_prop,
+            max_Thrust_prop_inner = pwr_bd.T_static_per_prop_inner,
+            max_Thrust_prop_outer = pwr_bd.T_static_per_prop_outer,
             W_fuel = W_fuel,
             configuration=config,
             t_climb=t_climb,
@@ -691,42 +692,41 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig) -> di
 
 if __name__ == "__main__":
     cfg = default_q400_hycool()
-    # result1 = run_class_ii(cfg,comp=comp_params, tol=1.0, max_iter=100, verbose=True)
+    result1 = run_class_ii(cfg,comp=comp_params, tol=1.0, max_iter=100, verbose=True)
 
-    # print_final_geometry(cfg, result1, show_sources=True)
+    print_final_geometry(cfg, result1, show_sources=True)
 
-    # paths = export_final_geometry(
-    #     cfg,
-    #     result1,
-    #     output_dir="outputs",
-    #     include_sources=True,
-    # )
+    paths = export_final_geometry(
+        cfg,
+        result1,
+        output_dir="outputs",
+        include_sources=True,
+    )
 
-    # print("\nFinal geometry exported to:")
-    # for label, path in paths.items():
-    #     print(f"{label}: {path}")
+    print("\nFinal geometry exported to:")
+    for label, path in paths.items():
+        print(f"{label}: {path}")
 
-    # print()
-    # print(result1.drag.summary())
-    # print()
-    # print(result1.weight.summary())
-    # print()
-    # print(result1.mission.summary())
-    # print()
-    # print(result1.summary())
+    print()
+    print(result1.drag.summary())
+    print()
+    print(result1.weight.summary())
+    print()
+    print(result1.mission.summary())
+    print()
+    print(result1.summary())
 
-    # paths = export_results(
-    #     result1,
-    #     output_dir = "outputs",
-    #     iterations = result1.iteration_log,
-    # )
-    # print()
-    # print("[bold]Results exported to:[/bold]")
-    # for label, p in paths.items():
-    #     print(f"  {label}: {p}")
+    paths = export_results(
+        result1,
+        output_dir = "outputs",
+        iterations = result1.iteration_log,
+    )
+    print()
+    print("[bold]Results exported to:[/bold]")
+    for label, p in paths.items():
+        print(f"  {label}: {p}")
 
-    # best_row = get_optimal_cl_mach(cfg, force_recompute=False)
-    # cfg = apply_optimal_cl_mach(cfg, best_row)
+
     result=compute_additional_aerodynamic_parameters( cfg)
     print(result["cdash_c"])
     print(result["MAC"])

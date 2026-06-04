@@ -32,6 +32,7 @@ from typing import Optional
 from WeightEstimations.ISA import isa
 from WeightEstimations.Aircraft_Config   import AircraftConfig
 from WeightEstimations.ClassII_Drag   import DragBreakdown
+from Propulsion.efficiency import GT_GT_efficiency
 
 from rich.table import Table
 
@@ -121,12 +122,14 @@ class MissionPower:
         cfg:        AircraftConfig,
         drag_bd:    DragBreakdown,
         MTOW:       float,
+        comp:       dict,
         S_ref:      Optional[float] = None,
         config:     int = 1
     ):
         self.cfg     = cfg
         self.drag    = drag_bd
         self.MTOW    = MTOW
+        self.comp    = comp
         self.config   = config
        
         # S_ref is updated each MTOW iteration via S_ref = MTOW*g/Loading
@@ -180,7 +183,7 @@ class MissionPower:
     def _mdot(self, P_shaft: float) -> float:
         """Convert shaft power to fuel mass flow."""
         P_fuel = P_shaft
-        return P_fuel / self.cfg.LHV_fuel * 1/0.37
+        return P_fuel / self.cfg.LHV_fuel
 
     # ---------- per-phase ------------------------------------------------
 
@@ -193,8 +196,7 @@ class MissionPower:
         P, CL, LD = self._shaft_power_level(W_cruise, V, rho)
         mdot      = self._mdot(P)
         t         = cfg.range_m / V
-
-        m = mdot * t
+        m         = mdot * t
         return P, mdot, t, m, CL, LD
 
     def _reserve(self) -> tuple[float, float, float, float, float, float, float]:
@@ -249,6 +251,21 @@ class MissionPower:
         P_r, md_r, t_r, m_r, CL_r, LD_r, V_r                  = self._reserve()
         P_cl, md_cl, t_cl, m_cl, CL_cl, LD_cl, V_cl           = self._climb()
         P_TO                                                  = self._takeoff_reference()
+
+        # Restore mission coupling through the GT efficiency model without
+        # reintroducing mutual recursion between cruise and climb.
+        efficiency = GT_GT_efficiency(
+            comp=self.comp,
+            t_climb=t_cl,
+            t_cruise=t_c,
+            P_climb=P_cl,
+            P_cruise=P_c,
+        )
+        cruise_eff = efficiency["Cruise_average_eff"]
+        climb_eff  = efficiency["Climb_eff"]
+
+        m_c  = md_c * t_c / cruise_eff
+        m_cl = md_cl * t_cl / climb_eff
 
         m_TO_taxi = self.cfg.TO_taxi_frac * (m_c + m_cl)
 

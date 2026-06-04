@@ -78,7 +78,9 @@ class PowerSizingBreakdown:
     # Static thrust output
     T_static_total:    float = 0.0     # Whole aircraft static thrust [N]
     T_static_per_engine: float = 0.0   # [N]
-    T_static_per_prop: float = 0.0     # [N]
+    #T_static_per_prop: float = 0.0     # [N]
+    T_static_per_prop_inner: float = 0.0     # [N]
+    T_static_per_prop_outer: float = 0.0     # [N]
 
     def summary(self):
         table = Table(title="Power & Takeoff Thrust Sizing", show_header=False, box=None)
@@ -103,7 +105,8 @@ class PowerSizingBreakdown:
         thrust_panel = Panel(
             f"Static Thrust Total: [bold yellow]{self.T_static_total/1000:.2f} kN[/bold yellow]\n"
             f"Static Thrust / Eng: [bold yellow]{self.T_static_per_engine/1000:.2f} kN[/bold yellow]\n"
-            f"Static Thrust / Prop: [bold yellow]{self.T_static_per_prop/1000:.2f} kN[/bold yellow]\n"
+            f"Static Thrust / Prop Inner: [bold yellow]{self.T_static_per_prop_inner/1000:.2f} kN[/bold yellow]\n"
+            f"Static Thrust / Prop Outer: [bold yellow]{self.T_static_per_prop_outer/1000:.2f} kN[/bold yellow]\n"
             f"Power for OEI propeller case: [bold yellow]{self.P_total_OEI_propeller/1000:.1f} kW[/bold yellow]\n"
             f"Power for OEI engine case: [bold yellow]{self.P_total_OEI/1000:.1f} kW[/bold yellow]\n"
             f"Driving Case: [bold yellow]{self.driving_case_2} [/bold yellow]",
@@ -201,7 +204,13 @@ class PowerSizing:
         P_per_eng         = P_total / cfg.N_engines
         T_static_per_eng  = self._static_thrust(P_per_eng)
         T_static_total    = cfg.N_engines * T_static_per_eng
-        T_static_per_prop = T_static_total / cfg.N_propellers
+        if cfg.N_propellers > 2:
+            T_static_per_prop_inner = T_static_total*0.8 / (cfg.N_propellers/2)
+            T_static_per_prop_outer = T_static_total*0.2 /(cfg.N_propellers/2)
+        else:
+            T_static_per_prop = T_static_total / cfg.N_propellers
+            T_static_per_prop_inner = T_static_per_prop
+            T_static_per_prop_outer = T_static_per_prop
 
         return PowerSizingBreakdown(
             P_TO_total          = P_total,
@@ -220,6 +229,7 @@ class PowerSizing:
             gamma_min_prop           = gamma_min_prop,
             T_static_total      = T_static_total,
             T_static_per_engine = T_static_per_eng,
-            T_static_per_prop   = T_static_per_prop,
+            T_static_per_prop_inner   = T_static_per_prop_inner,
+            T_static_per_prop_outer   = T_static_per_prop_outer,
             driving_case_2        = driving
         )
