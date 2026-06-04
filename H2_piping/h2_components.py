@@ -102,7 +102,7 @@ class Pipe:
         self.eps       = 0.03 # MLI emissivity, typical value for aluminized Mylar
      
     # Function that loops over the pipe segments and tracks the state if H2
-    def solve_H2_state(self, states, T_amb, m_dot, PLOT=True):
+    def solve_H2_state(self, states, T_amb, m_dot, PLOT=False):
         p = states['p'][-1][-1] # Access the last pressure from the last component
         T = states['T'][-1][-1] # Access the last temperature from the last component    
         h = states['h'][-1][-1] # Access the last enthalpy from the last component  
