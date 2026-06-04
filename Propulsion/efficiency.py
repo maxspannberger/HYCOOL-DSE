@@ -416,7 +416,7 @@ def GT_GT_efficiency(
 
     # energy provided
     E_climb_in = P_gt_climb * t_climb / climb_eff_factor
-    E_cruise_in = P_gt_cruise * t_cruise / climb_eff_factor
+    E_cruise_in = P_gt_cruise * t_cruise / cruise_eff_factor
     
     # efficiencies
     climb_eff = E_climb_out/E_climb_in
