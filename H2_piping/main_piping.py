@@ -109,7 +109,7 @@ if __name__ == "__main__":
         Pipe(position=1, length=64.0, diameter=0.02, wall=wall, segments=200,
              N=11, N_bar=5.5, P_mli=0.001, curv=2.5),
         
-        Corner(position=1, N_bend=1, diameter=0.02, curv=2.5)
+        Corner(position=1, N_bend=10, diameter=0.02, curv=2.5)
         ]
     
     states = solve_system(system, 0.03, 313)
