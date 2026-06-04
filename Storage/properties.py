@@ -10,9 +10,15 @@ def saturated_specific_volumes(P, fluid):
     vg_0 = 1.0/PropsSI("D","P",P,"Q",1,fluid)
     return vl_0, vg_0
 
-# Calculate the mean density of the liquid hydrogen
-def calculateMeanDensity(P, fluid):
+# Calculate the saturated mean density of the liquid hydrogen
+def saturated_densities(P, fluid):
     """Calculate the density of the mixture at a given pressure (in bar) and initial liquid mass fraction."""
     rho_H2 = PropsSI('D', 'P', P * bar, 'Q', 0, fluid)
     return rho_H2
 
+# Calculate the specific internal energies of saturated liquid and vapor at a given pressure (Pa)
+def saturated_internal_energies(P, fluid):
+    """Return specific internal energies (J/kg) of saturated liquid and vapour at pressure P (Pa)."""
+    ul = PropsSI('U', 'P', P, 'Q', 0, fluid)
+    ug = PropsSI('U', 'P', P, 'Q', 1, fluid)
+    return ul, ug
