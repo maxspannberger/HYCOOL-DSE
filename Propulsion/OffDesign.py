@@ -19,7 +19,7 @@ class OffDesignEvaluator:
             self,
             engine,
             TIT_limit   = 1900,
-            TIT_min     = 800,
+            TIT_min     = 550,
             TIT_tol     = 1e-4,
             max_iter    = 100,
     ):
@@ -447,8 +447,8 @@ if __name__ == "__main__":
 
     Optimal_Power   = 2e6                   # W
     Cruise_TIT      = 1500                  # K
-    H2_Temp         = 650                   # K
-    Regen           = False
+    H2_Temp         = 700                   # K
+    Regen           = True
     P_ambient       = 0.38                  # bar
 
     engine = GasTurbineCycle(P_target = Optimal_Power, TIT = Cruise_TIT, TH2=H2_Temp, USE_REGEN=Regen, P_ambient=P_ambient)
@@ -457,8 +457,8 @@ if __name__ == "__main__":
     evaluator = OffDesignEvaluator(engine, TIT_limit=1900.0)
 
     # Single-point check at peak power
-    print("\n--- Peak power validation (2.6 MW) ---")
-    result = evaluator.evaluate(P_shaft=2.6e6)
+    print("\n--- Peak power validation (2.85 MW) ---")
+    result = evaluator.evaluate(P_shaft=2.85e6)
     evaluator.report(result)
 
     # Sweep from 30% to 110% of design power

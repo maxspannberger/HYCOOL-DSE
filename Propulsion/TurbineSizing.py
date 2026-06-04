@@ -128,13 +128,13 @@ class GasTurbineCycle:
     def __init__(
         self,
         # Sizing target
-        P_target    = 2.85e6,
+        P_target    = 2e6,
         # Ambient / flight conditions
         P_ambient   = 0.38,
         M0          = 0.7,
         # Core cycle
         TIT         = 1500.0,
-        PR_HPC      = 14.0,
+        PR_HPC      = 7.0,
         eta_HPC     = 0.92,
         eta_CC      = 0.995,
         eta_CC_p    = 0.96,
@@ -143,17 +143,17 @@ class GasTurbineCycle:
         eta_mech    = 0.99,
         eta_diff    = 0.97,
         # Recuperator
-        eta_regen   = 0.70,
+        eta_regen   = 0.775,
         eta_regen_p = 0.95,
         USE_REGEN   = True,
         FULL_EXPANSION = True,
         REGEN_FIRST    = True,
-        Regen_Fraction = 0.5,
+        Regen_Fraction = 0.775,
         # Hydrogen circuit
-        P_pre_comp  = 10.0,
-        T_pre_comp  = 60.0,
+        P_pre_comp  = 13.0,
+        T_pre_comp  = 40.0,
         PH1         = 150.0,
-        TH2         = 800.0,
+        TH2         = 750.0,
         eta_compressor = 0.7,
         eta_H2T     = 0.92,
         fluid       = "ParaHydrogen",
@@ -366,7 +366,7 @@ class GasTurbineCycle:
         # --- GH2 expander turbine ---
         # The fuel is expanded from PH1 (post-HEX) down to slightly above Pc
         # (10% margin for injector pressure drop) before entering the combustor.
-        P3_H2  = Pc * 1.1
+        P3_H2  = 8
         h2_in  = PropsSI('H', 'P', self.PH1*1e5, 'T', self.TH2, self.fluid)
         s2_in  = PropsSI('S', 'P', self.PH1*1e5, 'T', self.TH2, self.fluid)
         h3_ideal = PropsSI('H', 'P', P3_H2*1e5, 'S', s2_in, self.fluid)
@@ -957,7 +957,11 @@ if __name__ == "__main__":
         pressure_units="bar", temperature_units="K", isp_units="sec",
     )
 
-    engine = GasTurbineCycle()      # all defaults match original sizing target
+    TIT = 1500
+    H2_Temp = 950
+    Target_power = 2e6
+
+    engine = GasTurbineCycle(TIT=TIT, P_target=Target_power, TH2=H2_Temp)      # all defaults match original sizing target
     engine.size(cea=cea)
     engine.report()
     engine.plot_ts()
