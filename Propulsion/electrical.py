@@ -115,6 +115,10 @@ def get_powers_per_component(P_max, P_cruise, P_OEI, positions, component_order,
                 comp_powers[component][condition] = previous[condition] / comp[component].efficiency
             previous = comp_powers[component].copy()
 
+    filename = "power_chain_results.json"
+    with open(filename, "w") as f:
+        json.dump(comp_powers, f, indent=4)
+
     return comp_powers
 
 
@@ -163,6 +167,32 @@ def size_converter(comp, powers, N=0):
     return N, T_J_max, T_J_cruise, T_J_OEI, P_heat_idle, m, max_cooling
 
 
+def get_maximum_powers(powers):
+    max_powers = {}
+    for component in powers:
+        if "cable" in component:
+            if "cable" not in max_powers:
+                max_powers["cable"] = 0.0
+            for location in powers[component]:
+                for condition in powers[component][location]:
+                    if condition != "length":
+                        if powers[component][location][condition] > max_powers["cable"]:
+                            max_powers["cable"] = powers[component][location][condition]
+        else:
+            if component not in max_powers:
+                max_powers[component] = 0.0
+            for location in powers[component]:
+                if location != "length":
+                    if powers[component][location] > max_powers[component]:
+                        max_powers[component] = powers[component][location]
+
+    filename = "max_power_results.json"
+    with open(filename, "w") as f:
+        json.dump(max_powers, f, indent=4)
+
+    return max_powers
+
+
 
 if __name__ == "__main__":
     # define electrical system architecture
@@ -180,9 +210,6 @@ if __name__ == "__main__":
 
     # perform power sizing of electrical system
     powers = get_powers_per_component(P_max, P_cruise, P_OEI, positions, component_order, comp=comp_params)
-    filename = "power_chain_results.json"
-    with open(filename, "w") as f:
-        json.dump(powers, f, indent=4)
     print("Electrical system power sizing complete.")
 
     print("\nINVERTER")
@@ -199,3 +226,5 @@ if __name__ == "__main__":
     print(f"\nTotal heating power required for idle: {P_total_idle}")
     print(f"Total mass of converters: {m_total}")
     print("Electrical components sizing complete.")
+
+    max_powers = get_maximum_powers(powers)
