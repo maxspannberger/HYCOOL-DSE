@@ -21,6 +21,7 @@ with an index starting at 0, with 0 being the tank by default.
 # In order to track the gas fraction, this function outputs whether the coolprop
 # value should be used or a manually picked value should be used 
 # (mainly important for supercritical phases)
+# =============================================================================
 def calc_frac(p, h, fluid='Hydrogen'):
     # Determine the phase
     phase = CP.PhaseSI('P', p, 'H', h, fluid)
@@ -34,8 +35,10 @@ def calc_frac(p, h, fluid='Hydrogen'):
     else:
         raise ValueError(f"Unknown phase '{phase}' encountered at p={p:.2f}, h={h:.2f}. "
                          "Check if input states are within physical limits.")
+# =============================================================================
 
 # Extract the most recent state value from the states dictionary
+# =============================================================================
 def get_input_states(states):
     T   = states['T'][-1][-1]
     p   = states['p'][-1][-1]
@@ -43,6 +46,41 @@ def get_input_states(states):
     rho = states['rho'][-1][-1]
     
     return T, p, h, rho
+# =============================================================================
+
+# Define an iterative solver for the state change over a pipe segment
+# =============================================================================
+def solve_segment(p1, h1, rho1, m_dot, A_cs, q, fluid):
+    # Calculate inlet density and velocity
+    u1 = m_dot / (rho1 * A_cs)
+    
+    # Define the system of equations as a function
+    def equations(vars):
+        p2, h2 = vars
+        
+        # Get properties from the Equation of State at the proposed outlet state
+        try:
+            rho2 = CP.PropsSI('D', 'P', p2, 'H', h2, fluid)
+            u2 = m_dot / (rho2 * A_cs)
+        except:
+            return [1e6, 1e6] # Penalty for non-physical states
+            
+        # Calculate residual from conservation of Energyq
+        res_energy = (h2 + 0.5 * u2**2) - (h1 + 0.5 * u1**2 + q)
+        
+        # Calculate residual from conservation of momentum
+        res_momentum = (p2 + rho2 * u2**2) - (p1 + rho1 * u1**2)
+        
+        return [res_energy, res_momentum]
+
+    # Take the input parameters as a initial guess
+    initial_guess = [p1, h1 + q]
+    
+    # Solve using scipy
+    p2, h2 = fsolve(equations, initial_guess)
+    return p2, h2
+# =====================================================================
+
 
 # =============================================================================
 # Define the tank class
@@ -68,14 +106,25 @@ class Tank:
         self.h   = CP.PropsSI('H', 'P', self.p, 'Q', self.frac, self.fluid)
       
     # Set the tank values as the initial values of the piping system
-    def solve_H2_state(self, states, T_amb, m_dot, PLOT=False):
+    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False):
+        A_cs = np.pi * system[1].d**2 / 4
+        u = m_dot / (self.rho * A_cs)
+        h = self.h - 0.5 * u**2
+        
+        p    = self.p -0.5 * self.rho * u**2
+        rho  = CP.PropsSI('D', 'P', p, 'H', h, self.fluid)
+        T    = CP.PropsSI('T', 'P', p, 'H', h, self.fluid)
+        frac = calc_frac(p, h)
+        if frac > 0.01:
+            raise ValueError(f"The hydrogen turns partially gasseous ({frac}) as it leaves "
+                             "the tank. Incompressability assumption doesn't hold.")
         
         # Store results in dictionary and return
-        results = {'T':   np.array([self.T]), 
-                   'p':   np.array([self.p]),
-                   'rho': np.array([self.rho]),
-                   'h':   np.array([self.h]),
-                   'frac':np.array([self.frac])
+        results = {'T':   np.array([self.T, T]), 
+                   'p':   np.array([self.p, p]),
+                   'rho': np.array([self.rho, rho]),
+                   'h':   np.array([self.h, h]),
+                   'frac':np.array([self.frac, frac])
                    }
         
         return results
@@ -118,41 +167,10 @@ class Pipe:
         self.eps       = 0.03 # MLI emissivity, typical value for aluminized Mylar
      
     # Function that loops over the pipe segments and tracks the state if H2
-    def solve_H2_state(self, states, T_amb, m_dot, PLOT=False):
+    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False):
         T, p, h, rho = get_input_states(states)
         
-        # Define an iterative solver for the state change over a pipe segment
-        # =====================================================================
-        def solve_segment(p1, h1, rho1, m_dot, A_cs, q, fluid):
-            # Calculate inlet density and velocity
-            u1 = m_dot / (rho1 * A_cs)
-            
-            # Define the system of equations as a function
-            def equations(vars):
-                p2, h2 = vars
-                
-                # Get properties from the Equation of State at the proposed outlet state
-                try:
-                    rho2 = CP.PropsSI('D', 'P', p2, 'H', h2, fluid)
-                    u2 = m_dot / (rho2 * A_cs)
-                except:
-                    return [1e6, 1e6] # Penalty for non-physical states
-                    
-                # Calculate residual from conservation of Energyq
-                res_energy = (h2 + 0.5 * u2**2) - (h1 + 0.5 * u1**2 + q)
-                
-                # Calculate residual from conservation of momentum
-                res_momentum = (p2 + rho2 * u2**2) - (p1 + rho1 * u1**2)
-                
-                return [res_energy, res_momentum]
         
-            # Take the input parameters as a initial guess
-            initial_guess = [p1, h1 + q]
-            
-            # Solve using scipy
-            p2, h2 = fsolve(equations, initial_guess)
-            return p2, h2
-        # =====================================================================
         
         # Initialize the results dictionary
         results = {'T':   np.zeros(self.segments), 
@@ -264,7 +282,7 @@ class Corner:
         self.fluid = fluid
         self.name = name
     
-    def solve_H2_state(self, states, T_amb, m_dot, PLOT=False):
+    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False):
         # Extract states from end of previous component
         T, p, h, rho = get_input_states(states)
         s = CP.PropsSI('S', 'P', p, 'H', h, self.fluid)
@@ -314,7 +332,7 @@ class HTS:
                  efficiency: float   = comp['hts_gen'].efficiency
                  ):
 
-        def solve_H2_state(self, states, T_amb, m_dot, PLOT=False):
+        def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False):
             # Extract states from end of previous component
             T, p, h, rho = get_input_states(states)
             
