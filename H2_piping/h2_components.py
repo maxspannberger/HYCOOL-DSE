@@ -131,7 +131,7 @@ class Pipe:
                        N_bar:    float,      
                        P_mli:    float,
                        curv:     float,
-                       eps_pipe: float   = 1.5e-5,
+                       eps_pipe: float   = 2e-6,
                        fluid:    str     = 'Hydrogen'
                        ):
 
@@ -152,7 +152,7 @@ class Pipe:
         # because the Lockheed C_G constant was fitted with pressure in Torr
         self.cs        = 1.93 * 10**-6 # MLI conductivity coefficient [W/(m*K^(3.63))]
         self.cr        = 3.88 * 10**-10 # MLI radiation coefficient [W/(m^2*K^(4.67))]
-        self.cg        = 5.5 * 10**4 # MLI gas conduction coefficient [W/(m^2*Torr*K^(0.52))], H2 (= N2 value 1.46e4 * sqrt(M_N2/M_H2))
+        self.cg        = 5.5 * 10**4 # MLI gas conduction coefficient [W/(m^2*Torr*K^(0.52))], H2 (= N2 value 1.46e4 * sqrt(M_H2/M_N2))
         self.eps       = 0.03 # MLI emissivity, typical value for aluminized Mylar
      
     # Function that loops over the pipe segments and tracks the state if H2
@@ -192,7 +192,7 @@ class Pipe:
             Q_dot = A_seg * (
                 (self.cs * T_m * self.N_bar**2.63 * (T_h - T_c)) / (self.N - 1)
               + (self.cr * self.eps * (T_h**4.67 - T_c**4.67)) / self.N
-              + (self.cg * (self.P_mli / 133.322) * (T_h**0.52 - T_c**0.52)) / self.N
+              + (self.cg * (self.P_mli) * (T_h**0.52 - T_c**0.52)) / self.N
             )
             
             # Determine the Friction factor:
@@ -200,7 +200,7 @@ class Pipe:
             if Re1 < 2300:
                 f = 64 / Re1
             else:
-                f = (1 / (-1.8 * np.log10((self.eps_pipe / self.d / 3.7)**1.11 + 6.9 / Re1)))**2
+                f = (1 / (-1.8 * np.log10(((self.eps_pipe / self.d) / 3.7)**1.11 + 6.9 / Re1)))**2
             
             # Update the enthalpy based on the heat leak
             q       = Q_dot / m_dot
