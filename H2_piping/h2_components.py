@@ -50,35 +50,24 @@ def get_input_states(states):
 
 # Define an iterative solver for the state change over a pipe segment
 # =============================================================================
-def solve_segment(p1, h1, rho1, m_dot, A_cs, q, fluid):
-    # Calculate inlet density and velocity
-    u1 = m_dot / (rho1 * A_cs)
+def update_states(vars, p1, h1, m_dot, A_cs, fluid, q=0, dp_fric=0):
+    rho1 = CP.PropsSI('D', 'P', p1, 'H', h1, fluid)
+    u1   = m_dot / (rho1 * A_cs)
     
-    # Define the system of equations as a function
-    def equations(vars):
-        p2, h2 = vars
-        
-        # Get properties from the Equation of State at the proposed outlet state
-        try:
-            rho2 = CP.PropsSI('D', 'P', p2, 'H', h2, fluid)
-            u2 = m_dot / (rho2 * A_cs)
-        except:
-            return [1e6, 1e6] # Penalty for non-physical states
-            
-        # Calculate residual from conservation of Energyq
-        res_energy = (h2 + 0.5 * u2**2) - (h1 + 0.5 * u1**2 + q)
-        
-        # Calculate residual from conservation of momentum
-        res_momentum = (p2 + rho2 * u2**2) - (p1 + rho1 * u1**2)
-        
-        return [res_energy, res_momentum]
-
-    # Take the input parameters as a initial guess
-    initial_guess = [p1, h1 + q]
+    p2, h2 = vars
     
-    # Solve using scipy
-    p2, h2 = fsolve(equations, initial_guess)
-    return p2, h2
+    try:
+        rho2 = CP.PropsSI('D', 'P', p2, 'H', h2, fluid)
+        u2   = m_dot / (rho2 * A_cs)
+    except: 
+        return [1e9, 1e9] # Reset guess values if the solver diverges
+    
+    res_momentum   = (p2 + rho2 * u2**2) - (p1 + rho1 * u1**2) + dp_fric
+    res_energy     = (h2 + 0.5 * u2**2) - (h1 + 0.5 * u1**2 + q)
+    
+    return [res_momentum, res_energy]
+    
+    
 # =====================================================================
 
 
@@ -168,9 +157,9 @@ class Pipe:
      
     # Function that loops over the pipe segments and tracks the state if H2
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False):
-        T, p, h, rho = get_input_states(states)
         
-        
+        # Get the input state variables
+        T1, p1, h1, rho1 = get_input_states(states)
         
         # Initialize the results dictionary
         results = {'T':   np.zeros(self.segments), 
@@ -179,7 +168,7 @@ class Pipe:
                    'h':   np.zeros(self.segments),
                    'frac':np.zeros(self.segments)}
         
-        # Pre-compute segment geometry (constant along pipe)
+        # Pre-compute segment geometry assuming a constant pipe diam. and wall
         dz    = self.length / self.segments
         A_cs  = np.pi * self.d**2 / 4
         A_seg = np.pi * self.d * dz
@@ -187,16 +176,16 @@ class Pipe:
         # Loop over the pipe segments and adjust the state variables
         for seg in range(self.segments):
             # Fluid properties at segment inlet
-            mu  = CP.PropsSI('V', 'P', p, 'H', h, self.fluid)
+            mu1  = CP.PropsSI('V', 'P', p1, 'H', h1, self.fluid)
 
             # Flow velocity and Reynolds number
-            u  = m_dot / (rho * A_cs)
-            Re = 4 * m_dot / (np.pi * self.d * mu)
+            u1  = m_dot / (rho1 * A_cs)
+            Re1 = 4 * m_dot / (np.pi * self.d * mu1)
             
             # Calculate different T, such as they are presented in the
             # Lockhead equation
             T_h = T_amb
-            T_c = T
+            T_c = T1
             T_m = (T_h + T_c) / 2
             
             # MLI heat leak equation Lockhead
@@ -208,33 +197,30 @@ class Pipe:
             
             # Determine the Friction factor:
             # either Hagen-Poiseuille (laminar) or Haaland (turbulent)
-            if Re < 2300:
-                f = 64 / Re
+            if Re1 < 2300:
+                f = 64 / Re1
             else:
-                f = (1 / (-1.8 * np.log10((self.eps_pipe / self.d / 3.7)**1.11 + 6.9 / Re)))**2
+                f = (1 / (-1.8 * np.log10((self.eps_pipe / self.d / 3.7)**1.11 + 6.9 / Re1)))**2
             
-            # f = 0
             # Update the enthalpy based on the heat leak
-            q = Q_dot / m_dot
-            dp_friction = f * (dz / self.d) * 0.5 * rho * u**2
+            q       = Q_dot / m_dot
+            dp_fric = f * (dz / self.d) * 0.5 * rho1 * u1**2
             
-            p, h = solve_segment(p, h, rho, m_dot, A_cs, q, self.fluid)
-            
-            # Calculate the pressure change due to thermal expansion and friction
-            dp_friction = f * (dz / self.d) * 0.5 * rho * u**2
+            p2, h2 = fsolve(update_states,
+                          x0=[p1, h1],
+                          args=(p1, h1, m_dot, A_cs, self.fluid, q, dp_fric))
             
             # Update the state variables
-            p    -=  dp_friction
-            T     = CP.PropsSI('T', 'P', p, 'H', h, self.fluid)
-            rho   = CP.PropsSI('D', 'P', p, 'H', h, self.fluid)
-            frac  = calc_frac(p, h, fluid='Hydrogen')            
+            T2     = CP.PropsSI('T', 'P', p2, 'H', h2, self.fluid)
+            rho2   = CP.PropsSI('D', 'P', p2, 'H', h2, self.fluid)
+            frac2  = calc_frac(p2, h2, fluid='Hydrogen')            
             
             # Store the updated state variables
-            results['T'][seg]   = T
-            results['p'][seg]   = p
-            results['rho'][seg] = rho
-            results['h'][seg]   = h
-            results['frac'][seg]= frac
+            results['T'][seg]   = T2
+            results['p'][seg]   = p2
+            results['rho'][seg] = rho2
+            results['h'][seg]   = h2
+            results['frac'][seg]= frac2
         
         if PLOT:
             fig, axes = plt.subplots(2, 2, figsize=(10, 8), sharex=True)
@@ -284,40 +270,41 @@ class Corner:
     
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False):
         # Extract states from end of previous component
-        T, p, h, rho = get_input_states(states)
-        s = CP.PropsSI('S', 'P', p, 'H', h, self.fluid)
+        T1, p1, h1, rho1 = get_input_states(states)
         
         # Calculate viscocity and reqnolds number   
-        mu  = CP.PropsSI('V', 'P', p, 'H', h, self.fluid)
-        print(mu)
-        Re  = 4 * m_dot / (np.pi * self.d * mu)
+        mu1  = CP.PropsSI('V', 'P', p1, 'H', h1, self.fluid)
+        Re1  = 4 * m_dot / (np.pi * self.d * mu1)
         
         # Calculat the pipe cross-sectional area and the speed
         A_cs = np.pi * self.d**2 / 4
-        u = m_dot / (rho * A_cs)
+        u1 = m_dot / (rho1 * A_cs)
         
         # Calculate the bend geometry factor
         alpha = 0.95 + 4.42 * (self.curv)**(-1.96)
         
         # Calculate K_bend
-        K_bend = 0.388 * alpha * (self.curv)**0.84 * Re**(-0.17)
+        K_bend = 0.388 * alpha * (self.curv)**0.84 * Re1**(-0.17)
         
         # Calculate pressure drop (using K_bend)
-        dp = K_bend * self.N_bend * 0.5 * rho * u**2
+        dp_fric = K_bend * self.N_bend * 0.5 * rho1 * u1**2
+        q       = 0
         
-        # Update pressure for the state
-        p  -= dp
-        T   = CP.PropsSI('T', 'P', p, 'S', s, self.fluid)
-        rho = CP.PropsSI('D', 'P', p, 'S', s, self.fluid)
-        h   = CP.PropsSI('H', 'P', p, 'S', s, self.fluid)
-        frac= calc_frac(p, h, fluid='Hydrogen')
+        # Update pressure and enthalpy
+        p2, h2 = fsolve(update_states,
+                      x0=[p1, h1],
+                      args=(p1, h1, m_dot, A_cs, self.fluid, q, dp_fric))
+        
+        T2    = CP.PropsSI('T', 'P', p2, 'H', h2, self.fluid)
+        rho2  = CP.PropsSI('D', 'P', p2, 'H', h2, self.fluid)
+        frac2 = calc_frac(p2, h2, fluid='Hydrogen')
         
         # Store results
-        results = {'T':    np.array([T]), 
-                   'p':    np.array([p]),
-                   'rho':  np.array([rho]),
-                   'h':    np.array([h]),
-                   'frac': np.array([frac])
+        results = {'T':    np.array([T2]), 
+                   'p':    np.array([p2]),
+                   'rho':  np.array([rho2]),
+                   'h':    np.array([h2]),
+                   'frac': np.array([frac2])
                    }
         
         return results
