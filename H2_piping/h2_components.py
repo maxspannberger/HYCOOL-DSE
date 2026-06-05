@@ -100,7 +100,9 @@ class Tank:
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False):
         A_cs = np.pi * system[1].d**2 / 4
         u = m_dot / (self.rho * A_cs)
+        print(self.h)
         h = self.h - 0.5 * u**2
+        print(h)
         
         p    = self.p -0.5 * self.rho * u**2
         rho  = CP.PropsSI('D', 'P', p, 'H', h, self.fluid)
