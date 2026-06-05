@@ -521,7 +521,7 @@ if __name__ == "__main__":
     result = run_class_ii(cfg, comp=comp_params, tol=1.0, max_iter=100, verbose=True)
     with open("WeightEstimations/outputs/optimal_cl_mach_cache.json", "r") as file:
         best_row = json.load(file)
-    aero_dict = compute_additional_aerodynamic_parameters(best_row, cfg)
+    aero_dict = compute_additional_aerodynamic_parameters(cfg)
 
     inp = ScissorPlotInput.from_class_ii(
         cfg,

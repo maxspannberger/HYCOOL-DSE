@@ -131,7 +131,7 @@ class ClassIIResult:
         status_color = "green" if self.converged else "red"
         main_info = (
             f"MTOW: {self.MTOW/1000:.2f} t\n"
-            f"OEW:  {(self.W_empty+cfg.W_fixed)/1000:.2f} t\n"
+            f"OEW:  {(self.OEW)/1000:.2f} t\n"
             f"Fuel: {self.W_fuel:.1f} kg\n"
             f"Payload: {self.W_payload/1000:.1f} t\n"
             f"Iterations: {self.iterations} \n"
@@ -744,6 +744,6 @@ if __name__ == "__main__":
     #     print(f"  {label}: {p}")
 
 
-    result=compute_additional_aerodynamic_parameters( cfg)
+    result=compute_additional_aerodynamic_parameters(cfg)
     print(result["cdash_c"])
     print(result["MAC"])
