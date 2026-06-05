@@ -24,7 +24,7 @@ V = 3000 # V
 rho_c = 6380 # kg/m^3
 rho_i = 900 # kg/m^3
 J_0 = 2.5e9 # A/m^2
-dJdB = -0.02 # exponent
+dJdB = -0.07 # exponent
 U_i = 5e7 # V/m
 mu_r = 2.6 # -
 mu_0 = np.pi*4e-7 # T*m/A
@@ -243,6 +243,7 @@ def size_cables(max_powers, length=200, N_cables=6, SF=1):
     print(f"\nConservative wire radius [mm]: {1000*r_c}")
     print(f"Conservative insulator thickness [mm]: {1000*t_i}")
     print(f"Wire diameter [mm]: {1000*d}")
+    print(f"Cable mass density [kg/m]: {mass_density:.6f}")
     print(f"Cable mass [kg]: {mass:.3f}")
 
     results = {
