@@ -589,6 +589,7 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig) -> di
     V_stall=cfg_updated.V_stall
     M_landing=result.MTOW-(result.mission.m_LH2_cruise+result.mission.m_LH2_climb+result.mission.m_LH2_TO_taxi)
     CL_max_LD=2*(M_landing)*G/(rho_ground*result.Wing_Area*V_stall**2)
+    CL_max_LD_without_stall=2*M_landing*G/(rho_ground*result.Wing_Area*(V_stall*1.3)**2)
 
     #Calculate the increase in CL_max for takeoff and landing due to high-lift devices (flaps, slats). These are rough estimates and can be refined with more detailed aerodynamic analysis or empirical data.
     c_fowler_c_wing=0.3 # assume fowler flaps make up 30% wing chord
@@ -676,6 +677,7 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig) -> di
     table = Table(show_header=True, header_style="bold blue")
     table.add_column("CL_max_TO", justify="right")
     table.add_column("CL_max_LD", justify="right")
+    table.add_column("approach speed landing CL", justify="right")
     table.add_column("delta CL_max_TO", justify="right")
     table.add_column("delta CL_max_LD", justify="right")
     table.add_column("LE Area [m^2]", justify="right")
@@ -687,6 +689,7 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig) -> di
     table.add_row(
         f"{aero['CL_max_TO']:.6f}",
         f"{aero['CL_max_LD']:.6f}",
+        f"{CL_max_LD_without_stall:.6f}",
         f"{deltaCL_max_TO:.6f}",
         f"{deltaCL_max_LD:.6f}",
         f"{aero['LE_flap_area_wing']:.2f}",
@@ -717,6 +720,7 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig) -> di
         m_LH2_cruise=result.mission.m_LH2_cruise,
         W_landing=M_landing,
         CL_max_LD=aero['CL_max_LD'],
+        CL_max_LD_approach=CL_max_LD_without_stall,
         delta_CL_flap=deltaCL_max_LD,
         delta_Cl_flap=deltaClmax_LD,
         CL_alpha0_flapped=cfg_updated.CL_alpha0_clean+deltaCL_max_LD,
@@ -724,6 +728,7 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig) -> di
         TE_flap_area_wing=te_flap_area_wing,
         taper=result.Wing_taper,
         MAC=result.MAC,
+
         
     )
 
