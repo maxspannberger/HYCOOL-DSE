@@ -1,4 +1,4 @@
-
+import numpy as np
 
 def isa(altitude_m: float) -> tuple[float, float, float]:
     """
@@ -22,3 +22,8 @@ def isa(altitude_m: float) -> tuple[float, float, float]:
         rho   = p / (R * T)
 
     return T, p, rho
+
+if __name__ == "__main__":
+    T, p, rho = isa(7620)
+    a=np.sqrt(1.4*287.05*T)
+    print(f"At 7620 m: T={T:.2f} K, p={p:.2f} Pa, rho={rho:.4f} kg/m^3, a={a:.2f} m/s")

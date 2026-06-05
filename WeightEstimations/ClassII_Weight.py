@@ -1,6 +1,6 @@
 import numpy as np
 from numpy.random import normal as normal
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 import sys
 from pathlib import Path
@@ -29,8 +29,21 @@ class ClassII_Input:
     b:          float = 0.0
     S_w:        float = 0.0
     sweep_half: float = 0.0
+    sweep_LE:   float = 0.0
+    taper:      float = 0.0
     t_r:        float = 0.0
     k_w:        float = 6.67e-3
+    const_wing: float = 4.58e-3
+    b_ref:     float = 1.905
+    k_e:       float = 0.0
+    k_uc:      float = 1.0
+    k_st:     float = 0.0
+    const_k_st: float = 9.06e-4
+    k_b:      float = 1.0
+    const_HLD: float = 2.706
+    k_f1:      float = 1.15
+    k_f2:      float = 1.0
+    W_hld_LE: float = 20.0              #kg/m^2 according to figure on torenbeek page 454
 
     # Horizontal tail
     S_h:        float = 0.0
@@ -53,6 +66,8 @@ class ClassII_Input:
 
     # Speed
     V_dive:     float = 0.0
+    V_stall:    float = 0.0
+    t_c_flap:   float = 0.0
 
     # Landing gear
     high_wing:  bool = False
@@ -95,6 +110,7 @@ class ClassII_Input:
     t_reserve: float = 0.0
     bt_charging_ratio: float = 0.0
     mass_margin: float = 1.1
+    aero_parameters: dict = field(default_factory=dict)
 
 
 
@@ -103,6 +119,7 @@ class ClassII_Input:
         cls,
         cfg: AircraftConfig,
         comp: dict,
+        aero_parameters: Optional[dict] = None,
         MTOW: Optional[float] = None,
         MZFW: Optional[float] = None,
         S_ref: Optional[float] = None,
@@ -127,7 +144,9 @@ class ClassII_Input:
         N_propellers: int = 1,
         base_params: bool = False,
         bt_charging_ratio: float = 0.0,
-        mass_margin: float = 1.1
+        mass_margin: float = 1.1,
+        taper: float = 0.0,
+        sweep_LE: float = 0.0
     ) -> "ClassII_Input":
         """
         Build the weight-estimator input from a shared AircraftConfig.
@@ -146,6 +165,8 @@ class ClassII_Input:
             b             = b     if b     is not None else cfg.b,
             S_w           = S_ref if S_ref is not None else cfg.S_ref,
             sweep_half    = cfg.sweep_half,
+            taper=taper,
+            sweep_LE=sweep_LE,
             t_r           = cfg.t_root_abs,
 
             S_h           = S_h if S_h is not None else cfg.S_h_initial,
@@ -163,6 +184,8 @@ class ClassII_Input:
             l_t           = cfg.l_t,
 
             V_dive        = cfg.V_dive,
+            V_stall       = cfg.V_stall,
+            t_c_flap      = cfg.t_c_flap,
 
             high_wing     = cfg.high_wing,
             has_flap_slat = cfg.has_flap_slat,
@@ -198,13 +221,15 @@ class ClassII_Input:
             N_engines = N_engines,
             bt_charging_ratio = bt_charging_ratio,
             mass_margin = mass_margin,
-            N_propellers = cfg.N_propellers
+            N_propellers = cfg.N_propellers,
+            aero_parameters = aero_parameters if aero_parameters is not None else {},
         )
 
 
 @dataclass
 class WeightBreakdown:
-    W_wing:   float = 0.0
+    W_wing_initial:   float = 0.0
+    W_wing_accurate:  float = 0.0
     W_htail:  float = 0.0
     W_vtail:  float = 0.0
     W_fus:    float = 0.0
@@ -269,7 +294,7 @@ class WeightBreakdown:
 
     @property
     def W_structure(self) -> float:
-        return (self.W_wing + self.W_htail + self.W_vtail
+        return (self.W_wing_accurate + self.W_htail + self.W_vtail
                 + self.W_fus + self.W_lg + self.W_sc)
 
     @property
@@ -283,7 +308,8 @@ class WeightBreakdown:
         table.add_column("Factor / Density", justify="right")
 
         struct_items = [
-            ("Wing",           self.W_wing),
+            ("Wing",           self.W_wing_initial),
+            ("Wing_updated",     self.W_wing_accurate),
             ("Fuselage",       self.W_fus),
             ("Vertical Tail",  self.W_vtail),
             ("Horizontal Tail",self.W_htail),
@@ -422,15 +448,65 @@ class weightEstimation:
         if g.MZFW > g.MTOW:
             raise ValueError("Why is your MZFW bigger than MTOW?")
 
-    def _wing_weight(self) -> float:
+    def _wing_weight_initial(self) -> float:
         g   = self.g
         b_s = g.b * np.cos(g.sweep_half)
-        #change this equation according to the amount of engines on the wing
-        return (g.MZFW * g.k_w * b_s**0.75
+        if g.N_propellers>2:
+            #change factor for 4 engines on the wing
+            return (g.MZFW * g.k_w * b_s**0.75
                 * (1 + np.sqrt(self.b_ref / b_s))
                 * g.n_ult**0.55
                 * ((b_s / g.t_r) / (g.MZFW / g.S_w))**0.3
-                * 1.02) *g.mass_margin
+                * 1.02) *g.mass_margin*0.9
+        else:
+            #change factor for 2 engines on the wing
+            return (g.MZFW * g.k_w * b_s**0.75
+                * (1 + np.sqrt(self.b_ref / b_s))
+                * g.n_ult**0.55
+                * ((b_s / g.t_r) / (g.MZFW / g.S_w))**0.3
+                * 1.02) *g.mass_margin*0.95
+        
+    def _wing_weight_accurate(self) -> float:
+        g   = self.g
+        aero = g.aero_parameters or {}
+        b_s = g.b * np.cos(g.sweep_half)
+        k_no=1+np.sqrt(g.b_ref/b_s)
+        k_lam=(1+g.taper)**0.4
+        W_des=g.MTOW
+
+        if g.N_propellers>2:
+            g.k_e=0.9
+            g.k_st=1+g.const_k_st*((g.b*np.cos(g.sweep_LE))**3)/W_des*((g.V_dive/100)/g.t_r)**2*np.cos(g.sweep_half)
+        elif g.N_propellers<=2:
+            g.k_e=0.95
+            g.k_st=1
+
+        W_W_init=self._wing_weight_initial()
+
+        W_basic=g.const_wing*k_no*k_lam*g.k_e*g.k_uc*g.k_st*\
+        ((g.k_b*g.n_ult*(W_des-0.8*W_W_init))**0.55)*\
+            (g.b**1.675)*(g.t_r**(-0.45))*np.cos(g.sweep_half)**(-1.325)
+        
+        k_f=g.k_f1*g.k_f2
+        required_aero = ["S_f", "b_fs", "delta_defl", "hinge_sweep", "S_LE"]
+        missing_aero = [name for name in required_aero if name not in aero]
+        if missing_aero:
+            raise ValueError(f"Missing aero_parameters entries: {missing_aero}")
+
+        W_hld_TE = (
+            g.const_HLD
+            * k_f
+            * (aero["S_f"] * aero["b_fs"]) ** (3 / 16)
+            * ((g.V_stall / 100) ** 2 * (np.sin(aero["delta_defl"]) * np.cos(aero["hinge_sweep"])) / g.t_c_flap) ** (3 / 4)
+            * aero["S_f"]
+        )
+        W_hld_LE = g.W_hld_LE * aero["S_LE"]
+        W_hld=W_hld_LE+W_hld_TE
+
+
+        W_wing_init=W_basic+1.2*(W_hld)
+        W_Wing=W_wing_init+1.02*W_wing_init           #adjust for the spoiler and speed brake weights
+        return W_Wing
 
     def _htail_weight(self) -> float:
         g     = self.g
@@ -624,7 +700,8 @@ class weightEstimation:
         W_lg = W_lg_main + W_lg_nose
 
         return WeightBreakdown(
-            W_wing   = self._wing_weight(),
+            W_wing_initial   = self._wing_weight_initial(),
+            W_wing_accurate   = self._wing_weight_accurate(),
             W_htail  = self._htail_weight(),
             W_vtail  = self._vtail_weight(),
             W_fus    = self._fuselage_weight(),
