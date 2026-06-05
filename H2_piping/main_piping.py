@@ -109,7 +109,7 @@ if __name__ == "__main__":
         Tank(diameter=0.1, wall=wall), 
         
         Pipe(position=1, length=64.0, diameter=0.02, wall=wall, segments=200,
-             N=10, N_bar=5.5, P_mli=0.001, curv=2.5),
+             N=10, N_bar=5.5, P_mli=10**(-4), curv=2.5),                      #Pressure input in Torr!!!
         
         Corner(position=2, N_bend=10, diameter=0.02, curv=2.5)
         ]
