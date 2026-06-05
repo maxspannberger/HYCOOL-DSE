@@ -106,7 +106,7 @@ if __name__ == "__main__":
             ('polyurethene', 0.02)]
 
     system = [
-        Tank(diameter=0.1, wall=wall), 
+        Tank(diameter=0.1, wall=wall, p=6*101325, T=15), 
         
         Pipe(position=1, length=64.0, diameter=0.02, wall=wall, segments=200,
              N=10, N_bar=5.5, P_mli=10**(-4), curv=2.5),                      #Pressure input in Torr!!!

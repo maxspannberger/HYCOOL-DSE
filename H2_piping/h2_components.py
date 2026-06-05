@@ -77,6 +77,8 @@ def update_states(vars, p1, h1, m_dot, A_cs, fluid, q=0, dp_fric=0):
 class Tank:
     def __init__(self, diameter: float,   
                        wall:     list,
+                       p:        float,
+                       T:        float,
                        position: int = 0):
         
         # Initialise the tank specific parameters
@@ -88,11 +90,11 @@ class Tank:
         
         # The state of the hydrogen in the tank based on the assumption that
         # the fluid is fully in a liquid state
-        self.p   = 1*101325.
-        self.frac= 0.
-        self.T   = CP.PropsSI('T', 'P', self.p, 'Q', self.frac, self.fluid)
-        self.rho = CP.PropsSI('D', 'P', self.p, 'Q', self.frac, self.fluid)
-        self.h   = CP.PropsSI('H', 'P', self.p, 'Q', self.frac, self.fluid)
+        self.p   = p
+        self.T   = T
+        self.rho = CP.PropsSI('D', 'P', self.p, 'T|liquid', self.T, self.fluid)
+        self.h   = CP.PropsSI('H', 'P', self.p, 'T|liquid', self.T, self.fluid)
+        self.frac= calc_frac(self.p, self.h)
       
     # Set the tank values as the initial values of the piping system
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False):
@@ -221,6 +223,11 @@ class Pipe:
             results['rho'][seg] = rho2
             results['h'][seg]   = h2
             results['frac'][seg]= frac2
+            
+            T1 = T2
+            p1 = p2
+            rho1 = rho2
+            h1 = h2
         
         if PLOT:
             fig, axes = plt.subplots(2, 2, figsize=(10, 8), sharex=True)
