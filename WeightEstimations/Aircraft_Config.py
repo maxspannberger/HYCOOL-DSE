@@ -174,7 +174,7 @@ def default_q400_hycool() -> AircraftConfig:
         AR               = 10,                  # Class I Value
         MAC              = 2.86,                # Class I Value
         c_root           = c_root,
-        tc_root          = 0.12,                # Referenced
+        tc_root          = 0.10,                # Referenced
         tc_mean          = 0.11,                # Referenced
         sweep_half       = np.deg2rad(23.0),    # Referenced
         sweep_tc         = np.deg2rad(24.0),    # Referenced
