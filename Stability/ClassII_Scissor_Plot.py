@@ -86,7 +86,7 @@ class ScissorPlotInput:
 
     # ---------------- Controllability inputs from old scissor plot ----------------
     
-    mu1: float = 0.2035
+    mu1: float = 0.182
     mu2: float = 1.2
     mu3: float = 0.0295
 
@@ -119,7 +119,7 @@ class ScissorPlotInput:
         bn: Optional[float] = None,
         ln: Optional[float] = None,
         Vlanding: Optional[float] = None,
-        mu1: float = 0.2035,
+        mu1: float = 0.182,
         mu2: float = 1.2,
         mu3: float = 0.0295,
     ) -> "ScissorPlotInput":

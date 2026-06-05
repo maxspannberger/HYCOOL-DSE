@@ -29,6 +29,14 @@ S_v sizing per Torenbeek's OEI rudder formulation:
 import numpy as np
 from dataclasses import dataclass
 from typing import Optional
+
+import sys
+from pathlib import Path
+
+# Allow running both from inside WeightEstimations and from the project root.
+root = Path(__file__).resolve().parent.parent
+if str(root) not in sys.path:
+    sys.path.append(str(root))
 from WeightEstimations.ISA import isa
 from WeightEstimations.Aircraft_Config import AircraftConfig
 
@@ -86,6 +94,12 @@ class TailSizing_Input:
     Se_Sh_max:      float = 0.40
     Sr_Sv_min:      float = 0.25
     Sr_Sv_max:      float = 0.35
+
+    # Added variables for horizontal tail sizing
+    M_landing:      float = 0.0
+    G:              float = 9.80665
+    rho_ground:     float = 1.225
+
 
     @classmethod
     def from_config(
@@ -241,7 +255,7 @@ class TailSizingEstimator:
         gives a sanity-check lower bound on S_h.
         """
         d               = self.i
-        CL_approach     = d.MTOW * 9.80665 / (0.5 * 1.225 * d.V_stall**2 * d.S_ref)
+        CL_approach     = 2*d.M_landing*d.G/(d.rho_ground*d.S_ref*(d.V_stall*1.3)**2)
         delta_CG        = 0.10                  # 10% MAC CG range
         dCM_required    = CL_approach * delta_CG
         C_L_alpha_h     = 4.5                   # /rad, reasonable for unswept HT
