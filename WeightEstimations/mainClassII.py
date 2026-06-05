@@ -216,7 +216,7 @@ def compute_fuselage_geometry(W_fuel: float, cfg: AircraftConfig,hump_back: bool
     return cfg_updated, r_tank, L_tank, d_tank, S_wet_hump
 
 
-def compute_wing_geometry(MTOW: float, cfg: AircraftConfig,M_cruise:float,c_root: float,b_span: float) -> tuple[float, float, float, float, float]:
+def compute_wing_geometry(MTOW: float, cfg: AircraftConfig,M_cruise:float,c_root: float) -> tuple[float, float, float, float, float]:
     """
     Trapezoidal wing planform at constant wing loading, AR.
 
@@ -229,19 +229,20 @@ def compute_wing_geometry(MTOW: float, cfg: AircraftConfig,M_cruise:float,c_root
         sweep_quarter=0.0
 
     lam = 0.2*(2-sweep_quarter)
-
-    sweep_LE=np.arctan(sweep_quarter+0.25*2*c_root/b_span*(1-lam))
-
-    sweep_half=np.arctan(sweep_LE-0.5*c_root/b_span*(1-lam))
-    
     S_ref = MTOW * G / cfg.Loading
     b = np.sqrt(cfg.AR * S_ref)
+
+    sweep_LE=np.arctan(sweep_quarter+0.25*2*c_root/b*(1-lam))
+
+    sweep_half=np.arctan(sweep_LE-0.5*c_root/b*(1-lam))
+    
     c_root = 2 * S_ref / ((1 + lam) * b)
     c_tip = lam * c_root
     MAC = (2 / 3) * c_root * (1 + lam + lam**2) / (1 + lam)
 
+    cfg_updated = _replace(cfg, S_ref=S_ref, b=b, c_root=c_root, MAC=MAC,taper=lam,sweep_half=sweep_half,sweep_tc=sweep_quarter)
 
-    return S_ref, b, c_root, c_tip, MAC,lam, sweep_quarter, sweep_half, sweep_LE
+    return  cfg_updated, S_ref, b, c_root, c_tip, MAC,lam, sweep_quarter, sweep_half, sweep_LE
 
 
 def run_class_ii(
@@ -256,8 +257,8 @@ def run_class_ii(
     # -----------------------------------------------------------------
     # Step 1: tail sizing (uses initial wing geometry; refined in the recheck)
     # -----------------------------------------------------------------
-    S_ref, b, c_root, c_tip, MAC,taper, sweep_quarter, sweep_half, sweep_LE = compute_wing_geometry(cfg.MTOW_initial, cfg, cfg.M_cruise, c_root=cfg.c_root, b_span=cfg.b)
-    tail_inp = TailSizing_Input.from_config(cfg, S_ref=S_ref, b=b, MAC=MAC)
+    cfg_updated, S_ref, b, c_root, c_tip, MAC,taper, sweep_quarter, sweep_half, sweep_LE = compute_wing_geometry(cfg.MTOW_initial, cfg, cfg.M_cruise, c_root=cfg.c_root)
+    tail_inp = TailSizing_Input.from_config(cfg_updated, S_ref=S_ref, b=b, MAC=MAC)
     tail_bd  = TailSizingEstimator(tail_inp).compute()
 
     if verbose:
@@ -290,10 +291,10 @@ def run_class_ii(
         # Recompute wing planform at the start of each iteration: under
         # constant wing loading, AR, and taper, S_ref, b, c_root, c_tip,
         # MAC all scale with the current MTOW.
-        S_ref, b, c_root, c_tip, MAC,taper, sweep_quarter, sweep_half, sweep_LE = compute_wing_geometry(MTOW, cfg, cfg.M_cruise, c_root=c_root, b_span=b)
+        cfg_updated, S_ref, b, c_root, c_tip, MAC,taper, sweep_quarter, sweep_half, sweep_LE = compute_wing_geometry(MTOW, cfg, cfg.M_cruise, c_root=c_root)
 
         # Recompute fuselage / H2-tank geometry from the latest W_fuel.
-        cfg_iter, r_tank, L_tank, d_tank, S_wet_hump = compute_fuselage_geometry(W_fuel, cfg,hump_back=hump_tank)
+        cfg_iter, r_tank, L_tank, d_tank, S_wet_hump = compute_fuselage_geometry(W_fuel, cfg_updated,hump_back=hump_tank)
 
         # Drag at current MTOW with sized tails and current wing geometry
         drag_inp = ClassII_Drag_Input.from_config(
@@ -321,16 +322,19 @@ def run_class_ii(
         t_reserve = mis_bd.t_reserve
 
         # Performance & CS-25 Requirements
-        pwr_bd = PowerSizing(cfg, mis_bd, MTOW).compute()
+        pwr_bd = PowerSizing(cfg_iter, mis_bd, MTOW).compute()
         P_TO_kW = pwr_bd.P_TO_total / 1000.0
         P_TO_OEI_kW = pwr_bd.P_total_OEI / 1000.0
         P_climb_kW = pwr_bd.P_from_climb / 1000.0
 
+        aero_parameters=compute_additional_aerodynamic_parameters(cfg_iter, drag_bd, mis_bd, pwr_bd,sweep_half,MAC,MTOW,\
+                                                                  S_ref,b,taper,c_root,sweep_quarter,sweep_LE,verbose=False)
 
 
         # Weight at current MTOW with sized tails and current wing geometry
         wt_inp = ClassII_Input.from_config(
             cfg_iter,
+            aero_parameters=aero_parameters,
             comp = comp,
             MTOW = MTOW,
             MZFW = MTOW - W_fuel,
@@ -354,6 +358,8 @@ def run_class_ii(
             t_reserve=t_reserve,
             base_params=False,
             bt_charging_ratio = bt_charging_ratio,
+            taper = taper,
+            sweep_LE = sweep_LE
         )
         wt_bd = weightEstimation(wt_inp, comp).compute()
 
@@ -402,6 +408,9 @@ def run_class_ii(
 
         MTOW = MTOW_new
 
+        aero_parameters=compute_additional_aerodynamic_parameters(cfg_iter, drag_bd, mis_bd, pwr_bd,sweep_half,MAC,MTOW,\
+                                                                  S_ref,b,taper,c_root,sweep_quarter,sweep_LE,verbose=False)
+
         if delta < tol:
             converged = True
             break
@@ -423,11 +432,14 @@ def run_class_ii(
     # rather than the user-supplied initial guess.
     # -----------------------------------------------------------------
     cfg_recheck = replace_T_TO(cfg_iter, pwr_bd.T_static_per_engine)
-    S_ref, b, c_root, c_tip, MAC,taper, sweep_quarter, sweep_half, sweep_LE = compute_wing_geometry(MTOW, cfg, cfg.M_cruise, c_root=c_root, b_span=b)
+    cfg_updated, S_ref, b, c_root, c_tip, MAC,taper, sweep_quarter, sweep_half, sweep_LE = compute_wing_geometry(MTOW, cfg_recheck, cfg_recheck.M_cruise, c_root=c_root)
     tail_inp_recheck = TailSizing_Input.from_config(
-        cfg_recheck, MTOW=MTOW, S_ref=S_ref, b=b, MAC=MAC,
+        cfg_updated, MTOW=MTOW, S_ref=S_ref, b=b, MAC=MAC,
     )
     tail_bd_recheck  = TailSizingEstimator(tail_inp_recheck).compute()
+
+    aero_parameters=compute_additional_aerodynamic_parameters(cfg_updated, drag_bd, mis_bd, pwr_bd,sweep_half,MAC,MTOW,\
+                                                                  S_ref,b,taper,c_root,sweep_quarter,sweep_LE,verbose=True)
 
     if verbose:
         print()
@@ -544,26 +556,28 @@ def find_optimal_cl_mach(cfg: AircraftConfig, force_recompute: bool = False) -> 
 
     return best_row
 
-def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig) -> dict:
-
+def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig,drag_result: dict,mission: dict,power: dict,\
+                                              sweep_half: float,MAC: float,MTOW: float,Wing_Area: float,\
+                                               Wing_span: float,Wing_taper: float,root_chord: float,\
+                                                Wing_sweep_quarter: float,Wing_sweep_LE: float,verbose: bool ) -> dict:
     aero = {}
     # if best_row is None:
     #     best_row = get_optimal_cl_mach(cfg_updated)
 
-    from dataclasses import replace
-    cfg_updated = replace(cfg_updated, M_cruise=0.68)
+    # from dataclasses import replace
+    # cfg_updated = replace(cfg_updated, M_cruise=0.68)
 
-    result = run_class_ii(cfg_updated,comp=comp_params, tol=1.0, max_iter=100, verbose=False)
+    # result = run_class_ii(cfg_updated,comp=comp_params, tol=1.0, max_iter=100, verbose=False)
 
 
     # Adjust CL for compressibility effects using Prandtl-Glauert correction
     beta=1-cfg_updated.M_cruise**2
 
-    CL_adjusted = result.drag.CL_cruise / np.sqrt(beta)
+    CL_adjusted = drag_result.CL_cruise / np.sqrt(beta)
 
         # get CLalpha for the current Mach number and aspect ratio with datcom equation
     airfoilefficiency=0.95
-    CLalpha=2*np.pi*cfg_updated.AR/(2+np.sqrt(4+(cfg_updated.AR*np.sqrt(beta)/airfoilefficiency)**2*(1+np.tan(result.Wing_sweep_half)**2)/(beta**2)))
+    CLalpha=2*np.pi*cfg_updated.AR/(2+np.sqrt(4+(cfg_updated.AR*np.sqrt(beta)/airfoilefficiency)**2*(1+np.tan(sweep_half)**2)/(beta**2)))
 
     #find trim angle to fly at CL_cruise with the adjusted CLalpha, define lift angle of attack as alpha0 according to the chosen airfoil
 
@@ -576,27 +590,27 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig) -> di
     T,p,rho=isa(cfg_updated.altitude_cruise)
     a_cruise=np.sqrt(1.4*287.05*T) # speed of sound at cruise altitude
     v_cruise=cfg_updated.M_cruise*a_cruise
-    Reynolds_cruise=rho*v_cruise*result.MAC/mu_alt
+    Reynolds_cruise=rho*v_cruise*MAC/mu_alt
 
     #calculate Reynolds number at sea level for takeoff and landing
     mu_ground=1.7894e-5   # dynamic viscosity of air at sea level in kg/(m*s)
     a_ground=np.sqrt(1.4*287.05*288.15) # speed of sound at sea level
     v_stall=cfg_updated.V_stall
-    Reynolds_ground=rho*v_stall*result.MAC/mu_ground
+    Reynolds_ground=rho*v_stall*MAC/mu_ground
 
     #Calculate the maximum Lift coefficient for landing configuration
     rho_ground=1.225        # sea level standard density in kg/m^3
     V_stall=cfg_updated.V_stall
-    M_landing=result.MTOW-(result.mission.m_LH2_cruise+result.mission.m_LH2_climb+result.mission.m_LH2_TO_taxi)
-    CL_max_LD=2*(M_landing)*G/(rho_ground*result.Wing_Area*V_stall**2)
-    CL_max_LD_without_stall=2*M_landing*G/(rho_ground*result.Wing_Area*(V_stall*1.3)**2)
+    M_landing=MTOW-(mission.m_LH2_cruise+mission.m_LH2_climb+mission.m_LH2_TO_taxi)
+    CL_max_LD=2*(M_landing)*G/(rho_ground*Wing_Area*V_stall**2)
+    CL_max_LD_without_stall=2*M_landing*G/(rho_ground*Wing_Area*(V_stall*1.3)**2)
 
     #Calculate the increase in CL_max for takeoff and landing due to high-lift devices (flaps, slats). These are rough estimates and can be refined with more detailed aerodynamic analysis or empirical data.
     c_fowler_c_wing=0.3 # assume fowler flaps make up 30% wing chord
     x_c_hinge=1-c_fowler_c_wing
 
     #calculate the hinge sweep angle
-    hinge_sweep=np.arctan(np.tan(result.Wing_sweep_half)-x_c_hinge*2*result.root_chord/(result.Wing_span)*(1-result.Wing_taper))
+    hinge_sweep=np.arctan(np.tan(sweep_half)-x_c_hinge*2*root_chord/(Wing_span)*(1-Wing_taper))
 
     #accoridng to NASA paper, a deflection angle of 30 degrees was most effective for the fowler flap, so we get deltac/cf
     deltac_cf=0.55      #extracted from the figure in toreenbeek
@@ -605,7 +619,7 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig) -> di
     deltac_c=deltac_cf*c_fowler_c_wing
     cdash_c=1+deltac_c
 
-    Clneeded=CL_adjusted/(np.cos(result.Wing_sweep_quarter)**2)
+    Clneeded=CL_adjusted/(np.cos(Wing_sweep_quarter)**2)
 
     #get increase in Clmax for landing and takeoff according to flap use, takeoff lower deflection wanted
     deltaClmax_LD=1.3*cdash_c
@@ -613,12 +627,12 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig) -> di
 
     #get increase in Clmax for landing and takeoff according to LE HLD use, takeoff lower deflection wanted
     le_flap_area_wing_ratio = 0.7          #assume 70% of wing area used for slats
-    deltaClmax_LE_LD=0.3
-    deltaCLmax_LE_LD=0.9*deltaClmax_LE_LD*le_flap_area_wing_ratio*np.cos(result.Wing_sweep_LE)
+    deltaClmax_LE_LD=0.3                #assume slats give 0.3 increase in Clmax for landing
+    deltaCLmax_LE_LD=0.9*deltaClmax_LE_LD*le_flap_area_wing_ratio*np.cos(Wing_sweep_LE)
     deltaCLmax_LE_TO=deltaCLmax_LE_LD*0.6
 
     #get wing deltaCLmax for flaps used for increases for takeoff and landing
-    deltaCL_max_TO=result.power.CL_max_TO-cfg_updated.CL_max-deltaCLmax_LE_TO
+    deltaCL_max_TO=power.CL_max_TO-cfg_updated.CL_max-deltaCLmax_LE_TO
     deltaCL_max_LD=CL_max_LD-cfg_updated.CL_max-deltaCLmax_LE_LD
 
     #calculate the area needed for flaps to achieve the desired increase in CLmax
@@ -635,9 +649,9 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig) -> di
     aero["CL_prandtl"] = CL_adjusted
     aero["CLalpha"] = CLalpha
     aero["alpha_trim"] = alpha_trim
-    aero["CL_cruise"] = result.drag.CL_cruise
-    aero["CD_total"] = result.drag.CD_total
-    aero["CL_max_TO"] = result.power.CL_max_TO
+    aero["CL_cruise"] = drag_result.CL_cruise
+    aero["CD_total"] = drag_result.CD_total
+    aero["CL_max_TO"] = power.CL_max_TO
     aero["CL_max_LD"] = CL_max_LD
     aero["delta_Cl_max_TO"] = deltaClmax_TO
     aero["delta_Cl_max_LD"] = deltaClmax_LD
@@ -645,70 +659,60 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig) -> di
     aero["TE_flap_area_wing"] = te_flap_area_wing
     aero["hinge_sweep_deg"] = hinge_sweep * 180 / np.pi
 
-    Aileron_area_ratio = result.tail_rechecked.Sa_Sref
-    value=cfg_updated.M_cruise*result.drag.CL_cruise/result.drag.CD_total
+    value=cfg_updated.M_cruise*drag_result.CL_cruise/drag_result.CD_total
 
-    print(Aileron_area_ratio)
+    if verbose==True:
+        
+        print()
+        print("[bold]Optimal Flight Conditions:[/bold]")
+        table = Table(show_header=True, header_style="bold blue")
+        table.add_column("value", justify="right")
+        table.add_column("M_cruise", justify="right")
+        table.add_column("CL_cruise", justify="right")
+        table.add_column("CL_prandtl", justify="right")
+        table.add_column("Cl_needed_airfoil", justify="right")
+        table.add_column("CLalpha [1/degree]", justify="right")
+        table.add_column("alpha_trim [degree]", justify="right")
+        table.add_column("CD_total", justify="right")
+        table.add_row(
+            f"{value:.6f}",
+            f"{cfg_updated.M_cruise:.2f}",
+            f"{aero['CL_cruise']:.6f}",
+            f"{aero['CL_prandtl']:.6f}",
+            f"{Clneeded:.6f}",
+            f"{aero['CLalpha']*np.pi/180:.6f}",
+            f"{aero['alpha_trim']*180/np.pi:.2f}",
+            f"{aero['CD_total']:.6f}",
+        )
+        print(table)
 
-    print()
-    print("[bold]Optimal Flight Conditions:[/bold]")
-    table = Table(show_header=True, header_style="bold blue")
-    table.add_column("value", justify="right")
-    table.add_column("M_cruise", justify="right")
-    table.add_column("CL_cruise", justify="right")
-    table.add_column("CL_prandtl", justify="right")
-    table.add_column("Cl_needed_airfoil", justify="right")
-    table.add_column("CLalpha [1/degree]", justify="right")
-    table.add_column("alpha_trim [degree]", justify="right")
-    table.add_column("CD_total", justify="right")
-    table.add_row(
-        f"{value:.6f}",
-        f"{cfg_updated.M_cruise:.2f}",
-        f"{result.CL_cruise:.6f}",
-        f"{aero['CL_prandtl']:.6f}",
-        f"{Clneeded:.6f}",
-        f"{aero['CLalpha']*np.pi/180:.6f}",
-        f"{aero['alpha_trim']*180/np.pi:.2f}",
-        f"{aero['CD_total']:.6f}",
-    )
-    print(table)
-
-    print("[bold]Wing Aerodynamics:[/bold]")
-    table = Table(show_header=True, header_style="bold blue")
-    table.add_column("CL_max_TO", justify="right")
-    table.add_column("CL_max_LD", justify="right")
-    table.add_column("approach speed landing CL", justify="right")
-    table.add_column("delta CL_max_TO", justify="right")
-    table.add_column("delta CL_max_LD", justify="right")
-    table.add_column("LE Area [m^2]", justify="right")
-    table.add_column("TE Area [m^2]", justify="right")
-    table.add_column("Flap Hinge Sweep [degree]", justify="right")
-    table.add_column("Driving Condition", justify="right")
-    table.add_column("Reynolds Number at cruise", justify="right")
-    table.add_column("Reynolds Number at ground", justify="right")
-    table.add_row(
-        f"{aero['CL_max_TO']:.6f}",
-        f"{aero['CL_max_LD']:.6f}",
-        f"{CL_max_LD_without_stall:.6f}",
-        f"{deltaCL_max_TO:.6f}",
-        f"{deltaCL_max_LD:.6f}",
-        f"{aero['LE_flap_area_wing']:.2f}",
-        f"{aero['TE_flap_area_wing']:.2f}",
-        f"{aero['hinge_sweep_deg']:.2f}",
-        f"  {driving}",
-        f"{Reynolds_cruise:.0f}",
-        f"{Reynolds_ground:.0f}"
-    )
-    print(table)
-
-    print()
-    print(result.drag.summary())
-    print()
-    print(result.weight.summary())
-    print()
-    print(result.mission.summary())
-    print()
-    print(result.summary())
+        print("[bold]Wing Aerodynamics:[/bold]")
+        table = Table(show_header=True, header_style="bold blue")
+        table.add_column("CL_max_TO", justify="right")
+        table.add_column("CL_max_LD", justify="right")
+        table.add_column("approach speed landing CL", justify="right")
+        table.add_column("delta CL_max_TO", justify="right")
+        table.add_column("delta CL_max_LD", justify="right")
+        table.add_column("LE Area [m^2]", justify="right")
+        table.add_column("TE Area [m^2]", justify="right")
+        table.add_column("Flap Hinge Sweep [degree]", justify="right")
+        table.add_column("Driving Condition", justify="right")
+        table.add_column("Reynolds Number at cruise", justify="right")
+        table.add_column("Reynolds Number at ground", justify="right")
+        table.add_row(
+            f"{aero['CL_max_TO']:.6f}",
+            f"{aero['CL_max_LD']:.6f}",
+            f"{CL_max_LD_without_stall:.6f}",
+            f"{deltaCL_max_TO:.6f}",
+            f"{deltaCL_max_LD:.6f}",
+            f"{aero['LE_flap_area_wing']:.2f}",
+            f"{aero['TE_flap_area_wing']:.2f}",
+            f"{aero['hinge_sweep_deg']:.2f}",
+            f"  {driving}",
+            f"{Reynolds_cruise:.0f}",
+            f"{Reynolds_ground:.0f}"
+        )
+        print(table)
 
 
     return dict(
@@ -716,8 +720,7 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig) -> di
         CD_Dmin=aero['CD_total'],
         M_opt=cfg_updated.M_cruise,
         value=value,
-        t_cruise=result.t_cruise,
-        m_LH2_cruise=result.mission.m_LH2_cruise,
+        m_LH2_cruise=mission.m_LH2_cruise,
         W_landing=M_landing,
         CL_max_LD=aero['CL_max_LD'],
         CL_max_LD_approach=CL_max_LD_without_stall,
@@ -726,50 +729,54 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig) -> di
         CL_alpha0_flapped=cfg_updated.CL_alpha0_clean+deltaCL_max_LD,
         cdash_c=cdash_c,
         TE_flap_area_wing=te_flap_area_wing,
-        taper=result.Wing_taper,
-        MAC=result.MAC,
+        delta_defl=30*np.pi/180,
+        hinge_sweep=hinge_sweep,
+        b_fs=te_flap_area_wing*Wing_span,
+        S_f=te_flap_area_wing*Wing_Area,
+        S_LE=le_flap_area_wing_ratio*Wing_Area,
+        taper=Wing_taper,
+        MAC=MAC,
 
         
     )
 
 if __name__ == "__main__":
     cfg = default_q400_hycool()
-    # result1 = run_class_ii(cfg,comp=comp_params, tol=1.0, max_iter=100, verbose=True)
-    # result1 = run_class_ii(cfg,comp=comp_params, tol=1.0, max_iter=100, verbose=True)
+    result1 = run_class_ii(cfg,comp=comp_params, tol=1.0, max_iter=100, verbose=True)
 
-    # print_final_geometry(cfg, result1)
+    print_final_geometry(cfg, result1)
 
-    # paths = export_final_geometry(
-    #     cfg,
-    #     result1,
-    #     output_dir="outputs",
-    # )
+    paths = export_final_geometry(
+        cfg,
+        result1,
+        output_dir="outputs",
+    )
 
-    # print("\nFinal geometry exported to:")
-    # for label, path in paths.items():
-    #     print(f"{label}: {path}")
+    print("\nFinal geometry exported to:")
+    for label, path in paths.items():
+        print(f"{label}: {path}")
 
-    # print()
-    # print(result1.drag.summary())
-    # print()
-    # print(result1.weight.summary())
-    # print()
-    # print(result1.mission.summary())
-    # print()
-    # print(result1.summary())
+    print()
+    print(result1.drag.summary())
+    print()
+    print(result1.weight.summary())
+    print()
+    print(result1.mission.summary())
+    print()
+    print(result1.summary())
 
-    # paths = export_results(
-    #     result1,
-    #     output_dir = "outputs",
-    #     iterations = result1.iteration_log,
-    # )
-    # print()
-    # print("[bold]Results exported to:[/bold]")
-    # for label, p in paths.items():
-    #     print(f"  {label}: {p}")
+    paths = export_results(
+        result1,
+        output_dir = "outputs",
+        iterations = result1.iteration_log,
+    )
+    print()
+    print("[bold]Results exported to:[/bold]")
+    for label, p in paths.items():
+        print(f"  {label}: {p}")
     
     #get_optimal_cl_mach(cfg, force_recompute=True)
 
-    result=compute_additional_aerodynamic_parameters(cfg)
-    print(result["cdash_c"])
-    print(result["MAC"])
+    # result=compute_additional_aerodynamic_parameters(cfg)
+    # print(result["cdash_c"])
+    # print(result["MAC"])

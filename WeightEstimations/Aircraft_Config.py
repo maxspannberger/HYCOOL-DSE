@@ -33,6 +33,7 @@ class AircraftConfig:
     CL_alpha0_clean: float         # lift curve slope, clean configuration
     Cm_alpha0_clean: float         # moment curve slope, clean configuration
     alpha_CL0_clean: float         # angle of attack for zero lift, clean configuration
+    t_c_flap:       float          # flap thickness-to-chord ratio, assumed for now
 
     # --- Horizontal tail -----------------------------------------------
     S_h_initial:    float
@@ -186,6 +187,7 @@ def default_q400_hycool() -> AircraftConfig:
         CL_alpha0_clean=0.27,                   # according to XFLR5 data for the chosen airfoil
         Cm_alpha0_clean=-0.283,                   # according to XFLR5 data for the chosen airfoil
         alpha_CL0_clean=-3.19*np.pi/180,                       # according to XFLR5 data for the chosen airfoil
+        t_c_flap=0.12,                # Assumed, typical for transport
 
         # Horizontal tail
         S_h_initial      = 24,                  # Referenced
