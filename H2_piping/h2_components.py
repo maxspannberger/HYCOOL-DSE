@@ -183,7 +183,7 @@ class Pipe:
             # Flow velocity and Reynolds number
             u1  = m_dot / (rho1 * A_cs)
             Re1 = 4 * m_dot / (np.pi * self.d * mu1)
-            print(Re1)
+
             # Calculate different T, such as they are presented in the
             # Lockhead equation
             T_h = T_amb
