@@ -182,10 +182,10 @@ def default_q400_hycool() -> AircraftConfig:
         taper            = 0.4,                 # lambda, typical transport
 
         #aerodynamic values for chosen airfoil mix, 64A410 for the root and SC(2)-0612 for the tip
-        CL_max=1.515,                             # taken from diagram, clean configuration
-        CL_alpha0_clean=0.281,                   # according to XFLR5 data for the chosen airfoil
-        Cm_alpha0_clean=-0.622,                   # according to XFLR5 data for the chosen airfoil
-        alpha_CL0_clean=-3.13*np.pi/180,                       # according to XFLR5 data for the chosen airfoil
+        CL_max=1.54,                             # taken from diagram, clean configuration
+        CL_alpha0_clean=0.27,                   # according to XFLR5 data for the chosen airfoil
+        Cm_alpha0_clean=-0.283,                   # according to XFLR5 data for the chosen airfoil
+        alpha_CL0_clean=-3.19*np.pi/180,                       # according to XFLR5 data for the chosen airfoil
 
         # Horizontal tail
         S_h_initial      = 24,                  # Referenced
@@ -242,7 +242,7 @@ def default_q400_hycool() -> AircraftConfig:
         y_engine         = 5.0,                 # Assumed
         W_propulsion     = 2_500.0,             # Assumed
         N_engines        = 2,                   # Class I Value
-        N_propellers      = 4,                   # Class I Value
+        N_propellers      = 2,                   # Class I Value
         D_propfan        = 4.0,                 # Assumed
         eta_static_loss  = 0.80,                # Assumed
         eta_prop_V2      = 0.70,                # Assumed

@@ -2,8 +2,8 @@ import numpy as np
 from math import cos
 from dataclasses import dataclass, field
 from typing import Optional
-from WeightEstimations.ISA import isa
-from WeightEstimations.Aircraft_Config import AircraftConfig
+from ISA import isa
+from Aircraft_Config import AircraftConfig
 
 from rich.table import Table
 
@@ -62,6 +62,8 @@ class ClassII_Drag_Input:
         MAC:     Optional[float] = None,
         S_h:     Optional[float] = None,
         S_v:     Optional[float] = None,
+        Sweep_quarter: Optional[float] = None,
+        Sweep_half: Optional[float] = None,
         K_A:     float = 0.935,
         e_theo:  float = 0.93,
     ) -> "ClassII_Drag_Input":
@@ -89,8 +91,8 @@ class ClassII_Drag_Input:
         return cls(
             S_ref        = S_ref_use,
             tc           = cfg.tc_mean,
-            lambda_half  = cfg.sweep_half,
-            lambda_tc    = cfg.sweep_tc,
+            lambda_half  = Sweep_half,
+            lambda_tc    = Sweep_quarter,
             MAC          = MAC_use,
             AR           = cfg.AR,
             S_wet_w      = S_wet_w,
@@ -223,7 +225,15 @@ class DragEstimation:
         return lam_frac * CF_lam + (1 - lam_frac) * CF_turb
 
     def _FF_lifting_surf(self, tc: float, lambda_tc: float) -> float:
-        return 1 + 2.7 * tc * np.cos(lambda_tc)**2 + 100 * tc**4
+        option=1
+        if option==1:
+            return 1 + 2.7 * tc * np.cos(lambda_tc)**2 + 100 * tc**4
+        # elif option==2:
+        #     term1 = 1 + (0.6 / 0.25) * tc + 100 * tc**4
+        #     term2 = 1.34 * cfg.M_cruise**0.18 * np.cos(lambda_tc)**0.28
+        #     return term1 * term2
+
+        #return 1 + 2.7 * tc * np.cos(lambda_tc)**2 + 100 * tc**4
 
     def _FF_fuselage(self) -> float:
         sigma = self.i.l_f / self.i.d_f
@@ -324,9 +334,9 @@ if __name__ == "__main__":
 
     cfg = default_q400_hycool()
     inp = ClassII_Drag_Input.from_config(cfg)
-    est = DragEstimation(inp)
-    print()
-    print(est.compute().summary())
+    est = DragEstimation._FF_lifting_surf(inp,cfg.tc_mean,cfg.sweep_tc)
+    print(est)
+    # print(est.compute().summary())
 
 
     

@@ -421,6 +421,7 @@ class weightEstimation:
     def _wing_weight(self) -> float:
         g   = self.g
         b_s = g.b * np.cos(g.sweep_half)
+        #change this equation according to the amount of engines on the wing
         return (g.MZFW * g.k_w * b_s**0.75
                 * (1 + np.sqrt(self.b_ref / b_s))
                 * g.n_ult**0.55
