@@ -73,7 +73,7 @@ class ScissorPlotInput:
     Mcruise: float                  # cruise Mach number for stability condition [-]
     Vlanding: float                 # landing or approach speed [m/s]
 
-    CL: float                       #wing lift coefficient at landing
+    CL: float                       #wing lift coefficient at landing, taken at approach speed, FLOM, sl.39, L.04
     CL0: float                      #CL at 0 angle of attack for flapped wing (landing), Roskam for deltaCL0 + first year adsee book
     delta_cl_max: float             #increase in airfoil CL due to landing flaps
     cdash_c: float                  #the ratio between the chord of the airfoil with extended flap and the chord in clean configuration (see next slides)
@@ -141,11 +141,11 @@ class ScissorPlotInput:
 
         S = float(result.Wing_Area)
         b = float(result.Wing_span)
-        c = aero_dict["MAC"]        #Mean aerodynamic chord
+        c = float(result.MAC)        #Mean aerodynamic chord
 
         wing_taper = float(result.Wing_taper)
 
-        cr = float(final["c_root_m"])
+        cr = float(result.root_chord)
         ct = wing_taper * cr
 
         Sh = float(result.tail_rechecked.S_h)
@@ -161,7 +161,6 @@ class ScissorPlotInput:
         lf = float(result.l_f_m)
 
         # Current config does not store the wing longitudinal location directly.
-        # lfn is estimated from fuselage length minus tail arm unless provided.
         lfn = float(cfg.lfn)
 
         # Current config does not store nacelle diameter and nacelle longitudinal arm separately.
@@ -170,8 +169,8 @@ class ScissorPlotInput:
         bn_use = float(bn) if bn is not None else (cfg.D_propfan/2)
         ln_use = float(ln) if ln is not None else 1
 
-        sweep50 = float(cfg.sweep_half)
-        sweep25 = float(cfg.sweep_tc)
+        sweep50 = float(result.Wing_sweep_half)
+        sweep25 = float(result.Wing_sweep_quarter)
 
         sweep50_tail = float(cfg.sweep_h_half)
         sweep25_tail = float(cfg.sweep_h_tc)
@@ -183,7 +182,7 @@ class ScissorPlotInput:
 
         Vlanding_use = float(Vlanding) if Vlanding is not None else 1.3 * cfg.V_stall
 
-        CL = aero_dict["CL_max_LD"]     #wing lift coefficient at landing, I just took clmax landing
+        CL = aero_dict["CL_max_LD_approach"]     #wing lift coefficient at landing, I just took clmax landing
         CLA_h = CL
         CL0 = aero_dict["CL_alpha0_flapped"]
         delta_cl_max = aero_dict["delta_Cl_flap"]
