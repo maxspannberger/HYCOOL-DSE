@@ -97,6 +97,8 @@ def plot_states(states):
     fig.suptitle('Hydrogen State Profile (Gradient: Blue=Liquid, Red=Gas)', fontsize=16)
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.show()
+    
+
 
 
 if __name__ == "__main__":
@@ -109,10 +111,10 @@ if __name__ == "__main__":
         Pipe(position=1, length=64.0, diameter=0.02, wall=wall, segments=200,
              N=11, N_bar=5.5, P_mli=0.001, curv=2.5),
         
-        Corner(position=1, N_bend=10, diameter=0.02, curv=2.5)
+        Corner(position=2, N_bend=10, diameter=0.02, curv=2.5)
         ]
     
-    states = solve_system(system, 0.03, 313)
+    states = solve_system(system, m_dot=0.03, T_amb = 3000)
     print_tree(states)
     plot_states(states)
 
