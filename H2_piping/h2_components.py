@@ -99,7 +99,7 @@ class Tank:
         
         # The state of the hydrogen in the tank based on the assumption that
         # the fluid is fully in a liquid state
-        self.p   = 5*101325.
+        self.p   = 1*101325.
         self.frac= 0.
         self.T   = CP.PropsSI('T', 'P', self.p, 'Q', self.frac, self.fluid)
         self.rho = CP.PropsSI('D', 'P', self.p, 'Q', self.frac, self.fluid)
