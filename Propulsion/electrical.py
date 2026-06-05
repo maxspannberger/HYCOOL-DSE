@@ -20,6 +20,15 @@ R_th = R_th_26/26
 cable_loss_per_m = 0.0 # kW/m
 P_AC_systems = 310.0  # kW
 
+V = 3000 # V
+rho_c = 6380 # kg/m^3
+rho_i = 900 # kg/m^3
+J_0 = 2.5e9 # A/m^2
+dJdB = -0.02 # exponent
+U_i = 5e7 # V/m
+mu_r = 2.6 # -
+mu_0 = np.pi*4e-7 # T*m/A
+
 
 def get_cable_region_powers(N_motors, N_turbines, component, positions, previous):
     comp_powers = {}
@@ -169,6 +178,8 @@ def size_converter(comp, powers, N=0):
 
 def get_maximum_powers(powers):
     max_powers = {}
+    length = 0.0
+
     for component in powers:
         if "cable" in component:
             if "cable" not in max_powers:
@@ -178,6 +189,8 @@ def get_maximum_powers(powers):
                     if condition != "length":
                         if powers[component][location][condition] > max_powers["cable"]:
                             max_powers["cable"] = powers[component][location][condition]
+                    else:
+                        length += powers[component][location][condition]
         else:
             if component not in max_powers:
                 max_powers[component] = 0.0
@@ -190,7 +203,57 @@ def get_maximum_powers(powers):
     with open(filename, "w") as f:
         json.dump(max_powers, f, indent=4)
 
-    return max_powers
+    length *= 2 # only counted cables connected to one bus
+
+    return max_powers, length
+
+
+def size_cables(max_powers, length=200, N_cables=6, SF=1):
+    P = max_powers["cable"] * 1000 # W
+    V_max = V*SF
+    I = P/V
+    I_max = I*SF
+
+    iteration_finished = False
+    d_old = np.inf
+    i = 0
+    while not iteration_finished and i < 100:
+        B = (N_cables * mu_r * mu_0 * I_max) / (2 * np.pi * d_old)
+        J = J_0 * 10 ** (dJdB * B)
+        A_c = I_max / J
+        r_c = np.sqrt(A_c / np.pi)
+        t_i = V_max / U_i
+        d_new = 2 * (r_c + t_i)
+
+        if abs(d_old - d_new) < 1e-10:
+            iteration_finished = True
+        i += 1
+        d_old = d_new
+    
+    print(f"\nOptimal wire radius: {r_c}")
+    print(f"Optimal insulator thickness: {t_i}")
+
+    t_i = round(0.0001 * np.ceil(10000 * t_i), 4)
+    r_c = round(0.00005 * np.ceil(20000 * r_c), 4)
+    d = round(2 * (r_c + t_i), 4)
+    A_c = np.pi * r_c**2
+    A_i = np.pi * t_i * (2*r_c + t_i)
+    mass_density = A_c * rho_c + A_i * rho_i
+    mass = mass_density * length
+    print(f"\nConservative wire radius [mm]: {1000*r_c}")
+    print(f"Conservative insulator thickness [mm]: {1000*t_i}")
+    print(f"Wire diameter [mm]: {1000*d}")
+    print(f"Cable mass [kg]: {mass:.3f}")
+
+    results = {
+        "r_core": r_c,
+        "t_insulation": t_i,
+        "d_cable": d,
+        "m_density": mass_density,
+        "m": mass
+    }
+
+    return results
 
 
 
@@ -198,6 +261,11 @@ if __name__ == "__main__":
     # define electrical system architecture
     component_order = ["gt_hex", "hts_gen", "ac_dc", "cable_in", "bus", "cable_out", "dc_ac", "hts_pow"]
     positions = {"gt": [5], "mot": [10, 15], "bus": 3}
+    # TODO: add real positions
+
+    N_motors = 2 * len(positions["mot"])
+    N_turbines = 2 * len(positions["gt"])
+    N_cables = N_motors + N_turbines
 
     # get class II power results
     print("Performing Class II estimations...")
@@ -219,12 +287,15 @@ if __name__ == "__main__":
     print("\nBUS")
     _, _, _, _, P_bus, m_bus, max_cooling_bus = size_converter(comp_params["bus"], powers["bus"], N=24)
     
-    P_total_idle = 2*len(positions["mot"]) * P_inverter + 2*len(positions["gt"]) * P_rectifier + 2*P_bus
-    m_total = 2*len(positions["mot"]) * m_inverter + 2*len(positions["gt"]) * m_rectifier + 2*m_bus
-    P_total_idle = 2*len(positions["mot"]) * max_cooling_inverter + 2*len(positions["gt"]) * max_cooling_rectifier + 2*max_cooling_bus
+    P_total_idle = N_motors * P_inverter + N_turbines * P_rectifier + 2*P_bus
+    m_total = N_motors * m_inverter + N_turbines * m_rectifier + 2*m_bus
+    P_total_idle = N_motors * max_cooling_inverter + N_turbines * max_cooling_rectifier + 2*max_cooling_bus
 
     print(f"\nTotal heating power required for idle: {P_total_idle}")
     print(f"Total mass of converters: {m_total}")
     print("Electrical components sizing complete.")
 
-    max_powers = get_maximum_powers(powers)
+    max_powers, length = get_maximum_powers(powers)
+    print(f"Wire length: {length}")
+
+    cable_results = size_cables(max_powers, length=length, N_cables=N_cables, SF=2)
