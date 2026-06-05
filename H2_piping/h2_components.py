@@ -211,7 +211,7 @@ class Pipe:
             if Re < 2300:
                 f = 64 / Re
             else:
-                f = (1 / (-1.8 * np.log10((self.eps_pipe / self.d / 3.7)**1.11 + 6.9 / Re)))**2
+                f = (1 / (-1.8 * np.log10(((self.eps_pipe / self.d) / 3.7)**1.11 + 6.9 / Re)))**2
             
             # f = 0
             # Update the enthalpy based on the heat leak
