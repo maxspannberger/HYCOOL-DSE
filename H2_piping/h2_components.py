@@ -142,7 +142,7 @@ class Pipe:
                        N_bar:    float,      
                        P_mli:    float,
                        curv:     float,
-                       eps_pipe: float   = 1.5e-6,
+                       eps_pipe: float   = 2e-6,
                        fluid:    str     = 'Hydrogen'
                        ):
 
