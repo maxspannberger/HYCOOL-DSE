@@ -735,19 +735,19 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig) -> di
 if __name__ == "__main__":
     cfg = default_q400_hycool()
     # result1 = run_class_ii(cfg,comp=comp_params, tol=1.0, max_iter=100, verbose=True)
-    # result1 = run_class_ii(cfg,comp=comp_params, tol=1.0, max_iter=100, verbose=True)
+    result1 = run_class_ii(cfg,comp=comp_params, tol=1.0, max_iter=100, verbose=True)
 
-    # print_final_geometry(cfg, result1)
+    print_final_geometry(cfg, result1)
 
-    # paths = export_final_geometry(
-    #     cfg,
-    #     result1,
-    #     output_dir="outputs",
-    # )
+    paths = export_final_geometry(
+        cfg,
+        result1,
+        output_dir="outputs",
+    )
 
-    # print("\nFinal geometry exported to:")
-    # for label, path in paths.items():
-    #     print(f"{label}: {path}")
+    print("\nFinal geometry exported to:")
+    for label, path in paths.items():
+        print(f"{label}: {path}")
 
     # print()
     # print(result1.drag.summary())

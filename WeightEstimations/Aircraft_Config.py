@@ -71,6 +71,7 @@ class AircraftConfig:
     altitude_cruise: float
     M_cruise:        float
     V_cruise:        float
+    V_cruise_EAS:    float
     V_dive:          float
     V_stall:         float
 
@@ -147,6 +148,15 @@ class AircraftConfig:
     AftCargo_cg:        float = 0.0
     FwdCargo_cg:        float = 0.0
 
+    #--- cg_breakdown --------------------------------------------------
+    x_cg_htail:         float = 0.0
+    x_cg_vtail:         float = 0.0
+    x_cg_fus:           float = 0.0
+    x_cg_lg_nose:       float = 0.0
+    x_cg_lg_main:       float = 0.0
+    x_cg_sc:            float = 0.0
+    x_cg_engine:        float = 0.0
+
     # ---------- Derived helpers ---------------------------------------
     @property
     def d_f(self) -> float:
@@ -218,10 +228,12 @@ def default_q400_hycool() -> AircraftConfig:
         rho_LH2_eff      = 70.85,               # kg/m^3, LH2 at boiling point
 
         # Flight envelope
-        altitude_cruise  = 7_620,               # From Mission Definition
-        M_cruise         = 0.68,                 # From Mission Definition
-        V_cruise         = 0.68 * 296.0,         # From Mission Definition
-        V_dive           = 213.5,               # --- TBD ---
+        altitude_cruise  = 6_096,               # From Mission Definition 7_620 old was FL250 
+        M_cruise         = 0.68,                # From Mission Definition
+        V_cruise         = 0.68 * 316,          # From Mission Definition 309.7 old for FL250
+        V_cruise_EAS     = 140.9706457,         # Equivalent cruise speed, check scissor plot excel for calc
+        V_dive           = 179.7978853,         # from CS25 CS 25.335, check scissor plot excel, 176.2133072 old
+
         V_stall          = 48.6,                # Class I Value
 
         # Mission
@@ -293,4 +305,14 @@ def default_q400_hycool() -> AircraftConfig:
         FUEL_cg             = 30,                   # Distance nose tip to Fuel CG [m], placeholder for now
         AftCargo_cg         = 25,                   # Distance nose tip to Aft Cargo CG [m], placeholder for now
         FwdCargo_cg         = 10,                   # Distance nose tip to Fwd Cargo CG [m], placeholder for now
+    
+        #cg Breakdown - VERY rough guesses for now
+        x_cg_htail          = 30,
+        x_cg_vtail          = 30,
+        x_cg_fus            = 18,
+        x_cg_lg_nose        = 5,
+        x_cg_lg_main        = 14,
+        x_cg_sc             = 15,
+        x_cg_engine         = 12.5,
+    
     )
