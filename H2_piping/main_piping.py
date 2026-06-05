@@ -114,7 +114,7 @@ if __name__ == "__main__":
         Corner(position=2, N_bend=10, diameter=0.02, curv=2.5)
         ]
     
-    states = solve_system(system, m_dot=0.03, T_amb = 3000)
+    states = solve_system(system, m_dot=0.03, T_amb = 400)
     print_tree(states)
     plot_states(states)
 

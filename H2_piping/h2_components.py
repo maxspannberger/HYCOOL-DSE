@@ -2,7 +2,7 @@ from pathlib import Path
 import sys
 root = Path(__file__).resolve().parent.parent
 sys.path.append(str(root))
-from component_parameters import component_params as comp
+from General.component_parameters import component_params as comp
 
 import numpy as np
 import CoolProp.CoolProp as CP
@@ -213,7 +213,7 @@ class Pipe:
             else:
                 f = (1 / (-1.8 * np.log10((self.eps_pipe / self.d / 3.7)**1.11 + 6.9 / Re)))**2
             
-            f = 0
+            # f = 0
             # Update the enthalpy based on the heat leak
             q = Q_dot / m_dot
             dp_friction = f * (dz / self.d) * 0.5 * rho * u**2
