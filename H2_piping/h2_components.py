@@ -50,9 +50,8 @@ def get_input_states(states):
 
 # Define an iterative solver for the state change over a pipe segment
 # =============================================================================
-def update_states(vars, p1, h1, m_dot, A_cs, fluid, q=0, dp_fric=0):
+def update_states(vars, p1, h1, u1, m_dot, A_cs, fluid, q=0, dp_fric=0):
     rho1 = CP.PropsSI('D', 'P', p1, 'H', h1, fluid)
-    u1   = m_dot / (rho1 * A_cs)
     
     p2, h2 = vars
     
@@ -99,25 +98,26 @@ class Tank:
     # Set the tank values as the initial values of the piping system
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False):
         A_cs = np.pi * system[1].d**2 / 4
-        u = m_dot / (self.rho * A_cs)
-        print(self.h)
-        h = self.h - 0.5 * u**2
-        print(h)
+        u    = 0
         
-        p    = self.p -0.5 * self.rho * u**2
-        rho  = CP.PropsSI('D', 'P', p, 'H', h, self.fluid)
-        T    = CP.PropsSI('T', 'P', p, 'H', h, self.fluid)
-        frac = calc_frac(p, h)
-        if frac > 0.01:
-            raise ValueError(f"The hydrogen turns partially gasseous ({frac}) as it leaves "
+        # Update pressure and enthalpy
+        p2, h2 = fsolve(update_states,
+                      x0=[self.p, self.h],
+                      args=(self.p, self.h, u, m_dot, A_cs, self.fluid))
+        
+        rho2  = CP.PropsSI('D', 'P', p2, 'H', h2, self.fluid)
+        T2    = CP.PropsSI('T', 'P', p2, 'H', h2, self.fluid)
+        frac2 = calc_frac(p2, h2)
+        if frac2 > 0.01:
+            raise ValueError(f"The hydrogen turns partially gasseous ({frac2}) as it leaves "
                              "the tank. Incompressability assumption doesn't hold.")
         
         # Store results in dictionary and return
-        results = {'T':   np.array([self.T, T]), 
-                   'p':   np.array([self.p, p]),
-                   'rho': np.array([self.rho, rho]),
-                   'h':   np.array([self.h, h]),
-                   'frac':np.array([self.frac, frac])
+        results = {'T':   np.array([self.T, T2]), 
+                   'p':   np.array([self.p, p2]),
+                   'rho': np.array([self.rho, rho2]),
+                   'h':   np.array([self.h, h2]),
+                   'frac':np.array([self.frac, frac2])
                    }
         
         return results
@@ -212,7 +212,7 @@ class Pipe:
             
             p2, h2 = fsolve(update_states,
                           x0=[p1, h1],
-                          args=(p1, h1, m_dot, A_cs, self.fluid, q, dp_fric))
+                          args=(p1, h1, u1, m_dot, A_cs, self.fluid, q, dp_fric))
             
             # Update the state variables
             T2     = CP.PropsSI('T', 'P', p2, 'H', h2, self.fluid)
@@ -302,7 +302,7 @@ class Corner:
         # Update pressure and enthalpy
         p2, h2 = fsolve(update_states,
                       x0=[p1, h1],
-                      args=(p1, h1, m_dot, A_cs, self.fluid, q, dp_fric))
+                      args=(p1, h1, u1, m_dot, A_cs, self.fluid, q, dp_fric))
         
         T2    = CP.PropsSI('T', 'P', p2, 'H', h2, self.fluid)
         rho2  = CP.PropsSI('D', 'P', p2, 'H', h2, self.fluid)
