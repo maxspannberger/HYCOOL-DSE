@@ -230,6 +230,8 @@ class ClassII_Input:
 class WeightBreakdown:
     W_wing_initial:   float = 0.0
     W_wing_accurate:  float = 0.0
+    W_hld:          float = 0.0
+    W_basic:        float = 0.0
     W_htail:  float = 0.0
     W_vtail:  float = 0.0
     W_fus:    float = 0.0
@@ -306,8 +308,10 @@ class WeightBreakdown:
         table.add_column("Factor / Density", justify="right")
 
         struct_items = [
-            ("Wing",           self.W_wing_initial),
-            ("Wing_updated",     self.W_wing_accurate),
+            ("Wing_initial",           self.W_wing_initial),
+            ("Wing_accurate",     self.W_wing_accurate),
+            ("Wing_hld",     self.W_wing_hld),
+            ("Wing_basic",     self.W_wing_basic),
             ("Fuselage",       self.W_fus),
             ("Vertical Tail",  self.W_vtail),
             ("Horizontal Tail",self.W_htail),
@@ -501,8 +505,8 @@ class weightEstimation:
 
 
         W_wing_init=W_basic+1.2*(W_hld)
-        W_Wing=W_wing_init+1.02*W_wing_init           #adjust for the spoiler and speed brake weights
-        return W_Wing
+        W_Wing=W_wing_init+0.02*W_wing_init           #adjust for the spoiler and speed brake weights
+        return W_Wing,W_hld,W_basic
 
     def _htail_weight(self) -> float:
         g     = self.g
@@ -691,10 +695,13 @@ class weightEstimation:
         h2_tank_weight   = self._h2_tank_weight()
         W_engine_total, fan_mass, P_req_primary, P_req_secondary, P_req_tot, W_primary, W_secondary,\
             total_prop_efficiency, climb_eff,cruise_eff, bt_charging_ratio = self._propulsion_weight()
+        W_wing_accurate,W_hld,W_basic   = self._wing_weight_accurate(),
 
         return WeightBreakdown(
             W_wing_initial   = self._wing_weight_initial(),
-            W_wing_accurate   = self._wing_weight_accurate(),
+            W_wing_accurate=W_wing_accurate,
+            Wld = W_hld,
+            W_basic = W_basic,
             W_htail  = self._htail_weight(),
             W_vtail  = self._vtail_weight(),
             W_fus    = self._fuselage_weight(),
