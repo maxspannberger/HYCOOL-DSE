@@ -27,7 +27,7 @@ Structure:
 """
 
 import numpy as np
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import sys
 from pathlib import Path
 import json
@@ -744,7 +744,7 @@ if __name__ == "__main__":
     cfg = default_q400_hycool()
     result1 = run_class_ii(cfg,comp=comp_params, tol=1.0, max_iter=100, verbose=True)
 
-    print_final_geometry(cfg, result1)
+    # print_final_geometry(cfg, result1)
 
     paths = export_final_geometry(
         cfg,
@@ -774,9 +774,25 @@ if __name__ == "__main__":
     print("[bold]Results exported to:[/bold]")
     for label, p in paths.items():
         print(f"  {label}: {p}")
+
+    #set price of LH2 per kg
+    cost_per_kg_LH2 = 3.0       #€/kg, which is an estimate for 2050
+
+    cfg_2prop = replace(cfg, N_propellers=2)
+    result2=run_class_ii(cfg_2prop,comp=comp_params, tol=1.0, max_iter=100, verbose=False)
     
+    fuelsavings = result2.W_fuel - result1.W_fuel
+    costsavings=fuelsavings*cost_per_kg_LH2
+    # Highlight fuel and cost savings in a panel to make them stand out
+    savings_text = (
+        f"[bold white]Switching to 4 propellers saves[/bold white]\n"
+        f"[bold green]{fuelsavings:.1f} kg[/bold green]\n"
+        f"[bold white]Estimated cost savings per flight:[/bold white] [bold yellow]€{costsavings:.2f}[/bold yellow]"
+    )
+    print(Panel(savings_text, title="[bold cyan]Fuel & Cost Savings[/bold cyan]", border_style="cyan", expand=False))
+
     #get_optimal_cl_mach(cfg, force_recompute=True)
 
     # result=compute_additional_aerodynamic_parameters(cfg)
     # print(result["cdash_c"])
-    # print(result["MAC"])
+    # print(result["MAC"])num_engines=2, T_TO_per_engine=cfg.T_TO_per_engin
