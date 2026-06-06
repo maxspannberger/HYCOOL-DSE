@@ -230,8 +230,8 @@ class ClassII_Input:
 class WeightBreakdown:
     W_wing_initial:   float = 0.0
     W_wing_accurate:  float = 0.0
-    W_hld:          float = 0.0
-    W_basic:        float = 0.0
+    W_wing_hld:          float = 0.0
+    W_wing_basic:        float = 0.0
     W_htail:  float = 0.0
     W_vtail:  float = 0.0
     W_fus:    float = 0.0
@@ -699,6 +699,7 @@ class weightEstimation:
         h2_tank_weight   = self._h2_tank_weight()
         W_engine_total, fan_mass, P_req_primary, P_req_secondary, P_req_tot, W_primary, W_secondary,\
             total_prop_efficiency, climb_eff,cruise_eff, bt_charging_ratio = self._propulsion_weight()
+        W_wing_accurate, W_hld, W_basic = self._wing_weight_accurate()
         
         W_lg_main, W_lg_nose = self._LDG_weight()
         W_lg = W_lg_main + W_lg_nose
@@ -706,8 +707,8 @@ class weightEstimation:
         return WeightBreakdown(
             W_wing_initial   = self._wing_weight_initial(),
             W_wing_accurate=W_wing_accurate,
-            Wld = W_hld,
-            W_basic = W_basic,
+            W_wing_hld = W_hld,
+            W_wing_basic = W_basic,
             W_htail  = self._htail_weight(),
             W_vtail  = self._vtail_weight(),
             W_fus    = self._fuselage_weight(),
