@@ -28,9 +28,9 @@ def calc_frac(p, h, fluid='Hydrogen'):
     
     if phase == 'twophase':
         return CP.PropsSI('Q', 'P', p, 'H', h, fluid)
-    elif phase == 'liquid':
+    elif phase == 'liquid' or phase == 'supercritical_liquid':
         return 0.0
-    elif phase == 'gas' or phase == 'supercritical_gas':
+    elif phase == 'gas' or phase == 'supercritical_gas' or phase == 'supercritical':
         return 1.0
     else:
         raise ValueError(f"Unknown phase '{phase}' encountered at p={p:.2f}, h={h:.2f}. "
@@ -118,6 +118,95 @@ class Tank:
                    'rho': np.array([self.rho, rho2]),
                    'h':   np.array([self.h, h2]),
                    'frac':np.array([self.frac, frac2])
+                   }
+        
+        return results
+
+# =============================================================================
+# Define the Cryogenic Pump class
+# =============================================================================
+class Pump:
+    def __init__(self, position: int,
+                       target_p: float,
+                       diameter: float = 0.02,
+                       efficiency: float = 0.60,
+                       fluid: str = 'Hydrogen',
+                       name: str = 'CryoPump'):
+        
+        self.position = position
+        self.target_p = target_p      
+        self.d = diameter             
+        self.efficiency = efficiency  
+        self.fluid = fluid
+        self.name = name
+
+    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False):
+        # 1. Extract states from the end of the previous component
+        T1, p1, h1, rho1 = get_input_states(states)
+        
+        # Determine the cross-sectional area (ensuring Continuity)
+        A_cs = np.pi * self.d**2 / 4 
+        
+        # Calculate inlet velocity
+        u1 = m_dot / (rho1 * A_cs)
+        
+        # Find inlet entropy to lock the ideal benchmark
+        s1 = CP.PropsSI('S', 'P', p1, 'H', h1, self.fluid)
+        
+        # 2. Calculate the IDEAL (Isentropic) target state
+        try:
+            h2_ideal = CP.PropsSI('H', 'P', self.target_p, 'S', s1, self.fluid)
+            rho2_ideal = CP.PropsSI('D', 'P', self.target_p, 'S', s1, self.fluid)
+        except ValueError:
+            raise ValueError(f"Pump failed: Target pressure {self.target_p} Pa is invalid.")
+            
+        u2_ideal = m_dot / (rho2_ideal * A_cs)
+        
+        # Calculate Ideal Work required (Full First Law Form)
+        w_ideal = (h2_ideal + 0.5 * u2_ideal**2) - (h1 + 0.5 * u1**2)
+        
+        # 3. Calculate REAL Work injected by the inefficient impeller
+        w_real = w_ideal / self.efficiency
+        
+        # Define the exact Total Energy that must leave the pump
+        Target_Energy = (h1 + 0.5 * u1**2) + w_real
+        p2 = self.target_p
+        
+        # 4. Rigorous Numerical Solver: Drive the First Law Residual to Zero
+        def solve_pump_energy(vars):
+            h2_guess = vars[0]
+            
+            # Request density from CoolProp based on the guessed static enthalpy
+            try:
+                rho2_guess = CP.PropsSI('D', 'P', p2, 'H', h2_guess, self.fluid)
+            except:
+                return [1e9] # Penalty to steer solver away from impossible physical states
+            
+            # Calculate corresponding velocity
+            u2_guess = m_dot / (rho2_guess * A_cs)
+            
+            # Return the Residual Error: (Proposed Total Energy) - (Target Total Energy)
+            return [(h2_guess + 0.5 * u2_guess**2) - Target_Energy]
+        
+        # Execute the solver, using the ideal enthalpy as the initial guess
+        h2_sol = fsolve(solve_pump_energy, [h2_ideal])
+        h2 = h2_sol[0]
+        
+        # 5. Lock in final real state properties
+        T2   = CP.PropsSI('T', 'P', p2, 'H', h2, self.fluid)
+        rho2 = CP.PropsSI('D', 'P', p2, 'H', h2, self.fluid)
+        frac2= calc_frac(p2, h2, fluid=self.fluid)
+        
+        # Print power estimation
+        power_W = m_dot * w_real
+        print(f"[{self.name}] Pumping to {p2/100000:.1f} bar. (Power: {power_W/1000:.2f} kW)")
+        
+        # Store and return results
+        results = {'T':    np.array([T2]), 
+                   'p':    np.array([p2]),
+                   'rho':  np.array([rho2]),
+                   'h':    np.array([h2]),
+                   'frac': np.array([frac2])
                    }
         
         return results
@@ -347,4 +436,3 @@ class HTS:
                        }
             
             return results
-        

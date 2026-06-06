@@ -3,7 +3,7 @@ import sys
 root = Path(__file__).resolve().parent
 sys.path.append(str(root))
 
-from h2_components import Tank, Pipe, Corner
+from h2_components import Tank, Pipe, Pump, Corner
 from rich import print as rich_print
 from rich.tree import Tree
 import matplotlib.pyplot as plt
@@ -106,19 +106,19 @@ if __name__ == "__main__":
             ('polyurethene', 0.02)]
 
     system = [
-        Tank(diameter=0.1, wall=wall, p=1*101325, T=15), 
+        Tank(diameter=0.1, wall=wall, p=1.0*101325, T=15), 
         
-        Pipe(position=1, length=64.0, diameter=0.02, wall=wall, segments=200,
+        Pipe(position=1, length=0.5, diameter=0.02, wall=wall, segments=10,
+             N=10, N_bar=5.5, P_mli=10**(-4), curv=2.5),
+        
+        Pump(position=2, target_p=50*100000, diameter=0.02, efficiency=0.60),
+        
+        Pipe(position=3, length=64.0, diameter=0.02, wall=wall, segments=200,
              N=10, N_bar=5.5, P_mli=10**(-4), curv=2.5),                      #Pressure input in Torr!!!
         
-        Corner(position=2, N_bend=10, diameter=0.02, curv=2.5)
+        Corner(position=4, N_bend=10, diameter=0.02, curv=2.5)
         ]
     
     states = solve_system(system, m_dot=0.046, T_amb = 400)
     print_tree(states)
     plot_states(states)
-
-
-
-          
-
