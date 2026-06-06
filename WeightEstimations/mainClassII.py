@@ -742,6 +742,10 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig,drag_r
 
 if __name__ == "__main__":
     cfg = default_q400_hycool()
+<<<<<<< HEAD
+    # result1 = run_class_ii(cfg,comp=comp_params, tol=1.0, max_iter=100, verbose=True)
+=======
+>>>>>>> a877e8f3d7f836cabc4406a34ef064d535868799
     result1 = run_class_ii(cfg,comp=comp_params, tol=1.0, max_iter=100, verbose=True)
 
     # print_final_geometry(cfg, result1)

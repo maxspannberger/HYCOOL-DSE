@@ -236,6 +236,8 @@ class WeightBreakdown:
     W_vtail:  float = 0.0
     W_fus:    float = 0.0
     W_lg:     float = 0.0
+    W_lg_nose:  float = 0.0
+    W_lg_main: float = 0.0
     W_sc:     float = 0.0
     W_engine: float = 0.0
     W_total_prop: float = 0.0
@@ -316,6 +318,8 @@ class WeightBreakdown:
             ("Vertical Tail",  self.W_vtail),
             ("Horizontal Tail",self.W_htail),
             ("Landing Gear",   self.W_lg),
+            ("Main Landing Gear",   self.W_lg_main),
+            ("Nose Landing Gear",   self.W_lg_nose),
             ("Surface Controls", self.W_sc),
         ]
 
@@ -550,7 +554,7 @@ class weightEstimation:
                     + c["C"] * g.MTOW
                     + c["D"] * g.MTOW**1.5) * g.mass_margin
 
-        return k_LG * (_leg(self._LG_main) + _leg(self._LG_nose))
+        return k_LG * _leg(self._LG_main), k_LG * _leg(self._LG_nose)
 
     def _surface_control_weight(self) -> float:
         g    = self.g
@@ -695,7 +699,9 @@ class weightEstimation:
         h2_tank_weight   = self._h2_tank_weight()
         W_engine_total, fan_mass, P_req_primary, P_req_secondary, P_req_tot, W_primary, W_secondary,\
             total_prop_efficiency, climb_eff,cruise_eff, bt_charging_ratio = self._propulsion_weight()
-        W_wing_accurate,W_hld,W_basic   = self._wing_weight_accurate(),
+        
+        W_lg_main, W_lg_nose = self._LDG_weight()
+        W_lg = W_lg_main + W_lg_nose
 
         return WeightBreakdown(
             W_wing_initial   = self._wing_weight_initial(),
@@ -705,7 +711,9 @@ class weightEstimation:
             W_htail  = self._htail_weight(),
             W_vtail  = self._vtail_weight(),
             W_fus    = self._fuselage_weight(),
-            W_lg     = self._LDG_weight(),
+            W_lg     = W_lg,
+            W_lg_main = W_lg_main,
+            W_lg_nose = W_lg_nose,
             W_sc     = self._surface_control_weight(),
             W_primary= W_primary,
             W_secondary = W_secondary,

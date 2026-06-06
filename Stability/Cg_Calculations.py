@@ -57,7 +57,7 @@ class CgCalculationInput:
     def from_config(
         cls,
         cfg: AircraftConfig,
-        result: Optional[ClassIIResult] = None,
+        result: ClassIIResult,
     ) -> "CgCalculationInput":
         """
         Build CG input from AircraftConfig and, where useful, ClassIIResult.
@@ -66,7 +66,30 @@ class CgCalculationInput:
         Use result for final computed masses such as fuel mass, OEW, propulsion mass, etc.
         """
 
+        x_cg_wing = 1 #placeholder, should be a fn of MAC or root chord
+        
+        # def W_structure(self) -> float:
+        # return (self.W_wing + self.W_htail + self.W_vtail
+        #         + self.W_fus + self.W_lg + self.W_sc)
+        # def W_empty(self) -> float:
+        #     return self.W_structure + self.W_engine
+
+
         components: list[CgComponent] = []
+        components.append("Wing", result.weight.W_wing, x_cg_wing, "Structure")
+        components.append("htail", result.weight.W_htail, cfg.x_cg_htail, "Structure")
+        components.append("vtail", result.weight.W_vtail, cfg.x_cg_vtail, "Structure")
+        components.append("fuselage", result.weight.W_fus, cfg.x_cg_fus, "Structure")
+        components.append("nose landing gear", result.weight.W_lg_nose, cfg.x_cg_lg_nose, "Structure")
+        components.append("main landing gear", result.weight.main, cfg.x_cg_lg_main, "Structure")
+        components.append("surface controls", result.weight.W_sc, cfg.x_cg_sc, "Structure")
+        components.append("Engines", result.weight.W_engine, cfg.x_cg_engine, "Propulsion")
+
+
+        #how to call the values
+        # components.append(CgComponent("Wing", result.weight.W_wing, cfg.Wing_cg, "Structure"))
+        # components.append(CgComponent("Fuselage", result.weight.W_fus, cfg.Fuselage_cg, "Structure"))
+        # components.append(CgComponent("Fuel", result.W_fuel, cfg.FUEL_cg, "Fuel"))
 
         # ------------------------------------------------------------
         # Final mass values

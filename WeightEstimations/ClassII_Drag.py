@@ -10,7 +10,6 @@ if str(root) not in sys.path:
     sys.path.append(str(root))
 from WeightEstimations.ISA import isa
 from WeightEstimations.Aircraft_Config import AircraftConfig
-
 from rich.table import Table
 
 
