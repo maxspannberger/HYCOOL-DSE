@@ -1,19 +1,19 @@
 {
     "Masses": {
-        "MTOW_kg": 33712.259224542584,
-        "MZFW_kg": 33179.28231523045,
-        "OEW_kg": 23179.282315230448,
-        "fuel_mass_kg": 532.9769093121382,
+        "MTOW_kg": 33787.46567682875,
+        "MZFW_kg": 33225.64870412195,
+        "OEW_kg": 23225.648704121948,
+        "fuel_mass_kg": 561.8169727068022,
         "payload_kg": 10000.0,
         "fixed_equipment_kg": 5500.0
     },
     "Wing": {
-        "S_ref_m2": 86.77148234735407,
-        "span_m": 29.45699956671658,
+        "S_ref_m2": 86.96497749180129,
+        "span_m": 29.48982493874816,
         "aspect_ratio": 10,
-        "root_chord_m": 4.321981294090272,
-        "tip_chord_m": 1.5694186192530426,
-        "MAC_m": 3.160040673375989,
+        "root_chord_m": 4.326797488746172,
+        "tip_chord_m": 1.5711674990034599,
+        "MAC_m": 3.1635620608989647,
         "taper_ratio": 0.36312480606961706,
         "sweep_half_rad": 0.4014257279586958,
         "sweep_half_deg": 23.0,
@@ -21,63 +21,63 @@
         "sweep_tc_deg": 24.0,
         "thickness_to_chord_root": 0.1,
         "thickness_to_chord_mean": 0.11,
-        "root_thickness_m": 0.43219812940902724,
+        "root_thickness_m": 0.43267974887461724,
         "LEMAC_m_from_nose": 17.2
     },
     "Horizontal_tail": {
-        "S_h_m2": 14.88555587270388,
-        "span_h_m": 8.184436536938108,
+        "S_h_m2": 14.935394447319092,
+        "span_h_m": 8.198126311111332,
         "MAC_h_m": 2.1,
         "tail_arm_l_h_m": 17.5,
         "aspect_ratio_h": 4.5,
-        "V_h": 0.95,
-        "elevator_area_m2": 4.614522320538203,
+        "V_h": 0.9500000000000001,
+        "elevator_area_m2": 4.629972278668919,
         "Se_Sh": 0.31,
         "driver": "stability (V_h)"
     },
     "Vertical_tail": {
-        "S_v_m2": 18.619467403040886,
-        "span_v_m": 5.626108298386151,
+        "S_v_m2": 18.647148410753257,
+        "span_v_m": 5.630288829028271,
         "MAC_v_m": 3.5,
         "tail_arm_l_v_m": 17.5,
         "aspect_ratio_v": 1.7,
-        "V_v": 0.12747645169832425,
-        "rudder_area_m2": 6.5168135910643095,
-        "Sr_Sv": 0.35,
+        "V_v": 0.12723995296217303,
+        "rudder_area_m2": 6.5265019437636385,
+        "Sr_Sv": 0.3499999999999999,
         "driver": "control (OEI rudder)"
     },
     "Fuselage": {
-        "length_m": 37.481005235033514,
+        "length_m": 37.52408437109201,
         "diameter_equivalent_m": 2.9,
         "width_m": 2.9,
         "height_m": 2.9,
-        "wetted_area_m2": 307.09758797781035,
+        "wetted_area_m2": 307.48943223039595,
         "LEMAC_m_from_nose": 17.2
     },
     "LH2_tank": {
-        "fuel_mass_kg": 532.9769093121382,
+        "fuel_mass_kg": 561.8169727068022,
         "effective_LH2_density_kg_m3": 70.85,
-        "volume_m3": 7.522609870319524,
-        "radius_m": 1.215502617516757,
-        "diameter_m": 2.431005235033514,
-        "length_m": 2.431005235033514,
+        "volume_m3": 7.929667928112946,
+        "radius_m": 1.2370421855460052,
+        "diameter_m": 2.4740843710920104,
+        "length_m": 2.4740843710920104,
         "hump_back": true,
         "extra_wetted_area_hump_m2": 0.0,
-        "tank_weight_kg": 329.77946263688557
+        "tank_weight_kg": 347.6242518623339
     },
     "Aerodynamics": {
-        "cruise_CL": 0.24015570430736277,
-        "cruise_L_over_D": 15.78573824013464,
-        "CD0": 0.012937313384600871,
-        "CD_total": 0.015213460444743473,
-        "oswald_e": 0.806558036098852
+        "cruise_CL": 0.24015570430736274,
+        "cruise_L_over_D": 15.797043353918907,
+        "CD0": 0.012926452458894684,
+        "CD_total": 0.015202572970579666,
+        "oswald_e": 0.806567443716651
     },
     "Power": {
-        "P_cruise_kW": 4037.1489777587017,
-        "P_climb_kW": 5103.75742364955,
-        "P_reserve_kW": 1407.6795942149633,
-        "P_TO_kW": 6330.0312223222845,
-        "P_TO_OEI_kW": 3165.0156111611423,
-        "static_thrust_per_engine_kN": 54.0509794357691
+        "P_cruise_kW": 4281.094715875844,
+        "P_climb_kW": 5251.173223166772,
+        "P_reserve_kW": 1493.6434607002843,
+        "P_TO_kW": 6344.146808141316,
+        "P_TO_OEI_kW": 3172.073404070658,
+        "static_thrust_per_engine_kN": 54.131335417292945
     }
 }
