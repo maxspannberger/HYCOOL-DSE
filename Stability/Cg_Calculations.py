@@ -56,6 +56,8 @@ class CgCalculationInput:
 
     location_wing_cg: float 
 
+    OEW_target_rel: float
+
 
 
 
@@ -103,7 +105,7 @@ class CgCalculationInput:
 
         location_wing_cg = result.distance_le_mac_to_cg         #[m] distance from LEMAC to wing cg 
 
-
+        OEW_target_rel = cfg.OEW_target_rel                     # statistically determined factor from torenbeek: % of MAC for OEW cg
 
         return cls(
             l_f = l_f,
@@ -138,7 +140,9 @@ class CgCalculationInput:
             MAC = MAC,
             x_LEMAC = x_LEMAC,
 
-            location_wing_cg = location_wing_cg
+            location_wing_cg = location_wing_cg,
+
+            OEW_target_rel = OEW_target_rel,
         )
 
 
@@ -153,6 +157,7 @@ class CgBreakdown:
     x_cg_fus_group: float
     x_cg_wing_group: float
     X_LEMAC_new: float
+    l_h : float
 
 
     def summary(self) -> Table:
@@ -192,8 +197,13 @@ class CgBreakdown:
         )
 
         table.add_row(
-            "[bold]X_LEMAC_new[/bold]",
+            "[bold]X_LEMAC[/bold]",
             f"[bold]{self.X_LEMAC_new:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]Tail Length Estimate (l_h)[/bold]",
+            f"[bold]{self.l_h:.1f}[/bold]",
         )
 
         return table
@@ -262,7 +272,7 @@ class CgCalculator:
     def compute(self) -> CgBreakdown:
         d = self.i
 
-        x_LEMAC = d.x_LEMAC
+        #x_LEMAC = d.x_LEMAC
         MAC = d.MAC
 
         l_f = d.l_f
@@ -325,6 +335,25 @@ class CgCalculator:
 
         location_wing_cg = d.location_wing_cg
 
+        W_wing_group, x_cg_wing_group_rel = self.cg_from_weights(
+            weights=[
+                W_sc,
+                W_lg_main,
+                W_wing,
+                W_engine,
+            ],
+            locations=[
+                MAC,
+                0.5 * MAC,
+                location_wing_cg,
+                cg_location_engines,
+            ],
+        )
+
+        x_cg_OEW_rel_target = d.OEW_target_rel * MAC
+
+        x_LEMAC = x_cg_fus_group - x_cg_OEW_rel_target + (W_wing_group/W_fus_group) * (x_cg_wing_group_rel - x_cg_OEW_rel_target)
+        #x_LEMAC = 17
 
         x_cg_sc = x_LEMAC + MAC
         x_cg_lg_main = x_LEMAC + 0.5 * MAC         #initial estimate from Torenbeek p.301, TODO: to be fixed for cg excursion & tipover angle
@@ -350,7 +379,7 @@ class CgCalculator:
         OEW_excl_fixed = OEW_check - W_fixed
         x_cg_OEW = ((W_fus_group*x_cg_fus_group + W_wing_group*x_cg_wing_group)/(W_fus_group + W_wing_group))
 
-        X_LEMAC_new = x_cg_fus_group - x_cg_OEW + (W_wing_group/W_fus_group) * (x_cg_wing_group - x_cg_OEW)
+        l_h = l_f - (x_LEMAC - 1/4 * MAC) - 0.02*l_f - 3/4 * MAC_h      #TODO here I assumed a 2% of fus length for little cone behind tail considered l_h distance 1/4c wing to 1/4 horizontal tail. 
 
         return CgBreakdown(
             OEW_check=OEW_check,
@@ -360,7 +389,8 @@ class CgCalculator:
             W_fus_group=W_fus_group,
             x_cg_fus_group=x_cg_fus_group,
             x_cg_wing_group=x_cg_wing_group,
-            X_LEMAC_new = X_LEMAC_new,
+            X_LEMAC_new = x_LEMAC,
+            l_h = l_h,
         )
 
 
