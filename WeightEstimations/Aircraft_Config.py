@@ -94,7 +94,8 @@ class AircraftConfig:
 
     # --- Propulsion -----------------------------------------------------
     T_TO_per_engine:  float = 0.0
-    y_engine:         float = 0.0
+    y_engine_2:       float = 0.0
+    y_engine_4:       float = 0.0
     W_propulsion:     float = 0.0
     N_engines:        int   = 2
     N_propellers:      int   = 4
@@ -253,7 +254,8 @@ def default_q400_hycool() -> AircraftConfig:
 
         # Propulsion
         T_TO_per_engine  = 20_000.0,            # Initial Assumption
-        y_engine         = 5.0,                 # Assumed
+        y_engine_2       = 7.0,                 # Assumed
+        y_engine_4       = 5.0,                 # Assumed
         W_propulsion     = 2_500.0,             # Assumed
         N_engines        = 2,                   # Class I Value
         N_propellers      = 4,                   # Class I Value

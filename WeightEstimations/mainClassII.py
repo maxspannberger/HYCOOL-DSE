@@ -127,9 +127,11 @@ class ClassIIResult:
     l_f_m: float = 0.0
     root_chord: float = 0.0
     MAC: float = 0.0
+    l_f: float = 0.0
     Wing_sweep_quarter: float = 0.0
     Wing_sweep_half: float = 0.0
     Wing_sweep_LE: float = 0.0
+    distance_le_mac_to_cg: float = 0.0
 
     def summary(self):
         status_color = "green" if self.converged else "red"
@@ -146,6 +148,8 @@ class ClassIIResult:
             f"Wing Sweep (Quarter): {self.Wing_sweep_quarter*180/np.pi:.2f} deg\n"
             f"Wing Sweep (Half): {self.Wing_sweep_half*180/np.pi:.2f} deg\n"
             f"Wing Sweep (LE): {self.Wing_sweep_LE*180/np.pi:.2f} deg\n"
+            f"Fuselage Diameter: {self.l_f:.2f} m\n"
+            f"Distance from MAC Leading Edge to CG: {self.distance_le_mac_to_cg:.2f} m\n"
         )
         
         perf_info = (
@@ -450,6 +454,27 @@ def run_class_ii(
     print(pwr_bd.gamma_min_prop)
     print(pwr_bd.gamma_min_engine)
 
+    cgwingpos = b / 2 * 0.35
+
+    # c(y) = c_root * [1 - (1 - lambda) * 2y/b] for a trapezoidal wing
+    taper_slope = 1.0 - taper
+    chordatcgpos = c_root * (1.0 - taper_slope * (cgwingpos / (b / 2)))
+
+    macchorddiff = c_root - MAC
+    print(macchorddiff)
+    machspanpos = (
+        macchorddiff / (c_root * taper_slope) * (b / 2)
+        if abs(taper_slope) > 1e-9
+        else 0.0
+    )
+
+
+    cgalong_chord = (0.7 * chordatcgpos - 0.15 * chordatcgpos) * 0.7
+
+
+    # Distance from MAC leading edge (front edge) CG location
+    distance_le_mac_to_cg = np.tan(sweep_LE)*(machspanpos-cgwingpos)+cgalong_chord+0.15*chordatcgpos
+
     return ClassIIResult(
         MTOW       = MTOW,
         MZFW       = MZFW,
@@ -487,10 +512,12 @@ def run_class_ii(
         l_f_m=cfg_iter.l_f,
         root_chord=c_root,
         MAC=MAC,
+        l_f=cfg_updated.d_f,
         Wing_sweep_quarter=sweep_quarter,
         Wing_sweep_half=sweep_half,
         Wing_sweep_LE=sweep_LE,
-        aeroparameters=aero_parameters
+        aeroparameters=aero_parameters,
+        distance_le_mac_to_cg=distance_le_mac_to_cg,
     )
 
 
@@ -644,9 +671,13 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig,drag_r
     if flap_area_TO_ratio >= flap_area_LD_ratio:
         te_flap_area_wing = flap_area_TO_ratio
         driving= "takeoff"
+        deltaCL_max_LD_new=deltaCL_max_LD*te_flap_area_wing/flap_area_LD_ratio
+        aero["delta_CL_max_LD"] = deltaCL_max_LD_new
     else:
         te_flap_area_wing = flap_area_LD_ratio
         driving="landing"
+        deltaCL_max_TO_new=deltaCL_max_TO*te_flap_area_wing/flap_area_TO_ratio
+        aero["CL_max_TO with new area"] = deltaCL_max_TO_new
 
     aero["CL_prandtl"] = CL_adjusted
     aero["CLalpha"] = CLalpha
@@ -729,6 +760,7 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig,drag_r
         delta_CL_flap=deltaCL_max_LD,
         delta_Cl_flap=deltaClmax_LD,
         CL_alpha0_flapped=cfg_updated.CL_alpha0_clean+deltaCL_max_LD,
+        CL_max_TO_with_new_area=aero['CL_max_TO with new area'],
         cdash_c=cdash_c,
         TE_flap_area_wing=te_flap_area_wing,
         delta_defl=30*np.pi/180,
@@ -781,18 +813,29 @@ if __name__ == "__main__":
     cost_per_kg_LH2 = 3.0       #€/kg, which is an estimate for 2050
 
     cfg_2prop = replace(cfg, N_propellers=2)
-    result2=run_class_ii(cfg_2prop,comp=comp_params, tol=1.0, max_iter=100, verbose=False)
+    result2 = run_class_ii(cfg_2prop, comp=comp_params, tol=1.0, max_iter=100, verbose=False)
     
     fuelsavings = result2.W_fuel - result1.W_fuel
-    costsavings=fuelsavings*cost_per_kg_LH2
-    # Highlight fuel and cost savings in a panel to make them stand out
+    costsavings = fuelsavings * cost_per_kg_LH2
+
+    # MTOW change due to using 4 props (result1) vs 2 props (result2)
+    mtow_diff_kg = result1.MTOW - result2.MTOW
+    mtow_pct = (mtow_diff_kg / result2.MTOW * 100.0) if result2.MTOW != 0 else 0.0
+    # signed display and human-readable word
+    mtow_word = "increase" if mtow_diff_kg > 0 else ("decrease" if mtow_diff_kg < 0 else "no change")
+
+    # Highlight fuel, cost savings and MTOW impact in a panel to make them stand out
     savings_text = (
         f"[bold white]Switching to 4 propellers saves[/bold white]\n"
         f"[bold green]{fuelsavings:.1f} kg[/bold green]\n"
-        f"[bold white]Estimated cost savings per flight:[/bold white] [bold yellow]€{costsavings:.2f}[/bold yellow]"
+        f"[bold white]Estimated cost savings per flight:[/bold white] [bold yellow]€{costsavings:.2f}[/bold yellow]\n"
+        f"[bold white]MTOW change (4 prop - 2 prop):[/bold white] [bold]{mtow_diff_kg:+.1f} kg[/bold] "
+        f"[bold white]({mtow_word}, {mtow_pct:+.2f}% vs 2-prop)[/bold white]"
     )
-    print(Panel(savings_text, title="[bold cyan]Fuel & Cost Savings[/bold cyan]", border_style="cyan", expand=False))
+    print(Panel(savings_text, title="[bold cyan]Fuel, Cost & MTOW Impact[/bold cyan]", border_style="cyan", expand=False))
 
     #get_optimal_cl_mach(cfg, force_recompute=True)
 
     print(result1.aeroparameters["cdash_c"])
+
+    print(result1.aeroparameters["CL_max_TO_with_new_area"])

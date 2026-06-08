@@ -589,7 +589,7 @@ class weightEstimation:
                     "gt_hex", "gt_hex", "hts_gen", "hts_gen", "ac_dc", "ac_dc",
                     "dc_ac", "dc_ac","dc_ac","dc_ac", "hts_pow", "hts_pow","hts_pow","hts_pow","open_fan","open_fan","open_fan","open_fan", "cable", "pipe",
                 ],
-                "lengths": {"pipe": 50.0, "cable": 20.0},   #change cable length to 30 meters after iteration to account for more cables needed for DC Bus
+                "lengths": {"pipe": 70.0, "cable": 20.0},   #change cable length to 30 meters after iteration to account for more cables needed for DC Bus
             },
         }
             
