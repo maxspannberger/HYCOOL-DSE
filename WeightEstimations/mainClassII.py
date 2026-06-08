@@ -459,6 +459,7 @@ def run_class_ii(
 
     cgwingpos = b / 2 * 0.35
     turbinewingpos = cfg_updated.b_f / 2 + 5 +cfg_updated.D_propfan/2
+    print(turbinewingpos)
 
     # c(y) = c_root * [1 - (1 - lambda) * 2y/b] for a trapezoidal wing
     taper_slope = 1.0 - taper
@@ -470,16 +471,18 @@ def run_class_ii(
         if abs(taper_slope) > 1e-9
         else 0.0
     )
+    print(f"MAC chord: {MAC:.3f} m, corresponding spanwise position: {machspanpos:.3f} m")
+    print(f"CG chord position: {chordatcgpos:.3f} m, corresponding spanwise position: {cgwingpos:.3f} m")
 
 
-    cgalong_chord = (0.7 * chordatcgpos - 0.15 * chordatcgpos) * 0.7
+    cgalong_chord = (0.7 * chordatcgpos - 0.15 * chordatcgpos) * 0.7+0.15*chordatcgpos
 
 
     # Distance from MAC leading edge (front edge) CG location
-    distance_le_mac_to_cg = np.tan(sweep_LE)*(machspanpos-cgwingpos)+cgalong_chord+0.15*chordatcgpos
+    distance_le_mac_to_cg = np.tan(sweep_LE)*(cgwingpos-machspanpos)+cgalong_chord
 
     #distance from the LE of the inside propeller to the LEMAC
-    distance_le_mac_to_turbine = np.tan(sweep_LE)*(machspanpos-turbinewingpos)
+    distance_le_mac_to_turbine = np.tan(sweep_LE)*(turbinewingpos-machspanpos)
 
     return ClassIIResult(
         MTOW       = MTOW,
