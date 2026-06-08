@@ -37,7 +37,7 @@ tank_options = {
 }
 
 material_options = {
-    'Al-2219-T87': {'E': 73.1e9, 'nu': 0.33, 'S': 300e6, 'S_t': 476e6, 'density': 2840}, # E in Pa, S in Pa, density in kg/m^3
+    'Al-2219-T87': {'E': 73.1e9, 'nu': 0.33, 'S': 300e6, 'S_t': 476e6, 'density': 2840},
 }
 
 def t_hoop_stress(P_int, P_ext, D, S_t, spherical=False):

@@ -1,23 +1,47 @@
 """
-Sizes the tank and calculates the dimensions of the tank. 
+Thermal design of the LH2 storage tank:
+  - maximum allowable heat leak (Ei / Ef)
+  - polyurethane foam insulation sizing (Eq. 2)
+  - vacuum / MLI insulation sizing (Lockheed equation)
 """
 
 from CoolProp.CoolProp import PropsSI
 from scipy.integrate import quad
 from scipy.optimize import brentq
-import numpy as np
 from dataclasses import dataclass
+from typing import Optional
 from geomDesign import Geometry
 import properties as props
-
-"""
-@dataclass(frozen=True)
-class Thermals:
-"""  
 
 
 FLUID = "parahydrogen"
 BAR = 1e5  # Pa per bar
+
+
+@dataclass(frozen=True)
+class InsulationResult:
+    delta_ins:   float          # insulation thickness [m]
+    m_ins:       float          # insulation mass [kg]
+    Q_leak:      float          # effective heat leak [W]
+    Ts:          float          # outer surface temperature [K]
+    constrained: bool           # True if freeze constraint is active
+    N_layers:    Optional[int]  # MLI layer count (vacuum only, else None)
+
+    def print_summary(self):
+        w = 54
+        print("\n" + "=" * w)
+        print(f"{'  INSULATION SIZING RESULTS':^{w}}")
+        print("=" * w)
+        print(f"  {'Insulation thickness':<28}  {self.delta_ins*100:>8.2f}  cm")
+        if self.N_layers is not None:
+            print(f"  {'MLI layers':<28}  {self.N_layers:>8}  -")
+        print(f"  {'Insulation mass':<28}  {self.m_ins:>8.2f}  kg")
+        print(f"  {'Effective heat leak':<28}  {self.Q_leak:>8.2f}  W")
+        print(f"  {'Outer surface temperature':<28}  {self.Ts:>8.2f}  K"
+              f"  ({self.Ts - 273.15:.1f} deg C)")
+        if self.constrained:
+            print(f"\n  NOTE: freeze constraint active — Ts pinned at 273 K.")
+        print("=" * w + "\n")
 
 
 def k_foam(T: float) -> float:
@@ -28,24 +52,94 @@ def k_foam(T: float) -> float:
     return 1.5e-4 * T + 0.01352
 
 
-def k_MLI(T: float, t_layer: float = 3e-3, emissivity: float = 0.03) -> float:
-    """Effective thermal conductivity per unit thickness of vacuum MLI [W/(m·K)].
+# ------------------------------------------------------------------
+# Lockheed MLI equation constants
+# Empirical values for double-aluminized mylar (DAM) with Dacron net spacers.
+# Calibrated to give ~1–3 W/m² for 10–20 layers between 293 K and 20 K.
+# Adjust to match your specific MLI material and construction.
+# ------------------------------------------------------------------
+_C_S = 2.7e-7    # solid conduction coefficient  [W/(m²·K²)]
+_C_R = 6.0e-10   # radiation coefficient          [W/(m²·K^4.67)]
+_C_G = 1.0       # gas conduction coefficient     [W/(m²·Pa·K^0.52)]
 
-    Derived from the differential radiation law between parallel shields (T³ law):
-        k_MLI = 4σT³ · t_layer / (2/ε − 1)
 
-    Integrating this in Eq. (2) is equivalent to the standard N-shield radiation
-    equation: Q = σA(T_h⁴ − T_c⁴) / [(N+1)(2/ε−1)], consistent with the paper's
-    framework but for MLI instead of foam.
+def q_lockheed(T_h: float, T_c: float, N: int,
+               emissivity: float = 0.03,
+               P_residual: float = 1e-4,
+               C_s: float = _C_S,
+               C_R: float = _C_R,
+               C_G: float = _C_G) -> float:
     """
-    return 4.0 * 5.670374419e-8 * T**3 * t_layer / (2.0 / emissivity - 1.0)
+    Lockheed equation: total heat flux through an N-layer MLI system [W/m²].
+
+        Q̇/A = ( C_s · T̄_m · N^2.63 · (T_h − T_c) ) / (N − 1)
+             + ( C_R · ε · (T_h^4.67 − T_c^4.67) ) / N
+             + ( C_G · P · (T_h^0.52 − T_c^0.52) ) / N
+
+    The three terms represent solid conduction through spacers, radiation
+    between layers, and residual gas conduction respectively.
+
+    Parameters
+    ----------
+    T_h        : hot-wall (outer jacket) temperature [K]
+    T_c        : cold-wall (tank) temperature [K]
+    N          : number of MLI layers [-]
+    emissivity : emissivity of MLI layers [-]
+    P_residual : residual gas pressure in the vacuum gap [Pa]
+    C_s, C_R, C_G : Lockheed equation constants (see module-level defaults)
+
+    Notes
+    -----
+    N = 0 returns the bare two-wall radiation heat flux (no shields).
+    N = 1 clamps the solid-conduction denominator to 1 to avoid division by zero;
+    for N ≥ 2 the equation is used as written.
+    """
+    _SIGMA = 5.670374419e-8
+    if N == 0:
+        return _SIGMA * (T_h**4 - T_c**4) / (2.0 / emissivity - 1.0)
+    T_m    = 0.5 * (T_h + T_c)
+    denom  = max(N - 1, 1)          # clamp at N=1 to avoid zero denominator
+    q_solid = C_s * T_m * N**2.63 * (T_h - T_c) / denom
+    q_rad   = C_R * emissivity * (T_h**4.67 - T_c**4.67) / N
+    q_gas   = C_G * P_residual * (T_h**0.52 - T_c**0.52) / N
+    return q_solid + q_rad + q_gas
+
+
+def k_MLI(T: float, N: int,
+          t_layer: float = 3e-3,
+          emissivity: float = 0.03,
+          P_residual: float = 1e-4,
+          C_s: float = _C_S,
+          C_R: float = _C_R,
+          C_G: float = _C_G) -> float:
+    """
+    Differential effective thermal conductivity of N-layer MLI [W/(m·K)],
+    derived from the Lockheed equation:
+
+        k_MLI(T) = N · t_layer · ∂(Q̇/A) / ∂T_h
+
+    where the partial derivative is taken with T_c fixed:
+
+        ∂(Q̇/A)/∂T_h = C_s · N^2.63/(N−1) · T
+                      + C_R · ε/N · 4.67 · T^3.67
+                      + C_G · P/N · 0.52 · T^−0.48
+
+    Integrating k_MLI from T_c to T_h recovers the Lockheed heat flux,
+    consistent with the Eq. (2) framework used for foam insulation.
+
+    Valid for N ≥ 2.
+    """
+    if N < 2:
+        raise ValueError(f"k_MLI (Lockheed) requires N >= 2, got N = {N}.")
+    dk_solid = C_s * N**2.63 / (N - 1) * T
+    dk_rad   = C_R * emissivity / N * 4.67 * T**3.67
+    dk_gas   = C_G * P_residual / N * 0.52 * T**(-0.48)
+    return N * t_layer * (dk_solid + dk_rad + dk_gas)
 
 
 class ThermalDesign:
     def __init__(self):
         pass
-
-    ### Helper functions for thermal design ###
 
     def calculateMaxHeatLeak(self, V_tank: float, yl_0: float,
                              p_fill_bar: float, p_vent_bar: float,
@@ -87,81 +181,6 @@ class ThermalDesign:
 
         Q_leak = (Ef - Ei) / tau_H_s
         return Q_leak, Ei, Ef
-
-    def calculatePrandtlNumber(self, P, T):
-        """Calculate the Prandtl number."""
-        Pr = PropsSI('Prandtl', 'P', P, 'T', T, 'Hydrogen')
-        return Pr
-    
-    def calculateRayleighNumber(self, P, T1, T2, L, Pr):
-        """Calculate the Rayleigh number."""
-        beta = PropsSI('isobaric_expansion_coeff', 'P', P, 'T', T1, 'Hydrogen')
-        nu = PropsSI('viscosity', 'P', P, 'T', T1, 'Hydrogen') / PropsSI('D', 'P', P, 'T', T1, 'Hydrogen')
-        alpha = PropsSI('conductivity', 'P', P, 'T', T1, 'Hydrogen') / (PropsSI('D', 'P', P, 'T', T1, 'Hydrogen') * PropsSI('Cp0', 'P', P, 'T', T1, 'Hydrogen'))
-        g = 9.81  # m/s^2
-        Ra = (g * beta * (T1 - T2) * (L**3) * Pr) / (nu ** 2)
-        return Ra
-    
-    def calculateHeatTransferCoefficient(self, Nu, k, L):
-        """Calculate the heat transfer coefficient."""
-        h = (Nu * k) / L
-        return h
-
-    ### Main functions for thermal design ###
-
-    def internalConvection(self, geom: Geometry, P, T):
-        """Calculate the internal thermal resistance due to natural convection within the tank."""
-        R = geom.b
-        hf = geom.h_fill
-        hv = geom.h_vent
-
-        # 1. Calculate the Nusselt Number and heat transfer coefficient at the tank ceiling.
-        Nu_1 = 1.0  # Example calculation; replace with actual calculation
-        k_1 = PropsSI('conductivity', 'P', P, 'T', T, 'Hydrogen')
-        h_1 = self.calculateHeatTransferCoefficient(Nu_1, k_1, L = 2 * R - hf)  # Example calculation; replace with actual calculation
-
-        # 2. Calculate the Nusselt Number and heat transfer coefficient at the tank floor.
-        Pr_2 = self.calculatePrandtlNumber(self, P, T)  # Example calculation; replace with actual calculation
-        Ra_2 = self.calculateRayleighNumber(self, P, T1, T2, L, Pr)  # Example calculation; replace with actual calculation
-        k_2 = PropsSI('conductivity', 'P', P, 'T', T, 'Hydrogen')
-
-        if Ra_2 < 1e9 and Ra_2 > 1e4:
-            Nu_2 = 0.54 * (Ra_2 ** (1/3))  # Example calculation; replace with actual calculation
-        elif Ra_2 >= 1e9 and Ra_2 < 1e12:
-            Nu_2 = 0.098 * (Ra_2 ** (1/4))  # Example calculation; replace with actual calculation
-        
-        h_2 = self.calculateHeatTransferCoefficient(Nu_2, k_2, L = hf)  # Example calculation; replace with actual calculation
-
-        # 3. Calculate the Nusselt Number and heat transfer coefficient at the caps in contact with LH2.
-        Pr_3 = self.calculatePrandtlNumber(self, P, T)  # Example calculation; replace with actual calculation
-        Ra_3 = self.calculateRayleighNumber(P, T1, T2, L, Pr)  # Example calculation; replace with actual calculation
-        Nu_3 = (0.825 + ((0.387 * (Ra_3 ** (1/6)))/((1 + (0.492 / Pr_3) ** (9/16)) ** (8/27)))) ** 2  # Example calculation; replace with actual calculation
-        k_3 = PropsSI('conductivity', 'P', P, 'T', T, 'Hydrogen')
-        h_3 = self.calculateHeatTransferCoefficient(Nu_3, k_3, L = hf)  # Example calculation; replace with actual calculation
-
-        # 4. Calculate the Nusselt Number and heat transfer coefficient at the caps in contact with GH2.
-        Pr_4 = self.calculatePrandtlNumber(self, P, T)  # Example calculation; replace with actual calculation
-        Ra_4 = self.calculateRayleighNumber(self, P, T1, T2, L, Pr)  # Example calculation; replace with actual calculation
-        Nu_4 = (0.825 + ((0.387 * (Ra_4 ** (1/6)))/((1 + (0.492 / Pr_4) ** (9/16)) ** (8/27)))) ** 2
-        k_4 = PropsSI('conductivity', 'P', P, 'T', T, 'Hydrogen')
-        h_4 = self.calculateHeatTransferCoefficient(Nu_4, k_4, L = 2 * R - hf)  # Example calculation; replace with actual calculation
-
-        # 5. Calculate the overall thermal resistance for internal convection.
-        h_in_l = (1 / geom.Sw_fill['total LH2']) * (h_2 * geom.Sw_fill['floor LH2'] + h_3 * geom.Sw_fill['caps LH2'])
-        h_in_g = (1 / geom.Sw_fill['total GH2']) * (h_1 * geom.Sw_fill['ceil GH2'] + h_4 * geom.Sw_fill['caps GH2'])
-
-        h_in = (1 / geom.Sw_fill['total']) * (h_in_l * geom.Sw_fill['total LH2'] + h_in_g * geom.Sw_fill['total GH2'])  # Example calculation; replace with actual calculation
-        R_in = 1 / (h_in * geom.A_tank)
-
-        return R_in 
-
-
-    def thermalConduction(self):
-        return 
-        
-
-    def externalConvection(self):
-        return
 
     # ------------------------------------------------------------------
     # Shared helper: Churchill-Chu natural convection on horizontal cylinder
@@ -257,18 +276,19 @@ class ThermalDesign:
 
         Returns
         -------
-        dict : delta_ins [m], Q_leak [W], Ts [K], m_ins [kg], constrained [bool]
+        InsulationResult
         """
         delta, Q_leak, Ts, constrained = self._size_insulation_core(
             geom, Q_leak_max, k_foam, p_fill_bar, T0, T_freeze
         )
-        return {
-            'delta_ins':   delta,
-            'Q_leak':      Q_leak,
-            'Ts':          Ts,
-            'm_ins':       rho_ins * geom.A_tank * delta,
-            'constrained': constrained,
-        }
+        return InsulationResult(
+            delta_ins   = delta,
+            m_ins       = rho_ins * geom.A_tank * delta,
+            Q_leak      = Q_leak,
+            Ts          = Ts,
+            constrained = constrained,
+            N_layers    = None,
+        )
 
     def sizeVacuumInsulation(self, geom: Geometry, Q_leak_max: float,
                              p_fill_bar: float = 1.0,
@@ -276,23 +296,22 @@ class ThermalDesign:
                              emissivity: float = 0.03,
                              t_layer: float = 3e-3,
                              rho_layer_areal: float = 0.20,
-                             delta_gap: float = 0.05) -> dict:
+                             delta_gap: float = 0.05,
+                             P_residual: float = 1e-4,
+                             C_s: float = _C_S,
+                             C_R: float = _C_R,
+                             C_G: float = _C_G) -> InsulationResult:
         """
-        Size MLI for a vacuum-jacketed tank following the paper's Eq. (2) framework.
+        Size MLI for a vacuum-jacketed tank using the Lockheed equation.
 
-        The effective thermal conductivity of vacuum MLI is derived from the
-        differential radiation law for parallel shields (T³ law):
+        The outer-surface temperature Ts is found from the Churchill-Chu
+        external natural-convection balance (same as sizeInsulation). The
+        minimum integer N such that:
 
-            k_MLI(T) = 4σT³ · t_layer / (2/ε − 1)
+            q_lockheed(Ts, T_LH2, N) · A ≤ Q̇_leak
 
-        Plugged into Eq. (2):
-
-            δ_MLI = (A / Q̇_leak) · ∫[T_LH2 → Ts] k_MLI(T) dT
-
-        The continuous δ_MLI is then rounded up to an integer layer count
-        N = ⌈δ_MLI / t_layer⌉, and Q̇_leak is recalculated for that N using
-        the exact radiation equation. Ts and the T_freeze constraint follow
-        the same external-convection model as sizeInsulation.
+        is then found by incrementing N from 0. Since D_outer = 2(c + δ_gap + N·t_layer)
+        feeds back into h_air → Ts, the procedure iterates until N converges.
 
         Parameters
         ----------
@@ -301,39 +320,131 @@ class ThermalDesign:
         p_fill_bar       : fill pressure [bar]
         T0               : ambient temperature [K]
         T_freeze         : minimum allowed outer-surface temperature [K]
-        emissivity       : emissivity of each MLI layer and walls (aluminized ≈ 0.03)
-        t_layer          : thickness per MLI layer incl. spacers [m]
+        emissivity       : emissivity of MLI layers and tank walls [-]
+        t_layer          : thickness per MLI layer including spacers [m]
         rho_layer_areal  : areal mass density per MLI layer [kg/m²]
         delta_gap        : minimum structural vacuum gap (independent of N) [m]
+        P_residual       : residual gas pressure in the vacuum gap [Pa]
+        C_s, C_R, C_G   : Lockheed equation constants (see module-level defaults)
 
         Returns
         -------
-        dict : N_layers [-], delta_ins [m], Q_leak [W], Ts [K],
-               m_ins [kg], constrained [bool]
+        InsulationResult
         """
-        import math
+        A   = geom.A_tank
+        c   = geom.c
+        T_LH2 = PropsSI('T', 'P', p_fill_bar * BAR, 'Q', 0, FLUID)
 
-        def _k_mli(T):
-            return k_MLI(T, t_layer=t_layer, emissivity=emissivity)
+        N           = 0
+        constrained = False
+        Q_leak      = Q_leak_max
+        Ts          = T0 - 10.0
 
-        delta_cont, _, Ts, constrained = self._size_insulation_core(
-            geom, Q_leak_max, _k_mli, p_fill_bar, T0, T_freeze
+        for _ in range(50):
+            D_outer      = 2.0 * (c + delta_gap + N * t_layer)
+            Q_at_freeze  = self._h_air(T_freeze, D_outer, T0) * A * (T0 - T_freeze)
+
+            if Q_at_freeze < Q_leak_max:
+                Ts          = T_freeze
+                Q_leak      = Q_at_freeze
+                constrained = True
+            else:
+                Ts = brentq(
+                    lambda Ts_: self._h_air(Ts_, D_outer, T0) * A * (T0 - Ts_) - Q_leak_max,
+                    T_freeze + 1e-3, T0 - 1e-3,
+                )
+                Q_leak      = Q_leak_max
+                constrained = False
+
+            q_target = Q_leak / A
+
+            # Find minimum N such that Lockheed heat flux ≤ target
+            N_new = next(
+                (n for n in range(200)
+                 if q_lockheed(Ts, T_LH2, n, emissivity, P_residual, C_s, C_R, C_G) <= q_target),
+                200,
+            )
+
+            if N_new == N:
+                break
+            N = N_new
+
+        Q_leak_actual = q_lockheed(Ts, T_LH2, N, emissivity, P_residual, C_s, C_R, C_G) * A
+
+        return InsulationResult(
+            delta_ins   = delta_gap + N * t_layer,
+            m_ins       = rho_layer_areal * A * N,
+            Q_leak      = Q_leak_actual,
+            Ts          = Ts,
+            constrained = constrained,
+            N_layers    = N,
         )
 
-        N = math.ceil(delta_cont / t_layer)
 
-        # Exact heat leak with integer N (radiation equation)
-        SIGMA = 5.670374419e-8
-        T_LH2 = PropsSI('T', 'P', p_fill_bar * BAR, 'Q', 0, FLUID)
-        Q_leak_actual = (SIGMA * geom.A_tank * (Ts**4 - T_LH2**4)
-                         / ((N + 1) * (2.0 / emissivity - 1.0)))
+def _print_results(ins_type: str, Q_leak_max: float,
+                   result: InsulationResult) -> None:
+    print(f"\n  Insulation type : {ins_type.upper()}")
+    print(f"  Q_leak_max      : {Q_leak_max:.2f} W")
+    result.print_summary()
 
-        return {
-            'N_layers':    N,
-            'delta_ins':   delta_gap + N * t_layer,
-            'Q_leak':      Q_leak_actual,
-            'Ts':          Ts,
-            'm_ins':       rho_layer_areal * geom.A_tank * N,
-            'constrained': constrained,
-        }
 
+if __name__ == "__main__":
+    # ------------------------------------------------------------------ #
+    #  USER INPUTS                                                         #
+    # ------------------------------------------------------------------ #
+    insulation_type = 'vacuum'     # 'foam' or 'vacuum'
+    tau_H_hours     = 24.0        # holding time [hours]
+
+    m_H2    = 500.0              # hydrogen mass per tank [kg]
+    p_fill  = 1.0                # fill pressure [bar]
+    p_vent  = 1.63               # vent pressure [bar]
+    y_max   = 0.97               # max liquid volume fraction before venting [-]
+    phi     = 1.0                # tank shape: a/c ratio
+    psi     = 1.0                # tank shape: b/c ratio
+    Lambda  = 0.55               # tank shape: shell fraction
+    # ------------------------------------------------------------------ #
+
+    from geomDesign import GeomDesign
+
+    tau_H_s = tau_H_hours * 3600.0
+
+    # 1. Geometry
+    gd   = GeomDesign(p_vent=p_vent, p_fill=p_fill, y_max=y_max)
+    yl_0 = gd.calculateInitialLiquidMassFraction(yl_vent=y_max)
+    rho  = PropsSI('D', 'P', p_vent * BAR, 'Q', 0, FLUID)
+    V    = gd.calculateTankVolume(rho_H2=rho, m_H2=m_H2, yl_0=yl_0)
+    geom = gd.calculateTankGeometry(V, phi=phi, psi=psi, Lambda=Lambda)
+
+    w = 54
+    print("\n" + "=" * w)
+    print(f"{'  DESIGN INPUTS':^{w}}")
+    print("=" * w)
+    print(f"  {'Insulation type':<28}  {insulation_type.upper():>10}")
+    print(f"  {'Holding time':<28}  {tau_H_hours:>10.1f}  h")
+    print(f"  {'Hydrogen mass':<28}  {m_H2:>10.1f}  kg")
+    print(f"  {'Fill pressure':<28}  {p_fill:>10.2f}  bar")
+    print(f"  {'Vent pressure':<28}  {p_vent:>10.2f}  bar")
+    print(f"  {'Initial liquid fraction':<28}  {yl_0:>10.4f}  -")
+    print(f"  {'Tank volume':<28}  {V:>10.4f}  m^3")
+    print(f"  {'Tank surface area':<28}  {geom.A_tank:>10.4f}  m^2")
+    print("=" * w)
+
+    # 2. Max heat leak
+    td = ThermalDesign()
+    Q_leak, Ei, Ef = td.calculateMaxHeatLeak(V, yl_0, p_fill, p_vent, y_max, tau_H_s)
+
+    print(f"\n  Ei          = {Ei/1e6:.4f} MJ")
+    print(f"  Ef          = {Ef/1e6:.4f} MJ")
+    print(f"  Ef - Ei     = {(Ef-Ei)/1e6:.4f} MJ")
+    print(f"  Q_leak_max  = {Q_leak:.2f} W")
+
+    # 3. Size insulation
+    if insulation_type == 'foam':
+        result = td.sizeInsulation(geom, Q_leak)
+    elif insulation_type == 'vacuum':
+        result = td.sizeVacuumInsulation(geom, Q_leak)
+    else:
+        raise ValueError(f"Unknown insulation type '{insulation_type}'. "
+                         f"Choose 'foam' or 'vacuum'.")
+
+    _print_results(insulation_type, Q_leak, result)
