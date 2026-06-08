@@ -270,6 +270,7 @@ def run_class_ii(
     # Step 2: outer MTOW iteration with mission-power coupling
     # -----------------------------------------------------------------
     MTOW    = cfg.MTOW_initial
+    W_fixed = cfg.W_fixed_frn * MTOW
     W_fuel  = cfg.m_dot_fuel * cfg.range_m / cfg.V_cruise
     drag_bd = DragBreakdown()
     wt_bd   = WeightBreakdown()
@@ -365,11 +366,11 @@ def run_class_ii(
         wt_bd = weightEstimation(wt_inp, comp).compute()
 
         # Close the loop
-        MZFW_new = wt_bd.W_empty + cfg.W_payload + cfg.W_fixed
+        MZFW_new = wt_bd.W_empty + cfg.W_payload + W_fixed
         MTOW_new = MZFW_new + W_fuel
         bt_charging_ratio = wt_bd.bt_charging_ratio
         delta    = abs(MTOW_new - MTOW)
-        OEW_kg       = wt_bd.W_empty+cfg.W_fixed
+        OEW_kg       = wt_bd.W_empty+W_fixed
 
         iteration_log.append(dict(
             iter         = it,
@@ -405,7 +406,7 @@ def run_class_ii(
                 f"L/D={drag_bd.L_over_D:5.2f}, "
                 f"P_cr={mis_bd.P_cruise_shaft/1000:5.0f} kW, "
                 f"fuel={W_fuel:6.1f} kg, "
-                f"OEW={wt_bd.W_empty+cfg.W_fixed:7.1f} kg)")
+                f"OEW={wt_bd.W_empty+W_fixed:7.1f} kg)")
 
         MTOW = MTOW_new
 
@@ -416,7 +417,7 @@ def run_class_ii(
             converged = True
             break
 
-    MZFW = wt_bd.W_empty + cfg.W_payload + cfg.W_fixed
+    MZFW = wt_bd.W_empty + cfg.W_payload + W_fixed
 
     # -----------------------------------------------------------------
     # Step 3 (post-loop): power & takeoff thrust sizing
@@ -457,7 +458,7 @@ def run_class_ii(
         OEW        = OEW_kg,
         W_fuel     = mis_bd.m_LH2_total,
         W_payload  = cfg.W_payload,
-        W_fixed    = cfg.W_fixed,
+        W_fixed    = W_fixed,
         W_prop     = wt_bd.W_total_prop,
         L_over_D   = drag_bd.L_over_D,
         CL_cruise  = drag_bd.CL_cruise,
@@ -746,7 +747,7 @@ if __name__ == "__main__":
     cfg = default_q400_hycool()
     result1 = run_class_ii(cfg,comp=comp_params, tol=1.0, max_iter=100, verbose=True)
 
-    # print_final_geometry(cfg, result1)
+    print_final_geometry(cfg, result1)
 
     paths = export_final_geometry(
         cfg,
