@@ -132,6 +132,7 @@ class ClassIIResult:
     Wing_sweep_half: float = 0.0
     Wing_sweep_LE: float = 0.0
     distance_le_mac_to_cg: float = 0.0
+    distance_le_mac_to_turbine: float = 0.0
 
     def summary(self):
         status_color = "green" if self.converged else "red"
@@ -150,6 +151,7 @@ class ClassIIResult:
             f"Wing Sweep (LE): {self.Wing_sweep_LE*180/np.pi:.2f} deg\n"
             f"Fuselage Diameter: {self.l_f:.2f} m\n"
             f"Distance from MAC Leading Edge to CG: {self.distance_le_mac_to_cg:.2f} m\n"
+            f"Distance from MAC Leading Edge to Turbine: {self.distance_le_mac_to_turbine:.2f} m\n"
         )
         
         perf_info = (
@@ -455,13 +457,13 @@ def run_class_ii(
     print(pwr_bd.gamma_min_engine)
 
     cgwingpos = b / 2 * 0.35
+    turbinewingpos = cfg_updated.b_f / 2 + 5 +cfg_updated.D_propfan/2
 
     # c(y) = c_root * [1 - (1 - lambda) * 2y/b] for a trapezoidal wing
     taper_slope = 1.0 - taper
     chordatcgpos = c_root * (1.0 - taper_slope * (cgwingpos / (b / 2)))
 
     macchorddiff = c_root - MAC
-    print(macchorddiff)
     machspanpos = (
         macchorddiff / (c_root * taper_slope) * (b / 2)
         if abs(taper_slope) > 1e-9
@@ -474,6 +476,9 @@ def run_class_ii(
 
     # Distance from MAC leading edge (front edge) CG location
     distance_le_mac_to_cg = np.tan(sweep_LE)*(machspanpos-cgwingpos)+cgalong_chord+0.15*chordatcgpos
+
+    #distance from the LE of the inside propeller to the LEMAC
+    distance_le_mac_to_turbine = np.tan(sweep_LE)*(machspanpos-turbinewingpos)
 
     return ClassIIResult(
         MTOW       = MTOW,
@@ -518,6 +523,7 @@ def run_class_ii(
         Wing_sweep_LE=sweep_LE,
         aeroparameters=aero_parameters,
         distance_le_mac_to_cg=distance_le_mac_to_cg,
+        distance_le_mac_to_turbine=distance_le_mac_to_turbine,
     )
 
 

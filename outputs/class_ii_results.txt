@@ -27,7 +27,7 @@ Tail Sizing (initial)
   S_h_control    =  0
   S_h_driver     =  stability (V_h)
   S_v_stability  =  13.337
-  S_v_control    =  5.51168
+  S_v_control    =  9.31473
   S_v_driver     =  stability (V_v)
   V_h            =  0.95
   V_v            =  0.1
@@ -37,7 +37,7 @@ Tail Sizing (initial)
   Se_Sh          =  0.31
   S_rudder       =  3.33426
   Sr_Sv          =  0.25
-  M_engine       =  80000
+  M_engine       =  1.352000e+05
   M_rudder       =  1.382730e+05
   OEI_ok         =  True
   S_aileron      =  2.2051
@@ -50,25 +50,25 @@ Tail Sizing (initial)
 Tail Sizing (rechecked w/ T_TO)
 ------------------------------------------------------------------------
   S_h            =  14.9737
-  S_v            =  14.9347
+  S_v            =  25.2397
   b_h            =  8.20864
-  b_v            =  5.03875
+  b_v            =  6.55038
   S_h_stability  =  14.9737
   S_h_control    =  0
   S_h_driver     =  stability (V_h)
   S_v_stability  =  14.6927
-  S_v_control    =  14.9347
+  S_v_control    =  25.2397
   S_v_driver     =  control (OEI rudder)
   V_h            =  0.95
-  V_v            =  0.101647
+  V_v            =  0.171784
   V_h_ok         =  True
   V_v_ok         =  True
   S_elevator     =  4.64186
   Se_Sh          =  0.31
-  S_rudder       =  5.22715
+  S_rudder       =  8.83389
   Sr_Sv          =  0.35
-  M_engine       =  2.167722e+05
-  M_rudder       =  2.167722e+05
+  M_engine       =  3.663450e+05
+  M_rudder       =  3.663450e+05
   OEI_ok         =  True
   S_aileron      =  2.35211
   Sa_Sref        =  0.027

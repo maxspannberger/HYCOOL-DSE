@@ -79,6 +79,8 @@ class TailSizing_Input:
     N_propellers:      int   = 0
     y_engine_2:       float = 0.0
     y_engine_4:       float = 0.0
+    d_propfan:       float = 0.0
+    d_fuselage:      float = 0.0
     V_MC_factor:    float = 1.13
     delta_r_max:    float = np.deg2rad(35)
 
@@ -129,7 +131,9 @@ class TailSizing_Input:
             T_TO        = cfg.T_TO_per_engine,
             y_engine_2    = cfg.y_engine_2,
             y_engine_4  =cfg.y_engine_4,
+            d_propfan = cfg.D_propfan,
             N_propellers   = cfg.N_propellers,
+            d_fuselage       = cfg.d_f
         )
 
 
@@ -227,7 +231,7 @@ class TailSizingEstimator:
             S_ref=d.S_ref, MAC=d.MAC, b=d.b,
             l_h=d.l_h, l_v=d.l_v,
             MTOW=d.MTOW, V_stall=d.V_stall, V_cruise=d.V_cruise,
-            T_TO=d.T_TO, y_engine_2=d.y_engine_2, y_engine_4=d.y_engine_4,
+            T_TO=d.T_TO, y_engine_2=d.y_engine_2, y_engine_4=d.y_engine_4,d_propfan=d.d_propfan,d_fuselage=d.d_fuselage
         )
         missing = [k for k, v in required.items() if v <= 0]
         if missing:
@@ -292,10 +296,11 @@ class TailSizingEstimator:
         d        = self.i
         V_mc     = d.V_MC_factor * d.V_stall
         q_mc     = 0.5 * self.rho_SL * V_mc**2
+        #check if this is changed in the github
         if d.N_propellers > 2:
-            M_engine = d.T_TO *0.8 * d.y_engine_4       #since only 80% of thrust is available for worst case scenario with 4 engines, per CS-25.149
+            M_engine = d.T_TO *0.8 * (d.y_engine_4+d.d_propfan/2+d.d_fuselage/2)       #since only 80% of thrust is available for worst case scenario with 4 engines, per CS-25.149
         elif d.N_propellers == 2:
-            M_engine = d.T_TO * d.y_engine_2
+            M_engine = d.T_TO * (d.y_engine_2+d.d_propfan/2+d.d_fuselage/2)       #since only 80% of thrust is available for worst case scenario with 4 engines, per CS-25.149
 
         S_v_min = M_engine / (
             self.k_r * d.Sr_Sv_max * d.l_v * q_mc * d.delta_r_max
@@ -330,9 +335,9 @@ class TailSizingEstimator:
         V_mc     = d.V_MC_factor * d.V_stall
         q_mc     = 0.5 * self.rho_SL * V_mc**2
         if d.N_propellers > 2:
-            M_engine = d.T_TO *0.8 * d.y_engine_4       #since only 80% of thrust is available for worst case scenario with 4 engines, per CS-25.149
+            M_engine = d.T_TO *0.8 * (d.y_engine_4+d.d_propfan/2+d.d_fuselage/2)       #since only 80% of thrust is available for worst case scenario with 4 engines, per CS-25.149
         elif d.N_propellers == 2:
-            M_engine = d.T_TO * d.y_engine_2
+            M_engine = d.T_TO * (d.y_engine_2+d.d_propfan/2+d.d_fuselage/2)       #since only 80% of thrust is available for worst case scenario with 4 engines, per CS-25.149
 
         S_r_required = M_engine / (self.k_r * d.l_v * q_mc * d.delta_r_max)
         Sr_Sv        = np.clip(S_r_required / S_v, d.Sr_Sv_min, d.Sr_Sv_max)

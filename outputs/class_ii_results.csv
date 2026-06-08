@@ -17,7 +17,7 @@ Tail Sizing (initial),S_h_stability,13.5921
 Tail Sizing (initial),S_h_control,0
 Tail Sizing (initial),S_h_driver,stability (V_h)
 Tail Sizing (initial),S_v_stability,13.337
-Tail Sizing (initial),S_v_control,5.51168
+Tail Sizing (initial),S_v_control,9.31473
 Tail Sizing (initial),S_v_driver,stability (V_v)
 Tail Sizing (initial),V_h,0.95
 Tail Sizing (initial),V_v,0.1
@@ -27,7 +27,7 @@ Tail Sizing (initial),S_elevator,4.21355
 Tail Sizing (initial),Se_Sh,0.31
 Tail Sizing (initial),S_rudder,3.33426
 Tail Sizing (initial),Sr_Sv,0.25
-Tail Sizing (initial),M_engine,80000
+Tail Sizing (initial),M_engine,1.352000e+05
 Tail Sizing (initial),M_rudder,1.382730e+05
 Tail Sizing (initial),OEI_ok,True
 Tail Sizing (initial),S_aileron,2.2051
@@ -36,25 +36,25 @@ Tail Sizing (initial),p_achieved,0.177541
 Tail Sizing (initial),p_required,0.0747998
 Tail Sizing (initial),roll_ok,True
 Tail Sizing (rechecked w/ T_TO),S_h,14.9737
-Tail Sizing (rechecked w/ T_TO),S_v,14.9347
+Tail Sizing (rechecked w/ T_TO),S_v,25.2397
 Tail Sizing (rechecked w/ T_TO),b_h,8.20864
-Tail Sizing (rechecked w/ T_TO),b_v,5.03875
+Tail Sizing (rechecked w/ T_TO),b_v,6.55038
 Tail Sizing (rechecked w/ T_TO),S_h_stability,14.9737
 Tail Sizing (rechecked w/ T_TO),S_h_control,0
 Tail Sizing (rechecked w/ T_TO),S_h_driver,stability (V_h)
 Tail Sizing (rechecked w/ T_TO),S_v_stability,14.6927
-Tail Sizing (rechecked w/ T_TO),S_v_control,14.9347
+Tail Sizing (rechecked w/ T_TO),S_v_control,25.2397
 Tail Sizing (rechecked w/ T_TO),S_v_driver,control (OEI rudder)
 Tail Sizing (rechecked w/ T_TO),V_h,0.95
-Tail Sizing (rechecked w/ T_TO),V_v,0.101647
+Tail Sizing (rechecked w/ T_TO),V_v,0.171784
 Tail Sizing (rechecked w/ T_TO),V_h_ok,True
 Tail Sizing (rechecked w/ T_TO),V_v_ok,True
 Tail Sizing (rechecked w/ T_TO),S_elevator,4.64186
 Tail Sizing (rechecked w/ T_TO),Se_Sh,0.31
-Tail Sizing (rechecked w/ T_TO),S_rudder,5.22715
+Tail Sizing (rechecked w/ T_TO),S_rudder,8.83389
 Tail Sizing (rechecked w/ T_TO),Sr_Sv,0.35
-Tail Sizing (rechecked w/ T_TO),M_engine,2.167722e+05
-Tail Sizing (rechecked w/ T_TO),M_rudder,2.167722e+05
+Tail Sizing (rechecked w/ T_TO),M_engine,3.663450e+05
+Tail Sizing (rechecked w/ T_TO),M_rudder,3.663450e+05
 Tail Sizing (rechecked w/ T_TO),OEI_ok,True
 Tail Sizing (rechecked w/ T_TO),S_aileron,2.35211
 Tail Sizing (rechecked w/ T_TO),Sa_Sref,0.027

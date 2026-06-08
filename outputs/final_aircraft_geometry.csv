@@ -29,14 +29,14 @@ Horizontal_tail,V_h,0.95
 Horizontal_tail,elevator_area_m2,4.641856955759369
 Horizontal_tail,Se_Sh,0.31
 Horizontal_tail,driver,stability (V_h)
-Vertical_tail,S_v_m2,14.934725408173213
-Vertical_tail,span_v_m,5.0387531388126625
+Vertical_tail,S_v_m2,25.239685939812727
+Vertical_tail,span_v_m,6.5503790804564614
 Vertical_tail,MAC_v_m,3.5
 Vertical_tail,tail_arm_l_v_m,17.5
 Vertical_tail,aspect_ratio_v,1.7
-Vertical_tail,V_v,0.10164709053953822
-Vertical_tail,rudder_area_m2,5.227153892860623
-Vertical_tail,Sr_Sv,0.3499999999999999
+Vertical_tail,V_v,0.17178358301181956
+Vertical_tail,rudder_area_m2,8.833890078934454
+Vertical_tail,Sr_Sv,0.35
 Vertical_tail,driver,control (OEI rudder)
 Fuselage,length_m,37.524912532236144
 Fuselage,diameter_equivalent_m,2.9
