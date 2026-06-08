@@ -103,6 +103,7 @@ class ClassIIResult:
     weight:      WeightBreakdown
     mission:     MissionFuelBreakdown
     power:       PowerSizingBreakdown
+    aeroparameters: dict
     tail_rechecked: TailSizingBreakdown    # rerun with computed T_TO
     iteration_log: list = None             # per-iteration MTOW trace
     total_prop_efficiency: float = 1.0
@@ -489,6 +490,7 @@ def run_class_ii(
         Wing_sweep_quarter=sweep_quarter,
         Wing_sweep_half=sweep_half,
         Wing_sweep_LE=sweep_LE,
+        aeroparameters=aero_parameters
     )
 
 
@@ -793,6 +795,4 @@ if __name__ == "__main__":
 
     #get_optimal_cl_mach(cfg, force_recompute=True)
 
-    # result=compute_additional_aerodynamic_parameters(cfg)
-    # print(result["cdash_c"])
-    # print(result["MAC"])num_engines=2, T_TO_per_engine=cfg.T_TO_per_engine
+    print(result1.aeroparameters["cdash_c"])
