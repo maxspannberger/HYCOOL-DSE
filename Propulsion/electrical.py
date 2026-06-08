@@ -230,11 +230,14 @@ def size_all_components(component_order, powers, comp=comp_params, show=False):
     cooling_requirements_only = {}
     for condition in list(list(powers.values())[0].values())[0].keys():
         cooling_requirements_only[condition] = {}
+        total = 0.0
         for component in component_order:
             if "gt" not in component and "cable" not in component:
                 cooling_requirements_only[condition][component] = {}
                 for pos in powers[component]:
                     cooling_requirements_only[condition][component][pos] = (1.0 - comp[component].efficiency) * powers[component][pos][condition]
+                    total += cooling_requirements_only[condition][component][pos]
+        cooling_requirements_only[condition]["total"] = total * 2
 
     filename = "only_cooling_results.json"
     with open(filename, "w") as f:
