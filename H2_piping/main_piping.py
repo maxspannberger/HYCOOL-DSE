@@ -21,7 +21,6 @@ The wall of the components Pipe and Tank should be defined in the following mann
 For example: wall = [('ss-316l', 0.01), ('polyurethene', 0.02)]
 eg. the inner layer is ss-326l and the outer layer is polyurethene
 ===============================================================================
-
 '''
 
 def solve_system(system, m_dot, T_amb):
@@ -33,14 +32,17 @@ def solve_system(system, m_dot, T_amb):
     
     
     for comp in system:
-        component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=False, system=system)
-        
-        states['p'].append(component_result['p'])
-        states['T'].append(component_result['T'])
-        states['rho'].append(component_result['rho'])
-        states['h'].append(component_result['h'])
-        states['frac'].append(component_result['frac'])
-        
+        # Update the m_dot based on pipe splits and merges
+        if type(comp) == tuple:
+            m_dot = m_dot * comp[1] / comp[-1]
+        else:
+            component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=False, system=system)
+            
+            states['p'].append(component_result['p'])
+            states['T'].append(component_result['T'])
+            states['rho'].append(component_result['rho'])
+            states['h'].append(component_result['h'])
+            states['frac'].append(component_result['frac'])
         
     return states
 
@@ -106,17 +108,44 @@ if __name__ == "__main__":
             ('polyurethene', 0.02)]
 
     system = [
-        Tank(diameter=0.1, wall=wall, p=1.0*101325, T=15), 
+        Tank(diameter   =  0.1, 
+             wall       =  wall, 
+             p          =  1.0*101325, 
+             T          =  15), 
         
-        Pipe(position=1, length=0.5, diameter=0.02, wall=wall, segments=10,
-             N=10, N_bar=5.5, P_mli=10**(-4), curv=2.5),
+        Pipe(position   =  1,   
+             length     =  0.5, 
+             diameter   =  0.02, 
+             wall       =  wall, 
+             segments   =  10,
+             N          =  10, 
+             N_bar      =  5.5, 
+             P_mli      =  10**(-4), 
+             curv       =  2.5),
         
-        Pump(position=2, target_p=50*100000, diameter=0.02, efficiency=0.60),
+        ('Split', 1, 3),
+         
+        Pump(position   =  2, 
+             target_p  =  50*100000, 
+             diameter   =  0.02, 
+             eff        =  0.60),
         
-        Pipe(position=3, length=64.0, diameter=0.02, wall=wall, segments=200,
-             N=10, N_bar=5.5, P_mli=10**(-4), curv=2.5),                      #Pressure input in Torr!!!
+        Pipe(position   =  3, 
+             length     =  64.0, 
+             diameter   =  0.02, 
+             wall       =  wall, 
+             segments   =  200,
+             N          =  10, 
+             N_bar      =  5.5, 
+             P_mli      =  10**(-4), 
+             curv       =  2.5),                      #Pressure input in Torr!!!
         
-        Corner(position=4, N_bend=10, diameter=0.02, curv=2.5)
+        ('Converge', 3, 1),
+        
+        Corner(position =  4, 
+               N_bend   =  10, 
+               diameter =  0.02, 
+               curv     =  2.5)
         ]
     
     states = solve_system(system, m_dot=0.046, T_amb = 400)

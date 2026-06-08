@@ -18,6 +18,7 @@ with an index starting at 0, with 0 being the tank by default.
 ===============================================================================
 '''
 
+# =============================================================================
 # In order to track the gas fraction, this function outputs whether the coolprop
 # value should be used or a manually picked value should be used 
 # (mainly important for supercritical phases)
@@ -35,8 +36,9 @@ def calc_frac(p, h, fluid='Hydrogen'):
     else:
         raise ValueError(f"Unknown phase '{phase}' encountered at p={p:.2f}, h={h:.2f}. "
                          "Check if input states are within physical limits.")
+        
+        
 # =============================================================================
-
 # Extract the most recent state value from the states dictionary
 # =============================================================================
 def get_input_states(states):
@@ -46,8 +48,9 @@ def get_input_states(states):
     rho = states['rho'][-1][-1]
     
     return T, p, h, rho
-# =============================================================================
 
+
+# =============================================================================
 # Define an iterative solver for the state change over a pipe segment
 # =============================================================================
 def update_states(vars, p1, h1, u1, m_dot, A_cs, fluid, q=0, dp_fric=0):
@@ -65,9 +68,6 @@ def update_states(vars, p1, h1, u1, m_dot, A_cs, fluid, q=0, dp_fric=0):
     res_energy     = (h2 + 0.5 * u2**2) - (h1 + 0.5 * u1**2 + q)
     
     return [res_momentum, res_energy]
-    
-    
-# =====================================================================
 
 
 # =============================================================================
@@ -122,6 +122,7 @@ class Tank:
         
         return results
 
+
 # =============================================================================
 # Define the Cryogenic Pump class
 # =============================================================================
@@ -129,19 +130,19 @@ class Pump:
     def __init__(self, position: int,
                        target_p: float,
                        diameter: float = 0.02,
-                       efficiency: float = 0.60,
-                       fluid: str = 'Hydrogen',
-                       name: str = 'CryoPump'):
+                       eff:      float = 0.60,
+                       fluid:    str   = 'Hydrogen',
+                       name:     str   = 'CryoPump'):
         
         self.position = position
         self.target_p = target_p      
         self.d = diameter             
-        self.efficiency = efficiency  
+        self.efficiency = eff  
         self.fluid = fluid
         self.name = name
 
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False):
-        # 1. Extract states from the end of the previous component
+        # Extract states from the end of the previous component
         T1, p1, h1, rho1 = get_input_states(states)
         
         # Determine the cross-sectional area (ensuring Continuity)
@@ -153,7 +154,7 @@ class Pump:
         # Find inlet entropy to lock the ideal benchmark
         s1 = CP.PropsSI('S', 'P', p1, 'H', h1, self.fluid)
         
-        # 2. Calculate the IDEAL (Isentropic) target state
+        # Calculate the IDEAL (Isentropic) target state
         try:
             h2_ideal = CP.PropsSI('H', 'P', self.target_p, 'S', s1, self.fluid)
             rho2_ideal = CP.PropsSI('D', 'P', self.target_p, 'S', s1, self.fluid)
@@ -165,14 +166,14 @@ class Pump:
         # Calculate Ideal Work required (Full First Law Form)
         w_ideal = (h2_ideal + 0.5 * u2_ideal**2) - (h1 + 0.5 * u1**2)
         
-        # 3. Calculate REAL Work injected by the inefficient impeller
+        # Calculate REAL Work injected by the inefficient impeller
         w_real = w_ideal / self.efficiency
         
         # Define the exact Total Energy that must leave the pump
         Target_Energy = (h1 + 0.5 * u1**2) + w_real
         p2 = self.target_p
         
-        # 4. Rigorous Numerical Solver: Drive the First Law Residual to Zero
+        # Rigorous Numerical Solver: Drive the First Law Residual to Zero
         def solve_pump_energy(vars):
             h2_guess = vars[0]
             
@@ -192,7 +193,7 @@ class Pump:
         h2_sol = fsolve(solve_pump_energy, [h2_ideal])
         h2 = h2_sol[0]
         
-        # 5. Lock in final real state properties
+        # Lock in final real state properties
         T2   = CP.PropsSI('T', 'P', p2, 'H', h2, self.fluid)
         rho2 = CP.PropsSI('D', 'P', p2, 'H', h2, self.fluid)
         frac2= calc_frac(p2, h2, fluid=self.fluid)
@@ -210,6 +211,7 @@ class Pump:
                    }
         
         return results
+    
             
 # =============================================================================
 # Define the pipe class
@@ -274,7 +276,6 @@ class Pipe:
             # Flow velocity and Reynolds number
             u1  = m_dot / (rho1 * A_cs)
             Re1 = 4 * m_dot / (np.pi * self.d * mu1)
-            print(Re1)
             # Calculate different T, such as they are presented in the
             # Lockhead equation
             T_h = T_amb
@@ -347,6 +348,7 @@ class Pipe:
             
         return results
     
+    
 # =============================================================================
 # Define the pipe bend class
 # =============================================================================
@@ -406,6 +408,7 @@ class Corner:
                    }
         
         return results
+
 
 # =============================================================================
 # Define the HTS generator/motor class
