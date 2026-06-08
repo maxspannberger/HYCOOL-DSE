@@ -6,7 +6,13 @@ from dataclasses import dataclass
 @dataclass
 class H2SystemConfig:
     # Global simulation configurations
-    fluid: str = 'Hydrogen'
+    fluid: str = 'Hydrogen'                  # FLUID used for simulation
+    max_error: float = 10                    # SOLVER convergence treshhold
+    tank_p: float = 100000                   # TANK pressure [Pa]
+    tank_T: float = 15                       # TANK temperature [T]
+    tank_d: float = 0.02                     # TANK outlet diameter [m]
+    T_amb: float = 317                       # AMBIENT temperature [K]
+    m_dot: float = 0.09                      # TOTAL mass flow [kg/s]
     
     # Solver configuration parameters
     divergence_penalty: float = 1e9          # penalty value if the numerical solver diverges
@@ -20,14 +26,17 @@ class H2SystemConfig:
     
     # Component setup placeholders
     tank_initial_u: float = 0.0              # flow velocity inside the storage tank [m/s]
-    cool_dummy_A: float = 1.0                # placeholder cross-sectional area for active cooling [m^2]
+    cool_dummy_A: float = 0.0003             # placeholder cross-sectional area for active cooling [m^2]
     cool_dummy_u: float = 1.0                # placeholder flow velocity for active cooling [m/s]
     cool_dummy_dp: float = 1.0               # placeholder pressure drop for active cooling [Pa]
 
     # Default baseline geometric parameters for pipe segments
     pipe_default_d: float = 0.02             # default baseline inner pipeline diameter [m]
-    pipe_default_segments: int = 10          # default segment mesh resolution density across components
+    pipe_segment_length: float = 0.1         # default baseline segment length [m]
     pipe_default_N: int = 10                 # default baseline number of MLI layers applied
     pipe_default_N_bar: float = 5.5          # default baseline insulation layer density [layers/cm]
-    pipe_default_P_mli: float = 10**(-4)     # default baseline residual gas pressure value [Pa]
+    pipe_default_P_mli: float = 10**(-4)     # default baseline residual gas pressure value [Torr]
     pipe_default_eps: float = 2e-6           # default baseline structural pipe inner roughness [m]
+    
+    # Pump parameters
+    pump_efficiency: float = 0.75            # default pump isentropic efficiency

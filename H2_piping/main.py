@@ -8,13 +8,13 @@ sys.path.append(str(root))
 
 # Import your components from h2_components and configuration from system_config
 from h2_components import Tank, Pipe, Pump, Corner, COOL
-from system_config import H2SystemConfig
 
 from rich import print as rich_print
 from rich.tree import Tree
 import matplotlib.pyplot as plt
 import numpy as np
 import json
+from system_config import H2SystemConfig as c
 
 '''
 ===============================================================================
@@ -37,19 +37,19 @@ def solve_system(system, m_dot, T_amb):
               'h'   : [],
               'frac': []}
     
-    for comp in system:
+    for i, comp in enumerate(system):
         # Update the m_dot based on pipe splits and merges
         if type(comp) == tuple:
             m_dot = m_dot * comp[1] / comp[-1]
         else:
-            component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=False, system=system)
+            component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=False, system=system, i=i)
             
             states['p'].append(component_result['p'])
             states['T'].append(component_result['T'])
             states['rho'].append(component_result['rho'])
             states['h'].append(component_result['h'])
             states['frac'].append(component_result['frac'])
-        
+    print(m_dot)   
     return states
 
 
@@ -106,69 +106,47 @@ with open(path, 'r') as file:
 
 component_order = {}
 for key, value in comps.items(): 
-    sorted_keys = sorted(value)
+    if key == "total":
+        continue
+    sorted_keys = sorted(value, key=int)
     component_order[key] = sorted_keys
 
 if __name__ == "__main__":
     wall = [('ss-316l',      0.01), 
             ('polyurethene', 0.02)]
 
-    # Instantiate custom baseline parameters for the configuration tracking class
-    custom_config = H2SystemConfig(
-        fluid              = 'Hydrogen',
-        divergence_penalty = 1e9,
-        pipe_mli_eps       = 0.03,
-        pipe_default_d     = 0.02,
-        pipe_default_N     = 10,
-        pipe_default_N_bar = 5.5
-    )
 
     # Distribute the configuration tracking instance down into each custom layout element
     system = [
-        Tank(diameter   =  0.1, 
-             p          =  1.0*101325, 
-             T          =  15), 
+        Tank(), 
         
         Pipe(length     =  0.5),
          
-        Pump(target_p   =  20*100000, 
-             diameter   =  0.02, 
-             efficiency =  0.65),
+        Pump(target_p   =  5*100000, 
+             diameter   =  0.02),
         
-        Pipe(length     =  0.5),
+        Pipe(length     =  12),
         
         ('Split', 1, 2),
         
-        Pipe(length     =  64.0, 
-             segments   =  200,
-             eps_pipe   =  1.5), 
+        Pipe(length     =  12.0), 
         
-        ('Split', 2, 4),
-        
-        Pipe(length     =  64.0, 
-             segments   =  200,
-             eps_pipe   =  1.5), 
+        Pipe(length     =  4.0), 
         
         COOL(name       = 'hts_gen', 
              location   = component_order['hts_gen'][0]),
         
-        Pipe(length     =  64.0, 
-             segments   =  200,
-             eps_pipe   =  1.5), 
+        Pipe(length     =  2.0), 
 
         COOL(name       = 'bus', 
              location   = component_order['bus'][0]),
         
-        Pipe(length     =  64.0, 
-             segments   =  200,
-             eps_pipe   =  1.5), 
+        Pipe(length     =  2.0), 
         
         COOL(name       = 'ac_dc', 
              location   = component_order['ac_dc'][0]),
         
-        Pipe(length     =  64.0, 
-             segments   =  200,
-             eps_pipe   =  1.5), 
+        Pipe(length     = 4.0), 
         
         COOL(name       = 'dc_ac', 
              location   = component_order['dc_ac'][0]),
@@ -176,20 +154,16 @@ if __name__ == "__main__":
         COOL(name       = 'ac_dc', 
              location   = component_order['ac_dc'][0]),
         
-        Pipe(length     =  64.0, 
-             segments   =  200,
-             eps_pipe   =  1.5),                           
+        Pipe(length     =  2.0),  
         
-        ('Converge', 2, 1),
-        
-        COOL(name       = 'hts_gen', 
-             location   = component_order['hts_gen'][0]),
+        COOL(name       = 'hts_pow', 
+             location   = component_order['hts_pow'][0]),
         
         Corner(N_bend   =  10, 
                diameter =  0.02, 
                curv     =  2.5)
         ]
     
-    states = solve_system(system, m_dot=0.06, T_amb = 317)
+    states = solve_system(system, m_dot=c.m_dot, T_amb=c.T_amb)
     print_tree(states)
     plot_states(states)
