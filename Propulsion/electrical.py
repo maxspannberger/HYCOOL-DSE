@@ -171,8 +171,10 @@ def size_converter(component, powers, comp=comp_params, N=0, show=False):
     P_heat_idle = get_P_idle(T_J_min, N)
 
     P_max = max(P_OEI, powers["max"])
-    m = P_max / comp[component].power_density
     max_cooling = P_max * (1 - eff)
+
+    mass = P_max / comp[component].power_density
+    volume = P_max / comp[component].volumetric_density
 
     if show:
         print(f"Number of chips: {N}")
@@ -181,9 +183,9 @@ def size_converter(component, powers, comp=comp_params, N=0, show=False):
         print(f"OEI temperature: {T_J_OEI}")
         print(f"Idle extra heat: {P_heat_idle}")
         print(f"Max cooling power: {max_cooling}")
-        print(f"Mass: {m}")
+        print(f"Mass: {mass}")
 
-    return N, T_J_max, T_J_cruise, T_J_OEI, P_heat_idle, m, max_cooling
+    return N, T_J_max, T_J_cruise, T_J_OEI, P_heat_idle, max_cooling, mass, volume
 
 
 def size_all_components(component_order, powers, comp=comp_params, show=False):
@@ -213,10 +215,11 @@ def size_all_components(component_order, powers, comp=comp_params, show=False):
                 else:
                     if show:
                         print(f"\n{component} ({pos}):")
-                    _, _, _, _, P_heat, mass, P_cool = size_converter(component, powers[component][pos], comp=comp, N=N, show=show)
+                    _, _, _, _, P_heat, P_cool, mass, volume  = size_converter(component, powers[component][pos], comp=comp, N=N, show=show)
                     component_sizing[component][pos]["P_heat"] = P_heat
                     component_sizing[component][pos]["P_cool"] = P_cool
                     component_sizing[component][pos]["mass"] = mass
+                    component_sizing[component][pos]["volume"] = volume
 
                     P_heat_total += P_heat * 2
                     P_cool_total += P_cool * 2
