@@ -111,7 +111,7 @@ if __name__ == "__main__":
         Pipe(position=1, length=0.5, diameter=0.02, wall=wall, segments=10,
              N=10, N_bar=5.5, P_mli=10**(-4), curv=2.5),
         
-        Pump(position=2, target_p=50*100000, diameter=0.02, efficiency=0.60),
+        Pump(position=2, target_p=50*100000, diameter=0.02, efficiency=0.65),
         
         Pipe(position=3, length=64.0, diameter=0.02, wall=wall, segments=200,
              N=10, N_bar=5.5, P_mli=10**(-4), curv=2.5),                      #Pressure input in Torr!!!
