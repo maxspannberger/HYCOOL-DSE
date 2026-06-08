@@ -10,29 +10,27 @@ if str(root) not in sys.path:
     sys.path.insert(0, str(root))
 
 local_dir = Path(__file__).resolve().parent
-nc_path = os.path.join(local_dir, "ad5b26c67b230cdb570420b82980e47b.nc")
+nc_path = os.path.join(local_dir, "d0403ac88bdf8461c770a9135180d3dd.nc")
 
 ds = xr.open_dataset(nc_path, engine='netcdf4')
 #print(ds)
 
-# Extract PV at both pressure levels at 51N, 10E
-pv_400 = ds['pv'].sel(
+#print(ds['pv'].pressure_level.values)
+
+pv_500 = ds['pv'].sel(
     latitude=51.0,
     longitude=10.0,
-    pressure_level=400.0
+    pressure_level=500.0
 ).mean().values * 1e6
 
-pv_350 = ds['pv'].sel(
+pv_450 = ds['pv'].sel(
     latitude=51.0,
     longitude=10.0,
-    pressure_level=350.0
+    pressure_level=450.0
 ).mean().values * 1e6
 
-# print(f"PV at 400 hPa: {pv_400:.4f} PVU")
-# print(f"PV at 350 hPa: {pv_350:.4f} PVU")
-
-# Linear interpolation to 376 hPa
-# (400 - 376) / (400 - 350) = 0.48 of the way from 400 to 350
-weight = (400 - 376) / (400 - 350)
-pv_376 = pv_400 + weight * (pv_350 - pv_400)
-# print(f"Interpolated PV at 376 hPa: {pv_376:.4f} PVU")
+# Linear interpolation to 472 hPa
+# (500 - 472) / (500 - 450) = 0.56 of the way from 500 to 450
+weight = (500 - 472) / (500 - 450)
+pv_472 = pv_500 + weight * (pv_450 - pv_500)
+#print(f"Interpolated PV at 472 hPa (FL200): {pv_472:.4f} PVU")
