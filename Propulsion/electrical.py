@@ -106,7 +106,7 @@ def get_powers_per_component(P_max, P_cruise, P_OEI, positions, component_order,
         comp_powers["out"][pos] = {
                 "max": P_max / 2 * frac,
                 "cruise": P_cruise / 2 * frac,
-                "OEI_mot": P_OEI * (1.0 - 0.5 * max(positions["mot_frac"])) / 2 * frac,
+                "OEI_mot": P_OEI / (1 + min(positions["mot_frac"])) * frac,
                 "OEI_gt": P_OEI / 2 * frac,
                 "OEI_bus": P_OEI  * frac / 2
             }
@@ -236,8 +236,17 @@ def size_all_components(component_order, powers, comp=comp_params, show=False):
                 cooling_requirements_only[condition][component] = {}
                 for pos in powers[component]:
                     cooling_requirements_only[condition][component][pos] = (1.0 - comp[component].efficiency) * powers[component][pos][condition]
-                    total += cooling_requirements_only[condition][component][pos]
-        cooling_requirements_only[condition]["total"] = total * 2
+
+                    if condition == "OEI_gt" and component in ["hts_gen", "ac_dc"]:
+                        total += cooling_requirements_only[condition][component][pos]
+                    elif condition == "OEI_mot" and component in ["dc_ac", "hts_pow"] and not np.isclose(pos, 1.0):
+                        total += cooling_requirements_only[condition][component][pos]
+                    elif condition == "OEI_bus" and component in ["bus"]:
+                        total += cooling_requirements_only[condition][component][pos]
+                    else:
+                        total += 2 * cooling_requirements_only[condition][component][pos]
+
+        cooling_requirements_only[condition]["total"] = total
 
     filename = "only_cooling_results.json"
     with open(filename, "w") as f:
