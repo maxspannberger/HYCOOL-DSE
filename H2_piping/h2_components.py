@@ -128,8 +128,8 @@ class Tank:
 class Pump:
     def __init__(self, position: int,
                        target_p: float,
-                       diameter: float = 0.02,
-                       efficiency: float = 0.60,
+                       diameter: float,
+                       efficiency: float,
                        fluid: str = 'Hydrogen',
                        name: str = 'CryoPump'):
         
