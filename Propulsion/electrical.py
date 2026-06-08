@@ -82,6 +82,8 @@ def get_cable_region_powers(component, positions, previous, b=1.0):
                     maximum[positions["gt"][0]][condition] = max(previous[abs(pos)][condition] / frac * (1 + min(fracs)) / 2, maximum[positions["gt"][0]][condition])
                 elif condition == "OEI_bus":
                     maximum[positions["gt"][0]][condition] = max(previous[abs(pos)][condition] / frac * 2, maximum[positions["gt"][0]][condition])
+                elif condition == "OEI_gt":
+                    maximum[positions["gt"][0]][condition] = max(previous[abs(pos)][condition] / frac * 2, maximum[positions["gt"][0]][condition])
                 else:
                     maximum[positions["gt"][0]][condition] = max(previous[abs(pos)][condition] / frac, maximum[positions["gt"][0]][condition])
 
@@ -329,7 +331,7 @@ def size_cables(max_powers, length=200, N_cables=6, SF=1, show=False):
 if __name__ == "__main__":
     # define electrical system architecture
     component_order = ["gt_hex", "hts_gen", "ac_dc", "cable_in", "bus", "cable_out", "dc_ac", "hts_pow"]
-    positions = {"gt": [0.4], "mot": [0.6, 1.0], "bus": 3, "mot_frac": [0.8, 0.2]}
+    positions = {"gt": [0.4], "mot": [0.66, 1.0], "bus": 3, "mot_frac": [0.8, 0.2]}
     show = True
 
     N_motors = 2 * len(positions["mot"])
