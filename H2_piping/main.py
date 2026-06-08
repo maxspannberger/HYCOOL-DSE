@@ -1,13 +1,20 @@
 from pathlib import Path
 import sys
-root = Path(__file__).resolve().parent
+folder = Path(__file__).resolve().parent
+sys.path.append(str(folder))
+
+root = Path(__file__).resolve().parent.parent
 sys.path.append(str(root))
 
-from h2_components import Tank, Pipe, Pump, Corner, HTS
+# Import your components from h2_components and configuration from system_config
+from h2_components import Tank, Pipe, Pump, Corner, COOL
+from system_config import H2SystemConfig
+
 from rich import print as rich_print
 from rich.tree import Tree
 import matplotlib.pyplot as plt
 import numpy as np
+import json
 
 '''
 ===============================================================================
@@ -29,7 +36,6 @@ def solve_system(system, m_dot, T_amb):
               'rho' : [],
               'h'   : [],
               'frac': []}
-    
     
     for comp in system:
         # Update the m_dot based on pipe splits and merges
@@ -54,13 +60,11 @@ def print_tree(states):
         branch = tree.add(f"[bold red]{key.upper()}")
         for comp_idx, data in enumerate(values):
             comp_node = branch.add(f"[bold yellow]Component {comp_idx}")
-            # Format the array for readability
             comp_node.add(str(data))
             
     rich_print(tree)
 
 def plot_states(states):
-    # Flatten the lists into simple lists for plotting
     flat_states = {}
     for prop in ['p', 'T', 'rho', 'h', 'frac']:
         temp_list = []
@@ -69,12 +73,9 @@ def plot_states(states):
                 temp_list.append(value)
         flat_states[prop] = temp_list
 
-    # Prepare the gradient
-    # No clipping needed here if we use vmin/vmax in imshow
     frac_arr = np.array(flat_states['frac'])
     gradient = np.tile(frac_arr, (100, 1)) 
 
-    # Plot the flattened data
     fig, axes = plt.subplots(2, 2, figsize=(12, 8))
     axes = axes.flatten()
     
@@ -83,13 +84,11 @@ def plot_states(states):
     colors = ['tab:blue', 'tab:red', 'tab:green', 'tab:purple']
 
     for i, prop in enumerate(properties):
-        # Set vmin=0 and vmax=1 to lock the colors to the full range
         axes[i].imshow(gradient, aspect='auto', cmap='RdYlBu_r', 
                        vmin=0, vmax=1,
                        extent=[0, len(flat_states[prop]), min(flat_states[prop]), max(flat_states[prop])],
                        alpha=0.2)
         
-        # Plot the main data line
         axes[i].plot(flat_states[prop], color=colors[i], marker=None, linestyle='-', linewidth=2)
         axes[i].set_title(titles[i])
         axes[i].grid(True, linestyle='--', alpha=0.7)
@@ -99,64 +98,94 @@ def plot_states(states):
     fig.suptitle('Hydrogen State Profile (Gradient: Blue=Liquid, Red=Gas)', fontsize=16)
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.show()
-    
 
+# Load the component cooling requirements from the propulsion json file
+path = str(root / "Propulsion/component_sizing_results.json")
+with open(path, 'r') as file:
+    comps = json.load(file)
 
+component_order = {}
+for key, value in comps.items(): 
+    sorted_keys = sorted(value)
+    component_order[key] = sorted_keys
 
 if __name__ == "__main__":
     wall = [('ss-316l',      0.01), 
             ('polyurethene', 0.02)]
 
+    # Instantiate custom baseline parameters for the configuration tracking class
+    custom_config = H2SystemConfig(
+        fluid              = 'Hydrogen',
+        divergence_penalty = 1e9,
+        pipe_mli_eps       = 0.03,
+        pipe_default_d     = 0.02,
+        pipe_default_N     = 10,
+        pipe_default_N_bar = 5.5
+    )
+
+    # Distribute the configuration tracking instance down into each custom layout element
     system = [
         Tank(diameter   =  0.1, 
-             wall       =  wall, 
              p          =  1.0*101325, 
              T          =  15), 
         
-        Pipe(position   =  1,   
-             length     =  0.5, 
-             diameter   =  0.02, 
-             wall       =  wall, 
-             segments   =  10,
-             N          =  10, 
-             N_bar      =  5.5, 
-             P_mli      =  10**(-4), 
-             curv       =  2.5),
+        Pipe(length     =  0.5),
          
-        Pump(position   =  2, 
-             target_p   =  20*100000, 
+        Pump(target_p   =  20*100000, 
              diameter   =  0.02, 
              efficiency =  0.65),
         
-        Pipe(position   =  3,   
-             length     =  0.5, 
-             diameter   =  0.02, 
-             wall       =  wall, 
-             segments   =  10,
-             N          =  10, 
-             N_bar      =  5.5, 
-             P_mli      =  10**(-4), 
-             curv       =  2.5),
+        Pipe(length     =  0.5),
         
         ('Split', 1, 2),
         
-        HTS(power       =  3.1e6,
-            name        =  'hts_gen'),
-        
-        Pipe(position   =  4, 
-             length     =  64.0, 
-             diameter   =  0.02, 
-             wall       =  wall, 
+        Pipe(length     =  64.0, 
              segments   =  200,
-             N          =  10, 
-             N_bar      =  5.5, 
-             P_mli      =  10**(-4), 
-             curv       =  2.5),                      #Pressure input in Torr!!!
+             eps_pipe   =  1.5), 
+        
+        ('Split', 2, 4),
+        
+        Pipe(length     =  64.0, 
+             segments   =  200,
+             eps_pipe   =  1.5), 
+        
+        COOL(name       = 'hts_gen', 
+             location   = component_order['hts_gen'][0]),
+        
+        Pipe(length     =  64.0, 
+             segments   =  200,
+             eps_pipe   =  1.5), 
+
+        COOL(name       = 'bus', 
+             location   = component_order['bus'][0]),
+        
+        Pipe(length     =  64.0, 
+             segments   =  200,
+             eps_pipe   =  1.5), 
+        
+        COOL(name       = 'ac_dc', 
+             location   = component_order['ac_dc'][0]),
+        
+        Pipe(length     =  64.0, 
+             segments   =  200,
+             eps_pipe   =  1.5), 
+        
+        COOL(name       = 'dc_ac', 
+             location   = component_order['dc_ac'][0]),
+
+        COOL(name       = 'ac_dc', 
+             location   = component_order['ac_dc'][0]),
+        
+        Pipe(length     =  64.0, 
+             segments   =  200,
+             eps_pipe   =  1.5),                           
         
         ('Converge', 2, 1),
         
-        Corner(position =  5, 
-               N_bend   =  10, 
+        COOL(name       = 'hts_gen', 
+             location   = component_order['hts_gen'][0]),
+        
+        Corner(N_bend   =  10, 
                diameter =  0.02, 
                curv     =  2.5)
         ]

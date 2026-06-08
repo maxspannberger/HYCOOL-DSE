@@ -2,21 +2,19 @@ from pathlib import Path
 import sys
 root = Path(__file__).resolve().parent.parent
 sys.path.append(str(root))
-from General.component_parameters import component_params as comp
 
 import numpy as np
 import CoolProp.CoolProp as CP
 import matplotlib.pyplot as plt
 from scipy.optimize import fsolve
-    
+import json
 
-'''
-===============================================================================
-This file contains classes that define all the components that can be present 
-in the H2 infrastructure. Each component has a name and a position indicated 
-with an index starting at 0, with 0 being the tank by default. 
-===============================================================================
-'''
+# Import the system configuration class from its separate file
+from system_config import H2SystemConfig
+
+
+config = H2SystemConfig()
+
 
 # =============================================================================
 # In order to track the gas fraction, this function outputs whether the coolprop
@@ -53,7 +51,7 @@ def get_input_states(states):
 # =============================================================================
 # Define an iterative solver for the state change over a pipe segment
 # =============================================================================
-def update_states(vars, p1, h1, u1, m_dot, A_cs, fluid, q=0, dp_fric=0):
+def update_states(vars, p1, h1, u1, m_dot, A_cs, fluid, q=0, dp_fric=0, penalty_val=1e9):
     rho1 = CP.PropsSI('D', 'P', p1, 'H', h1, fluid)
     
     p2, h2 = vars
@@ -62,7 +60,7 @@ def update_states(vars, p1, h1, u1, m_dot, A_cs, fluid, q=0, dp_fric=0):
         rho2 = CP.PropsSI('D', 'P', p2, 'H', h2, fluid)
         u2   = m_dot / (rho2 * A_cs)
     except: 
-        return [1e9, 1e9] # Reset guess values if the solver diverges
+        return [penalty_val, penalty_val] # Reset guess values if the solver diverges
     
     res_momentum   = (p2 + rho2 * u2**2) - (p1 + rho1 * u1**2) + dp_fric
     res_energy     = (h2 + 0.5 * u2**2) - (h1 + 0.5 * u1**2 + q)
@@ -74,18 +72,14 @@ def update_states(vars, p1, h1, u1, m_dot, A_cs, fluid, q=0, dp_fric=0):
 # Define the tank class
 # =============================================================================
 class Tank:
-    def __init__(self, diameter: float,   
-                       wall:     list,
+    def __init__(self, diameter: float,
                        p:        float,
-                       T:        float,
-                       position: int = 0):
+                       T:        float):
         
         # Initialise the tank specific parameters
         self.name = 'Tank'
-        self.position = position
         self.d = diameter
-        self.wall = wall
-        self.fluid = 'Hydrogen'
+        self.fluid = config.fluid
         
         # The state of the hydrogen in the tank based on the assumption that
         # the fluid is fully in a liquid state
@@ -93,22 +87,22 @@ class Tank:
         self.T   = T
         self.rho = CP.PropsSI('D', 'P', self.p, 'T|liquid', self.T, self.fluid)
         self.h   = CP.PropsSI('H', 'P', self.p, 'T|liquid', self.T, self.fluid)
-        self.frac= calc_frac(self.p, self.h)
+        self.frac= calc_frac(self.p, self.h, fluid=self.fluid)
       
     # Set the tank values as the initial values of the piping system
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False):
         A_cs = np.pi * system[1].d**2 / 4
-        u    = 0
+        u    = config.tank_initial_u
         
         # Update pressure and enthalpy
         p2, h2 = fsolve(update_states,
                       x0=[self.p, self.h],
-                      args=(self.p, self.h, u, m_dot, A_cs, self.fluid))
+                      args=(self.p, self.h, u, m_dot, A_cs, self.fluid, 0, 0, config.divergence_penalty))
         
         rho2  = CP.PropsSI('D', 'P', p2, 'H', h2, self.fluid)
         T2    = CP.PropsSI('T', 'P', p2, 'H', h2, self.fluid)
-        frac2 = calc_frac(p2, h2)
-        if frac2 > 0.01:
+        frac2 = calc_frac(p2, h2, fluid=self.fluid)
+        if frac2 > config.tank_max_gas_frac:
             raise ValueError(f"The hydrogen turns partially gasseous ({frac2}) as it leaves "
                              "the tank. Incompressability assumption doesn't hold.")
         
@@ -127,18 +121,15 @@ class Tank:
 # Define the Cryogenic Pump class
 # =============================================================================
 class Pump:
-    def __init__(self, position: int,
-                       target_p: float,
+    def __init__(self, target_p: float,
                        diameter: float,
                        efficiency: float,
-                       fluid: str = 'Hydrogen',
                        name: str = 'CryoPump'):
         
-        self.position = position
         self.target_p = target_p      
         self.d = diameter             
         self.efficiency = efficiency  
-        self.fluid = fluid
+        self.fluid = config.fluid
         self.name = name
 
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False):
@@ -181,7 +172,7 @@ class Pump:
             try:
                 rho2_guess = CP.PropsSI('D', 'P', p2, 'H', h2_guess, self.fluid)
             except:
-                return [1e9] # Penalty to steer solver away from impossible physical states
+                return [config.divergence_penalty] 
             
             # Calculate corresponding velocity
             u2_guess = m_dot / (rho2_guess * A_cs)
@@ -217,38 +208,33 @@ class Pump:
 # Define the pipe class
 # =============================================================================
 class Pipe:
-    def __init__(self, position: int,     
-                       length:   float,
-                       diameter: float,   
-                       wall:     list,
-                       segments: int,     
-                       N:        int,
-                       N_bar:    float,      
-                       P_mli:    float,
-                       curv:     float,
-                       eps_pipe: float   = 2e-6,
-                       fluid:    str     = 'Hydrogen'
-                       ):
+    def __init__(self, length:   float,
+                       diameter: float = None,   
+                       segments: int   = None,     
+                       N:        int   = None,
+                       N_bar:    float = None,      
+                       P_mli:    float = None,
+                       eps_pipe: float = None):
 
         # Initialise the pipe specific parameters
         self.name      = 'Pipe'
-        self.position  = position
-        self.fluid     = fluid
+        self.fluid     = config.fluid
         self.length    = length
-        self.segments  = segments
-        self.wall      = wall
-        self.d         = diameter
-        self.N         = N         # number of MLI layers
-        self.N_bar     = N_bar     # layer density [layers/cm]
-        self.P_mli     = P_mli     # residual gas pressure [Pa]
-        self.eps_pipe  = eps_pipe  # pipe wall roughness [m]
-        self.curv      = curv      # curvature of the bends, R/d
+        
+        # Pull geometric traits from system_config if they are left unassigned
+        self.d         = diameter if diameter is not None else config.pipe_default_d
+        self.segments  = segments if segments is not None else config.pipe_default_segments
+        self.N         = N        if N is not None        else config.pipe_default_N
+        self.N_bar     = N_bar    if N_bar is not None    else config.pipe_default_N_bar
+        self.P_mli     = P_mli    if P_mli is not None    else config.pipe_default_P_mli
+        self.eps_pipe  = eps_pipe if eps_pipe is not None else config.pipe_default_eps
+
         # Note: P_mli must be supplied in Pa; converted to Torr internally
         # because the Lockheed C_G constant was fitted with pressure in Torr
-        self.cs        = 1.93 * 10**-6 # MLI conductivity coefficient [W/(m*K^(3.63))]
-        self.cr        = 3.88 * 10**-10 # MLI radiation coefficient [W/(m^2*K^(4.67))]
-        self.cg        = 5.5 * 10**4 # MLI gas conduction coefficient [W/(m^2*Torr*K^(0.52))], H2 (= N2 value 1.46e4 * sqrt(M_H2/M_N2))
-        self.eps       = 0.03 # MLI emissivity, typical value for aluminized Mylar
+        self.cs        = config.pipe_mli_cs
+        self.cr        = config.pipe_mli_cr
+        self.cg        = config.pipe_mli_cg
+        self.eps       = config.pipe_mli_eps
      
     # Function that loops over the pipe segments and tracks the state if H2
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False):
@@ -302,12 +288,12 @@ class Pipe:
             
             p2, h2 = fsolve(update_states,
                           x0=[p1, h1],
-                          args=(p1, h1, u1, m_dot, A_cs, self.fluid, q, dp_fric))
+                          args=(p1, h1, u1, m_dot, A_cs, self.fluid, q, dp_fric, config.divergence_penalty))
             
             # Update the state variables
             T2     = CP.PropsSI('T', 'P', p2, 'H', h2, self.fluid)
             rho2   = CP.PropsSI('D', 'P', p2, 'H', h2, self.fluid)
-            frac2  = calc_frac(p2, h2, fluid='Hydrogen')            
+            frac2  = calc_frac(p2, h2, fluid=self.fluid)            
             
             # Store the updated state variables
             results['T'][seg]   = T2
@@ -353,19 +339,16 @@ class Pipe:
 # Define the pipe bend class
 # =============================================================================
 class Corner:
-    def __init__(self, position: int,
-                       curv:     float,
+    def __init__(self, curv:     float,
                        diameter: float,
-                       fluid:    str    = 'Hydrogen',
-                       name:     str    = 'Bend',
-                       N_bend:   int    = 1
+                       name:      str    = 'Bend',
+                       N_bend:    int    = 1
                        ):
         
-        self.position = position
         self.N_bend = N_bend
         self.curv = curv
         self.d = diameter
-        self.fluid = fluid
+        self.fluid = config.fluid
         self.name = name
     
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False):
@@ -393,11 +376,11 @@ class Corner:
         # Update pressure and enthalpy
         p2, h2 = fsolve(update_states,
                       x0=[p1, h1],
-                      args=(p1, h1, u1, m_dot, A_cs, self.fluid, q, dp_fric))
+                      args=(p1, h1, u1, m_dot, A_cs, self.fluid, q, dp_fric, config.divergence_penalty))
         
         T2    = CP.PropsSI('T', 'P', p2, 'H', h2, self.fluid)
         rho2  = CP.PropsSI('D', 'P', p2, 'H', h2, self.fluid)
-        frac2 = calc_frac(p2, h2, fluid='Hydrogen')
+        frac2 = calc_frac(p2, h2, fluid=self.fluid)
         
         # Store results
         results = {'T':    np.array([T2]), 
@@ -413,35 +396,37 @@ class Corner:
 # =============================================================================
 # Define the HTS generator/motor class
 # =============================================================================    
-class HTS:
-    def __init__(self,
-                 power:      float,
-                 name:       str, 
-                 fluid:      str     = 'Hydrogen',
-                 ):   
+class COOL:
+    def __init__(self, name:        str, 
+                       location:    str
+                       ):   
         
-        self.power = power
-        self.name  = name
-        self.fluid = fluid
-        self.eff   = comp[name].efficiency
+        self.location = location
+        self.name     = name
+        self.fluid    = config.fluid
+
+        # Load the component cooling requirements from the propulsion json file
+        path = str(root / "Propulsion/component_sizing_results.json")
+        with open(path, 'r') as file:
+            comps = json.load(file)
+        self.Q_dot    = comps[name][location]['P_cool']
 
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False):
         # Extract states from end of previous component
         T, p, h, rho = get_input_states(states)
-        Q_dot = self.power * (1 - self.eff)
-        q = Q_dot / m_dot
-        A_out = 1
-        u = 1
+        q = self.Q_dot / m_dot
+        A_out = config.cool_dummy_A
+        u = config.cool_dummy_u
         
-        dp_fric = 1 # NEED TO FIND A FORMULA FOR THIS
+        dp_fric = config.cool_dummy_dp
         
         p2, h2 = fsolve(update_states,
                       x0=[p, h],
-                      args=(p, h, u, m_dot, A_out, self.fluid, q, dp_fric))
+                      args=(p, h, u, m_dot, A_out, self.fluid, q, dp_fric, config.divergence_penalty))
                    
         T2    = CP.PropsSI('T', 'P', p2, 'H', h2, self.fluid)
         rho2  = CP.PropsSI('D', 'P', p2, 'H', h2, self.fluid)
-        frac2 = calc_frac(p2, h2, fluid='Hydrogen')
+        frac2 = calc_frac(p2, h2, fluid=self.fluid)
         
         # Store results in dictionary and return
         results = {'T':   np.array([T2]), 
@@ -452,5 +437,3 @@ class HTS:
                    }
         
         return results
-    
-    
