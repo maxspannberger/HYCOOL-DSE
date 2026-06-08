@@ -139,7 +139,11 @@ def single_sensitivity_run(
                     "Eff_climb": class_II_results.climb_eff,
                     "Eff_cruise": class_II_results.cruise_eff,
                     "L/D_cruise": class_II_results.L_over_D,
-                    "T_static": class_II_results.power.T_static_total
+                    "T_static": class_II_results.power.T_static_total,
+                    "P_opt": class_II_results.weight.P_opt,
+                    "P_cruise_KW": class_II_results.mission.P_cruise_shaft/1000.0,
+                    "P_climb_KW": class_II_results.mission.P_climb_shaft/1000.0,
+                    "P_OEI_KW": class_II_results.weight.P_TO_OEI_KW
                 }
             else:
                 results[design_names[config-1]] = {
@@ -582,7 +586,7 @@ def save_tradeoff(cfg, designs_to_consider=[1,2,3,4,5]):
 
 if __name__ == "__main__":
     cfg = default_q400_hycool()
-    n_repeats = 1000
+    n_repeats = 10
     designs_to_consider = [1, 2, 3, 4, 5]
     weights={
         "mass": 0.25,
