@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Optional
 from pathlib import Path
 import sys
-
+from dataclasses import dataclass
 from rich.table import Table
+
+from rich.console import Console
+
 
 
 # Allow running from project root or from inside WeightEstimations
@@ -20,38 +21,42 @@ from General.component_parameters import component_params as comp_params
 
 @dataclass
 class CgCalculationInput:
-
-    MAC:            float       # m 
-    l_f:            float       # fuselage lenght, m
+    l_f:            float
 
     OEW:            float       # operating empty weight
     MTOW:           float
     W_fixed:        float
-    
-    W_h2_tank:      float       #tank weight
+
+    W_fus:          float
+    W_lg_nose:      float   #nose landing gear weight
+    W_lg_main:          float    #main landing gear weight
+    W_htail:          float 
+    W_vtail:          float 
+    W_h2_tank:          float 
+
+    cg_location_fus:    float
+    cg_location_tail_c: float
+    cg_location_engines:    float
+
     L_tank:         float       #tank length
 
     l_n:            float       #nose lenght
     l_c:            float       #cabin lenght
     l_tc:           float    #tail cone length
 
-    W_fus:          float       #fuselage weight
-
-    W_lg_nose:           float    #nose landing gear weight
-    W_lg_main:           float    #main landing gear weight
-
-    W_htail:        float
-    W_vtail:        float
-
     MAC_h:          float
     MAC_v:          float
+    MAC:            float       # m 
+    x_LEMAC:        float           #intital guess x_LEMAC
+
 
     W_wing:         float
     W_sc:           float   #surface control system weight
+    W_engine:       float
 
-    x_LEMAC:        float           #intital guess x_LEMAC
+    location_wing_cg: float 
 
-    W_engine:       float           
+
 
 
     @classmethod
@@ -75,6 +80,9 @@ class CgCalculationInput:
         W_vtail = result.weight.W_vtail
         W_h2_tank = result.weight.W_h2_tank
 
+        cg_location_fus = cfg.cg_location_fus 
+        cg_location_tail_c = cfg.cg_location_tail_c
+        cg_location_engines = result.distance_le_mac_to_turbine       # [m] from LEMAC to cg of the power units on the wing
 
         L_tank = final["L_tank_m"]
 
@@ -85,13 +93,16 @@ class CgCalculationInput:
         MAC_h = cfg.MAC_h
         MAC_v = cfg.MAC_v
 
-        W_wing = result.weight.W_wing_accurate
-        W_sc = result.weight.W_sc
-
         MAC = result.MAC
         x_LEMAC = cfg.LEMAC
 
+        W_wing = result.weight.W_wing_accurate
+        W_sc = result.weight.W_sc
         W_engine = result.weight.W_engine         #total propulsion system weight, excluding lh2 tank but including piping TODO: perhaps exclude piping & cabling for the cg calc
+
+
+        location_wing_cg = result.distance_le_mac_to_cg         #[m] distance from LEMAC to wing cg 
+
 
 
         return cls(
@@ -107,6 +118,9 @@ class CgCalculationInput:
             W_vtail = W_vtail,
             W_h2_tank = W_h2_tank,
 
+            cg_location_fus = cg_location_fus, 
+            cg_location_tail_c = cg_location_tail_c,
+            cg_location_engines = cg_location_engines,
 
             L_tank = L_tank,
 
@@ -119,19 +133,70 @@ class CgCalculationInput:
 
             W_wing = W_wing,
             W_sc = W_sc,
+            W_engine = W_engine,
 
             MAC = MAC,
             x_LEMAC = x_LEMAC,
 
-            W_engine = W_engine,
-
+            location_wing_cg = location_wing_cg
         )
 
 
 @dataclass
 class CgBreakdown:
     #Then the breakdown class should only store calculated values. It should not calculate anything major.
-    OEW_cg: float
+    OEW_check: float
+    OEW_excl_fixed: float
+    x_cg_OEW: float
+    W_wing_group: float
+    W_fus_group: float
+    x_cg_fus_group: float
+    x_cg_wing_group: float
+    X_LEMAC_new: float
+
+
+    def summary(self) -> Table:
+        table = Table(
+            title="CG Calculation Breakdown",
+            show_header=True,
+            header_style="bold blue",
+        )
+
+        table.add_column("Group")
+        table.add_column("Mass [kg]", justify="right")
+        table.add_column("x CG [m]", justify="right")
+
+        table.add_row(
+            "Fuselage group",
+            f"{self.W_fus_group:.1f}",
+            f"{self.x_cg_fus_group:.2f}",
+        )
+
+        table.add_row(
+            "Wing group",
+            f"{self.W_wing_group:.1f}",
+            f"{self.x_cg_wing_group:.2f}",
+        )
+
+        table.add_section()
+
+        table.add_row(
+            "[bold]OEW check[/bold]",
+            f"[bold]{self.OEW_check:.1f}[/bold]",
+            f"[bold]{self.x_cg_OEW:.2f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]OEW check excl W_fixed[/bold]",
+            f"[bold]{self.OEW_excl_fixed:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]X_LEMAC_new[/bold]",
+            f"[bold]{self.X_LEMAC_new:.1f}[/bold]",
+        )
+
+        return table
 
 
 
@@ -145,21 +210,35 @@ class CgCalculator:
         self._validate()
 
     def _validate(self) -> None:
-        if not self.i.components:
-            raise ValueError("No CG components were provided.")
+        if self.i.MAC <= 0:
+            raise ValueError("MAC must be positive.")
 
-        if self.i.mac_m <= 0:
-            raise ValueError("MAC must be positive for x_cg_mac calculation.")
+        if self.i.l_f <= 0:
+            raise ValueError("Fuselage length must be positive.")
 
-        for comp in self.i.components:
-            if comp.mass_kg < 0:
-                raise ValueError(f"Negative mass for component: {comp.name}")
+        masses = [
+            self.i.OEW,
+            self.i.MTOW,
+            self.i.W_fixed,
+            self.i.W_h2_tank,
+            self.i.W_fus,
+            self.i.W_lg_nose,
+            self.i.W_lg_main,
+            self.i.W_htail,
+            self.i.W_vtail,
+            self.i.W_wing,
+            self.i.W_sc,
+            self.i.W_engine,
+        ]
+
+        if any(mass < 0 for mass in masses):
+            raise ValueError("All masses must be non-negative.")
             
     @staticmethod
     def cg_from_weights(
         weights: list[float],
         locations: list[float],
-    ) -> float:
+    ) -> tuple[float, float]:
         """
         Calculate the CG location from multiple weights and x-locations.
         """
@@ -194,6 +273,10 @@ class CgCalculator:
         MAC_h = d.MAC_h
         MAC_v = d.MAC_v
 
+        cg_location_fus = d.cg_location_fus 
+        cg_location_tail_c = d.cg_location_tail_c
+        cg_location_engines = d.cg_location_engines
+
 
 
 
@@ -207,11 +290,11 @@ class CgCalculator:
 
 # ------------------- Fuselage Group cg locations  ------------------
 
-        x_cg_fixed = cfg.cg_location_fus * l_f                      #assume cg of fixed weight to be equal to fuselage cg, TODO: could be shifted a bit
-        x_cg_fus = cfg.cg_location_fus * l_f
-        x_cg_lg_nose = (2/3) * l_c                                  #this is just an estimate, TODO: can be calculated from required load for steering (SEAD)        
-        x_cg_htail = 0.98*l_f-MAC_h+(cfg.cg_location_tail_c)        #took 2% fus lenght fort the little cone behind tail, then cg is at a torenbeek defined frn behind LE TODO: update when l_h is updated
-        x_cg_vtail = 0.98*l_f-MAC_v+(cfg.cg_location_tail_c)        #took 2% fus lenght fort the little cone behind tail, then cg is at a torenbeek defined frn behind LE
+        x_cg_fixed = cg_location_fus * l_f                      #assume cg of fixed weight to be equal to fuselage cg, TODO: could be shifted a bit
+        x_cg_fus = cg_location_fus * l_f
+        x_cg_lg_nose = (2/3) * l_n                                  #this is just an estimate, TODO: can be calculated from required load for steering (SEAD)        
+        x_cg_htail = 0.98*l_f-MAC_h+(cg_location_tail_c*MAC_h)        #took 2% fus lenght fort the little cone behind tail, then cg is at a torenbeek defined frn behind LE TODO: update when l_h is updated
+        x_cg_vtail = 0.98*l_f-MAC_v+(cg_location_tail_c*MAC_v)        #took 2% fus lenght fort the little cone behind tail, then cg is at a torenbeek defined frn behind LE
         x_cg_tank = l_n + l_c + 1/2 * L_tank
 
         
@@ -240,16 +323,44 @@ class CgCalculator:
         W_wing = d.W_wing
         W_engine = d.W_engine
 
+        location_wing_cg = d.location_wing_cg
+
 
         x_cg_sc = x_LEMAC + MAC
-        x_cg_wing = x_LEMAC + 
         x_cg_lg_main = x_LEMAC + 0.5 * MAC         #initial estimate from Torenbeek p.301, TODO: to be fixed for cg excursion & tipover angle
-        x_cg_power_units = x_LEMAC + cfg.cg_location_engines
+        x_cg_wing = x_LEMAC + location_wing_cg
+        x_cg_power_units = x_LEMAC + cg_location_engines
 
-        
+        W_wing_group, x_cg_wing_group = self.cg_from_weights(
+            weights=[
+                W_sc,
+                W_lg_main,
+                W_wing,
+                W_engine,
+            ],
+            locations=[
+                x_cg_sc,
+                x_cg_lg_main,
+                x_cg_wing,
+                x_cg_power_units,
+            ]
+        )
+
+        OEW_check = W_fus_group + W_wing_group
+        OEW_excl_fixed = OEW_check - W_fixed
+        x_cg_OEW = ((W_fus_group*x_cg_fus_group + W_wing_group*x_cg_wing_group)/(W_fus_group + W_wing_group))
+
+        X_LEMAC_new = x_cg_fus_group - x_cg_OEW + (W_wing_group/W_fus_group) * (x_cg_wing_group - x_cg_OEW)
 
         return CgBreakdown(
-           
+            OEW_check=OEW_check,
+            OEW_excl_fixed=OEW_excl_fixed,
+            x_cg_OEW=x_cg_OEW,
+            W_wing_group=W_wing_group,
+            W_fus_group=W_fus_group,
+            x_cg_fus_group=x_cg_fus_group,
+            x_cg_wing_group=x_cg_wing_group,
+            X_LEMAC_new = X_LEMAC_new,
         )
 
 
@@ -265,8 +376,11 @@ if __name__ == "__main__":
         config=3,
     )
 
-    inp = CgCalculationInput.from_config(cfg, result)
+
+
+    inp = CgCalculationInput.from_class_ii(cfg, result)
     estimator = CgCalculator(inp)
     breakdown = estimator.compute()
 
-    print(breakdown.summary())
+    console = Console()
+    console.print(breakdown.summary())
