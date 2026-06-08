@@ -3,29 +3,16 @@ import numpy as np
 import properties
 from CoolProp.CoolProp import PropsSI
 
-#import calculated tank dimensions
-from geomDesign import GeomDesign
-gd = GeomDesign(p_vent=2.0, p_fill=1.2, y_max=0.97)
-geom = gd.calculateTankGeometry(V_tank=12.3, phi=1.0, psi=1.0, Lambda=0.5)
-
-# hard coded dimensions for testing
-D = 2.5 # m, inner diameter of the tank
-L = 2.8 # m, length of the tank
-
-D = geom.a * 2  # m, inner diameter of the tank (from geomDesign)
-L = geom.ls     # m, length of the cylindrical section of the tank (from geomDesign)
-
-spherical = False # boolean, whether the tank is spherical or cylindrical
-f_ullage = 0.1 # fraction of tank volume reserved for ullage (empty space to allow for expansion of the liquid)
+f_ullage = 0.0425  # ullage fraction [-]
 
 tank_options = {
-    'LH2': {'P_int': 300000, 'P_ext': 37600}, # internap pressure of 3 bar, external 376 hPa (atmospheric pressure at FL250)
-    'cCH2': {'P_int': 3.5e7, 'P_ext': 37600}, # internal pressure of 350 bar, external 376 hPa (atmospheric pressure at FL250)
-    'sLH2': {'P_int': 30000, 'P_ext': 101325}, # internal pressure of 0.3 bar, external pressure of 1 bar (atmospheric pressure on ground)
+    'LH2':  {'P_int': 300000,  'P_ext': 37600},   # 3 bar internal, FL250 external
+    'cCH2': {'P_int': 3.5e7,   'P_ext': 37600},   # 350 bar internal, FL250 external
+    'sLH2': {'P_int': 30000,   'P_ext': 101325},  # 0.3 bar internal, SL external
 }
 
 material_options = {
-    'Al-2219-T87': {'E': 73.1e9, 'nu': 0.33, 'S': 300e6, 'S_t': 476e6, 'density': 2840}, # E in Pa, S in Pa, density in kg/m^3
+    'Al-2219-T87': {'E': 73.1e9, 'nu': 0.33, 'S': 300e6, 'S_t': 476e6, 'density': 2840},
 }
 
 def t_hoop_stress(P_int, P_ext, D, S_t, spherical=False):
@@ -83,21 +70,6 @@ def t_spherical_buckling(p_diff, D, E, nu, SF=3.0, t_min=1e-4):
         i += 1
     return max(t_min, t)
 
-# For cases where internal pressure is greater than external, use hoop-stress sizing.
-# If external pressure exceeds internal (vacuum or sub-atmospheric internal),
-# the failure mode is buckling — use the Windenburg-Trilling external-pressure formula.
-mat = material_options['Al-2219-T87']
-t_LH2 = t_hoop_stress(tank_options['LH2']['P_int'], tank_options['LH2']['P_ext'], D, mat['S_t'], spherical)
-t_cCH2 = t_hoop_stress(tank_options['cCH2']['P_int'], tank_options['cCH2']['P_ext'], D, mat['S_t'], spherical)
-# sLH2 has lower internal pressure than external (external > internal),
-p_diff = tank_options['sLH2']['P_ext'] - tank_options['sLH2']['P_int']
-t_sLH2 = t_windenburg_trilling(p_diff, D, L, mat['E'], mat['nu'], SF=3.0, t_min=1e-3)
-# spherical tanks
-t_LH2_s = t_hoop_stress(tank_options['LH2']['P_int'], tank_options['LH2']['P_ext'], D, mat['S_t'], spherical=True)
-t_cCH2_s = t_hoop_stress(tank_options['cCH2']['P_int'], tank_options['cCH2']['P_ext'], D, mat['S_t'], spherical=True)
-t_sLH2_s = t_spherical_buckling(p_diff, D, mat['E'], mat['nu'], SF=3.0, t_min=1e-3)
-
-# calculate mass of the tank wall for each case
 def calculate_tank_mass_c(t, D, L, density):
     SA = (np.pi * D * L) + (4 * np.pi * (D/2)**2)  # surface area of the cylindrical tank
     m_wall = SA * t * density
@@ -127,41 +99,34 @@ def calculate_LH2_mass_s(D, rho_h2):
 def gravimetric_eff(m_LH2, m_wall):
     return m_LH2 / (m_LH2 + m_wall)
 
-#different densities for LH2 at different conditions
-rho_LH2 = PropsSI('D', 'P', 1 * 100000, 'T', 20, 'parahydrogen')  # kg/m^3
-rho_cCH2 = PropsSI('D', 'P', 350 * 100000, 'T', 35, 'parahydrogen')  # kg/m^3
-rho_sLH2 = PropsSI('D', 'P', 0.3 * 100000, 'T', 16, 'parahydrogen')  # kg/m^3
-
-# Calculate H2 masses and gravimetric efficiency for each case
-m_wall_LH2 = calculate_tank_mass_c(t_LH2, D, L, mat['density'])
-m_LH2 = calculate_LH2_mass_c(D, L, rho_LH2)
-eff_LH2 = gravimetric_eff(m_LH2, m_wall_LH2)
-
-m_wall_cCH2 = calculate_tank_mass_c(t_cCH2, D, L, mat['density'])
-m_cCH2 = calculate_LH2_mass_c(D, L, rho_cCH2)
-eff_cCH2 = gravimetric_eff(m_cCH2, m_wall_cCH2)
-
-m_wall_sLH2 = calculate_tank_mass_c(t_sLH2, D, L, mat['density'])
-m_sLH2 = calculate_LH2_mass_c(D, L, rho_sLH2)
-eff_sLH2 = gravimetric_eff(m_sLH2, m_wall_sLH2)
-
-m_wall_LH2_s = calculate_tank_mass_s(t_LH2_s, D, mat['density'])
-m_LH2_s = calculate_LH2_mass_s(D, rho_LH2)  # density of LH2 at 20K in kg/m^3
-eff_LH2_s = gravimetric_eff(m_LH2_s, m_wall_LH2_s)
-
-m_wall_cCH2_s = calculate_tank_mass_s(t_cCH2_s, D, mat['density'])
-m_cCH2_s = calculate_LH2_mass_s(D, rho_cCH2)  # density of cCH2 at 100 bar in kg/m^3
-eff_cCH2_s = gravimetric_eff(m_cCH2_s, m_wall_cCH2_s)
-
-m_wall_sLH2_s = calculate_tank_mass_s(t_sLH2_s, D, mat['density'])
-m_sLH2_s = calculate_LH2_mass_s(D, rho_sLH2)
-eff_sLH2_s = gravimetric_eff(m_sLH2_s, m_wall_sLH2_s)
-
 if __name__ == "__main__":
-    print('LH2: t =', t_LH2, ", m_wall =", m_wall_LH2, ", m_H2 =", m_LH2, ", eff =", eff_LH2)
-    print('cCH2: t =', t_cCH2, ", m_wall =", m_wall_cCH2, ", m_H2 =", m_cCH2, ", eff =", eff_cCH2)
-    print('sLH2: t =', t_sLH2, ", m_wall =", m_wall_sLH2, ", m_H2 =", m_sLH2, ", eff =", eff_sLH2)
-    print('LH2 (spherical): t =', t_LH2_s, ", m_wall =", m_wall_LH2_s, ", m_H2 =", m_LH2_s, ", eff =", eff_LH2_s)
-    print('cCH2 (spherical): t =', t_cCH2_s, ", m_wall =", m_wall_cCH2_s, ", m_H2 =", m_cCH2_s, ", eff =", eff_cCH2_s)
-    print('sLH2 (spherical): t =', t_sLH2_s, ", m_wall =", m_wall_sLH2_s, ", m_H2 =", m_sLH2_s, ", eff =", eff_sLH2_s)
+    from geomDesign import GeomDesign
+
+    spherical = False
+    D = 2.5   # m, inner diameter
+    L = 2.8   # m, cylindrical section length
+    mat = material_options['Al-2219-T87']
+
+    t_LH2  = t_hoop_stress(tank_options['LH2']['P_int'],  tank_options['LH2']['P_ext'],  D, mat['S_t'], spherical)
+    t_cCH2 = t_hoop_stress(tank_options['cCH2']['P_int'], tank_options['cCH2']['P_ext'], D, mat['S_t'], spherical)
+    p_diff = tank_options['sLH2']['P_ext'] - tank_options['sLH2']['P_int']
+    t_sLH2 = t_windenburg_trilling(p_diff, D, L, mat['E'], mat['nu'], SF=3.0, t_min=1e-3)
+    t_LH2_s  = t_hoop_stress(tank_options['LH2']['P_int'],  tank_options['LH2']['P_ext'],  D, mat['S_t'], spherical=True)
+    t_cCH2_s = t_hoop_stress(tank_options['cCH2']['P_int'], tank_options['cCH2']['P_ext'], D, mat['S_t'], spherical=True)
+    t_sLH2_s = t_spherical_buckling(p_diff, D, mat['E'], mat['nu'], SF=3.0, t_min=1e-3)
+
+    rho_LH2  = PropsSI('D', 'P', 1   * 100000, 'T', 20, 'parahydrogen')
+    rho_cCH2 = PropsSI('D', 'P', 350 * 100000, 'T', 35, 'parahydrogen')
+    rho_sLH2 = PropsSI('D', 'P', 0.3 * 100000, 'T', 16, 'parahydrogen')
+
+    m_wall_LH2  = calculate_tank_mass_c(t_LH2,  D, L, mat['density'])
+    m_LH2_c     = calculate_LH2_mass_c(D, L, rho_LH2)
+    m_wall_cCH2 = calculate_tank_mass_c(t_cCH2, D, L, mat['density'])
+    m_cCH2_c    = calculate_LH2_mass_c(D, L, rho_cCH2)
+    m_wall_sLH2 = calculate_tank_mass_c(t_sLH2, D, L, mat['density'])
+    m_sLH2_c    = calculate_LH2_mass_c(D, L, rho_sLH2)
+
+    print('LH2:  t =', t_LH2,  ', m_wall =', m_wall_LH2,  ', m_H2 =', m_LH2_c,  ', eff =', gravimetric_eff(m_LH2_c,  m_wall_LH2))
+    print('cCH2: t =', t_cCH2, ', m_wall =', m_wall_cCH2, ', m_H2 =', m_cCH2_c, ', eff =', gravimetric_eff(m_cCH2_c, m_wall_cCH2))
+    print('sLH2: t =', t_sLH2, ', m_wall =', m_wall_sLH2, ', m_H2 =', m_sLH2_c, ', eff =', gravimetric_eff(m_sLH2_c, m_wall_sLH2))
     print('Densities (LH2, cCH2, sLH2):', rho_LH2, rho_cCH2, rho_sLH2)
