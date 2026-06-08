@@ -412,30 +412,45 @@ class Corner:
 
 # =============================================================================
 # Define the HTS generator/motor class
-# =============================================================================
+# =============================================================================    
 class HTS:
     def __init__(self,
                  power:      float,
-                 name:       str     = 'HTS', 
-                 efficiency: float   = comp['hts_gen'].efficiency
-                 ):
+                 name:       str, 
+                 fluid:      str     = 'Hydrogen',
+                 ):   
+        
+        self.power = power
+        self.name  = name
+        self.fluid = fluid
+        self.eff   = comp[name].efficiency
 
-        def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False):
-            # Extract states from end of previous component
-            T, p, h, rho = get_input_states(states)
-            
-            Q_dot = self.power * (1 - self.efficiency)
-            dh    = Q_dot / m_dot
-            h    += dh        
-                       
-            frac = calc_frac(p, h)
-            
-            # Store results in dictionary and return
-            results = {'T':   np.array([T]), 
-                       'p':   np.array([p]),
-                       'rho': np.array([rho]),
-                       'h':   np.array([h]),
-                       'frac':np.array([frac])
-                       }
-            
-            return results
+    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False):
+        # Extract states from end of previous component
+        T, p, h, rho = get_input_states(states)
+        Q_dot = self.power * (1 - self.eff)
+        q = Q_dot / m_dot
+        A_out = 1
+        u = 1
+        
+        dp_fric = 1 # NEED TO FIND A FORMULA FOR THIS
+        
+        p2, h2 = fsolve(update_states,
+                      x0=[p, h],
+                      args=(p, h, u, m_dot, A_out, self.fluid, q, dp_fric))
+                   
+        T2    = CP.PropsSI('T', 'P', p2, 'H', h2, self.fluid)
+        rho2  = CP.PropsSI('D', 'P', p2, 'H', h2, self.fluid)
+        frac2 = calc_frac(p2, h2, fluid='Hydrogen')
+        
+        # Store results in dictionary and return
+        results = {'T':   np.array([T2]), 
+                   'p':   np.array([p2]),
+                   'rho': np.array([rho2]),
+                   'h':   np.array([h2]),
+                   'frac':np.array([frac2])
+                   }
+        
+        return results
+    
+    

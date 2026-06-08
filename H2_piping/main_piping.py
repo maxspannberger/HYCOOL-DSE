@@ -3,7 +3,7 @@ import sys
 root = Path(__file__).resolve().parent
 sys.path.append(str(root))
 
-from h2_components import Tank, Pipe, Pump, Corner
+from h2_components import Tank, Pipe, Pump, Corner, HTS
 from rich import print as rich_print
 from rich.tree import Tree
 import matplotlib.pyplot as plt
@@ -122,15 +122,28 @@ if __name__ == "__main__":
              N_bar      =  5.5, 
              P_mli      =  10**(-4), 
              curv       =  2.5),
-        
-        ('Split', 1, 3),
          
         Pump(position   =  2, 
-             target_p   =  50*100000, 
+             target_p   =  20*100000, 
              diameter   =  0.02, 
              efficiency =  0.60),
         
-        Pipe(position   =  3, 
+        Pipe(position   =  3,   
+             length     =  0.5, 
+             diameter   =  0.02, 
+             wall       =  wall, 
+             segments   =  10,
+             N          =  10, 
+             N_bar      =  5.5, 
+             P_mli      =  10**(-4), 
+             curv       =  2.5),
+        
+        ('Split', 1, 2),
+        
+        HTS(power       =  3.1e6,
+            name        =  'hts_gen'),
+        
+        Pipe(position   =  4, 
              length     =  64.0, 
              diameter   =  0.02, 
              wall       =  wall, 
@@ -140,14 +153,14 @@ if __name__ == "__main__":
              P_mli      =  10**(-4), 
              curv       =  2.5),                      #Pressure input in Torr!!!
         
-        ('Converge', 3, 1),
+        ('Converge', 2, 1),
         
-        Corner(position =  4, 
+        Corner(position =  5, 
                N_bend   =  10, 
                diameter =  0.02, 
                curv     =  2.5)
         ]
     
-    states = solve_system(system, m_dot=0.046, T_amb = 400)
+    states = solve_system(system, m_dot=0.06, T_amb = 317)
     print_tree(states)
     plot_states(states)
