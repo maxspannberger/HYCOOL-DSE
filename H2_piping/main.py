@@ -84,9 +84,13 @@ def plot_states(states):
     colors = ['tab:blue', 'tab:red', 'tab:green', 'tab:purple']
 
     for i, prop in enumerate(properties):
-        axes[i].imshow(gradient, aspect='auto', cmap='RdYlBu_r', 
+        y_min   = min(flat_states[prop])
+        y_max   = max(flat_states[prop])
+        margin  = (y_max - y_min) * 0.05
+        
+        axes[i].imshow(gradient, aspect='auto', cmap='RdYlBu_r',
                        vmin=0, vmax=1,
-                       extent=[0, len(flat_states[prop]), min(flat_states[prop]), max(flat_states[prop])],
+                       extent=[0, len(flat_states[prop]), y_min - margin, y_max + margin],
                        alpha=0.2)
         
         axes[i].plot(flat_states[prop], color=colors[i], marker=None, linestyle='-', linewidth=2)
