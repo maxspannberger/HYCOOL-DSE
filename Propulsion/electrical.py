@@ -14,8 +14,6 @@ from WeightEstimations.mainClassII import run_class_ii
 T_H2 = 20   # K
 T_J_design = 250    # K
 T_J_min = 77    # K
-R_th_26 = 14.3  # K/kW
-R_th = R_th_26/26
 
 cable_loss_per_m = 0.0 # kW/m
 P_AC_systems = 310.0  # kW
@@ -140,52 +138,56 @@ def get_powers_per_component(P_max, P_cruise, P_OEI, positions, component_order,
     return comp_powers
 
 
-def get_N(P, eff, T_J):
+def get_Rth(P, eff, T_J):
     Q = (1-eff) * P
-    N = (T_J - T_H2) / (Q * R_th)
-    return int(np.ceil(N))
+    R_th = (T_J - T_H2) / Q
+    return R_th
 
 
-def get_deltaT(P, eff, N):
+def get_deltaT(P, eff, R_th):
     Q = (1-eff) * P
-    deltaT  = Q * N * R_th
+    deltaT  = Q * R_th
     return deltaT
 
 
-def get_P_idle(T_J, N):
-    P = (T_J - T_H2) / (R_th * N)
+def get_P_idle(T_J, R_th):
+    P = (T_J - T_H2) / R_th
     return P
 
 
-def size_converter(component, powers, comp=comp_params, N=0, show=False):
+def size_converter(component, powers, comp=comp_params, show=False):
     eff = comp[component].efficiency
     P_OEI = max(powers["OEI_mot"], powers["OEI_gt"])
-
-    if N == 0:
-        N = get_N(powers["max"], eff, T_J_design)
-        T_J_max = 250
-    else:
-        T_J_max = T_H2 + get_deltaT(powers["max"], eff, N)
-    T_J_cruise = T_H2 + get_deltaT(powers["cruise"], eff, N)
-    T_J_OEI = T_H2 + get_deltaT(P_OEI, eff, N)
-    P_heat_idle = get_P_idle(T_J_min, N)
+    R_th = get_Rth(powers["max"], eff, T_J_design)
+    T_J_cruise = T_H2 + get_deltaT(powers["cruise"], eff, R_th)
+    T_J_OEI = T_H2 + get_deltaT(P_OEI, eff, R_th)
+    P_heat = get_P_idle(T_J_min, R_th)
 
     P_max = max(P_OEI, powers["max"])
-    max_cooling = P_max * (1 - eff)
+    P_cool = P_max * (1 - eff)
 
     mass = P_max / comp[component].power_density
     volume = P_max / comp[component].volumetric_density
 
     if show:
-        print(f"Number of chips: {N}")
-        print(f"Operating temperature: {T_J_max}")
+        print(f"Number of chips: {R_th}")
         print(f"Cruise temperature: {T_J_cruise}")
         print(f"OEI temperature: {T_J_OEI}")
-        print(f"Idle extra heat: {P_heat_idle}")
-        print(f"Max cooling power: {max_cooling}")
+        print(f"Idle extra heat: {P_heat}")
+        print(f"Max cooling power: {P_cool}")
         print(f"Mass: {mass}")
 
-    return N, T_J_max, T_J_cruise, T_J_OEI, P_heat_idle, max_cooling, mass, volume
+    results = {
+        "R_th": R_th,
+        "T_J_cruise": T_J_cruise,
+        "T_J_OEI": T_J_OEI,
+        "P_heat": P_heat,
+        "P_cool": P_cool,
+        "mass": mass,
+        "volume": volume
+    }
+
+    return results
 
 
 def size_all_components(component_order, powers, comp=comp_params, show=False):
@@ -197,33 +199,23 @@ def size_all_components(component_order, powers, comp=comp_params, show=False):
     for component in component_order:
         if "gt" not in component and "cable" not in component:
             component_sizing[component] = {}
-            if component == "bus":
-                N = 24
-            else:
-                N = 0
 
             for pos in powers[component]:
                 component_sizing[component][pos] = {}
-                if "hts" in component:
+                if "hts" in component:                  
                     P_max = max(powers[component][pos].values())
-                    P_cool = (1.0 - comp[component].efficiency) * P_max
-                    mass = P_max / comp[component].power_density
-                    component_sizing[component][pos]["P_cool"] = P_cool
-                    component_sizing[component][pos]["mass"] = mass
-                    P_cool_total += P_cool * 2
-                    m_total += mass
+                    component_sizing[component][pos]["P_cool"] = (1.0 - comp[component].efficiency) * P_max
+                    component_sizing[component][pos]["mass"] = P_max / comp[component].power_density
+                    P_cool_total += component_sizing[component][pos]["P_cool"] * 2
+                    m_total += component_sizing[component][pos]["mass"]
+
                 else:
                     if show:
                         print(f"\n{component} ({pos}):")
-                    _, _, _, _, P_heat, P_cool, mass, volume  = size_converter(component, powers[component][pos], comp=comp, N=N, show=show)
-                    component_sizing[component][pos]["P_heat"] = P_heat
-                    component_sizing[component][pos]["P_cool"] = P_cool
-                    component_sizing[component][pos]["mass"] = mass
-                    component_sizing[component][pos]["volume"] = volume
-
-                    P_heat_total += P_heat * 2
-                    P_cool_total += P_cool * 2
-                    m_total += mass * 2
+                    component_sizing[component][pos] = size_converter(component, powers[component][pos], comp=comp, show=show)
+                    P_heat_total += component_sizing[component][pos]["P_heat"] * 2
+                    P_cool_total += component_sizing[component][pos]["P_cool"] * 2
+                    m_total += component_sizing[component][pos]["mass"] * 2
         
     component_sizing["total"] = {
         "P_heat": P_heat_total,
@@ -234,6 +226,20 @@ def size_all_components(component_order, powers, comp=comp_params, show=False):
     filename = "component_sizing_results.json"
     with open(filename, "w") as f:
         json.dump(component_sizing, f, indent=4)
+
+    cooling_requirements_only = {}
+    for condition in list(list(powers.values())[0].values())[0].keys():
+        cooling_requirements_only[condition] = {}
+        for component in component_order:
+            if "gt" not in component and "cable" not in component:
+                cooling_requirements_only[condition][component] = {}
+                for pos in powers[component]:
+                    cooling_requirements_only[condition][component][pos] = (1.0 - comp[component].efficiency) * powers[component][pos][condition]
+
+    filename = "only_cooling_results.json"
+    with open(filename, "w") as f:
+        json.dump(cooling_requirements_only, f, indent=4)
+
 
     return component_sizing
 
