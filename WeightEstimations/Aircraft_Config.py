@@ -61,6 +61,10 @@ class AircraftConfig:
     S_wet_f:        float
     l_t:            float
 
+    l_n:            float       #nose lenght
+    l_c:            float       #cabin lenght
+    l_tc:         float       #tail cone length
+
     # --- H2 tank --------------------------------------------------------
     # Hump-back: tank rides on top of fuselage (747-style); fuselage
     # length is unchanged and only the wetted area grows. Otherwise
@@ -128,6 +132,7 @@ class AircraftConfig:
     # --- Mission masses -------------------------------------------------
     W_payload:        float = 0.0
     W_fixed:          float = 0.0
+    W_fixed_frn:      float = 0.0
 
     # --- Iteration control ---------------------------------------------
     MTOW_initial:     float = 0.0
@@ -158,6 +163,13 @@ class AircraftConfig:
     x_cg_lg_main:       float = 0.0
     x_cg_sc:            float = 0.0
     x_cg_engine:        float = 0.0
+
+    cg_location_fus:     float = 0.0                    # distance from fus. nose to fus cg, as % of fus length
+    cg_location_tail_c:  float = 0.0                    # % of chord from LE 
+    cg_location_tail_b:  float = 0.0                    # % of semi-span from root chord
+    cg_surf_control:     float = 0.0                    # 100% of MAC from LEMAC
+    cg_location_engines: float = 0.0                    # [m] distance from LEMAC to cg of power units on wings
+    
 
     # ---------- Derived helpers ---------------------------------------
     @property
@@ -226,6 +238,10 @@ def default_q400_hycool() -> AircraftConfig:
         S_wet_f          = 298.15,              # Class I Value
         l_t              = 17.5,                # Referenced
 
+        l_n              = 5.08,                # nose lenght, from class I
+        l_c              = 22,                  # cabin lenght, from class I
+        l_tc           = 7.98,                # tail cone length, from class I
+
         # H2 tank
         hump_back        = True,               # Design Decision
         rho_LH2_eff      = 70.85,               # kg/m^3, LH2 at boiling point
@@ -287,6 +303,7 @@ def default_q400_hycool() -> AircraftConfig:
         # Mission masses
         W_payload        = 10_000.0,            # Class I Value
         W_fixed          = 5_500.0,             # Torenbeek
+        W_fixed_frn      = 0.14,                # Torenbeek p. 287 14% of MTOW
 
         # Iteration
         MTOW_initial     = ClassI_MTOW,         # Class I Value
@@ -318,5 +335,13 @@ def default_q400_hycool() -> AircraftConfig:
         x_cg_lg_main        = 14,
         x_cg_sc             = 15,
         x_cg_engine         = 12.5,
+
+        # torenbeek cg estimation values, table 8-15 p.294
+        cg_location_fus     = 0.41,                 # distance from fus. nose to fus cg, as % of fus length
+        cg_location_tail_c  = 0.42,                 # % of chord from LE at 0.38 span
+        cg_location_tail_b  = 0.38,                 # % of semi-span from root chord
+        cg_surf_control     = 1,                    # 100% of MAC from LEMAC
+
+        cg_location_engines = 0.5,                  # [m] from LEMAC to cg of the power units on the wing
     
     )

@@ -23,6 +23,7 @@ class ClassII_Input:
     # Weights
     MTOW:       float = 0.0
     MZFW:       float = 0.0
+    W_fixed:    float = 0.0
     n_ult:      float = 3.75
 
     # Wing
@@ -122,6 +123,7 @@ class ClassII_Input:
         aero_parameters: Optional[dict] = None,
         MTOW: Optional[float] = None,
         MZFW: Optional[float] = None,
+        W_fixed: Optional[float] = None,
         S_ref: Optional[float] = None,
         b:    Optional[float] = None,
         S_h:  Optional[float] = None,
@@ -160,6 +162,7 @@ class ClassII_Input:
         return cls(
             MTOW          = MTOW if MTOW is not None else cfg.MTOW_initial,
             MZFW          = MZFW if MZFW is not None else cfg.MTOW_initial * 0.95,
+            W_fixed       = W_fixed, 
             n_ult         = cfg.n_ult,
 
             b             = b     if b     is not None else cfg.b,
@@ -537,12 +540,13 @@ class weightEstimation:
         g       = self.g
         d_eq    = (g.b_f + g.h_f) / 2.0
         sigma   = g.l_f / d_eq
+        fact_pres = 1.08                    #torenbeek p.282: add 8% for pressurized
         S_f_wet = (np.pi * g.b_f * g.l_f
                    * (1.0 - 2.0 / sigma)**(2.0 / 3.0)
                    * (1.0 + 1.0 / sigma**2))
         return (g.k_wf
                 * np.sqrt(g.V_dive * g.l_t / (g.b_f + g.h_f))
-                * S_f_wet ** 1.2) * g.mass_margin
+                * S_f_wet ** 1.2) * fact_pres * g.mass_margin
 
     def _LDG_weight(self) -> float:
         g    = self.g

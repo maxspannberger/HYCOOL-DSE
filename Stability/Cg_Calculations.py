@@ -19,239 +19,120 @@ from General.component_parameters import component_params as comp_params
 
 
 @dataclass
-class CgComponent:
-    """
-    Single mass item for CG calculation.
-
-    x_location is measured from the chosen reference point.
-    Recommended reference: nose tip, because your current config already
-    stores several CG positions from the nose.
-    """
-
-    name: str
-    mass_kg: float
-    x_location_m: float
-    group: str = "General"
-
-    @property
-    def moment_kgm(self) -> float:
-        return self.mass_kg * self.x_location_m
-
-
-@dataclass
 class CgCalculationInput:
-    """
-    Input container for the CG calculation.
 
-    All component masses and positions are collected here before computing
-    total mass and aircraft CG.
-    """
+    MAC:            float       # m 
+    l_f:            float       # fuselage lenght, m
 
-    reference: str
-    components: list[CgComponent] = field(default_factory=list)
+    OEW:            float       # operating empty weight
+    MTOW:           float
+    W_fixed:        float
+    
+    W_h2_tank:      float       #tank weight
+    L_tank:         float       #tank length
 
-    mac_m: float = 0.0
-    lemac_m: float = 0.0
+    l_n:            float       #nose lenght
+    l_c:            float       #cabin lenght
+    l_tc:           float    #tail cone length
+
+    W_fus:          float       #fuselage weight
+
+    W_lg_nose:           float    #nose landing gear weight
+    W_lg_main:           float    #main landing gear weight
+
+    W_htail:        float
+    W_vtail:        float
+
+    MAC_h:          float
+    MAC_v:          float
+
+    W_wing:         float
+    W_sc:           float   #surface control system weight
+
+    x_LEMAC:        float           #intital guess x_LEMAC
+
+    W_engine:       float           
+
 
     @classmethod
-    def from_config(
+    def from_class_ii(
         cls,
         cfg: AircraftConfig,
         result: ClassIIResult,
     ) -> "CgCalculationInput":
-        """
-        Build CG input from AircraftConfig and, where useful, ClassIIResult.
-
-        Use cfg for user-defined component positions.
-        Use result for final computed masses such as fuel mass, OEW, propulsion mass, etc.
-        """
-
-        x_cg_wing = 1 #placeholder, should be a fn of MAC or root chord
         
-        # def W_structure(self) -> float:
-        # return (self.W_wing + self.W_htail + self.W_vtail
-        #         + self.W_fus + self.W_lg + self.W_sc)
-        # def W_empty(self) -> float:
-        #     return self.W_structure + self.W_engine
+        final = result.iteration_log[-1]
+        l_f = result.l_f_m
+
+        OEW = result.OEW
+        MTOW = result.MTOW
+        W_fixed = result.W_fixed
+
+        W_fus = result.weight.W_fus
+        W_lg_nose = result.weight.W_lg_nose
+        W_lg_main = result.weight.W_lg_main
+        W_htail = result.weight.W_htail
+        W_vtail = result.weight.W_vtail
+        W_h2_tank = result.weight.W_h2_tank
 
 
-        components: list[CgComponent] = []
-        components.append("Wing", result.weight.W_wing, x_cg_wing, "Structure")
-        components.append("htail", result.weight.W_htail, cfg.x_cg_htail, "Structure")
-        components.append("vtail", result.weight.W_vtail, cfg.x_cg_vtail, "Structure")
-        components.append("fuselage", result.weight.W_fus, cfg.x_cg_fus, "Structure")
-        components.append("nose landing gear", result.weight.W_lg_nose, cfg.x_cg_lg_nose, "Structure")
-        components.append("main landing gear", result.weight.main, cfg.x_cg_lg_main, "Structure")
-        components.append("surface controls", result.weight.W_sc, cfg.x_cg_sc, "Structure")
-        components.append("Engines", result.weight.W_engine, cfg.x_cg_engine, "Propulsion")
+        L_tank = final["L_tank_m"]
 
+        l_n = cfg.l_n
+        l_c = cfg.l_c
+        l_tc = cfg.l_tc
 
-        #how to call the values
-        # components.append(CgComponent("Wing", result.weight.W_wing, cfg.Wing_cg, "Structure"))
-        # components.append(CgComponent("Fuselage", result.weight.W_fus, cfg.Fuselage_cg, "Structure"))
-        # components.append(CgComponent("Fuel", result.W_fuel, cfg.FUEL_cg, "Fuel"))
+        MAC_h = cfg.MAC_h
+        MAC_v = cfg.MAC_v
 
-        # ------------------------------------------------------------
-        # Final mass values
-        # ------------------------------------------------------------
-        # If result is available, use final Class II masses.
-        # Otherwise use rough config/default values.
-        if result is not None:
-            OEW = float(result.OEW)
-            fuel_mass = float(result.W_fuel)
-            payload_mass = float(result.W_payload)
-            prop_mass = float(result.W_prop)
+        W_wing = result.weight.W_wing_accurate
+        W_sc = result.weight.W_sc
 
-            if result.iteration_log:
-                final = result.iteration_log[-1]
-                mac_m = float(final["MAC_m"])
-            else:
-                mac_m = float(cfg.MAC)
+        MAC = result.MAC
+        x_LEMAC = cfg.LEMAC
 
-        else:
-            OEW = float(cfg.MTOW_initial - cfg.W_payload)
-            fuel_mass = float(cfg.m_dot_fuel * cfg.range_m / cfg.V_cruise)
-            payload_mass = float(cfg.W_payload)
-            prop_mass = float(cfg.W_propulsion)
-            mac_m = float(cfg.MAC)
+        W_engine = result.weight.W_engine         #total propulsion system weight, excluding lh2 tank but including piping TODO: perhaps exclude piping & cabling for the cg calc
 
-        # ------------------------------------------------------------
-        # Basic aircraft groups
-        # ------------------------------------------------------------
-        components.append(
-            CgComponent(
-                name="Operating empty weight",
-                mass_kg=OEW,
-                x_location_m=float(cfg.OEW_cg),
-                group="Aircraft"
-            )
-        )
-
-        components.append(
-            CgComponent(
-                name="Fuel",
-                mass_kg=fuel_mass,
-                x_location_m=float(cfg.FUEL_cg),
-                group="Fuel"
-            )
-        )
-
-        components.append(
-            CgComponent(
-                name="Propulsion system",
-                mass_kg=prop_mass,
-                x_location_m=float(getattr(cfg, "Propulsion_cg", cfg.OEW_cg)),
-                group="Propulsion"
-            )
-        )
-
-        # ------------------------------------------------------------
-        # Payload split into passengers and cargo
-        # ------------------------------------------------------------
-        pax_mass = float(cfg.PaxWeight * cfg.Pax_count)
-        cargo_mass = max(payload_mass - pax_mass, 0.0)
-
-        # Simple passenger CG estimate:
-        # average between first and last window.
-        pax_cg = 0.5 * (float(cfg.FirstWindow) + float(cfg.LastWindow))
-
-        components.append(
-            CgComponent(
-                name="Passengers",
-                mass_kg=pax_mass,
-                x_location_m=pax_cg,
-                group="Payload"
-            )
-        )
-
-        # Cargo split based on available cargo volume
-        total_cargo_vol = float(cfg.Max_fwd_cargo_vol + cfg.Max_aft_cargo_vol)
-
-        if total_cargo_vol > 0.0 and cargo_mass > 0.0:
-            fwd_cargo_mass = cargo_mass * cfg.Max_fwd_cargo_vol / total_cargo_vol
-            aft_cargo_mass = cargo_mass * cfg.Max_aft_cargo_vol / total_cargo_vol
-        else:
-            fwd_cargo_mass = 0.0
-            aft_cargo_mass = 0.0
-
-        components.append(
-            CgComponent(
-                name="Forward cargo",
-                mass_kg=fwd_cargo_mass,
-                x_location_m=float(cfg.FwdCargo_cg),
-                group="Payload"
-            )
-        )
-
-        components.append(
-            CgComponent(
-                name="Aft cargo",
-                mass_kg=aft_cargo_mass,
-                x_location_m=float(cfg.AftCargo_cg),
-                group="Payload"
-            )
-        )
 
         return cls(
-            reference="nose tip",
-            components=components,
-            mac_m=mac_m,
-            lemac_m=float(cfg.LEMAC),
+            l_f = l_f,
+            OEW = OEW,
+            MTOW = MTOW,
+            W_fixed = W_fixed,
+
+            W_fus = W_fus,
+            W_lg_nose = W_lg_nose,
+            W_lg_main = W_lg_main,
+            W_htail = W_htail,
+            W_vtail = W_vtail,
+            W_h2_tank = W_h2_tank,
+
+
+            L_tank = L_tank,
+
+            l_n = l_n,
+            l_c = l_c,
+            l_tc = l_tc,
+
+            MAC_h = MAC_h,
+            MAC_v = MAC_v,
+
+            W_wing = W_wing,
+            W_sc = W_sc,
+
+            MAC = MAC,
+            x_LEMAC = x_LEMAC,
+
+            W_engine = W_engine,
+
         )
 
 
 @dataclass
 class CgBreakdown:
-    """
-    Output of the CG calculation.
-    """
+    #Then the breakdown class should only store calculated values. It should not calculate anything major.
+    OEW_cg: float
 
-    total_mass_kg: float
-    total_moment_kgm: float
-    x_cg_m: float
-    x_cg_mac: float
-    components: list[CgComponent]
-
-    def summary(self) -> Table:
-        table = Table(
-            title="Aircraft CG Calculation",
-            show_header=True,
-            header_style="bold blue"
-        )
-
-        table.add_column("Group")
-        table.add_column("Component")
-        table.add_column("Mass [kg]", justify="right")
-        table.add_column("x-location [m]", justify="right")
-        table.add_column("Moment [kg m]", justify="right")
-
-        for comp in self.components:
-            table.add_row(
-                comp.group,
-                comp.name,
-                f"{comp.mass_kg:.1f}",
-                f"{comp.x_location_m:.2f}",
-                f"{comp.moment_kgm:.1f}",
-            )
-
-        table.add_section()
-        table.add_row(
-            "[bold]Total[/bold]",
-            "",
-            f"[bold]{self.total_mass_kg:.1f}[/bold]",
-            f"[bold]{self.x_cg_m:.2f}[/bold]",
-            f"[bold]{self.total_moment_kgm:.1f}[/bold]",
-        )
-
-        table.add_row(
-            "[bold green]CG wrt MAC[/bold green]",
-            "",
-            "",
-            "",
-            f"[bold green]{self.x_cg_mac:.4f} MAC[/bold green]",
-        )
-
-        return table
 
 
 class CgCalculator:
@@ -273,28 +154,102 @@ class CgCalculator:
         for comp in self.i.components:
             if comp.mass_kg < 0:
                 raise ValueError(f"Negative mass for component: {comp.name}")
+            
+    @staticmethod
+    def cg_from_weights(
+        weights: list[float],
+        locations: list[float],
+    ) -> float:
+        """
+        Calculate the CG location from multiple weights and x-locations.
+        """
+
+        if len(weights) != len(locations):
+            raise ValueError("weights and locations must have the same length.")
+
+        total_weight = sum(weights)
+
+        if total_weight <= 0.0:
+            raise ValueError("Total weight must be positive for CG calculation.")
+
+        total_moment = sum(
+            W * x for W, x in zip(weights, locations)
+        )
+
+        cg_location = total_moment / total_weight
+
+        return total_weight, cg_location
 
     def compute(self) -> CgBreakdown:
-        total_mass = sum(comp.mass_kg for comp in self.i.components)
+        d = self.i
 
-        if total_mass <= 0:
-            raise ValueError("Total mass must be positive.")
+        x_LEMAC = d.x_LEMAC
+        MAC = d.MAC
 
-        total_moment = sum(comp.moment_kgm for comp in self.i.components)
+        l_f = d.l_f
+        l_n = d.l_n
+        l_c = d.l_c
+        L_tank = d.L_tank
 
-        x_cg = total_moment / total_mass
+        MAC_h = d.MAC_h
+        MAC_v = d.MAC_v
 
-        # CG relative to MAC:
-        # x_cg_mac = 0 means at LEMAC.
-        # x_cg_mac = 0.25 means 25 percent MAC behind LEMAC.
-        x_cg_mac = (x_cg - self.i.lemac_m) / self.i.mac_m
+
+
+
+# ------------------- Fuselage Group Weights (group components according to Torenbeek p.301) ------------------
+        W_fixed = d.W_fixed
+        W_fus = d.W_fus
+        W_lg_nose = d.W_lg_nose
+        W_htail = d.W_htail
+        W_vtail = d.W_vtail
+        W_h2_tank = d.W_h2_tank 
+
+# ------------------- Fuselage Group cg locations  ------------------
+
+        x_cg_fixed = cfg.cg_location_fus * l_f                      #assume cg of fixed weight to be equal to fuselage cg, TODO: could be shifted a bit
+        x_cg_fus = cfg.cg_location_fus * l_f
+        x_cg_lg_nose = (2/3) * l_c                                  #this is just an estimate, TODO: can be calculated from required load for steering (SEAD)        
+        x_cg_htail = 0.98*l_f-MAC_h+(cfg.cg_location_tail_c)        #took 2% fus lenght fort the little cone behind tail, then cg is at a torenbeek defined frn behind LE TODO: update when l_h is updated
+        x_cg_vtail = 0.98*l_f-MAC_v+(cfg.cg_location_tail_c)        #took 2% fus lenght fort the little cone behind tail, then cg is at a torenbeek defined frn behind LE
+        x_cg_tank = l_n + l_c + 1/2 * L_tank
+
+        
+        W_fus_group, x_cg_fus_group = self.cg_from_weights(
+            weights=[
+                W_fixed,
+                W_fus,
+                W_lg_nose,
+                W_htail,
+                W_vtail,
+                W_h2_tank,
+            ],
+            locations=[
+                x_cg_fixed,
+                x_cg_fus,
+                x_cg_lg_nose,
+                x_cg_htail,
+                x_cg_vtail,
+                x_cg_tank,
+            ],
+        )
+
+# ------------------- Wing Group ------------------
+        W_sc = d.W_sc
+        W_lg_main = d.W_lg_main
+        W_wing = d.W_wing
+        W_engine = d.W_engine
+
+
+        x_cg_sc = x_LEMAC + MAC
+        x_cg_wing = x_LEMAC + 
+        x_cg_lg_main = x_LEMAC + 0.5 * MAC         #initial estimate from Torenbeek p.301, TODO: to be fixed for cg excursion & tipover angle
+        x_cg_power_units = x_LEMAC + cfg.cg_location_engines
+
+        
 
         return CgBreakdown(
-            total_mass_kg=total_mass,
-            total_moment_kgm=total_moment,
-            x_cg_m=x_cg,
-            x_cg_mac=x_cg_mac,
-            components=self.i.components,
+           
         )
 
 
