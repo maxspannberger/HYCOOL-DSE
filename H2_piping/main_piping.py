@@ -128,7 +128,7 @@ if __name__ == "__main__":
         Pump(position   =  2, 
              target_p   =  50*100000, 
              diameter   =  0.02, 
-             efficiency =  0.60),
+             efficiency =  0.65),
         
         Pipe(position   =  3, 
              length     =  64.0, 
