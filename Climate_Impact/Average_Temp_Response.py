@@ -26,29 +26,49 @@ from math import sin, cos, radians
 
 
 # constants defined from literature and datasets
-h = 7620 # m, based on the operating altitude of Dash 8 Q400 [Janes]
+h = 6100 # m, based on the operating altitude of Dash 8 Q400 [Janes]
 g0 = 9.80665 # m/s^2, standard gravity
 latitude = 51.0 # degrees, based on the location of interest (central Europe/Germany)
 f_day = 0.5 # day fraction, assuming 12 hours of daylight on average
-f_ISSR  = 0.15 # ISSR fraction [Lamquin 2012]
-pv = pv.pv_376 # PV at 376 hPa in PVU
+f_ISSR  = 0.02 # ISSR fraction [Lamquin 2012]
+pv = pv.pv_472 # PV at 376 hPa in PVU
 olr = olr.olr # OLR in W/m2 
-t = 238.62 # K, temperature altitude [standard atmosphere at 7620 m]
+t = 248.5 # K, temperature altitude [standard atmosphere at 6100 m]
 n = 80 # dayof the year, Spring Equinox (maybe replace with average over the year)
 d_mission = 1000 # km, mission distance
-ei_nox = 3*10**(-3) # kg/kg, 3 = lean premixed [Grewe 2016]; 4.5 = NOx emission index 2015 [Ponater 2006] 1.5 a 2050 predicted
+# ei_nox = 3*10**(-3) # kg/kg, 3 = lean premixed [Grewe 2016]; 4.5 = NOx emission index 2015 [Ponater 2006] 1.5 a 2050 predicted
 r = 6356766 # m, Earth's radius
-geopotential = h * g0 * (r/(r+h))**2 # m^2/s^2, geopotential at 7620 m
+geopotential = h * g0 * (r/(r+h))**2 # m^2/s^2, geopotential at 6100 m
 s = 1360 # W/m2, solar constant
 
 # system-specific parameters to be changed based on the design of the aircraft and mission profile
-#eta_prop = 0.6 # propulsion efficiency
+eta_jet = 0.35 # jet overall efficiency
 m_h2 = 569 # kg, mass of hydrogen fuel
-#E_mission = 500000 # kJ, energy required for the mission
+E_mission = m_h2 * 120 * 0.5 # J, energy required for the mission
+m_jetfuel = E_mission / (43 * eta_jet) # kg, mass of jet fuel required for the mission, based on energy density of jet fuel and efficiency
+print(m_jetfuel)
+
 turbine = True
 fc_liquid_venting = False
 #gravimetric energy density adjustment factor for baseline  system
 f_energy_density = 120/43 # from individual densities in MJ/kg, 120 for LH2, 43 for Jet fuel
+
+EFFICACY = {'CH4': 1.18, 'PMO': 1.18, 'O3': 1.37, 'H2O': 1, 'contrail': 0.42, 'CO2': 1}
+P20_F100 = {'CH4': 98.2, 'O3': 58.3, 'H2O': 58.3, 'contrail': 48.9, 'CO2': 125.0}
+EI_H2O = {
+    'GT':  9.0 / 1.231,   # H2 combustion EI vs kerosene baseline in aCCF
+    'GT2': 9.0 / 1.231,
+    'FC':  9.0 / 1.231,
+    'Jet': 1.0,            # aCCF already calibrated for kerosene EI
+    'BAT': 0.0,
+}
+EI_NOX = {
+    'GT':  1.5e-3,  # 2050 cryoplane [Ponater 2006]
+    'GT2': 1.5e-3,
+    'FC':  0.0,
+    'BAT': 0.0,
+    'Jet': 6.0e-3,  # 2050 conventional [Ponater 2006]
+}
 
 # =============================================================================
 # Loading results from Class 2 and calculating the mission phase power and 
@@ -198,8 +218,8 @@ def build_designs(eff):
             'to_climb': {'primary': 'GT', 'eta_primary': eff['A_gt_eff'], 'p_primary': eff['A_P_gt'], 'secondary': 'BAT', 'eta_secondary': eff['A_bt_eff_d'], 'p_secondary': eff['A_P_bt_discharge']}
         },
         'Baseline': {
-            'cruise': {'source': 'Jet', 'eta': 0.33},
-            'to_climb': {'primary': 'Jet', 'eta_primary': 0.33, 'p_primary': eff['D_P_gt_climb'] / 2, 'secondary': 'Jet', 'eta_secondary': 0.33, 'p_secondary': eff['D_P_gt_climb'] / 2}
+            'cruise': {'source': 'Jet', 'eta': eta_jet},
+            'to_climb': {'primary': 'Jet', 'eta_primary': eta_jet, 'p_primary': eff['D_P_gt_climb'] / 2, 'secondary': 'Jet', 'eta_secondary': eta_jet, 'p_secondary': eff['D_P_gt_climb'] / 2}
         },
     }
 source_props = {
@@ -254,11 +274,11 @@ def calc_mass_h2(comp, efficiency_results=None):
                     'FC-BAT': B_fc_bt_eff,
                     'GT-GT': D_gt_gt_eff,
                     'GT-FC': C_gt_fc_eff,
-                    'Baseline': 0.33,
+                    'Baseline': eta_jet,  # use GT-GT efficiency as a proxy for baseline jet efficiency if not provided
                 }
-                cruise_eta = total_eff_map.get(design_name) or 0.33
+                cruise_eta = total_eff_map.get(design_name) or eta_jet
             except Exception:
-                cruise_eta = 0.33
+                cruise_eta = eta_jet
         cruise_energy = energies['cruise']
         cruise_m_h2 = 0.0
 
@@ -432,19 +452,25 @@ def calc_aCCF_nox():
     d = -23.44*cos(radians(360/365*(n+10)))
     F_in = s*(sin(radians(latitude))*sin(radians(d)) + cos(radians(latitude))*cos(radians(d)))
 
-    aCCF_o3 = -2.64*10**(-11) + 1.17*10**(-13)*t + 2.46*10**(-16)*geopotential - 1.04*(10**-18)*t*geopotential    
+    aCCF_o3 = -2.64*10**(-11) + 1.17*10**(-13)*t + 2.46*10**(-16)*geopotential - 1.04*(10**-18)*t*geopotential   
+    aCCF_o3 *= EFFICACY['O3'] 
+    aCCF_o3_100 = aCCF_o3 * P20_F100['O3']
     aCCF_ch4 = -4.84*10**(-13) + 9.79*10**(-19)*geopotential - 3.11*10**(-16)*F_in + 3.01*10**(-21)*F_in*geopotential
-    aCCF_pmo = 0.29 * aCCF_ch4
+    aCCF_ch4 *= EFFICACY['CH4']
+    aCCF_ch4_100 = aCCF_ch4 * P20_F100['CH4']
+    aCCF_pmo = 0.29 * aCCF_ch4 # efficacy alreaady applied in line above
+    aCCF_pmo_100 = aCCF_pmo * P20_F100['CH4'] #CH4 and PMO have the same P20-F100 adjustment factor
 
+    aCCF_nox = aCCF_o3 + aCCF_ch4 + aCCF_pmo
+    aCCF_nox_100 = aCCF_o3_100 + aCCF_ch4_100 + aCCF_pmo_100
     # print(f"NOx impact: {aCCF_o3 + aCCF_ch4 + aCCF_pmo}")
-    return aCCF_o3 + aCCF_ch4 + aCCF_pmo
+    return aCCF_nox, aCCF_nox_100
 
 def calc_aCCF_h2o():
-
-    aCCF_h2o = (2.11*10**(-16) + 7.70*10**(-17)*abs(pv))*(9/1.231)
-
+    aCCF_h2o = (2.11*10**(-16) + 7.70*10**(-17)*abs(pv)) #*(9/1.231) EI conversion for Hydrogen vs kerosene. 
+    aCCF_h2o_100 = aCCF_h2o * P20_F100['H2O']
     # print(f"H2O impact: {aCCF_h2o}")
-    return aCCF_h2o
+    return aCCF_h2o, aCCF_h2o_100
 
 def calc_aCCF_contrail():
 
@@ -456,34 +482,44 @@ def calc_aCCF_contrail():
     
     aCCF_contrail_mean = f_day*aCCF_contrail_day + (1-f_day)*aCCF_contrail_night
 
+    aCCF_contrail_mean *= EFFICACY['contrail']
+    aCCF_contrail_mean_100 = aCCF_contrail_mean * P20_F100['contrail']
     # print(f"Contrail impact: {aCCF_contrail_mean}")
-    return aCCF_contrail_mean
+    print(f"OLR={olr}, aCCF_contrail_day={aCCF_contrail_day}, aCCF_contrail_night={aCCF_contrail_night}, aCCF_contrail_mean={aCCF_contrail_mean}")
+    return aCCF_contrail_mean, aCCF_contrail_mean_100
 
 def calc_aCCF_co2():
     aCCF_co2 = 7.48*10**(-16)
+    aCCF_co2 *= EFFICACY['CO2']
+    aCCF_co2_100 = aCCF_co2 * P20_F100['CO2']
 
     #  print(f"CO2 impact: {aCCF_co2}")
-    return aCCF_co2
+    return aCCF_co2, aCCF_co2_100
+
 
 def calc_atr_per_design(h2_masses):
-    aCCF_nox = calc_aCCF_nox()
-    aCCF_h2o = calc_aCCF_h2o()
-    aCCF_contrail = calc_aCCF_contrail()
-    aCCF_co2 = calc_aCCF_co2()
+    aCCF_nox, aCCF_nox_100 = calc_aCCF_nox()
+    aCCF_h2o, aCCF_h2o_100 = calc_aCCF_h2o()
+    aCCF_contrail, aCCF_contrail_100 = calc_aCCF_contrail()
+    aCCF_co2, aCCF_co2_100 = calc_aCCF_co2()
 
     atrs = {}
+    f_atr_100s = {}
+
     for design_name, design_data in h2_masses.items():
         cruise = design_data['cruise']
         primary = design_data['to_climb']['primary']
         secondary = design_data['to_climb']['secondary']
 
-        if design_name == 'Jet': # only apply energy density adjustment for jet
+        if design_name == 'Baseline': # only apply energy density adjustment for jet
             f_ed = f_energy_density
         else:
             f_ed = 1.0
         
         atr_cruise = 0.0
+        atr_cruise_100 = 0.0
         cruise_nox = cruise_h2o = cruise_co2 = cruise_contrail = 0.0
+        cruise_nox_100 = cruise_h2o_100 = cruise_co2_100 = cruise_contrail_100 = 0.0
         # If cruise has a detailed breakdown, attribute impacts per contributing source
         cruise_breakdown = cruise.get('cruise_breakdown') if isinstance(cruise, dict) else None
         if cruise_breakdown:
@@ -494,69 +530,149 @@ def calc_atr_per_design(h2_masses):
                 src = part['source']
                 m_h2 = part.get('m_h2_kg', 0.0)
                 if source_props[src]['nox']:
-                    val = m_h2 * ei_nox * aCCF_nox * f_ed
+                    val = m_h2 * EI_NOX[src] * aCCF_nox * f_ed
                     atr_cruise += val
                     cruise_nox += val
+
+                    val_100 = m_h2 * EI_NOX[src] * aCCF_nox_100 * f_ed
+                    atr_cruise_100 += val_100
+                    cruise_nox_100 += val_100
                 if source_props[src]['h2o']:
-                    val = m_h2 * aCCF_h2o * f_ed
+                    val = m_h2 * EI_H2O[src] * aCCF_h2o * f_ed
                     atr_cruise += val
                     cruise_h2o += val
+
+                    val_100 = m_h2 * EI_H2O[src] * aCCF_h2o_100 * f_ed
+                    atr_cruise_100 += val_100
+                    cruise_h2o_100 += val_100
                 if source_props[src]['co2']:
-                    val = m_h2 * aCCF_co2 * f_energy_density
+                    val = m_h2 * aCCF_co2 * f_ed
                     atr_cruise += val
                     cruise_co2 += val
+
+                    val_100 = m_h2 * aCCF_co2_100 * f_ed
+                    atr_cruise_100 += val_100
+                    cruise_co2_100 += val_100
             # add contrail once, scaled by fraction of cruise mass from contrail-producing sources
             if total_cruise_mass > 0 and total_contrail_mass > 0:
                 contrail_total = d_mission * f_ISSR * aCCF_contrail * (total_contrail_mass / total_cruise_mass)
                 atr_cruise += contrail_total
                 cruise_contrail += contrail_total
+
+                contrail_total_100 = d_mission * f_ISSR * aCCF_contrail_100 * (total_contrail_mass / total_cruise_mass)
+                atr_cruise_100 += contrail_total_100
+                cruise_contrail_100 += contrail_total_100
         else:
             cruise_nox = cruise_h2o = cruise_co2 = cruise_contrail = 0.0
-            if source_props[cruise['source']]['nox']:
-                cruise_nox = cruise['m_h2_kg'] * ei_nox * aCCF_nox * f_ed
-                atr_cruise += cruise_nox
-            if source_props[cruise['source']]['h2o']:
-                cruise_h2o = cruise['m_h2_kg'] * aCCF_h2o * f_ed
-                atr_cruise += cruise_h2o
-            if source_props[cruise['source']]['contrail']:
-                cruise_contrail = d_mission * f_ISSR * aCCF_contrail
-                atr_cruise += cruise_contrail
-            if source_props[cruise['source']]['co2']:
-                cruise_co2 = cruise['m_h2_kg'] * aCCF_co2 * f_energy_density # adjust for energy density difference to jet fuel
-                atr_cruise += cruise_co2
+            cruise_nox_100 = cruise_h2o_100 = cruise_co2_100 = cruise_contrail_100 = 0.0
+            if design_name == 'Baseline':
+                m_fuel = m_jetfuel
+                f_climb = E_climb / (E_climb + E_cruise)  # fraction of fuel used in climb
+                m_fuel_cruise = m_fuel * (1 - f_climb)
+                if source_props[cruise['source']]['nox']:
+                    cruise_nox = m_fuel_cruise * EI_NOX['Jet'] * aCCF_nox
+                    atr_cruise += cruise_nox
+                    cruise_nox_100 = m_fuel_cruise * EI_NOX['Jet'] * aCCF_nox_100
+                    atr_cruise_100 += cruise_nox_100
+                if source_props[cruise['source']]['h2o']:
+                    cruise_h2o = m_fuel_cruise * EI_H2O['Jet'] * aCCF_h2o
+                    atr_cruise += cruise_h2o
+                    cruise_h2o_100 = m_fuel_cruise * EI_H2O['Jet'] * aCCF_h2o_100
+                    atr_cruise_100 += cruise_h2o_100
+                if source_props[cruise['source']]['contrail']:
+                    cruise_contrail = d_mission * f_ISSR * aCCF_contrail
+                    atr_cruise += cruise_contrail
+                    cruise_contrail_100 = d_mission * f_ISSR * aCCF_contrail_100
+                    atr_cruise_100 += cruise_contrail_100
+                if source_props[cruise['source']]['co2']:
+                    cruise_co2 = m_fuel_cruise * aCCF_co2
+                    atr_cruise += cruise_co2
+                    cruise_co2_100 = m_fuel_cruise * aCCF_co2_100
+                    atr_cruise_100 += cruise_co2_100    
+            else:        
+                if source_props[cruise['source']]['nox']:
+                    cruise_nox = cruise['m_h2_kg'] * EI_NOX[cruise['source']] * aCCF_nox * f_ed
+                    atr_cruise += cruise_nox
+
+                    cruise_nox_100 = cruise['m_h2_kg'] * EI_NOX[cruise['source']] * aCCF_nox_100 * f_ed
+                    atr_cruise_100 += cruise_nox_100
+                if source_props[cruise['source']]['h2o']:
+                    cruise_h2o = cruise['m_h2_kg'] * EI_H2O[cruise['source']] * aCCF_h2o * f_ed
+                    atr_cruise += cruise_h2o
+
+                    cruise_h2o_100 = cruise['m_h2_kg'] * EI_H2O[cruise['source']] * aCCF_h2o_100 * f_ed
+                    atr_cruise_100 += cruise_h2o_100
+                if source_props[cruise['source']]['contrail']:
+                    cruise_contrail = d_mission * f_ISSR * aCCF_contrail
+                    atr_cruise += cruise_contrail
+
+                    cruise_contrail_100 = d_mission * f_ISSR * aCCF_contrail_100
+                    atr_cruise_100 += cruise_contrail_100
+                if source_props[cruise['source']]['co2']:
+                    cruise_co2 = cruise['m_h2_kg'] * aCCF_co2 * f_ed # adjust for energy density difference to jet fuel
+                    atr_cruise += cruise_co2
+
+                    cruise_co2_100 = cruise['m_h2_kg'] * aCCF_co2_100 * f_ed
+                    atr_cruise_100 += cruise_co2_100
 
         atr_primary = 0.0
+        atr_primary_100 = 0.0
         if source_props[primary['source']]['nox']:
-            atr_primary += primary['m_h2_kg'] * ei_nox * aCCF_nox * f_ed
+            atr_primary += primary['m_h2_kg'] * EI_NOX[primary['source']] * aCCF_nox * f_ed
+            atr_primary_100 += primary['m_h2_kg'] * EI_NOX[primary['source']] * aCCF_nox_100 * f_ed
         if source_props[primary['source']]['h2o']:
-            atr_primary += primary['m_h2_kg'] * aCCF_h2o * f_ed
+            atr_primary += primary['m_h2_kg'] * EI_H2O[primary['source']] * aCCF_h2o * f_ed
+            atr_primary_100 += primary['m_h2_kg'] * EI_H2O[primary['source']] * aCCF_h2o_100 * f_ed
         if source_props[primary['source']]['co2']:
-            atr_primary += primary['m_h2_kg'] * aCCF_co2 * f_energy_density 
+            atr_primary += primary['m_h2_kg'] * aCCF_co2 * f_ed
+            atr_primary_100 += primary['m_h2_kg'] * aCCF_co2_100 * f_ed
             
         atr_secondary = 0.0
+        atr_secondary_100 = 0.0
         sec_nox = sec_h2o = sec_co2 = 0.0
         if source_props[secondary['source']]['nox']:
-            sec_nox = secondary['m_h2_kg'] * ei_nox * aCCF_nox * f_ed
+            sec_nox = secondary['m_h2_kg'] * EI_NOX[secondary['source']] * aCCF_nox * f_ed
             atr_secondary += sec_nox
+
+            sec_nox_100 = secondary['m_h2_kg'] * EI_NOX[secondary['source']] * aCCF_nox_100 * f_ed
+            atr_secondary_100 += sec_nox_100
         if source_props[secondary['source']]['h2o']:
-            sec_h2o = secondary['m_h2_kg'] * aCCF_h2o * f_ed
+            sec_h2o = secondary['m_h2_kg'] * EI_H2O[secondary['source']] * aCCF_h2o * f_ed
             atr_secondary += sec_h2o
+
+            sec_h2o_100 = secondary['m_h2_kg'] * EI_H2O[secondary['source']] * aCCF_h2o_100 * f_ed
+            atr_secondary_100 += sec_h2o_100
+            # atr100_cruise = sec_h2o * P20_F100['H2O']
         if source_props[secondary['source']]['co2']:
-            sec_co2 = secondary['m_h2_kg'] * aCCF_co2 * f_energy_density
+            sec_co2 = secondary['m_h2_kg'] * aCCF_co2 * f_ed
             atr_secondary += sec_co2
 
-        total_atr = atr_cruise + atr_primary + atr_secondary
-        atrs[design_name] = total_atr
+            sec_co2_100 = secondary['m_h2_kg'] * aCCF_co2_100 * f_ed
+            atr_secondary_100 += sec_co2_100
+            # atr100_cruise = sec_co2 * P20_F100['CO2']
 
-    """ # Debug print: detailed ATR contributions
+        total_atr = atr_cruise + atr_primary + atr_secondary
+        total_atr100 = atr_cruise_100 + atr_primary_100 + atr_secondary_100
+        atrs[design_name] = total_atr
+        f_atr_100s[design_name] = total_atr100
+
+        # Debug print: detailed ATR contributions
         print(f"ATR breakdown for {design_name}:")
         print(f"  Cruise total={atr_cruise} (NOx={cruise_nox}, H2O={cruise_h2o}, CO2={cruise_co2}, Contrail={cruise_contrail})")
         print(f"  TO/Climb primary={atr_primary}")
         print(f"  TO/Climb secondary={atr_secondary}")
         print(f"  Total ATR={total_atr}\n")
- """
+        print(f"CO2 ATR-20:      {cruise_co2:.3e}")
+        print(f"CO2 ATR-100:     {cruise_co2_100:.3e}")
+        print(f"Contrail ATR-20: {cruise_contrail:.3e}")
+        print(f"Contrail ATR-100:{cruise_contrail_100:.3e}")
+        if cruise_co2 > 0:
+            print(f"CO2 scaling:     {cruise_co2_100/cruise_co2:.1f}")
+        if cruise_contrail > 0:
+            print(f"Contrail scaling:{cruise_contrail_100/cruise_contrail:.1f}")
+
     #print(atrs)
-    return atrs
+    return atrs, f_atr_100s
 
 
 def get_results(comp=None):
@@ -564,7 +680,6 @@ def get_results(comp=None):
     if comp is None:
         comp = component_params
     return calc_atr_per_design(calc_mass_h2(comp))
-
 
 
 if __name__ == "__main__":
