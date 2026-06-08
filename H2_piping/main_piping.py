@@ -126,9 +126,9 @@ if __name__ == "__main__":
         ('Split', 1, 3),
          
         Pump(position   =  2, 
-             target_p  =  50*100000, 
+             target_p   =  50*100000, 
              diameter   =  0.02, 
-             eff        =  0.60),
+             efficiency =  0.60),
         
         Pipe(position   =  3, 
              length     =  64.0, 
