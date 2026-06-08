@@ -79,14 +79,17 @@ def t_windenburg_trilling(p_diff: float, D: float, L: float,
     return max(t_min, t_sol)
 
 def t_spherical_buckling(p_diff, d, E, nu, SF=2.0, t_min=1e-4):
-    p_design = p_cr = p_diff * SF
+    p_design = p_diff * SF
     converged = False
     max_iter = 100
     i = 0
     t  = 0.0
     while not converged and i < max_iter:
-        t_new = d * np.sqrt((p_design * np.sqrt(3*(1 - nu**2)))/(8*E))
-        knockdown_factor = 0.124*(d/(2*t_new))**(-0.6)
+        t_new = (d/2) * np.sqrt((p_design*np.sqrt(3*(1 - nu**2)))/(2*E))
+        # NASA SP-8032 knockdown factor — Figure 2, Equation 3
+        lam = (12*(1 - nu**2))**0.25 * (R/t_new)**0.5 * 2*np.sin(phi/2)
+        knockdown_factor = 0.14 + 3.2 / lam**2
+
         p_design = p_diff * SF / knockdown_factor
 
         if i > 0 and abs(t_new - t) / t < 1e-6:
