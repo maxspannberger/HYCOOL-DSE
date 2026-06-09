@@ -404,7 +404,7 @@ class COOL:
             mu1  = CP.PropsSI('V', 'P', p, 'H', h, self.fluid)
 
             # Flow velocity and Reynolds number (Using FLOW area)
-            u_slot = m_dot_slot / (rho * A_flow_slot) 
+            u = m_dot_slot / (rho * A_flow_slot) 
             Re1 = 4 * m_dot_slot / (np.pi * Dh * mu1)
         
             if Re1 < 2300:
@@ -427,7 +427,7 @@ class COOL:
                       x0=[p, h],
                       method='lm',
                       options={'xtol': tol, 'ftol': tol},
-                      args=(p, h, u1, m_dot, A_out, self.fluid, q, dp_fric, config.divergence_penalty))
+                      args=(p, h, u, m_dot, A_out, self.fluid, q, dp_fric, config.divergence_penalty))
         p2, h2 = sol.x
                     
         T2    = CP.PropsSI('T', 'P', p2, 'H', h2, self.fluid)
