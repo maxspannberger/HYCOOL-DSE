@@ -124,8 +124,22 @@ if __name__ == "__main__":
 
     # Define system topology as a sequential list of objects
     system = [
-        Tank(), 
+        Tank(),
+
+        ('Split', 1, 2),
         
+        Pipe(length     =  0.5),
+
+        Corner(N_bend   =  1, 
+               diameter =  0.02, 
+               curv     =  2.5),
+
+        Pipe(length     =  0.5),
+
+        Corner(N_bend   =  1, 
+               diameter =  0.02, 
+               curv     =  2.5),
+
         Pipe(length     =  0.5),
          
         Pump(target_p   =  10*100000, 
@@ -134,40 +148,127 @@ if __name__ == "__main__":
         Pipe(length     =  12),
         
         ('Split', 1, 2),
+
+        Corner(N_bend   =  1, 
+               diameter =  0.02, 
+               curv     =  2.5),
         
-        Pipe(length     =  12.0), 
+        Pipe(length     =  12.0),
+
+        Corner(N_bend   =  1, 
+               diameter =  0.02, 
+               curv     =  2.5),
+
+        Pipe(length     =  2.0), 
         
         COOL(name       = 'hts_gen', 
              location   = component_position['hts_gen'][0]),
+
+        Corner(N_bend   =  1, 
+               diameter =  0.02, 
+               curv     =  2.5),
+
+        Corner(N_bend   =  1, 
+               diameter =  0.02, 
+               curv     =  2.5),
         
-        Pipe(length     =  2.0), 
+        Pipe(length     =  4.0), 
         
         COOL(name       = 'hts_pow', 
              location   = component_position['hts_pow'][0]),
-        Pipe(length     =  2.0),  
 
-        COOL(name       = 'bus', 
-             location   = component_position['bus'][0]),
-        
-        Pipe(length     =  2.0), 
-        
-        COOL(name       = 'dc_ac', 
-             location   = component_position['dc_ac'][0]),
-        
-        Pipe(length     = 4.0), 
-        
+        Corner(N_bend   =  1, 
+               diameter =  0.02, 
+               curv     =  2.5),
+
+        Corner(N_bend   =  1, 
+               diameter =  0.02, 
+               curv     =  2.5),
+
+        Pipe(length     =  2.0),
+
+        Corner(N_bend   =  1, 
+               diameter =  0.02, 
+               curv     =  2.5),
+
+        Pipe(length     =  6.0),
+
+        Corner(N_bend   =  1, 
+               diameter =  0.02, 
+               curv     =  2.5),
+
+        COOL(name       = 'hts_pow', 
+             location   = component_position['hts_pow'][1]),
+
+        Corner(N_bend   =  1, 
+               diameter =  0.02, 
+               curv     =  2.5),
+
+        Corner(N_bend   =  1, 
+               diameter =  0.02, 
+               curv     =  2.5),
+
         COOL(name       = 'dc_ac', 
              location   = component_position['dc_ac'][1]),
-        
-        Pipe(length     =  2.0),  
+
+        Pipe(length     =  2.0),
+
+        Corner(N_bend   =  1, 
+               diameter =  0.02, 
+               curv     =  2.5),
+
+        Pipe(length     =  6.0),
+
+        Corner(N_bend   =  1, 
+               diameter =  0.02, 
+               curv     =  2.5),
+
+        Pipe(length     =  2.0),
+
+        COOL(name       = 'dc_ac', 
+             location   = component_position['dc_ac'][0]),
+
+        Corner(N_bend   =  1, 
+               diameter =  0.02, 
+               curv     =  2.5),
+
+        Corner(N_bend   =  1, 
+               diameter =  0.02, 
+               curv     =  2.5),
+
+        Pipe(length     =  4.0),
 
         COOL(name       = 'ac_dc', 
              location   = component_position['ac_dc'][0]),
-        
-        
+
         Corner(N_bend   =  1, 
                diameter =  0.02, 
-               curv     =  2.5)
+               curv     =  2.5),
+
+        Corner(N_bend   =  1, 
+               diameter =  0.02, 
+               curv     =  2.5),
+
+        Pipe(length     =  2.0),
+
+        Corner(N_bend   =  1, 
+               diameter =  0.02, 
+               curv     =  2.5),
+
+        Pipe(length     =  2.0),
+
+        COOL(name       = 'bus', 
+             location   = component_position['bus'][0]),
+
+        Corner(N_bend   =  1, 
+               diameter =  0.02, 
+               curv     =  2.5),
+
+        Corner(N_bend   =  1, 
+               diameter =  0.02, 
+               curv     =  2.5),
+
+        Pipe(length     =  2.0)
         ]
     
     # Execute simulation and display results
