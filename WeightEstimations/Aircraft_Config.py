@@ -57,6 +57,7 @@ class AircraftConfig:
     # --- Fuselage -------------------------------------------------------
     l_f:            float
     b_f:            float
+    b_f_i:          float
     h_f:            float
     S_wet_f:        float
     l_t:            float
@@ -71,6 +72,11 @@ class AircraftConfig:
     # the tank sits in-line and lengthens the fuselage.
     hump_back:      bool
     rho_LH2_eff:    float          # kg/m^3, effective LH2 density in tank
+
+    wall_thickness: float
+    divider_thickness: float
+    diameter_margin: float
+
 
     # --- Flight envelope -----------------------------------------------
     altitude_cruise: float
@@ -236,6 +242,7 @@ def default_q400_hycool() -> AircraftConfig:
         # Fuselage
         l_f              = 35.05,               # Class I Value
         b_f              = 2.9,                 # Class I Value
+        b_f_i            = 2.7,                 # inner fus diameter
         h_f              = 2.9,                 # Class I Value
         S_wet_f          = 298.15,              # Class I Value
         l_t              = 17.5,                # Referenced
@@ -247,6 +254,10 @@ def default_q400_hycool() -> AircraftConfig:
         # H2 tank
         hump_back        = True,               # Design Decision
         rho_LH2_eff      = 70.85,               # kg/m^3, LH2 at boiling point
+
+        wall_thickness   = 0.01,                #m
+        divider_thickness = 0.02,               #m
+        diameter_margin  = 0.8,
 
         # Flight envelope
         altitude_cruise  = 6_096,               # From Mission Definition 7_620 old was FL250 

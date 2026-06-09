@@ -199,9 +199,16 @@ def compute_fuselage_geometry(W_fuel: float, cfg: AircraftConfig,hump_back: bool
     #r_tank = (3.0 * V_tank / (10.0 * np.pi)) ** (1 / 3) if V_tank > 0 else 0.0
     # L_tank = 4.0 * r_tank
     # d_tank = 2.0 * r_tank
-    r_tank = (3.0 * V_tank / (4.0 * np.pi)) ** (1 / 3) if V_tank > 0 else 0.0
-    d_tank = 2.0 * r_tank
-    L_tank = d_tank
+    # r_tank = (3.0 * V_tank / (4.0 * np.pi)) ** (1 / 3) if V_tank > 0 else 0.0
+    # d_tank = 2.0 * r_tank
+    # L_tank = d_tank
+
+    r_tank = (cfg.diameter_margin * cfg.b_f_i - 2*cfg.wall_thickness)/2
+    d_tank = 2*r_tank
+    l_cyl_tank = (V_tank-(4/3)*np.pi*(r_tank**3))/(np.pi*(r_tank**2))
+    L_tank = 2*r_tank + l_cyl_tank
+
+    # ---------- calculation for cylindrical tank with hemispherical endcaps --------------
 
     if hump_back:
         l_f = cfg.l_f
