@@ -146,8 +146,6 @@ if __name__ == "__main__":
              diameter   =  0.02),
         
         Pipe(length     =  15),
-        
-        ('Split', 1, 2),
 
         Corner(N_bend   =  1, 
                diameter =  0.02, 
