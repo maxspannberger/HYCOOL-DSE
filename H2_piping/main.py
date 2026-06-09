@@ -108,17 +108,17 @@ def plot_states(states):
     plt.show()
 
 # Load the component cooling requirements from the propulsion json file
-path = str(root / "Propulsion/component_sizing_results.json")
+path = str(root / "Propulsion/only_cooling_results.json")
 with open(path, 'r') as file:
     comps = json.load(file)
 
-component_order = {}
-for key, value in comps.items(): 
+component_position = {}
+for key, value in comps['cruise'].items(): 
     if key == "total":
         continue
     # Sort cooling locations by float
     sorted_keys = sorted(value, key=float)
-    component_order[key] = sorted_keys
+    component_position[key] = sorted_keys
 
 if __name__ == "__main__":
 
@@ -137,33 +137,33 @@ if __name__ == "__main__":
         
         Pipe(length     =  12.0), 
         
-        Pipe(length     =  4.0), 
-        
         COOL(name       = 'hts_gen', 
-             location   = component_order['hts_gen'][0]),
+             location   = component_position['hts_gen'][0]),
         
         Pipe(length     =  2.0), 
+        
+        COOL(name       = 'hts_pow', 
+             location   = component_position['hts_pow'][0]),
+        Pipe(length     =  2.0),  
 
         COOL(name       = 'bus', 
-             location   = component_order['bus'][0]),
+             location   = component_position['bus'][0]),
         
         Pipe(length     =  2.0), 
         
-        COOL(name       = 'ac_dc', 
-             location   = component_order['ac_dc'][0]),
+        COOL(name       = 'dc_ac', 
+             location   = component_position['dc_ac'][0]),
         
         Pipe(length     = 4.0), 
         
         COOL(name       = 'dc_ac', 
-             location   = component_order['dc_ac'][0]),
-
-        COOL(name       = 'ac_dc', 
-             location   = component_order['ac_dc'][0]),
+             location   = component_position['dc_ac'][1]),
         
         Pipe(length     =  2.0),  
+
+        COOL(name       = 'ac_dc', 
+             location   = component_position['ac_dc'][0]),
         
-        COOL(name       = 'hts_pow', 
-             location   = component_order['hts_pow'][0]),
         
         Corner(N_bend   =  1, 
                diameter =  0.02, 

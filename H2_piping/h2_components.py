@@ -14,6 +14,10 @@ from system_config import H2SystemConfig
 config = H2SystemConfig()
 tol = config.max_error
 
+path = root / "Propulsion" / "only_cooling_results.json"
+with open(path, 'r') as file:
+    comps = json.load(file)
+
 # =============================================================================
 # Calculate the fraction of gas. Get rid of supercriticals by forcing to o or 1
 # =============================================================================
@@ -357,17 +361,14 @@ class Corner:
 # =============================================================================
 class COOL:
     def __init__(self, name:        str, 
-                       location:    str
+                       location:    str,
+                       phase:       str   =  config.phase
                        ):   
         
         self.location = location
         self.name     = name
         self.fluid    = config.fluid
-
-        path = root / "Propulsion" / "component_sizing_results.json"
-        with open(path, 'r') as file:
-            comps = json.load(file)
-        self.Q_dot    = comps[name][location]['P_cool'] * 1000
+        self.Q_dot    = comps[phase][name][location] * 1000
 
     # Function that can be called to calculate the evolution of the state variables
     # in the component
