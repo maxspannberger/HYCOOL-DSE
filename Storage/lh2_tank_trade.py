@@ -84,8 +84,10 @@ def t_spherical_buckling(p_diff, d, E, nu, SF=2.0, t_min=1e-4):
     max_iter = 100
     i = 0
     t  = 0.0
+    R = d/2
+    phi = np.radians(180)  
     while not converged and i < max_iter:
-        t_new = (d/2) * np.sqrt((p_design*np.sqrt(3*(1 - nu**2)))/(2*E))
+        t_new = (R) * np.sqrt((p_design*np.sqrt(3*(1 - nu**2)))/(2*E))
         # NASA SP-8032 knockdown factor — Figure 2, Equation 3
         lam = (12*(1 - nu**2))**0.25 * (R/t_new)**0.5 * 2*np.sin(phi/2)
         knockdown_factor = 0.14 + 3.2 / lam**2
@@ -106,11 +108,11 @@ t_LH2 = t_hoop_stress(tank_options['LH2']['P_int'], tank_options['LH2']['P_ext']
 t_cCH2 = t_hoop_stress(tank_options['cCH2']['P_int'], tank_options['cCH2']['P_ext'], D, mat['S_t'], spherical)
 # sLH2 has lower internal pressure than external (external > internal),
 p_diff = tank_options['sLH2']['P_ext'] - tank_options['sLH2']['P_int']
-t_sLH2 = t_windenburg_trilling(p_diff, d, L, mat['E'], mat['nu'], SF=3.0, t_min=1e-3)
+t_sLH2 = t_windenburg_trilling(p_diff, d, L, mat['E'], mat['nu'], SF=2.0, t_min=1e-3)
 # spherical tanks
 t_LH2_s = t_hoop_stress(tank_options['LH2']['P_int'], tank_options['LH2']['P_ext'], D, mat['S_t'], spherical=True)
 t_cCH2_s = t_hoop_stress(tank_options['cCH2']['P_int'], tank_options['cCH2']['P_ext'], D, mat['S_t'], spherical=True)
-t_sLH2_s = t_spherical_buckling(p_diff, d, mat['E'], mat['nu'], SF=3.0, t_min=1e-3)
+t_sLH2_s = t_spherical_buckling(p_diff, d, mat['E'], mat['nu'], SF=2.0, t_min=1e-3)
 # sub-cooled at internal pressure
 t_sLH2_p = t_hoop_stress(
     tank_options['sLH2_p']['P_int'],
@@ -252,7 +254,7 @@ def plot_efficiency_grid(T_values, P_values, eff_grid, best, title, output_path)
 
 #different densities for LH2 at different conditions
 rho_LH2 = PropsSI('D', 'P', 1 * 100000, 'T', 20, 'parahydrogen')  # kg/m^3
-rho_cCH2 = PropsSI('D', 'P', 35 * 100000, 'T', 35, 'parahydrogen')  # kg/m^3
+rho_cCH2 = PropsSI('D', 'P', 350 * 100000, 'T', 40, 'parahydrogen')  # kg/m^3
 rho_sLH2 = PropsSI('D', 'P', 0.3 * 100000, 'T', 16, 'parahydrogen')  # kg/m^3
 rho_sLH2_p = PropsSI('D', 'T', 20.0, 'P', 5e5, 'parahydrogen')
 
