@@ -133,6 +133,7 @@ class ClassIIResult:
     Wing_sweep_LE: float = 0.0
     distance_le_mac_to_cg: float = 0.0
     distance_le_mac_to_turbine: float = 0.0
+    distance_le_root_to_le_mac: float = 0.0
 
     def summary(self):
         status_color = "green" if self.converged else "red"
@@ -153,6 +154,7 @@ class ClassIIResult:
             f"Fuselage Diameter: {self.l_f:.2f} m\n"
             f"Distance from MAC Leading Edge to CG: {self.distance_le_mac_to_cg:.2f} m\n"
             f"Distance from MAC Leading Edge to Turbine: {self.distance_le_mac_to_turbine:.2f} m\n"
+            f"Distance from Root Chord Leading Edge to MAC Leading Edge: {self.distance_le_root_to_le_mac:.2f} m\n"
         )
         
         perf_info = (
@@ -522,6 +524,11 @@ def run_class_ii(
 
     cgalong_chord = (0.7 * chordatcgpos - 0.15 * chordatcgpos) * 0.7+0.15*chordatcgpos
 
+    # print(cfg_updated.d_f/2-machspanpos) 
+
+    #distance from Root chord leading edge to MAC leading edge
+    distance_le_root_to_le_mac = np.tan(sweep_LE)*(cfg_updated.d_f/2-machspanpos)
+
 
     # Distance from MAC leading edge (front edge) CG location
     distance_le_mac_to_cg = np.tan(sweep_LE)*(cgwingpos-machspanpos)+cgalong_chord
@@ -573,6 +580,7 @@ def run_class_ii(
         aeroparameters=aero_parameters,
         distance_le_mac_to_cg=distance_le_mac_to_cg,
         distance_le_mac_to_turbine=distance_le_mac_to_turbine,
+        distance_le_root_to_le_mac=distance_le_root_to_le_mac
     )
 
 
@@ -897,6 +905,6 @@ if __name__ == "__main__":
 
     #get_optimal_cl_mach(cfg, force_recompute=True)
 
-    print(result1.aeroparameters["cdash_c"])
+    # print(result1.aeroparameters["cdash_c"])
 
-    print(result1.aeroparameters["CL_max_TO_with_new_area"])
+    # print(result1.aeroparameters["CL_max_TO_with_new_area"])
