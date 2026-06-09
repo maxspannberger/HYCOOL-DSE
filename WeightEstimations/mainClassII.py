@@ -490,8 +490,10 @@ def run_class_ii(
 
     cgalong_chord = (0.7 * chordatcgpos - 0.15 * chordatcgpos) * 0.7+0.15*chordatcgpos
 
+    # print(cfg_updated.d_f/2-machspanpos) 
+
     #distance from Root chord leading edge to MAC leading edge
-    distance_le_root_to_le_mac = np.tan(sweep_LE)*(-machspanpos)
+    distance_le_root_to_le_mac = np.tan(sweep_LE)*(cfg_updated.d_f/2-machspanpos)
 
 
     # Distance from MAC leading edge (front edge) CG location
@@ -869,6 +871,6 @@ if __name__ == "__main__":
 
     #get_optimal_cl_mach(cfg, force_recompute=True)
 
-    print(result1.aeroparameters["cdash_c"])
+    # print(result1.aeroparameters["cdash_c"])
 
-    print(result1.aeroparameters["CL_max_TO_with_new_area"])
+    # print(result1.aeroparameters["CL_max_TO_with_new_area"])
