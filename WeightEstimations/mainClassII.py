@@ -242,11 +242,12 @@ def compute_wing_geometry(MTOW: float, cfg: AircraftConfig,M_cruise:float,c_root
     S_ref = MTOW * G / cfg.Loading
     b = np.sqrt(cfg.AR * S_ref)
 
+    c_root = 2 * S_ref / ((1 + lam) * b)
+
     sweep_LE=np.arctan(sweep_quarter+0.25*2*c_root/b*(1-lam))
 
     sweep_half=np.arctan(sweep_LE-0.5*c_root/b*(1-lam))
     
-    c_root = 2 * S_ref / ((1 + lam) * b)
     c_tip = lam * c_root
     MAC = (2 / 3) * c_root * (1 + lam + lam**2) / (1 + lam)
 
@@ -328,6 +329,11 @@ def run_class_ii(
 
         # Mission power -> LH2 fuel mass
         mis_bd = MissionPower(cfg_iter, drag_bd, config=config,comp=comp, MTOW=MTOW, S_ref=S_ref).compute()
+        M_landing = MTOW - (
+            mis_bd.m_LH2_cruise
+            + mis_bd.m_LH2_climb
+            + mis_bd.m_LH2_TO_taxi
+        )        
         W_fuel = mis_bd.m_LH2_total
         P_max_kw = mis_bd.P_max / 1000
         P_cruise_kw = mis_bd.P_cruise_shaft / 1000
@@ -342,9 +348,22 @@ def run_class_ii(
         P_TO_OEI_kW = pwr_bd.P_total_OEI / 1000.0
         P_climb_kW = pwr_bd.P_from_climb / 1000.0
 
+        cfg_tail = replace_T_TO(cfg_iter, pwr_bd.T_static_per_engine)
+
+        tail_inp = TailSizing_Input.from_config(
+            cfg_tail,
+            MTOW=MTOW,
+            S_ref=S_ref,
+            b=b,
+            MAC=MAC,
+            M_landing = M_landing,
+        )
+
+        tail_bd = TailSizingEstimator(tail_inp).compute()
+
         aero_parameters=compute_additional_aerodynamic_parameters(cfg_iter, drag_bd, mis_bd, pwr_bd,sweep_half,MAC,MTOW,\
                                                                   S_ref,b,taper,c_root,sweep_quarter,sweep_LE,verbose=False)
-
+        #M_landing = aero_parameters["W_landing"]
 
         # Weight at current MTOW with sized tails and current wing geometry
         wt_inp = ClassII_Input.from_config(
@@ -376,6 +395,11 @@ def run_class_ii(
             taper = taper,
             sweep_LE = sweep_LE
         )
+        # print("WEIGHT INPUT TAIL:")
+        # print(f"S_v used in weight = {wt_inp.S_v:.3f} m²")
+        # print(f"b_v used in weight = {wt_inp.b_v:.3f} m")
+        # print(f"tail_bd S_v        = {tail_bd.S_v:.3f} m²")
+
         wt_bd = weightEstimation(wt_inp, comp).compute()
 
         # Close the loop
@@ -416,6 +440,9 @@ def run_class_ii(
                 f"(S={S_ref:5.2f} m^2, b={b:5.2f} m, "
                 f"c_r={c_root:4.2f} m, MAC={MAC:4.2f} m, "
                 f"l_f={cfg_iter.l_f:5.2f} m, d_tank={d_tank:4.2f} m, "
+                f"S_v={tail_bd.S_v:5.2f} m^2, "
+                f"b_v={tail_bd.b_v:4.2f} m, "
+                f"W_vtail={wt_bd.W_vtail:6.1f} kg, "
                 f"L/D={drag_bd.L_over_D:5.2f}, "
                 f"P_cr={mis_bd.P_cruise_shaft/1000:5.0f} kW, "
                 f"fuel={W_fuel:6.1f} kg, "
@@ -441,6 +468,12 @@ def run_class_ii(
         print()
         print(pwr_bd.summary())
 
+
+    aero_parameters=compute_additional_aerodynamic_parameters(cfg_updated, drag_bd, mis_bd, pwr_bd,sweep_half,MAC,MTOW,\
+                                                                  S_ref,b,taper,c_root,sweep_quarter,sweep_LE,verbose=True)
+    
+    M_landing = aero_parameters["W_landing"]
+
     # -----------------------------------------------------------------
     # Step 4 (post-loop): re-run tail sizing with computed T_TO
     # so the OEI rudder check uses a self-consistent thrust value
@@ -453,12 +486,13 @@ def run_class_ii(
     y_engine_4 = cfg_updated.b / 2 * (2 / 3)
     cfg_updated = replace(cfg_updated, y_engine_4=y_engine_4)
     tail_inp_recheck = TailSizing_Input.from_config(
-        cfg_updated, MTOW=MTOW, S_ref=S_ref, b=b, MAC=MAC,
+        cfg_updated, MTOW=MTOW, S_ref=S_ref, b=b, MAC=MAC, M_landing = M_landing,
     )
     tail_bd_recheck  = TailSizingEstimator(tail_inp_recheck).compute()
 
-    aero_parameters=compute_additional_aerodynamic_parameters(cfg_updated, drag_bd, mis_bd, pwr_bd,sweep_half,MAC,MTOW,\
-                                                                  S_ref,b,taper,c_root,sweep_quarter,sweep_LE,verbose=True)
+    # print("RECHECKED TAIL:")
+    # print(f"tail_rechecked S_v = {tail_bd_recheck.S_v:.3f} m²")
+    # print(f"tail_rechecked b_v = {tail_bd_recheck.b_v:.3f} m")
 
     if verbose:
         print()
