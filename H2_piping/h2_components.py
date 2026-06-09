@@ -378,6 +378,50 @@ class COOL:
         u = config.cool_dummy_u
         
         dp_fric = config.cool_dummy_dp
+
+        if self.name in ['hts_gen', 'hts_pow']:
+            # Constants
+            eps_hts = config.eps_hts
+            
+            # 1. config.A_slot is ALREADY the total stator area 
+            N_slots = config.N_slots
+            A_slot_tot = config.A_slot * 6
+            L = config.L
+            VF = config.VF
+
+            # 2. MISTAKE 3 FIX: Calculate physical area AND actual fluid flow area
+            A_slot = A_slot_tot / N_slots
+            A_flow_slot = A_slot * VF 
+            m_dot_slot = m_dot / N_slots
+
+            # Slot wetted area
+            P_wet = 2*np.pi*np.sqrt((1-VF)*A_slot/np.pi) + 2*(0.0318 + 0.0484)
+
+            # Hydraulic diameter (Using FLOW area, not total slot area)
+            Dh = 4 * A_flow_slot / P_wet 
+
+            # Fluid properties at segment inlet
+            mu1  = CP.PropsSI('V', 'P', p, 'H', h, self.fluid)
+
+            # Flow velocity and Reynolds number (Using FLOW area)
+            u_slot = m_dot_slot / (rho * A_flow_slot) 
+            Re1 = 4 * m_dot_slot / (np.pi * Dh * mu1)
+        
+            if Re1 < 2300:
+                f = 64 / Re1
+            else:
+                f = (1 / (-1.8 * np.log10(((eps_hts / Dh) / 3.7)**1.11 + 6.9 / Re1)))**2
+            
+            # 3. Parallel pressure drop is just the drop of one channel.
+            dp_fric = f * (L/Dh) * (rho * u_slot**2 / 2)  
+
+            dp_fric = f * (L/Dh) * (rho * u_slot**2 / 2)
+            #print(f"[{self.name}] Computed Friction Drop: {dp_fric:.4f} Pa")
+            print(f"[{self.name}] Computed Mass flow rate: {m_dot:.4f} kg/s")
+            
+            # 4. Set variables for the fsolve args so momentum is conserved properly
+            u = u_slot # The inlet velocity
+            A_out = A_slot_tot * VF # The total outlet flow area for the momentum balance
         
         sol = cp_root(update_states,
                       x0=[p, h],
