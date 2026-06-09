@@ -145,6 +145,7 @@ class ClassIIResult:
             f"Wing Area: {self.Wing_Area:.2f} m^2\n"
             f"Wing Span: {self.Wing_span:.2f} m\n"
             f"Root Chord: {self.root_chord:.2f} m\n"
+            f"Tip Chord: {self.root_chord*self.Wing_taper:.2f} m\n"
             f"MAC: {self.MAC:.2f} m\n"
             f"Wing Sweep (Quarter): {self.Wing_sweep_quarter*180/np.pi:.2f} deg\n"
             f"Wing Sweep (Half): {self.Wing_sweep_half*180/np.pi:.2f} deg\n"
@@ -459,11 +460,11 @@ def run_class_ii(
 
     cgwingpos = b / 2 * 0.35
     turbinewingpos = cfg_updated.b_f / 2 + 5 +cfg_updated.D_propfan/2
-    print(turbinewingpos)
 
     # c(y) = c_root * [1 - (1 - lambda) * 2y/b] for a trapezoidal wing
     taper_slope = 1.0 - taper
     chordatcgpos = c_root * (1.0 - taper_slope * (cgwingpos / (b / 2)))
+    turbinechord=c_root*(1-taper_slope*(turbinewingpos/(b/2)))
 
     macchorddiff = c_root - MAC
     machspanpos = (
@@ -473,6 +474,8 @@ def run_class_ii(
     )
     print(f"MAC chord: {MAC:.3f} m, corresponding spanwise position: {machspanpos:.3f} m")
     print(f"CG chord position: {chordatcgpos:.3f} m, corresponding spanwise position: {cgwingpos:.3f} m")
+    print(f"Turbine chord position: {turbinechord:.3f} m, corresponding spanwise position: {turbinewingpos:.3f} m")
+
 
 
     cgalong_chord = (0.7 * chordatcgpos - 0.15 * chordatcgpos) * 0.7+0.15*chordatcgpos
