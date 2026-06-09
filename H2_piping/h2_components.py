@@ -237,6 +237,16 @@ class Pipe:
             u1  = m_dot / (rho1 * A_cs)
             Re1 = 4 * m_dot / (np.pi * self.d * mu1)
             
+            # --- COMPRESSIBILITY CHECK ---
+            a_sound = CP.PropsSI('A', 'P', p1, 'H', h1, self.fluid)
+            mach_pipe = u1 / a_sound
+            
+            if mach_pipe >= 1.0:
+                raise ValueError(f"[{self.name}] CHOKED FLOW! Mach number {mach_pipe:.3f} >= 1.0 at seg {seg}")
+            elif mach_pipe > 0.3:
+                print(f"[{self.name}] WARNING: Mach number is {mach_pipe:.2f} at seg {seg}.")
+            # -----------------------------
+            
             # Convert to parameter names as used in the formula
             T_h = T_amb
             T_c = T1
@@ -420,14 +430,37 @@ class COOL:
             # Pure micro-channel friction
             dp_fric = f * (L/Dh) * (rho1 * u_internal**2 / 2) 
             
+            # Optional minor losses for contraction/expansion moving from pipe -> tiny slots -> pipe
+            dp_minor = (0.5 + 1.0) * (rho1 * u_internal**2 / 2)
+            dp_fric += dp_minor
 
         else:
             # ---------------------------------------------------------
             # NON-HTS COMPONENTS (AC/DC, Bus, etc.)
             # ---------------------------------------------------------
             # Since we lack cold-plate micro geometry, we use the config dummy pressure drop 
-            # (e.g., assume 500 Pa across the electronics cold plate).
             dp_fric = config.cool_dummy_dp 
+
+        # ---------------------------------------------------------
+        # --- COMPRESSIBILITY CHECK ---
+        # ---------------------------------------------------------
+        a_sound = CP.PropsSI('A', 'P', p1, 'H', h1, self.fluid)
+        
+        # Macro Pipe Check
+        mach_macro = u1 / a_sound
+        if mach_macro >= 1.0:
+            raise ValueError(f"[{self.name}] CHOKED FLOW! Macro Mach number {mach_macro:.3f} >= 1.0")
+        elif mach_macro > 0.3:
+            print(f"[{self.name}] WARNING: Macro Mach number is {mach_macro:.2f}. Compressibility high.")
+
+        # Micro Slot Check (Only for HTS)
+        if self.name in ['hts_gen', 'hts_pow']:
+            mach_micro = u_internal / a_sound
+            if mach_micro >= 1.0:
+                raise ValueError(f"[{self.name}] CHOKED FLOW IN SLOTS! Micro Mach {mach_micro:.3f} >= 1.0")
+            elif mach_micro > 0.3:
+                print(f"[{self.name}] WARNING: Micro Mach number in slots is {mach_micro:.2f}.")
+        # ---------------------------------------------------------
 
         # ---------------------------------------------------------
         # 3. MACRO SOLVER EXECUTION
