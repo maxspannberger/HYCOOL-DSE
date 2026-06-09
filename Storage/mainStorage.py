@@ -1,6 +1,6 @@
 """
 Main LH2 tank sizing module.
-Integrates geometric design (geomDesign), thermal insulation (thermalDesign),
+Integrates geometric design (geomDesign), thermal insulation (INSULATE),
 and structural wall sizing (lh2_tank_trade) into a single TankResult.
 """
 
@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from CoolProp.CoolProp import PropsSI
 
 from geomDesign import GeomDesign, Geometry
-from thermalDesign import ThermalDesign, InsulationResult
+from INSULATE import mli_thickness, MLIResult
 from lh2_tank_trade import t_hoop_stress, material_options
 
 FLUID = 'parahydrogen'
@@ -20,8 +20,9 @@ class TankResult:
     # ---- Geometry (from geomDesign) ----
     geom:              Geometry
 
-    # ---- Insulation (from thermalDesign) ----
-    insulation:        InsulationResult
+    # ---- Insulation (from INSULATE) ----
+    insulation:        MLIResult
+    m_ins:             float   # insulation mass [kg]
 
     # ---- Structural wall ----
     t_wall:            float   # wall thickness [m]
@@ -38,16 +39,25 @@ class TankResult:
     T_fill:            float   # fill temperature [K]
 
     def print_summary(self):
+        ins = self.insulation
         self.geom.print_summary()
-        self.insulation.print_summary()
         w = 58
+        print("=" * w)
+        print(f"{'  INSULATION SUMMARY (MLI)':^{w}}")
+        print("=" * w)
+        print(f"  {'MLI layers':<30}  {ins.N_layers:>10}  -")
+        print(f"  {'Blanket thickness':<30}  {ins.thickness * 1000:>10.2f}  mm")
+        print(f"  {'Heat flux':<30}  {ins.flux:>10.4f}  W/m2")
+        print(f"  {'Allowable heat leak':<30}  {ins.Q_target:>10.2f}  W")
+        print(f"  {'Actual heat leak':<30}  {ins.Q_leak:>10.2f}  W")
+        print(f"  {'Insulation mass':<30}  {self.m_ins:>10.3f}  kg")
         print("=" * w)
         print(f"{'  WALL & SYSTEM SUMMARY':^{w}}")
         print("=" * w)
         print(f"  {'Fill temperature':<30}  {self.T_fill:>10.2f}  K")
         print(f"  {'Wall thickness':<30}  {self.t_wall * 1000:>10.3f}  mm")
         print(f"  {'Wall mass':<30}  {self.m_wall:>10.3f}  kg")
-        print(f"  {'Insulation mass':<30}  {self.insulation.m_ins:>10.3f}  kg")
+        print(f"  {'Insulation mass':<30}  {self.m_ins:>10.3f}  kg")
         print("-" * w)
         print(f"  {'Empty tank mass':<30}  {self.m_empty:>10.3f}  kg")
         print(f"  {'Full tank mass':<30}  {self.m_full:>10.3f}  kg")
@@ -106,14 +116,16 @@ def sizeTank(
     V       = gd.calculateTankVolume(rho_H2=rho_lh2, m_H2=m_LH2, yl_0=yl_0)
     geom    = gd.calculateTankGeometry(V, phi=phi, psi=psi, Lambda=Lambda)
 
-    # 2. Maximum allowable heat leak ---------------------------------------
-    td = ThermalDesign()
-    Q_leak, Ei, Ef = td.calculateMaxHeatLeak(
-        V, yl_0, p_fill, p_vent, y_max, tau_H_s
+    # 2 & 3. Insulation sizing (heat-leak budget + MLI) --------------------
+    insulation = mli_thickness(
+        V=V, phi=phi, lam=Lambda,
+        P_vent=p_vent * BAR,
+        y_l0=yl_0,
+        tau_H=tau_H_s,
+        T_c=T_fill,
     )
-
-    # 3. Insulation sizing -------------------------------------------------
-    insulation = td.sizeVacuumInsulation(geom, Q_leak, p_fill_bar=p_fill)
+    _RHO_LAYER_AREAL = 0.20   # kg/m² per MLI layer
+    m_ins = insulation.N_layers * _RHO_LAYER_AREAL * insulation.A
 
     # 4. Wall thickness (hoop stress)
     t_wall = t_hoop_stress(
@@ -126,15 +138,16 @@ def sizeTank(
 
     # 5. Masses ------------------------------------------------------------
     m_wall  = geom.A_tank * t_wall * mat['density']
-    m_empty = m_wall + insulation.m_ins
+    m_empty = m_wall + m_ins
     m_full  = m_LH2 + m_empty
 
     # 6. Gravimetric index -------------------------------------------------
-    gravimetric_index = m_LH2 / (m_LH2 + 2 * m_wall + insulation.m_ins)
+    gravimetric_index = m_LH2 / (m_LH2 + 2 * m_wall + m_ins)
 
     return TankResult(
         geom              = geom,
         insulation        = insulation,
+        m_ins             = m_ins,
         t_wall            = t_wall,
         m_wall            = m_wall,
         m_empty           = m_empty,
@@ -148,11 +161,11 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------ #
     #  USER INPUTS                                                         #
     # ------------------------------------------------------------------ #
-    m_LH2           = 500         # hydrogen mass [kg]
+    m_LH2           = 533        # hydrogen mass [kg]
     p_fill          = 1.0            # fill pressure [bar]
     p_vent          = 1.5           # vent pressure [bar]
     p_ext           = 37600.0        # external pressure for wall sizing [Pa]  (e.g. 101325 = SL, 37600 = FL250)
-    T_fill          = 20          # fill temperature [K]
+    T_fill          = 15          # fill temperature [K]
     tank_material   = 'Al-2219-T87'  # see material_options in lh2_tank_trade.py
     tau_H_hours     = 24.0           # no-vent holding time [hours]
     phi             = 1.0            # tank shape: a/c (major/minor radius ratio) [-]

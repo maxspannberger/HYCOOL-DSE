@@ -21,9 +21,7 @@ class Geometry:
 
     def print_summary(self):
         fields = [
-            ("a",      "Semi-major axis (phi*c)",        self.a,       "m"   ),
-            ("b",      "Head half-length (psi*c)", self.b,       "m"   ),
-            ("c",      "Reference semi-minor axis",      self.c,       "m"   ),
+            ("r",      "Tank Radius",        self.a,       "m"   ),
             ("ls",     "Straight shell length",    self.ls,      "m"   ),
             ("lt",     "Total length",             self.lt,      "m"   ),
             ("V_tank", "Tank volume",              self.V_tank,  "m^3" ),
