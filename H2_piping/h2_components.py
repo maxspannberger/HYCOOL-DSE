@@ -485,3 +485,58 @@ class COOL:
                    'frac':np.array([frac2])}
         
         return results
+    
+# =============================================================================
+# Define a class for the valves
+# =============================================================================
+class Valve:
+    def __init__(self, name:        str,
+                       diameter:    float =  config.pipe_default_d,
+                       phase:       str   =  config.phase
+                       ):   
+        
+        self.name     = name
+        self.fluid    = config.fluid
+        self.d        = diameter
+        
+    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None):
+        T1, p1, h1, rho1 = get_input_states(states)
+        A_cs  = np.pi * self.d**2 / 4
+        u1 = m_dot / (A_cs * rho1)
+        
+        Q   = (m_dot / rho1) * 15850.3        # Q in gallons per minute
+        S_g = rho1 * 1 / 999                  # rho_h2 / rho_water
+        
+        if self.name == 'check':
+            Cv = 22413 * self.d ** 2.0817
+            dp = (S_g / ((Cv / Q) ** 2)) / 14.504
+            print(dp)
+            
+        elif self.name == 'shutoff':
+            Cv = 1173.6 * self.d - 10.19
+            dp = (S_g / ((Cv / Q) ** 2)) / 14.504
+        else:
+            raise TypeError('Invalid valve type')
+                  
+        q  = 0
+        
+        sol = cp_root(update_states,
+                      x0=[p1, h1],
+                      method='lm',
+                      options={'xtol': tol, 'ftol': tol},
+                      args=(p1, h1, u1, m_dot, A_cs, self.fluid, q, dp, config.divergence_penalty))
+        p2, h2 = sol.x
+        
+        T2    = CP.PropsSI('T', 'P', p2, 'H', h2, self.fluid)
+        rho2  = CP.PropsSI('D', 'P', p2, 'H', h2, self.fluid)
+        frac2 = calc_frac(p2, h2, fluid=self.fluid)
+        
+        results = {'T':    np.array([T2]), 
+                   'p':    np.array([p2]),
+                   'rho':  np.array([rho2]),
+                   'h':    np.array([h2]),
+                   'frac': np.array([frac2])
+                   }
+        
+        return results
+    
