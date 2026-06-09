@@ -4,7 +4,10 @@
       "Bash(python mainClassII.py)",
       "Read(//c/Users/flavi/OneDrive/Documents/GitHub/HYCOOL-DSE/**)",
       "Bash(python WeightEstimations/mainClassII.py)",
-      "Bash(python OffDesign.py)"
+      "Bash(python OffDesign.py)",
+      "Bash(python -c \"from config import Config; c = Config\\(\\); print\\('Config OK'\\); print\\('  cycle.TIT =', c.cycle.TIT\\); print\\('  offdesign.TIT_limit =', c.offdesign.TIT_limit\\); print\\('  dim.HPT_Hub_Margin =', c.dim.HPT_Hub_Margin\\); print\\('  expander.f_crank =', c.expander.f_crank\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(python -m py_compile config.py TurbineSizing.py OffDesign.py DimSizing.py ExpanderSizing.py main.py)"
     ]
   }
 }

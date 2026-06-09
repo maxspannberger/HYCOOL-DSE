@@ -1,700 +1,569 @@
-from TurbineSizing import GasTurbineCycle
+"""
+DimSizing.py
+============
+Dimensional sizing of HPC, HPT, RQL combustor, and a system-level mass
+estimate, given a converged thermodynamic cycle from TurbineSizing.
+
+Class
+-----
+DimensionalSizing(engine, cfg)
+    .size()         -> populates .results
+    .report()       -> rich-formatted console output
+    .plot()         -> to-scale cross-section diagram
+    .to_csv_row()   -> flat dict for CSV export
+
+Inputs come from `config.DimensionalConfig`. Tip / hub / Mach numbers,
+mass anchors, RQL residence times and air fractions are all there.
+
+Physics notes
+-------------
+HPT uses an "expand-inwards with minimal taper" rule:
+  - tip is held constant at the HPT inlet value while the larger outlet
+    annulus is swallowed by dropping the hub inward;
+  - if the hub would dip below `HPT_Hub_Margin * HPC_inlet_hub`, the hub
+    is pinned at that floor and the tip grows just enough to satisfy
+    continuity. This mirrors the HPC's "compress inwards" geometry and
+    keeps the rear of the engine narrow.
+"""
+
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+from matplotlib.patches import Rectangle
+from CoolProp.CoolProp import PropsSI
+
 from rich.console import Console
 from rich.table import Table
 from rich.rule import Rule
 from rich.columns import Columns
 from rich import box
-from CoolProp.CoolProp import PropsSI
-from rocketcea.cea_obj_w_units import CEA_Obj
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from matplotlib.patches import FancyArrowPatch
+
+from TurbineSizing import GasTurbineCycle
 
 
-engine = GasTurbineCycle()
-engine.size()
-engine.report()
-
-cea = CEA_Obj(
-    oxName="AIR", fuelName="GH2",
-    pressure_units="bar", temperature_units="K", isp_units="sec",
-)
-
-results = engine.results
-design  = engine._design
-
-_console = Console()
-
-# ---------------- Helper functions -----------------------
-
+# ----------------------------------------------------------------------
+# Air property helpers
+# ----------------------------------------------------------------------
 def _air_gamma(p_bar, T):
-    """Ratio of specific heats for air at (p_bar, T)."""
     return (PropsSI('CPMASS', 'P', p_bar*1e5, 'T', T, 'Air') /
             PropsSI('CVMASS', 'P', p_bar*1e5, 'T', T, 'Air'))
 
 def _air_cp(p_bar, T):
-    """Isobaric specific heat of air [J/kg/K] at (p_bar, T)."""
     return PropsSI('CPMASS', 'P', p_bar*1e5, 'T', T, 'Air')
 
 def _air_rho(p_bar, T):
-    """Density of air [kg/m3] via ideal gas."""
     R_air = 287.0
     return (p_bar * 1e5) / (R_air * T)
 
-def _make_table(title, rows, color="magenta"):
+
+class DimensionalSizing:
     """
-    Build a rich Table for one component. Returns the Table object.
-    rows: list of (label, value_str, unit_str) or None for section divider.
+    Component-level geometry + mass estimate for a sized cycle.
+
+    Parameters
+    ----------
+    engine : GasTurbineCycle
+        A sized cycle. `engine.size()` must already have run.
+    cfg : Config | DimensionalConfig
+        Either a top-level Config or a DimensionalConfig instance.
+    cea : optional CEA_Obj
+        Required for the RQL combustor (stoichiometric O/F and Tflame).
+        If None, get_Tcomb is skipped and the combustor uses fallback values.
     """
-    t = Table(
-        title=f"[bold cyan]{title}[/bold cyan]",
-        box=box.ROUNDED,
-        header_style=f"bold {color}",
-        show_lines=True,
-        title_justify="left",
-        min_width=52,
-    )
-    t.add_column("Parameter", style="cyan",   justify="left",  min_width=26)
-    t.add_column("Value",     style="yellow",  justify="right", min_width=10)
-    t.add_column("Units",     style="dim",     justify="left",  min_width=8)
-    for row in rows:
-        if row is None:
-            t.add_section()
+
+    R_air = 287.0
+
+    def __init__(self, engine, cfg, cea=None):
+        self.engine = engine
+        self.dim    = cfg.dim if hasattr(cfg, "dim") else cfg
+        self.cea    = cea
+        self._console = Console()
+        self.results  = None
+
+    # ------------------------------------------------------------------
+    # Build from config
+    # ------------------------------------------------------------------
+    @classmethod
+    def from_config(cls, engine, cfg, cea=None):
+        return cls(engine=engine, cfg=cfg, cea=cea)
+
+    # ------------------------------------------------------------------
+    # Main solve
+    # ------------------------------------------------------------------
+    def size(self):
+        """Run all dimensional + mass calculations. Populates self.results."""
+        if self.engine.results is None:
+            raise RuntimeError("Pass a sized GasTurbineCycle (call .size() first).")
+
+        d = self.dim
+        results = self.engine.results
+        design  = self.engine._design
+
+        # ---- Station parameters ----
+        P1, P2, Pc        = design["P1"], design["P2"], design["Pc"]
+        P4, P5            = design["P4"], design["P5"]
+        T1, T2, T2p       = design["T1"], design["T2"], design["T2p"]
+        T4, T5            = design["T4"], design["T5"]
+        mdot_f            = results["mdot_f"]
+        mdot_air          = results["ideal_OF"] * mdot_f
+        mdot_tot          = mdot_air + mdot_f
+
+        # ===========================================================
+        # HPC sizing
+        # ===========================================================
+        rho_1 = _air_rho(P1, T1)
+        rho_2 = _air_rho(P2, T2)
+        g_1   = _air_gamma(P1, T1)
+        C_ax  = d.HPC_M_ax * np.sqrt(g_1 * self.R_air * T1)
+
+        A_annulus        = mdot_air / (rho_1 * C_ax)
+        A_annulus_outlet = mdot_air / (rho_2 * C_ax)
+
+        inlet_tip  = np.sqrt(A_annulus        / (np.pi * (1 - d.HPC_Inlet_HTR**2)))
+        inlet_hub  = d.HPC_Inlet_HTR  * inlet_tip
+        outlet_tip = np.sqrt(A_annulus_outlet / (np.pi * (1 - d.HPC_Outlet_HTR**2)))
+        outlet_hub = d.HPC_Outlet_HTR * outlet_tip
+
+        r_mean_HPC_in  = 0.5 * (inlet_tip  + inlet_hub)
+        r_mean_HPC_out = 0.5 * (outlet_tip + outlet_hub)
+        r_mean_HPC     = 0.5 * (r_mean_HPC_in + r_mean_HPC_out)
+
+        RPM_HPC    = (d.HPC_U_tip / inlet_tip) * (60 / (2 * np.pi))
+        omega_HPC  = RPM_HPC * 2 * np.pi / 60
+        U_mean_HPC = omega_HPC * r_mean_HPC
+
+        Cp_hpc       = _air_cp(0.5*(P1 + P2), 0.5*(T1 + T2))
+        Delta_h0_HPC = Cp_hpc * (T2 - T1)
+        Stages_HPC   = int(np.ceil(Delta_h0_HPC / (d.HPC_Psi * U_mean_HPC**2)))
+        L_HPC        = Stages_HPC * 2 * d.HPC_BladeChord * (1 + d.HPC_Spacing)
+
+        # ===========================================================
+        # HPT sizing (expand-inwards with taper fallback)
+        # ===========================================================
+        g_4      = _air_gamma(P4, T4)
+        a_4      = np.sqrt(g_4 * self.R_air * T4)
+        C_ax_HPT = d.HPT_M_ax * a_4
+
+        rho_4 = _air_rho(P4, T4)
+        rho_5 = _air_rho(P5, T5)
+
+        A_HPT_inlet  = mdot_tot / (rho_4 * C_ax_HPT)
+        A_HPT_outlet = mdot_tot / (rho_5 * C_ax_HPT)
+
+        HPT_inlet_tip = np.sqrt(A_HPT_inlet / (np.pi * (1 - d.HPT_Inlet_HTR**2)))
+        HPT_inlet_hub = d.HPT_Inlet_HTR * HPT_inlet_tip
+
+        # Try constant-tip; fall back to pinned-hub if it would punch below the floor.
+        r_hub_floor   = d.HPT_Hub_Margin * inlet_hub
+        HPT_outlet_tip = HPT_inlet_tip
+        r_hub_sq       = HPT_outlet_tip**2 - A_HPT_outlet / np.pi
+        if r_hub_sq >= r_hub_floor**2:
+            HPT_outlet_hub = np.sqrt(r_hub_sq)
         else:
-            t.add_row(*row)
-    return t
-
-# ----------- Station Parameters --------------
-
-P1, P2, Pc, P4, P5      = design["P1"], design["P2"], design["Pc"], design["P4"], design["P5"]
-T1, T2, T2p, Tc, T4, T5 = design["T1"], design["T2"], design["T2p"], design["T4"], design["T4"], design["T5"]
-mdot_f                   = results["mdot_f"]
-mdot_air                 = results["ideal_OF"] * mdot_f
-mdot_tot                 = mdot_air + mdot_f            # total gas-path mass flow through HPT
-
-R_air                    = 287.0                        # J/kg/K
-
-# =====================================================================
-# SECTION 1: HPC SIZING  (axial, air, large mass flow, viable)
-# =====================================================================
-
-Inlet_HTR               = 0.45
-Outlet_HTR              = 0.7
-U_tip                   = 450.0                         # m/s
-Psi                     = 0.45                          # Work coefficient, delta_h0 / U_mean
-BladeChord              = 0.03                          # m
-Spacing                 = 0.3                           # Inter-row gap fraction of axial chord
-
-rho_1       = P1*1e5 / (R_air * T1)
-rho_2       = P2*1e5 / (R_air * T2)
-M_ax        = 0.5
-
-g_1         = _air_gamma(P1, T1)
-C_ax        = M_ax * np.sqrt(g_1 * R_air * T1)         # Axial velocity, held constant throughout HPC.
-
-A_annulus        = mdot_air / (rho_1 * C_ax)
-A_annulus_outlet = mdot_air / (rho_2 * C_ax)
-
-inlet_tip   = np.sqrt(A_annulus        / (np.pi * (1 - Inlet_HTR**2)))
-inlet_hub   = Inlet_HTR  * inlet_tip
-outlet_tip  = np.sqrt(A_annulus_outlet / (np.pi * (1 - Outlet_HTR**2)))
-outlet_hub  = Outlet_HTR * outlet_tip
-
-r_mean_HPC          = 0.5 * (0.5*(inlet_tip + inlet_hub) + 0.5*(outlet_tip + outlet_hub))
-r_mean_HPC_in       = 0.5*(inlet_tip + inlet_hub)
-r_mean_HPC_out      = 0.5*(outlet_tip + outlet_hub)
-
-RPM_HPC         = (U_tip / inlet_tip) * (60 / (2 * np.pi))
-omega_HPC       = RPM_HPC * 2 * np.pi / 60
-U_mean_HPC      = omega_HPC * r_mean_HPC
-
-Cp_hpc          = _air_cp(0.5*(P1+P2), 0.5*(T1+T2))
-Delta_h0_HPC    = Cp_hpc * (T2 - T1)
-Stages_HPC      = np.ceil(Delta_h0_HPC / (Psi * U_mean_HPC**2))
-L_HPC           = Stages_HPC * 2 * BladeChord * (1 + Spacing)
-
-# =====================================================================
-# SECTION 2: HPT SIZING  (axial, combustion products, large mass flow, viable)
-# =====================================================================
-
-HPT_Inlet_HTR           = 0.80
-HPT_Hub_Margin          = 1.50                          # outlet hub floor = HPC inlet hub * this
-                                                        # (shaft fits through the HPC bore;
-                                                        # the HPT hub can taper to ~that bore
-                                                        # plus a small structural margin)
-U_tip_HPT               = 450.0                         # m/s
-Psi_HPT                 = 1.75
-BladeChord_HPT          = 0.04                          # m
-Spacing_HPT             = 0.3
-M_ax_HPT                = 0.3
-
-g_4         = _air_gamma(P4, T4)
-a_4         = np.sqrt(g_4 * R_air * T4)
-C_ax_HPT    = M_ax_HPT * a_4
-
-rho_4       = _air_rho(P4, T4)
-rho_5       = _air_rho(P5, T5)
-
-A_HPT_inlet  = mdot_tot / (rho_4 * C_ax_HPT)
-A_HPT_outlet = mdot_tot / (rho_5 * C_ax_HPT)
-
-HPT_inlet_tip   = np.sqrt(A_HPT_inlet  / (np.pi * (1 - HPT_Inlet_HTR**2)))
-HPT_inlet_hub   = HPT_Inlet_HTR  * HPT_inlet_tip
-
-# Expand-inwards convention with a tapered casing.
-#
-# Preferred: hold the casing (tip radius) constant at the inlet value and
-# accommodate the larger downstream annulus by dropping the hub inward.
-# This mirrors the HPC, where the tip is roughly fixed and the hub climbs
-# as the flow compresses.
-#
-# Fallback: if the constant-tip rule would push the hub below a structural
-# floor (the shaft + a small clearance margin), pin the hub at that floor
-# and grow the tip just enough to satisfy area continuity. The casing then
-# tapers outward only as much as is strictly necessary -- the rear no
-# longer balloons out to a fixed Outlet_HTR.
-_r_hub_floor    = HPT_Hub_Margin * inlet_hub            # shaft + clearance margin
-HPT_outlet_tip  = HPT_inlet_tip
-_r_hub_sq       = HPT_outlet_tip**2 - A_HPT_outlet / np.pi
-
-if _r_hub_sq >= _r_hub_floor**2:
-    # Constant-tip case: tip flat, hub drops inward
-    HPT_outlet_hub = np.sqrt(_r_hub_sq)
-else:
-    # Tapered-casing case: hub pinned at the floor, tip grows minimally
-    HPT_outlet_hub = _r_hub_floor
-    HPT_outlet_tip = np.sqrt(A_HPT_outlet / np.pi + HPT_outlet_hub**2)
-
-r_mean_HPT_in  = 0.5 * (HPT_inlet_tip  + HPT_inlet_hub)
-r_mean_HPT_out = 0.5 * (HPT_outlet_tip + HPT_outlet_hub)
-r_mean_HPT     = 0.5 * (r_mean_HPT_in  + r_mean_HPT_out)
-
-RPM_HPT        = (U_tip_HPT / HPT_inlet_tip) * (60 / (2 * np.pi))
-omega_HPT      = RPM_HPT * 2 * np.pi / 60
-U_mean_HPT     = omega_HPT * r_mean_HPT
-
-Cp_hpt         = _air_cp(0.5*(P4+P5), 0.5*(T4+T5))
-Delta_h0_HPT   = Cp_hpt * (T4 - T5)
-Stages_HPT     = np.ceil(Delta_h0_HPT / (Psi_HPT * U_mean_HPT**2))
-L_HPT          = Stages_HPT * 2 * BladeChord_HPT * (1 + Spacing_HPT)
-
-
-# =====================================================================
-# SECTION 3: Combustion Chamber (RQL, continuity-driven marching)
-#
-# Architecture: Rich -> Quench -> Lean
-#
-# Diameter at each zone is derived from continuity:
-#   A = mdot / (rho * C_ax_CC)
-#   D = sqrt(4*A/pi)
-# rather than linearly interpolated, so the geometry is physically
-# consistent with the local mass flow and temperature.
-#
-# The quench zone length is set by jet penetration depth rather than
-# residence time: L_quench ~ 0.5 * D_quench (standard approximation).
-# =====================================================================
-
-# --- Stoichiometric O/F and adiabatic flame temperature from CEA ---
-OF_range    = np.arange(1, 200, 0.5)
-full_output = np.array([cea.get_Tcomb(Pc=Pc, MR=of) for of in OF_range])
-OF_stoich   = OF_range[np.argmax(full_output)]          # stoichiometric O/F by mass
-T_flame     = np.max(full_output)                       # adiabatic flame temperature [K]
-
-OF_total    = results["ideal_OF"]                       # overall O/F from cycle
-
-# --- RQL zone design parameters ---
-C_ax_CC     = 40.0                                      # m/s, axial velocity through combustor
-                                                        # 30-50 m/s is standard for gas turbine combustors
-
-tau_rich    = 2.0e-3                                    # s, rich zone residence time
-                                                        # H2 burns fast; 1-3 ms is typical
-tau_lean    = 3.5e-3                                    # s, lean zone residence time
-                                                        # longer: need to complete combustion before HPT
-
-f_quench    = 0.20                                      # fraction of total air mass entering quench jets
-                                                        # 15-25% is typical for RQL
-
-# --- Zone air fractions ---
-# f_primary: fraction of air entering rich zone, set by stoichiometric O/F
-# f_secondary: remaining air added in lean zone
-f_primary   = OF_stoich / OF_total                      # rich zone air fraction
-f_secondary = 1.0 - f_primary - f_quench                # lean zone air fraction
-                                                        # NOTE: if f_secondary < 0, f_quench is too large
-                                                        # for this cycle's overall O/F. Reduce f_quench.
-
-# --- Zone mass flows (cumulative, each zone adds air) ---
-mdot_primary = mdot_f * (1.0 + OF_stoich)               # fuel + primary air only
-mdot_quench  = mdot_primary + mdot_f * OF_total * f_quench  # + quench air
-mdot_lean    = mdot_tot                                 # full flow in lean zone
-
-# --- Zone mean temperatures ---
-T_rich   = T_flame                                      # peak adiabatic, rich zone
-T_quench = 0.5 * (T_flame + T4)                         # rough average during rapid mixing
-T_lean   = T4                                           # lean zone exits at TIT
-
-# --- Zone densities (ideal gas, combustion products approximated as air) ---
-rho_rich   = Pc*1e5 / (R_air * T_rich)
-rho_quench = Pc*1e5 / (R_air * T_quench)
-rho_lean   = Pc*1e5 / (R_air * T_lean)
-
-# --- Zone cross-sectional areas from continuity: A = mdot / (rho * C_ax) ---
-A_rich   = mdot_primary / (rho_rich   * C_ax_CC)
-A_quench = mdot_quench  / (rho_quench * C_ax_CC)
-A_lean   = mdot_lean    / (rho_lean   * C_ax_CC)
-
-# --- Zone diameters ---
-D_rich   = np.sqrt(4 * A_rich   / np.pi)
-D_quench = np.sqrt(4 * A_quench / np.pi)
-D_lean   = np.sqrt(4 * A_lean   / np.pi)
-
-# --- Zone lengths from residence time and volume ---
-# V = tau * mdot / rho  (volume needed to achieve residence time tau)
-# L = V / A
-V_rich  = tau_rich * mdot_primary / rho_rich
-V_lean  = tau_lean * mdot_lean    / rho_lean
-
-L_rich   = V_rich  / A_rich
-L_quench = 0.5 * D_quench                               # quench zone: jet penetration depth ~ 0.5*D
-L_lean   = V_lean  / A_lean
-
-CC_L     = L_rich + L_quench + L_lean                   # total combustor length
-
-# --- Diameter check against HPC/HPT geometry ---
-# The combustor inlet diameter should be compatible with HPC outlet mean diameter.
-# The combustor exit diameter should be compatible with HPT inlet tip diameter.
-D_HPC_out_mean = 2 * r_mean_HPC_out                     # mean diameter at HPC outlet
-D_HPT_in_tip   = 2 * HPT_inlet_tip                      # tip diameter at HPT inlet
-                                                        # NOTE: the combustor exit D_lean will likely
-                                                        # differ from D_HPT_in_tip. This discrepancy
-                                                        # is handled by a transition duct (diffuser/nozzle)
-                                                        # between combustor and HPT -- not sized here.
-
-
-# =====================================================================
-# SECTION 5: Engine Mass Estimation
-#
-# Strategy: two-source hybrid approach
-#
-#   (1) TOTAL BARE ENGINE MASS  from shaft power + specific power anchor
-#       Source: GE T408 turboshaft at 11.2 kW/kg (bare shaft-output,
-#               no gearbox, no nacelle). This is the best available
-#               anchor for a generator-driving turboshaft at this power
-#               class. Adler & Martins (2023) confirm only the combustor
-#               requires significant modification for H2 -- mass penalty
-#               is small and absorbed in the system margin below.
-#       Value used: 10.0 kW/kg  (conservative relative to GE T408)
-#
-#   (2) HOT-SECTION MASS FRACTIONS  from DLR V2500 teardown
-#       Source: Oestreicher et al. (2025), "Life Cycle Assessment of
-#               Turbofan Engines: A Reverse Engineering Approach",
-#               Procedia CIRP 135, pp. 837-842.  Table 1.
-#       The fan and LPC are absent from our architecture (we have no
-#       bypass or LPC), so fractions are taken over the hot-section
-#       modules only: HPC + Combustor&Diffuser + HPT.
-#           V2500 hot-section masses (Table 1):
-#               HPC                 284 kg   -> 45.4 %
-#               Diffuser+Combustor  151 kg   -> 24.1 %
-#               HPT                 191 kg   -> 30.5 %
-#               Hot-section total   626 kg
-#       Mass fractions are more architecture-transferable than absolute
-#       masses because they reflect thermodynamic loading distribution.
-#       The V2500 is a higher-OPR, higher-thrust machine, so absolute
-#       masses cannot be used directly.
-#
-#   (3) RECUPERATOR MASS  from product-level specific power
-#       Source: Microfire recuperator, ~14 kW/kg thermal duty.
-#       Applied to recuperator thermal duty = mdot_air * Cp * delta_T
-#       across the recuperator. This is sized separately because it is
-#       not a component of any reference turboshaft.
-#
-#   (4) SYSTEM MARGIN  50% on bare engine + recuperator total
-#       Covers: LH2 feed plumbing, GH2 pre-cooler HEX, engine mounts,
-#               FADEC and actuators, minor structural items.
-
-# Uncertainty: all component masses carry ~+/-30% at conceptual level.
-# =====================================================================
-
-# --- Shaft power from cycle analysis ---
-P_shaft_W       = results["total_net_W"]                # W, net shaft output to generator
-
-# --- Specific power anchor (total bare turboshaft) ---
-SP_turboshaft   = 10.0e3                                # W/kg, conservative bare turboshaft
-                                                        # GE T408: 11.2 kW/kg (bare, no gearbox)
-                                                        # 10.0 kW/kg used as design-point estimate
-                                                        # Ref: publicly available GE T408 spec sheet
-
-m_engine_total  = P_shaft_W / SP_turboshaft             # kg, total bare engine mass
-
-# --- DLR V2500 hot-section mass fractions ---
-# Source: Oestreicher et al. (2025), Table 1
-# Hot-section only (HPC + Combustor&Diffuser + HPT), fan/LPC excluded
-# as they are absent from this turboshaft architecture.
-f_HPC           = 284 / (284 + 151 + 191)               # 0.454, HPC fraction of hot section
-f_CC            = 151 / (284 + 151 + 191)               # 0.241, combustor+diffuser fraction
-f_HPT           = 191 / (284 + 151 + 191)               # 0.305, HPT fraction of hot section
-
-m_HPC           = f_HPC  * m_engine_total               # kg, estimated HPC mass
-m_CC            = f_CC   * m_engine_total               # kg, estimated combustor+diffuser mass
-m_HPT           = f_HPT  * m_engine_total               # kg, estimated HPT mass
-
-# Sanity check: fractions must sum to 1.0
-_frac_sum       = f_HPC + f_CC + f_HPT                  # should be exactly 1.0
-
-# --- Recuperator mass ---
-# Recuperator thermal duty: heat transferred from turbine exhaust to
-# compressed air.  Q_recup = mdot_air * Cp_mean * (T2p - T2)
-# where T2p is post-recuperator air temperature and T2 is post-HPC
-# temperature (before recuperator).
-# NOTE: T2p is labelled T2p in design dict but verify the direction --
-#       T2p should be HIGHER than T2 (air is heated by exhaust).
-#       If T2p < T2 something is mislabelled upstream.
-Cp_recup        = _air_cp(0.5*(P2 + Pc), 0.5*(T2p + T2))  # J/kg/K, mean Cp across recuperator
-                                                        # evaluated at mean pressure and temperature
-Q_recup_W       = mdot_air * Cp_recup * abs(T2p - T2)       # W, recuperator thermal duty
-                                                        # abs() guards against label ambiguity above
-
-SP_recup        = 14.0e3                                # W/kg, Microfire recuperator specific power
-                                                        # (thermal duty basis)
-m_recup         = Q_recup_W / SP_recup                  # kg, recuperator mass
-
-# --- Bare engine + recuperator subtotal ---
-m_bare_subtotal = m_engine_total + m_recup              # kg, before system margin
-
-# --- System margin ---
-margin          = 0.50                                  # -, 20% on bare subtotal
-                                                        # covers: LH2 feed lines, GH2 pre-cooler
-                                                        # HEX, engine mounts, FADEC, actuators
-m_system_margin = margin * m_bare_subtotal              # kg, system margin mass
-
-# --- Final propulsion system mass estimate ---
-m_propulsion    = m_bare_subtotal + m_system_margin     # kg, total propulsion system mass
-
-
-# =====================================================================
-# OUTPUT: Weight Estimation
-# =====================================================================
-
-_console.print()
-_console.rule("[bold white]PROPULSION SYSTEM MASS ESTIMATE[/bold white]")
-_console.print()
-
-# Validity warnings
-if abs(_frac_sum - 1.0) > 1e-9:
-    _console.print(f"[bold red]WARNING:[/bold red] DLR mass fractions sum to {_frac_sum:.6f}, not 1.0 -- check arithmetic.")
-
-if T2p < T2:
-    _console.print("[bold red]WARNING:[/bold red] T2p < T2: recuperator temperature labels may be inverted. "
-                   "Check design dict. Q_recup taken as abs() value.")
-
-if P_shaft_W <= 0:
-    _console.print("[bold red]WARNING:[/bold red] P_shaft_W <= 0: check results dict key for shaft power.")
-
-tbl_mass = _make_table("Propulsion System Mass  (conceptual, ±30%)", [
-    # -- Bare engine breakdown --
-    ("Shaft power",              f"{P_shaft_W/1e6:.3f}",          "MW"),
-    ("Specific power (anchor)",  f"{SP_turboshaft/1e3:.1f}",      "kW/kg"),
-    ("Bare engine mass (total)", f"{m_engine_total:.1f}",         "kg"),
-    None,
-    # -- Hot-section split via DLR fractions --
-    ("  HPC  (45.4% of engine)", f"{m_HPC:.1f}",                  "kg"),
-    ("  Combustor (24.1%)",      f"{m_CC:.1f}",                   "kg"),
-    ("  HPT  (30.5%)",           f"{m_HPT:.1f}",                  "kg"),
-    None,
-    # -- Recuperator --
-    ("Recuperator thermal duty", f"{Q_recup_W/1e3:.1f}",          "kW"),
-    ("Recup. specific power",    f"{SP_recup/1e3:.1f}",           "kW/kg"),
-    ("Recuperator mass",         f"{m_recup:.1f}",                "kg"),
-    None,
-    # -- Totals --
-    ("Bare subtotal",            f"{m_bare_subtotal:.1f}",        "kg"),
-    ("System margin (50%)",      f"{m_system_margin:.1f}",        "kg"),
-    ("PROPULSION SYSTEM TOTAL",  f"{m_propulsion:.1f}",           "kg"),
-], color="magenta")
-
-_console.print(tbl_mass)
-_console.print()
-
-# Source attribution -- keep visible in terminal output for traceability
-_console.print("[dim]Sources:[/dim]")
-_console.print("[dim]  Bare engine SP : GE T408 spec sheet (11.2 kW/kg); 10.0 kW/kg used (conservative)[/dim]")
-_console.print("[dim]  Mass fractions : Oestreicher et al. (2025), Procedia CIRP 135, Table 1[/dim]")
-_console.print("[dim]  Recuperator SP : Microfire product datasheet (~14 kW/kg thermal)[/dim]")
-_console.print("[dim]  All values ±30% at conceptual design level[/dim]")
-_console.print()
-
-# =====================================================================
-# OUTPUT
-# =====================================================================
-
-_console.print()
-_console.rule("[bold white]COMPONENT DIMENSIONAL SIZING SUMMARY[/bold white]")
-_console.print()
-
-tbl_HPC = _make_table("HPC  (Axial, Air)", [
-    ("Stages",               f"{Stages_HPC:.0f}",              "-"),
-    ("Length",               f"{L_HPC*100:.1f}",               "cm"),
-    None,
-    ("Inlet tip radius",     f"{inlet_tip*100:.2f}",           "cm"),
-    ("Inlet hub radius",     f"{inlet_hub*100:.2f}",           "cm"),
-    ("Outlet tip radius",    f"{outlet_tip*100:.2f}",          "cm"),
-    ("Outlet hub radius",    f"{outlet_hub*100:.2f}",          "cm"),
-    None,
-    ("RPM",                  f"{RPM_HPC:.0f}",                 "rpm"),
-    ("U_mean",               f"{U_mean_HPC:.1f}",              "m/s"),
-    ("Specific work",        f"{Delta_h0_HPC/1e3:.1f}",        "kJ/kg"),
-    None,
-    ("Annulus area (in)",    f"{A_annulus:.4f}",               "m\u00b2"),
-    ("Annulus area (out)",   f"{A_annulus_outlet:.4f}",        "m\u00b2"),
-    ("Air density (in)",     f"{rho_1:.3f}",                   "kg/m\u00b3"),
-    ("Air density (out)",    f"{rho_2:.3f}",                   "kg/m\u00b3"),
-    ("mdot air",             f"{mdot_air:.3f}",                "kg/s"),
-], color="blue")
-
-tbl_HPT = _make_table("HPT  (Axial, Combustion Products)", [
-    ("Stages",               f"{Stages_HPT:.0f}",              "-"),
-    ("Length",               f"{L_HPT*100:.1f}",               "cm"),
-    None,
-    ("Inlet tip radius",     f"{HPT_inlet_tip*100:.2f}",       "cm"),
-    ("Inlet hub radius",     f"{HPT_inlet_hub*100:.2f}",       "cm"),
-    ("Outlet tip radius",    f"{HPT_outlet_tip*100:.2f}",      "cm"),
-    ("Outlet hub radius",    f"{HPT_outlet_hub*100:.2f}",      "cm"),
-    None,
-    ("RPM",                  f"{RPM_HPT:.0f}",                 "rpm"),
-    ("U_mean",               f"{U_mean_HPT:.1f}",              "m/s"),
-    ("Specific work",        f"{Delta_h0_HPT/1e3:.1f}",        "kJ/kg"),
-    None,
-    ("Annulus area (in)",    f"{A_HPT_inlet:.4f}",             "m\u00b2"),
-    ("Annulus area (out)",   f"{A_HPT_outlet:.4f}",            "m\u00b2"),
-    ("Gas density (in)",     f"{rho_4:.3f}",                   "kg/m\u00b3"),
-    ("Gas density (out)",    f"{rho_5:.4f}",                   "kg/m\u00b3"),
-    ("mdot total",           f"{mdot_tot:.3f}",                "kg/s"),
-], color="green")
-
-tbl_CC = _make_table("Combustion Chamber  (RQL, H2/Air)", [
-    ("Stoichiometric O/F",   f"{OF_stoich:.1f}",               "-"),
-    ("Adiabatic flame T",    f"{T_flame:.0f}",                  "K"),
-    ("Overall O/F (cycle)",  f"{OF_total:.1f}",                 "-"),
-    None,
-    ("Rich zone diameter",   f"{D_rich*100:.1f}",              "cm"),
-    ("Rich zone length",     f"{L_rich*100:.1f}",              "cm"),
-    ("Quench zone diameter", f"{D_quench*100:.1f}",            "cm"),
-    ("Quench zone length",   f"{L_quench*100:.1f}",            "cm"),
-    ("Lean zone diameter",   f"{D_lean*100:.1f}",              "cm"),
-    ("Lean zone length",     f"{L_lean*100:.1f}",              "cm"),
-    None,
-    ("Total length",         f"{CC_L*100:.1f}",                "cm"),
-    ("Max diameter (lean)",  f"{D_lean*100:.1f}",              "cm"),
-    None,
-    ("Axial velocity",       f"{C_ax_CC:.0f}",                 "m/s"),
-    ("tau_rich",             f"{tau_rich*1e3:.1f}",            "ms"),
-    ("tau_lean",             f"{tau_lean*1e3:.1f}",            "ms"),
-    ("f_primary",            f"{f_primary:.3f}",               "-"),
-    ("f_quench",             f"{f_quench:.3f}",                "-"),
-    ("f_secondary",          f"{f_secondary:.3f}",             "-"),
-    None,
-    ("HPC outlet mean D",    f"{D_HPC_out_mean*100:.1f}",      "cm"),
-    ("HPT inlet tip D",      f"{D_HPT_in_tip*100:.1f}",        "cm"),
-], color="red")
-
-_console.print(Columns([tbl_HPC, tbl_HPT], equal=True, expand=False))
-_console.print()
-_console.print(tbl_CC)
-_console.print()
-
-if f_secondary < 0:
-    _console.print("[bold red]WARNING:[/bold red] f_secondary < 0: quench fraction too large for this O/F. Reduce f_quench.")
-
-
-# =====================================================================
-# SECTION 4: To-scale cross-section diagram
-#
-# Full axial cross-section, both upper and lower halves mirrored about
-# the centreline (y=0). Each draw_* function accepts a `sign` argument
-# (+1 for upper half, -1 for lower half) so the same call draws both.
-#
-# Components:
-#   - HPC and HPT: annular flow region (tip to hub), mirrored
-#   - Shaft: solid rectangle centred on y=0 running full engine length
-#   - Combustor zones: full-diameter cylinders from -r_outer to +r_outer
-#   - Transition ducts: casing and hub lines only, no fill
-# =====================================================================
-
-fig, ax = plt.subplots(figsize=(20, 10))
-ax.set_aspect('equal')
-ax.set_facecolor('#0d1117')
-fig.patch.set_facecolor('#0d1117')
-
-COL_HPC       = '#4a9eff'
-COL_HPT       = '#4aff8a'
-COL_CC_RICH   = "#ff3535"
-COL_CC_QUENCH = "#ff9500"
-COL_CC_LEAN   = "#fff235"
-COL_CASING    = '#cccccc'
-COL_SHAFT_FILL= '#555555'
-COL_SHAFT_EDGE= '#999999'
-COL_TEXT      = '#ffffff'
-COL_GRID      = '#2a2a2a'
-COL_DIM       = '#aaaaaa'
-
-r_shaft = min(inlet_hub, outlet_hub, HPT_inlet_hub, HPT_outlet_hub) * 0.85
-
-def draw_annulus(ax, x0, x1, r_tip_0, r_hub_0, r_tip_1, r_hub_1,
-                 color, alpha=0.72, label=None):
-    """
-    Draw both halves of an annular component (turbomachinery stage).
-    Upper half: y = +hub to +tip. Lower half: y = -tip to -hub.
-    A separate shaft rectangle fills the hub interior.
-    """
-    for s in (+1, -1):
-        # Annular region: outer boundary tip, inner boundary hub
-        xs = [x0,          x1,          x1,          x0         ]
-        ys = [s*r_tip_0,   s*r_tip_1,   s*r_hub_1,   s*r_hub_0  ]
-        ax.fill(xs, ys, color=color, alpha=alpha, zorder=4)
-        # Outer (tip) casing wall
-        ax.plot([x0, x1], [s*r_tip_0, s*r_tip_1], color=COL_CASING, lw=1.8, zorder=5)
-        # Inner (hub) wall
-        ax.plot([x0, x1], [s*r_hub_0, s*r_hub_1], color=COL_CASING, lw=1.2, zorder=5)
-        # Face lines
-        ax.plot([x0, x0], [s*r_hub_0, s*r_tip_0], color=COL_CASING, lw=1.0, zorder=5)
-        ax.plot([x1, x1], [s*r_hub_1, s*r_tip_1], color=COL_CASING, lw=1.0, zorder=5)
-    if label:
-        xm = 0.5*(x0 + x1)
-        ym = 0.5*(0.5*(r_tip_0+r_hub_0) + 0.5*(r_tip_1+r_hub_1))
-        ax.text(xm, ym, label, color=COL_TEXT, fontsize=9,
-                ha='center', va='center', fontweight='bold', zorder=7)
-
-def draw_combustor_zone(ax, x0, x1, r0, r1, color, alpha=0.60, label=None):
-    """
-    Draw a combustor zone spanning the full diameter (both halves).
-    Filled from -r_outer to +r_outer; shaft block overlays the centre.
-    """
-    # Full-width fill both sides at once (one rectangle from -r to +r)
-    xs = [x0,  x1,  x1,  x0]
-    ys = [r0,  r1,  -r1, -r0]
-    ax.fill(xs, ys, color=color, alpha=alpha, zorder=4)
-    # Outer wall upper and lower
-    ax.plot([x0, x1], [ r0,  r1], color=COL_CASING, lw=2.0, zorder=5)
-    ax.plot([x0, x1], [-r0, -r1], color=COL_CASING, lw=2.0, zorder=5)
-    # Face lines
-    ax.plot([x0, x0], [-r0,  r0], color=COL_CASING, lw=1.0, zorder=5)
-    ax.plot([x1, x1], [-r1,  r1], color=COL_CASING, lw=1.0, zorder=5)
-    if label:
-        xm = 0.5*(x0 + x1)
-        ym = 0.5*(0.5*(r0+r1))
-        ax.text(xm, ym, label, color=COL_TEXT, fontsize=9,
-                ha='center', va='center', fontweight='bold', zorder=7)
-
-def draw_transition(ax, x0, x1, r_tip_0, r_hub_0, r_tip_1, r_hub_1):
-    """
-    Draw transition duct casing and hub lines for both halves, no fill.
-    """
-    for s in (+1, -1):
-        ax.plot([x0, x1], [s*r_tip_0, s*r_tip_1],
-                color=COL_CASING, lw=1.5, zorder=5)
-        ax.plot([x0, x1], [s*r_hub_0, s*r_hub_1],
-                color=COL_CASING, lw=1.0, linestyle=':', zorder=5)
-
-def dim_arrow(ax, x1, x2, y, label):
-    """Horizontal dimension arrow with label above the line."""
-    ax.annotate('', xy=(x2, y), xytext=(x1, y),
-                arrowprops=dict(arrowstyle='<->', color=COL_DIM, lw=1.2))
-    ax.text(0.5*(x1+x2), y + 0.005, label, color=COL_DIM,
-            fontsize=7.5, ha='center', va='bottom', zorder=8)
-
-# ---- Layout ----
-x = 0.02
-x_inlet = x
-
-# HPC
-x_HPC_start = x
-x_HPC_end   = x + L_HPC
-draw_annulus(ax, x_HPC_start, x_HPC_end,
-             inlet_tip, inlet_hub,
-             outlet_tip, outlet_hub,
-             COL_HPC, label='HPC')
-x = x_HPC_end
-
-# Transition HPC -> CC
-L_trans_in = 0.04
-x_tr1_end  = x + L_trans_in
-draw_transition(ax, x, x_tr1_end,
-                outlet_tip, outlet_hub,
-                D_rich/2,   r_shaft)
-x = x_tr1_end
-
-# Combustor
-x_CC_start   = x
-x_rich_end   = x + L_rich
-x_quench_end = x_rich_end   + L_quench
-x_lean_end   = x_quench_end + L_lean
-draw_combustor_zone(ax, x,            x_rich_end,   D_rich/2,   D_rich/2,   COL_CC_RICH,   label='Rich')
-draw_combustor_zone(ax, x_rich_end,   x_quench_end, D_rich/2,   D_quench/2, COL_CC_QUENCH, label='Quench')
-draw_combustor_zone(ax, x_quench_end, x_lean_end,   D_quench/2, D_lean/2,   COL_CC_LEAN,   label='Lean')
-x = x_lean_end
-x_CC_end = x
-
-# Transition CC -> HPT
-L_trans_out = 0.04
-x_tr2_end   = x + L_trans_out
-draw_transition(ax, x, x_tr2_end,
-                D_lean/2,      r_shaft,
-                HPT_inlet_tip, HPT_inlet_hub)
-x = x_tr2_end
-
-# HPT
-x_HPT_start = x
-x_HPT_end   = x + L_HPT
-draw_annulus(ax, x_HPT_start, x_HPT_end,
-             HPT_inlet_tip, HPT_inlet_hub,
-             HPT_outlet_tip, HPT_outlet_hub,
-             COL_HPT, label='HPT')
-x = x_HPT_end
-x_end = x
-
-# Shaft: centred on y=0, spans full engine length, drawn over everything
-# at the centre but under annular fill via zorder
-from matplotlib.patches import Rectangle
-shaft_rect = Rectangle((x_inlet, -r_shaft), x_end - x_inlet, 2*r_shaft,
-                        color=COL_SHAFT_FILL, zorder=3, linewidth=0)
-ax.add_patch(shaft_rect)
-ax.plot([x_inlet, x_end], [ r_shaft,  r_shaft], color=COL_SHAFT_EDGE, lw=1.0, zorder=4)
-ax.plot([x_inlet, x_end], [-r_shaft, -r_shaft], color=COL_SHAFT_EDGE, lw=1.0, zorder=4)
-
-# Centreline
-ax.axhline(0, color='#555555', lw=0.8, linestyle='--', zorder=1, alpha=0.7)
-
-# ---- Dimension arrows (above the engine) ----
-y_top       = max(HPT_outlet_tip, D_lean/2)
-y_dim_base  = y_top + 0.04
-dim_arrow(ax, x_HPC_start, x_HPC_end,   y_dim_base,        f'HPC  {L_HPC*100:.0f} cm')
-dim_arrow(ax, x_CC_start,  x_CC_end,    y_dim_base + 0.05, f'CC  {CC_L*100:.0f} cm')
-dim_arrow(ax, x_HPT_start, x_HPT_end,   y_dim_base,        f'HPT  {L_HPT*100:.0f} cm')
-dim_arrow(ax, x_inlet,     x_end,       y_dim_base + 0.10, f'Total  {(x_end-x_inlet)*100:.0f} cm')
-
-# ---- Legend ----
-legend_items = [
-    mpatches.Patch(color=COL_HPC,       label=f'HPC  ({L_HPC*100:.0f} cm, {int(Stages_HPC)} stages)'),
-    mpatches.Patch(color=COL_CC_RICH,   label=f'Rich zone  (D={D_rich*100:.0f} cm, L={L_rich*100:.0f} cm)'),
-    mpatches.Patch(color=COL_CC_QUENCH, label=f'Quench zone  (L={L_quench*100:.0f} cm)'),
-    mpatches.Patch(color=COL_CC_LEAN,   label=f'Lean zone  (D={D_lean*100:.0f} cm, L={L_lean*100:.0f} cm)'),
-    mpatches.Patch(color=COL_HPT,       label=f'HPT  ({L_HPT*100:.0f} cm, {int(Stages_HPT)} stages)'),
-    mpatches.Patch(color=COL_SHAFT_FILL,label=f'Shaft  (r={r_shaft*100:.1f} cm)'),
-]
-ax.legend(handles=legend_items, loc='upper right', fontsize=8,
-          facecolor='#1a1a2e', edgecolor='#555555', labelcolor=COL_TEXT)
-
-ax.set_xlabel('Axial position [m]', color=COL_TEXT, fontsize=10)
-ax.set_ylabel('Radius [m]',         color=COL_TEXT, fontsize=10)
-ax.set_title('Gas Turbine Cross-Section',
-             color=COL_TEXT, fontsize=12, fontweight='bold', pad=12)
-ax.tick_params(colors=COL_TEXT, labelsize=8)
-for spine in ax.spines.values():
-    spine.set_color(COL_GRID)
-ax.set_xlim(x_inlet - 0.02, x_end + 0.02)
-y_extent = max(HPT_outlet_tip, D_lean/2) + 0.14
-ax.set_ylim(-y_extent, y_extent)
-ax.grid(True, color=COL_GRID, lw=0.5, alpha=0.6)
-
-plt.tight_layout()
-plt.show()
+            HPT_outlet_hub = r_hub_floor
+            HPT_outlet_tip = np.sqrt(A_HPT_outlet / np.pi + HPT_outlet_hub**2)
+
+        r_mean_HPT_in  = 0.5 * (HPT_inlet_tip  + HPT_inlet_hub)
+        r_mean_HPT_out = 0.5 * (HPT_outlet_tip + HPT_outlet_hub)
+        r_mean_HPT     = 0.5 * (r_mean_HPT_in  + r_mean_HPT_out)
+
+        RPM_HPT    = (d.HPT_U_tip / HPT_inlet_tip) * (60 / (2 * np.pi))
+        omega_HPT  = RPM_HPT * 2 * np.pi / 60
+        U_mean_HPT = omega_HPT * r_mean_HPT
+
+        Cp_hpt       = _air_cp(0.5*(P4 + P5), 0.5*(T4 + T5))
+        Delta_h0_HPT = Cp_hpt * (T4 - T5)
+        Stages_HPT   = int(np.ceil(Delta_h0_HPT / (d.HPT_Psi * U_mean_HPT**2)))
+        L_HPT        = Stages_HPT * 2 * d.HPT_BladeChord * (1 + d.HPT_Spacing)
+
+        # ===========================================================
+        # RQL Combustor
+        # ===========================================================
+        # Stoichiometric O/F and flame temperature
+        if self.cea is not None:
+            OF_range    = np.arange(1, 200, 0.5)
+            full_output = np.array([self.cea.get_Tcomb(Pc=Pc, MR=of) for of in OF_range])
+            OF_stoich   = float(OF_range[np.argmax(full_output)])
+            T_flame     = float(np.max(full_output))
+        else:
+            # Fallback values when CEA isn't available
+            OF_stoich = 34.3
+            T_flame   = 2400.0
+
+        OF_total    = results["ideal_OF"]
+
+        f_primary   = OF_stoich / OF_total
+        f_secondary = 1.0 - f_primary - d.CC_f_quench
+
+        mdot_primary = mdot_f * (1.0 + OF_stoich)
+        mdot_quench  = mdot_primary + mdot_f * OF_total * d.CC_f_quench
+        mdot_lean    = mdot_tot
+
+        T_rich   = T_flame
+        T_quench = 0.5 * (T_flame + T4)
+        T_lean   = T4
+
+        rho_rich   = Pc*1e5 / (self.R_air * T_rich)
+        rho_quench = Pc*1e5 / (self.R_air * T_quench)
+        rho_lean   = Pc*1e5 / (self.R_air * T_lean)
+
+        A_rich   = mdot_primary / (rho_rich   * d.CC_C_ax)
+        A_quench = mdot_quench  / (rho_quench * d.CC_C_ax)
+        A_lean   = mdot_lean    / (rho_lean   * d.CC_C_ax)
+
+        D_rich   = np.sqrt(4 * A_rich   / np.pi)
+        D_quench = np.sqrt(4 * A_quench / np.pi)
+        D_lean   = np.sqrt(4 * A_lean   / np.pi)
+
+        V_rich = d.CC_tau_rich * mdot_primary / rho_rich
+        V_lean = d.CC_tau_lean * mdot_lean    / rho_lean
+
+        L_rich   = V_rich  / A_rich
+        L_quench = 0.5 * D_quench
+        L_lean   = V_lean  / A_lean
+        CC_L     = L_rich + L_quench + L_lean
+
+        # ===========================================================
+        # Mass estimate
+        # ===========================================================
+        P_shaft_W      = results["total_net_W"]
+        m_engine_total = P_shaft_W / d.SP_turboshaft
+
+        m_ref_sum = d.m_HPC_kg_ref + d.m_CC_kg_ref + d.m_HPT_kg_ref
+        f_HPC = d.m_HPC_kg_ref / m_ref_sum
+        f_CC  = d.m_CC_kg_ref  / m_ref_sum
+        f_HPT = d.m_HPT_kg_ref / m_ref_sum
+
+        m_HPC = f_HPC * m_engine_total
+        m_CC  = f_CC  * m_engine_total
+        m_HPT = f_HPT * m_engine_total
+
+        # Recuperator
+        Cp_recup  = _air_cp(0.5*(P2 + Pc), 0.5*(T2p + T2))
+        Q_recup_W = mdot_air * Cp_recup * abs(T2p - T2)
+        m_recup   = Q_recup_W / d.SP_recup
+
+        m_bare_subtotal = m_engine_total + m_recup
+        m_system_margin = d.system_margin * m_bare_subtotal
+        m_propulsion    = m_bare_subtotal + m_system_margin
+
+        # ---- Stash everything ----
+        self.results = dict(
+            # Station passthrough
+            P1=P1, P2=P2, Pc=Pc, P4=P4, P5=P5,
+            T1=T1, T2=T2, T2p=T2p, T4=T4, T5=T5,
+            mdot_f=mdot_f, mdot_air=mdot_air, mdot_tot=mdot_tot,
+            # HPC
+            HPC_inlet_tip=inlet_tip, HPC_inlet_hub=inlet_hub,
+            HPC_outlet_tip=outlet_tip, HPC_outlet_hub=outlet_hub,
+            HPC_RPM=RPM_HPC, HPC_U_mean=U_mean_HPC,
+            HPC_Delta_h0=Delta_h0_HPC, HPC_Stages=Stages_HPC, HPC_L=L_HPC,
+            HPC_A_in=A_annulus, HPC_A_out=A_annulus_outlet,
+            HPC_rho_in=rho_1, HPC_rho_out=rho_2,
+            # HPT
+            HPT_inlet_tip=HPT_inlet_tip, HPT_inlet_hub=HPT_inlet_hub,
+            HPT_outlet_tip=HPT_outlet_tip, HPT_outlet_hub=HPT_outlet_hub,
+            HPT_RPM=RPM_HPT, HPT_U_mean=U_mean_HPT,
+            HPT_Delta_h0=Delta_h0_HPT, HPT_Stages=Stages_HPT, HPT_L=L_HPT,
+            HPT_A_in=A_HPT_inlet, HPT_A_out=A_HPT_outlet,
+            HPT_rho_in=rho_4, HPT_rho_out=rho_5,
+            # Combustor
+            OF_stoich=OF_stoich, T_flame=T_flame, OF_total=OF_total,
+            f_primary=f_primary, f_quench=d.CC_f_quench, f_secondary=f_secondary,
+            D_rich=D_rich, D_quench=D_quench, D_lean=D_lean,
+            L_rich=L_rich, L_quench=L_quench, L_lean=L_lean, CC_L=CC_L,
+            # Mass
+            m_engine_total=m_engine_total,
+            m_HPC=m_HPC, m_CC=m_CC, m_HPT=m_HPT,
+            Q_recup_W=Q_recup_W, m_recup=m_recup,
+            m_bare_subtotal=m_bare_subtotal, m_system_margin=m_system_margin,
+            m_propulsion=m_propulsion,
+        )
+        return self
+
+    # ------------------------------------------------------------------
+    # Flat dict for CSV
+    # ------------------------------------------------------------------
+    def to_csv_row(self):
+        if self.results is None:
+            raise RuntimeError("Call size() before to_csv_row().")
+        return {f"dim__{k}": v for k, v in self.results.items()}
+
+    # ------------------------------------------------------------------
+    # Console report
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _make_table(title, rows, color="magenta"):
+        t = Table(
+            title=f"[bold cyan]{title}[/bold cyan]",
+            box=box.ROUNDED,
+            header_style=f"bold {color}",
+            show_lines=True,
+            title_justify="left",
+            min_width=52,
+        )
+        t.add_column("Parameter", style="cyan",   justify="left",  min_width=26)
+        t.add_column("Value",     style="yellow",  justify="right", min_width=10)
+        t.add_column("Units",     style="dim",     justify="left",  min_width=8)
+        for row in rows:
+            if row is None:
+                t.add_section()
+            else:
+                t.add_row(*row)
+        return t
+
+    def report(self):
+        if self.results is None:
+            raise RuntimeError("Call size() before report().")
+        r = self.results
+        c = self._console
+
+        # ------------- Mass --------------------------------------------
+        c.print()
+        c.rule("[bold white]PROPULSION SYSTEM MASS ESTIMATE[/bold white]")
+        c.print()
+
+        tbl_mass = self._make_table("Propulsion System Mass  (conceptual, ±30%)", [
+            ("Shaft power",              f"{self.engine.results['total_net_W']/1e6:.3f}", "MW"),
+            ("Specific power (anchor)",  f"{self.dim.SP_turboshaft/1e3:.1f}",              "kW/kg"),
+            ("Bare engine mass (total)", f"{r['m_engine_total']:.1f}",                     "kg"),
+            None,
+            ("  HPC",                    f"{r['m_HPC']:.1f}", "kg"),
+            ("  Combustor",              f"{r['m_CC']:.1f}",  "kg"),
+            ("  HPT",                    f"{r['m_HPT']:.1f}", "kg"),
+            None,
+            ("Recuperator thermal duty", f"{r['Q_recup_W']/1e3:.1f}", "kW"),
+            ("Recup. specific power",    f"{self.dim.SP_recup/1e3:.1f}", "kW/kg"),
+            ("Recuperator mass",         f"{r['m_recup']:.1f}",       "kg"),
+            None,
+            ("Bare subtotal",            f"{r['m_bare_subtotal']:.1f}",   "kg"),
+            (f"System margin ({self.dim.system_margin*100:.0f}%)",
+                                         f"{r['m_system_margin']:.1f}",   "kg"),
+            ("PROPULSION SYSTEM TOTAL",  f"{r['m_propulsion']:.1f}",      "kg"),
+        ], color="magenta")
+        c.print(tbl_mass)
+        c.print()
+
+        # ------------- Dimensional -------------------------------------
+        c.rule("[bold white]COMPONENT DIMENSIONAL SIZING SUMMARY[/bold white]")
+        c.print()
+
+        tbl_HPC = self._make_table("HPC  (Axial, Air)", [
+            ("Stages",            f"{r['HPC_Stages']:.0f}",            "-"),
+            ("Length",            f"{r['HPC_L']*100:.1f}",             "cm"),
+            None,
+            ("Inlet tip radius",  f"{r['HPC_inlet_tip']*100:.2f}",     "cm"),
+            ("Inlet hub radius",  f"{r['HPC_inlet_hub']*100:.2f}",     "cm"),
+            ("Outlet tip radius", f"{r['HPC_outlet_tip']*100:.2f}",    "cm"),
+            ("Outlet hub radius", f"{r['HPC_outlet_hub']*100:.2f}",    "cm"),
+            None,
+            ("RPM",               f"{r['HPC_RPM']:.0f}",               "rpm"),
+            ("U_mean",            f"{r['HPC_U_mean']:.1f}",            "m/s"),
+            ("Specific work",     f"{r['HPC_Delta_h0']/1e3:.1f}",      "kJ/kg"),
+        ], color="blue")
+
+        tbl_HPT = self._make_table("HPT  (Axial, Combustion Products)", [
+            ("Stages",            f"{r['HPT_Stages']:.0f}",            "-"),
+            ("Length",            f"{r['HPT_L']*100:.1f}",             "cm"),
+            None,
+            ("Inlet tip radius",  f"{r['HPT_inlet_tip']*100:.2f}",     "cm"),
+            ("Inlet hub radius",  f"{r['HPT_inlet_hub']*100:.2f}",     "cm"),
+            ("Outlet tip radius", f"{r['HPT_outlet_tip']*100:.2f}",    "cm"),
+            ("Outlet hub radius", f"{r['HPT_outlet_hub']*100:.2f}",    "cm"),
+            None,
+            ("RPM",               f"{r['HPT_RPM']:.0f}",               "rpm"),
+            ("U_mean",            f"{r['HPT_U_mean']:.1f}",            "m/s"),
+            ("Specific work",     f"{r['HPT_Delta_h0']/1e3:.1f}",      "kJ/kg"),
+        ], color="green")
+
+        tbl_CC = self._make_table("Combustion Chamber  (RQL, H2/Air)", [
+            ("Stoichiometric O/F", f"{r['OF_stoich']:.1f}", "-"),
+            ("Adiabatic flame T",  f"{r['T_flame']:.0f}",   "K"),
+            ("Overall O/F",        f"{r['OF_total']:.1f}",  "-"),
+            None,
+            ("Rich  D / L",        f"{r['D_rich']*100:.1f} / {r['L_rich']*100:.1f}",     "cm"),
+            ("Quench D / L",       f"{r['D_quench']*100:.1f} / {r['L_quench']*100:.1f}", "cm"),
+            ("Lean  D / L",        f"{r['D_lean']*100:.1f} / {r['L_lean']*100:.1f}",     "cm"),
+            ("Total length",       f"{r['CC_L']*100:.1f}",  "cm"),
+            None,
+            ("f_primary",          f"{r['f_primary']:.3f}",   "-"),
+            ("f_quench",           f"{r['f_quench']:.3f}",    "-"),
+            ("f_secondary",        f"{r['f_secondary']:.3f}", "-"),
+        ], color="red")
+
+        c.print(Columns([tbl_HPC, tbl_HPT], equal=True, expand=False))
+        c.print()
+        c.print(tbl_CC)
+        c.print()
+
+        if r["f_secondary"] < 0:
+            c.print(
+                "[bold red]WARNING:[/bold red] f_secondary < 0: quench fraction "
+                "too large for this O/F. Reduce CC_f_quench."
+            )
+
+    # ------------------------------------------------------------------
+    # Cross-section diagram
+    # ------------------------------------------------------------------
+    def plot(self):
+        if self.results is None:
+            raise RuntimeError("Call size() before plot().")
+        r = self.results
+
+        # Geometry handles
+        inlet_tip,  inlet_hub   = r["HPC_inlet_tip"],  r["HPC_inlet_hub"]
+        outlet_tip, outlet_hub  = r["HPC_outlet_tip"], r["HPC_outlet_hub"]
+        HPT_inlet_tip           = r["HPT_inlet_tip"]
+        HPT_inlet_hub           = r["HPT_inlet_hub"]
+        HPT_outlet_tip          = r["HPT_outlet_tip"]
+        HPT_outlet_hub          = r["HPT_outlet_hub"]
+        L_HPC, L_HPT            = r["HPC_L"], r["HPT_L"]
+        L_rich, L_quench, L_lean = r["L_rich"], r["L_quench"], r["L_lean"]
+        D_rich, D_quench, D_lean = r["D_rich"], r["D_quench"], r["D_lean"]
+        CC_L                    = r["CC_L"]
+        Stages_HPC, Stages_HPT  = r["HPC_Stages"], r["HPT_Stages"]
+
+        fig, ax = plt.subplots(figsize=(20, 10))
+        ax.set_aspect('equal')
+        ax.set_facecolor('#0d1117')
+        fig.patch.set_facecolor('#0d1117')
+
+        COL_HPC, COL_HPT       = '#4a9eff', '#4aff8a'
+        COL_CC_RICH, COL_CC_QUENCH, COL_CC_LEAN = "#ff3535", "#ff9500", "#fff235"
+        COL_CASING             = '#cccccc'
+        COL_SHAFT_FILL, COL_SHAFT_EDGE = '#555555', '#999999'
+        COL_TEXT, COL_GRID, COL_DIM = '#ffffff', '#2a2a2a', '#aaaaaa'
+
+        r_shaft = min(inlet_hub, outlet_hub, HPT_inlet_hub, HPT_outlet_hub) * 0.85
+
+        def draw_annulus(x0, x1, rt0, rh0, rt1, rh1, color, alpha=0.72, label=None):
+            for s in (+1, -1):
+                ax.fill([x0, x1, x1, x0],
+                        [s*rt0, s*rt1, s*rh1, s*rh0],
+                        color=color, alpha=alpha, zorder=4)
+                ax.plot([x0, x1], [s*rt0, s*rt1], color=COL_CASING, lw=1.8, zorder=5)
+                ax.plot([x0, x1], [s*rh0, s*rh1], color=COL_CASING, lw=1.2, zorder=5)
+                ax.plot([x0, x0], [s*rh0, s*rt0], color=COL_CASING, lw=1.0, zorder=5)
+                ax.plot([x1, x1], [s*rh1, s*rt1], color=COL_CASING, lw=1.0, zorder=5)
+            if label:
+                xm = 0.5*(x0 + x1)
+                ym = 0.5*(0.5*(rt0+rh0) + 0.5*(rt1+rh1))
+                ax.text(xm, ym, label, color=COL_TEXT, fontsize=9,
+                        ha='center', va='center', fontweight='bold', zorder=7)
+
+        def draw_combustor_zone(x0, x1, r0, r1, color, alpha=0.60, label=None):
+            ax.fill([x0, x1, x1, x0], [r0, r1, -r1, -r0],
+                    color=color, alpha=alpha, zorder=4)
+            ax.plot([x0, x1], [ r0,  r1], color=COL_CASING, lw=2.0, zorder=5)
+            ax.plot([x0, x1], [-r0, -r1], color=COL_CASING, lw=2.0, zorder=5)
+            ax.plot([x0, x0], [-r0,  r0], color=COL_CASING, lw=1.0, zorder=5)
+            ax.plot([x1, x1], [-r1,  r1], color=COL_CASING, lw=1.0, zorder=5)
+            if label:
+                ax.text(0.5*(x0+x1), 0.25*(r0+r1), label,
+                        color=COL_TEXT, fontsize=9, ha='center', va='center',
+                        fontweight='bold', zorder=7)
+
+        def draw_transition(x0, x1, rt0, rh0, rt1, rh1):
+            for s in (+1, -1):
+                ax.plot([x0, x1], [s*rt0, s*rt1], color=COL_CASING, lw=1.5, zorder=5)
+                ax.plot([x0, x1], [s*rh0, s*rh1], color=COL_CASING, lw=1.0,
+                        linestyle=':', zorder=5)
+
+        def dim_arrow(x1, x2, y, label):
+            ax.annotate('', xy=(x2, y), xytext=(x1, y),
+                        arrowprops=dict(arrowstyle='<->', color=COL_DIM, lw=1.2))
+            ax.text(0.5*(x1+x2), y + 0.005, label, color=COL_DIM,
+                    fontsize=7.5, ha='center', va='bottom', zorder=8)
+
+        # ---- Layout ----
+        x_inlet = 0.02
+        x       = x_inlet
+        x_HPC_start, x_HPC_end = x, x + L_HPC
+        draw_annulus(x_HPC_start, x_HPC_end,
+                     inlet_tip, inlet_hub, outlet_tip, outlet_hub,
+                     COL_HPC, label='HPC')
+        x = x_HPC_end
+
+        L_trans_in = 0.04
+        x_tr1_end  = x + L_trans_in
+        draw_transition(x, x_tr1_end, outlet_tip, outlet_hub, D_rich/2, r_shaft)
+        x = x_tr1_end
+
+        x_CC_start   = x
+        x_rich_end   = x + L_rich
+        x_quench_end = x_rich_end + L_quench
+        x_lean_end   = x_quench_end + L_lean
+        draw_combustor_zone(x,            x_rich_end,   D_rich/2,   D_rich/2,   COL_CC_RICH,   "Rich")
+        draw_combustor_zone(x_rich_end,   x_quench_end, D_rich/2,   D_quench/2, COL_CC_QUENCH, "Quench")
+        draw_combustor_zone(x_quench_end, x_lean_end,   D_quench/2, D_lean/2,   COL_CC_LEAN,   "Lean")
+        x = x_lean_end
+        x_CC_end = x
+
+        L_trans_out = 0.04
+        x_tr2_end   = x + L_trans_out
+        draw_transition(x, x_tr2_end, D_lean/2, r_shaft, HPT_inlet_tip, HPT_inlet_hub)
+        x = x_tr2_end
+
+        x_HPT_start, x_HPT_end = x, x + L_HPT
+        draw_annulus(x_HPT_start, x_HPT_end,
+                     HPT_inlet_tip, HPT_inlet_hub,
+                     HPT_outlet_tip, HPT_outlet_hub,
+                     COL_HPT, label='HPT')
+        x_end = x_HPT_end
+
+        shaft_rect = Rectangle((x_inlet, -r_shaft), x_end - x_inlet, 2*r_shaft,
+                               color=COL_SHAFT_FILL, zorder=3, linewidth=0)
+        ax.add_patch(shaft_rect)
+        ax.plot([x_inlet, x_end], [ r_shaft,  r_shaft], color=COL_SHAFT_EDGE, lw=1.0, zorder=4)
+        ax.plot([x_inlet, x_end], [-r_shaft, -r_shaft], color=COL_SHAFT_EDGE, lw=1.0, zorder=4)
+        ax.axhline(0, color='#555555', lw=0.8, linestyle='--', zorder=1, alpha=0.7)
+
+        y_top      = max(HPT_outlet_tip, D_lean/2)
+        y_dim_base = y_top + 0.04
+        dim_arrow(x_HPC_start, x_HPC_end, y_dim_base,        f'HPC  {L_HPC*100:.0f} cm')
+        dim_arrow(x_CC_start,  x_CC_end,  y_dim_base + 0.05, f'CC  {CC_L*100:.0f} cm')
+        dim_arrow(x_HPT_start, x_HPT_end, y_dim_base,        f'HPT  {L_HPT*100:.0f} cm')
+        dim_arrow(x_inlet,     x_end,     y_dim_base + 0.10, f'Total  {(x_end-x_inlet)*100:.0f} cm')
+
+        legend_items = [
+            mpatches.Patch(color=COL_HPC,       label=f'HPC  ({L_HPC*100:.0f} cm, {int(Stages_HPC)} stages)'),
+            mpatches.Patch(color=COL_CC_RICH,   label=f'Rich zone  (D={D_rich*100:.0f} cm, L={L_rich*100:.0f} cm)'),
+            mpatches.Patch(color=COL_CC_QUENCH, label=f'Quench zone  (L={L_quench*100:.0f} cm)'),
+            mpatches.Patch(color=COL_CC_LEAN,   label=f'Lean zone  (D={D_lean*100:.0f} cm, L={L_lean*100:.0f} cm)'),
+            mpatches.Patch(color=COL_HPT,       label=f'HPT  ({L_HPT*100:.0f} cm, {int(Stages_HPT)} stages)'),
+            mpatches.Patch(color=COL_SHAFT_FILL,label=f'Shaft  (r={r_shaft*100:.1f} cm)'),
+        ]
+        ax.legend(handles=legend_items, loc='upper right', fontsize=8,
+                  facecolor='#1a1a2e', edgecolor='#555555', labelcolor=COL_TEXT)
+
+        ax.set_xlabel('Axial position [m]', color=COL_TEXT, fontsize=10)
+        ax.set_ylabel('Radius [m]',         color=COL_TEXT, fontsize=10)
+        ax.set_title('Gas Turbine Cross-Section',
+                     color=COL_TEXT, fontsize=12, fontweight='bold', pad=12)
+        ax.tick_params(colors=COL_TEXT, labelsize=8)
+        for spine in ax.spines.values():
+            spine.set_color(COL_GRID)
+        ax.set_xlim(x_inlet - 0.02, x_end + 0.02)
+        y_extent = max(HPT_outlet_tip, D_lean/2) + 0.14
+        ax.set_ylim(-y_extent, y_extent)
+        ax.grid(True, color=COL_GRID, lw=0.5, alpha=0.6)
+        plt.tight_layout()
+        plt.show()
+
+
+# ----------------------------------------------------------------------
+# Standalone smoke test
+# ----------------------------------------------------------------------
+if __name__ == "__main__":
+    from rocketcea.cea_obj_w_units import CEA_Obj
+    from config import Config
+
+    cfg    = Config()
+    cea    = CEA_Obj(oxName="AIR", fuelName="GH2",
+                     pressure_units="bar", temperature_units="K", isp_units="sec")
+    engine = GasTurbineCycle.from_config(cfg).size(cea=cea)
+    engine.report()
+
+    dim = DimensionalSizing.from_config(engine, cfg, cea=cea).size()
+    dim.report()
+    dim.plot()

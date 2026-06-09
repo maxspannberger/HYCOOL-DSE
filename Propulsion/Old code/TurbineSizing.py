@@ -198,73 +198,6 @@ class GasTurbineCycle:
         self._console = Console()
 
     # ------------------------------------------------------------------
-    # Build from external config (preferred entry point)
-    # ------------------------------------------------------------------
-    @classmethod
-    def from_config(cls, cfg):
-        """
-        Construct from a `Config` (or `CycleConfig`) object defined in config.py.
-        Every CycleConfig field is forwarded as a constructor argument.
-        """
-        c = cfg.cycle if hasattr(cfg, "cycle") else cfg
-        return cls(
-            P_target       = c.P_target,
-            P_ambient      = c.P_ambient,
-            M0             = c.M0,
-            TIT            = c.TIT,
-            PR_HPC         = c.PR_HPC,
-            eta_HPC        = c.eta_HPC,
-            eta_CC         = c.eta_CC,
-            eta_CC_p       = c.eta_CC_p,
-            eta_HPT        = c.eta_HPT,
-            eta_HEX        = c.eta_HEX,
-            eta_mech       = c.eta_mech,
-            eta_diff       = c.eta_diff,
-            eta_regen      = c.eta_regen,
-            eta_regen_p    = c.eta_regen_p,
-            USE_REGEN      = c.USE_REGEN,
-            FULL_EXPANSION = c.FULL_EXPANSION,
-            REGEN_FIRST    = c.REGEN_FIRST,
-            Regen_Fraction = c.Regen_Fraction,
-            P_pre_comp     = c.P_pre_comp,
-            T_pre_comp     = c.T_pre_comp,
-            PH1            = c.PH1,
-            TH2            = c.TH2,
-            eta_compressor = c.eta_compressor,
-            eta_H2T        = c.eta_H2T,
-            fluid          = c.fluid,
-            LHV_H2         = c.LHV_H2,
-            mdot_f_init    = c.mdot_f_init,
-        )
-
-    # ------------------------------------------------------------------
-    # Flat dict for CSV export
-    # ------------------------------------------------------------------
-    def to_csv_row(self):
-        """
-        Return a flat {column_name: scalar} dict of the headline design-point
-        results. Array fields (HEX sweep arrays) are excluded so the output
-        stays CSV-friendly. Keys are prefixed `cycle__` to avoid collisions
-        with other modules in a wide-format CSV.
-        """
-        if self.results is None:
-            raise RuntimeError("Call size() before to_csv_row().")
-        r = self.results
-        scalar_keys = [
-            "mdot_f", "mdot_tot", "ideal_OF", "TIT",
-            "T1", "P1", "T2", "P2", "T2p",
-            "T3", "P3", "T4", "P4", "T5", "P5",
-            "Cp_HPC", "Cp_HPT",
-            "P_HPC_W", "P_HPT_W", "P_H2T_W", "Power_compressor_W",
-            "gaspath_net_W", "h2_net_W", "total_net_W",
-            "Q_tot_W", "T_hex_hot_in", "T_hot_out", "T_exh_final",
-            "approach_min", "approach_loc", "hex_feasible",
-            "Q_regen_W", "q_in_W", "eta_total", "eta_gaspath",
-            "P3_H2", "TH3",
-        ]
-        return {f"cycle__{k}": r[k] for k in scalar_keys if k in r}
-
-    # ------------------------------------------------------------------
     # Public entry point
     # ------------------------------------------------------------------
     def size(self, cea=None):
@@ -1019,13 +952,17 @@ class GasTurbineCycle:
 # Entry point
 # ------------------------------------------------------------------
 if __name__ == "__main__":
-    # Standalone smoke test: build the cycle from config.py and report.
-    from config import Config
     cea = CEA_Obj(
         oxName="AIR", fuelName="GH2",
         pressure_units="bar", temperature_units="K", isp_units="sec",
     )
-    engine = GasTurbineCycle.from_config(Config()).size(cea=cea)
+
+    TIT = 1500
+    H2_Temp = 950
+    Target_power = 2e6
+
+    engine = GasTurbineCycle(TIT=TIT, P_target=Target_power, TH2=H2_Temp)      # all defaults match original sizing target
+    engine.size(cea=cea)
     engine.report()
     engine.plot_ts()
     engine.plot_ts_h2()

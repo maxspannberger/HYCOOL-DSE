@@ -53,46 +53,6 @@ class OffDesignEvaluator:
         self.h3_actual_design       = d["h3_actual"]
         self.TH3_design             = d["TH3"]
 
-    # ------------------------------------------------------------------
-    # Build from external config
-    # ------------------------------------------------------------------
-    @classmethod
-    def from_config(cls, engine, cfg):
-        """
-        Construct from a sized `GasTurbineCycle` and a `Config` (or
-        `OffDesignConfig`) defined in config.py.
-        """
-        o = cfg.offdesign if hasattr(cfg, "offdesign") else cfg
-        return cls(
-            engine      = engine,
-            TIT_limit   = o.TIT_limit,
-            TIT_min     = o.TIT_min,
-            TIT_tol     = o.TIT_tol,
-            max_iter    = o.max_iter,
-            Q_regen_max = o.Q_regen_max,
-        )
-
-    # ------------------------------------------------------------------
-    # Flat dict for CSV export -- given a single evaluate() result
-    # ------------------------------------------------------------------
-    @staticmethod
-    def to_csv_row(result, prefix="offdesign"):
-        """
-        Flatten an evaluate() result dict into CSV-friendly columns.
-        `prefix` is prepended to every key so multiple off-design points can
-        coexist in one wide row (use e.g. "offdesign_OEI" vs "offdesign_cruise").
-        """
-        if result is None:
-            return {}
-        scalar_keys = [
-            "P_shaft", "TIT_od", "mdot_f", "mdot_air", "mdot_aux",
-            "aux_active", "aux_fraction",
-            "OF", "T2p", "T5", "T_exh_final",
-            "Q_regen_W", "Q_regen_W_max", "regen_capped",
-            "eta_total", "SFC", "SFC_hr", "q_in_W",
-            "tit_exceeded", "hex_feasible", "approach_min",
-        ]
-        return {f"{prefix}__{k}": result[k] for k in scalar_keys if k in result}
 
     def cycle_at_TIT(self, TIT_od, mdot_air=None):
         """
@@ -591,23 +551,25 @@ class OffDesignEvaluator:
         plt.show()
 
 if __name__ == "__main__":
-    # Standalone smoke test: drive everything from config.py.
-    from config import Config
 
-    cfg = Config()
-    engine = GasTurbineCycle.from_config(cfg).size()
+    Optimal_Power   = 2e6                   # W
+    Cruise_TIT      = 1500                  # K
+    H2_Temp         = 890                   # K
+    H2_Pressure     = 150                   # bar
+    Regen           = True
+    P_ambient       = 0.38                  # bar
+
+    engine = GasTurbineCycle(P_target = Optimal_Power, TIT = Cruise_TIT, TH2=H2_Temp, USE_REGEN=Regen, P_ambient=P_ambient, PH1=H2_Pressure)
+    engine.size()
     engine.report()
+    evaluator = OffDesignEvaluator(engine, TIT_limit=1900.0)
 
-    evaluator = OffDesignEvaluator.from_config(engine, cfg)
+    # Single-point check at peak power
+    print("\n--- Peak power validation (3.08 MW) ---")
+    result = evaluator.evaluate(P_shaft=3.08e6)
+    evaluator.report(result)
 
-    for P in cfg.offdesign.P_shaft_cases:
-        print(f"\n--- Off-design point at {P/1e6:.3f} MW ---")
-        evaluator.report(evaluator.evaluate(P))
-
+    # Sweep from 30% to 110% of design power
     print("\n--- Power sweep ---")
-    sweep = evaluator.sweep(
-        P_min=cfg.offdesign.P_sweep_min,
-        P_max=cfg.offdesign.P_sweep_max,
-        n_points=cfg.offdesign.P_sweep_n,
-    )
+    sweep = evaluator.sweep(P_min=0.6e6, P_max=3.0e6, n_points=30)
     evaluator.plot_sweep(sweep)
