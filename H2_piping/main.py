@@ -1,5 +1,7 @@
 from pathlib import Path
 import sys
+
+# Set up paths to ensure we can import local modules
 folder = Path(__file__).resolve().parent
 sys.path.append(str(folder))
 
@@ -16,21 +18,12 @@ import numpy as np
 import json
 from system_config import H2SystemConfig as c
 
-'''
-===============================================================================
-The wall of the components Pipe and Tank should be defined in the following manner.
- 
-- Wall contains a list of tupples. 
-- Within the tupple the material is specified at index 0 and the thickness
-  at index 1. 
-- The materials should be oredered from inner tube to outer tube
-
-For example: wall = [('ss-316l', 0.01), ('polyurethene', 0.02)]
-eg. the inner layer is ss-326l and the outer layer is polyurethene
-===============================================================================
-'''
-
+# =============================================================================
+# Iterates through the defined system components to calculate fluid states.
+# Updates mass flow rate when splits or merges occur.
+# =============================================================================
 def solve_system(system, m_dot, T_amb):
+   
     states = {'p'   : [],
               'T'   : [],
               'rho' : [],
@@ -42,6 +35,7 @@ def solve_system(system, m_dot, T_amb):
         if type(comp) == tuple:
             m_dot = m_dot * comp[1] / comp[-1]
         else:
+            # Propagate the state through the specific component solver
             component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=False, system=system, i=i)
             
             states['p'].append(component_result['p'])
@@ -52,8 +46,11 @@ def solve_system(system, m_dot, T_amb):
     print(m_dot)   
     return states
 
-
+# =============================================================================
+# Displays the computed states in a clean, hierarchical CLI tree format.
+# =============================================================================
 def print_tree(states):
+
     tree = Tree("\n[bold blue]System States")
     
     for key, values in states.items():
@@ -64,7 +61,12 @@ def print_tree(states):
             
     rich_print(tree)
 
+# =============================================================================
+# Visualizes the pressure, temperature, density, and enthalpy profiles.
+# Background gradient indicates the phase fraction (liquid to gas).
+# =============================================================================
 def plot_states(states):
+  
     flat_states = {}
     for prop in ['p', 'T', 'rho', 'h', 'frac']:
         temp_list = []
@@ -73,6 +75,7 @@ def plot_states(states):
                 temp_list.append(value)
         flat_states[prop] = temp_list
 
+    # Prepare phase-fraction background gradient
     frac_arr = np.array(flat_states['frac'])
     gradient = np.tile(frac_arr, (100, 1)) 
 
@@ -88,6 +91,7 @@ def plot_states(states):
         y_max   = max(flat_states[prop])
         margin  = (y_max - y_min) * 0.05
         
+        # Overlay phase map (Blue = Liquid, Red = Gas)
         axes[i].imshow(gradient, aspect='auto', cmap='RdYlBu_r',
                        vmin=0, vmax=1,
                        extent=[0, len(flat_states[prop]), y_min - margin, y_max + margin],
@@ -112,15 +116,13 @@ component_order = {}
 for key, value in comps.items(): 
     if key == "total":
         continue
-    sorted_keys = sorted(value, key=int)
+    # Sort cooling locations by float
+    sorted_keys = sorted(value, key=float)
     component_order[key] = sorted_keys
 
 if __name__ == "__main__":
-    wall = [('ss-316l',      0.01), 
-            ('polyurethene', 0.02)]
 
-
-    # Distribute the configuration tracking instance down into each custom layout element
+    # Define system topology as a sequential list of objects
     system = [
         Tank(), 
         
@@ -163,11 +165,12 @@ if __name__ == "__main__":
         COOL(name       = 'hts_pow', 
              location   = component_order['hts_pow'][0]),
         
-        Corner(N_bend   =  10, 
+        Corner(N_bend   =  1, 
                diameter =  0.02, 
                curv     =  2.5)
         ]
     
+    # Execute simulation and display results
     states = solve_system(system, m_dot=c.m_dot, T_amb=c.T_amb)
     print_tree(states)
     plot_states(states)

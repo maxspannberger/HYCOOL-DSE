@@ -14,7 +14,9 @@ from system_config import H2SystemConfig
 config = H2SystemConfig()
 tol = config.max_error
 
-
+# =============================================================================
+# Calculate the fraction of gas. Get rid of supercriticals by forcing to o or 1
+# =============================================================================
 def calc_frac(p, h, fluid='Hydrogen'):
     phase = CP.PhaseSI('P', p, 'H', h, fluid)
     
@@ -28,7 +30,9 @@ def calc_frac(p, h, fluid='Hydrogen'):
         raise ValueError(f"Unknown phase '{phase}' encountered at p={p:.2f}, h={h:.2f}. "
                          "Check if input states are within physical limits.")
         
-        
+# =============================================================================
+# Get the input states by taking last stored state values        
+# =============================================================================
 def get_input_states(states):
     T   = states['T'][-1][-1]
     p   = states['p'][-1][-1]
@@ -37,7 +41,10 @@ def get_input_states(states):
     
     return T, p, h, rho
 
-
+# =============================================================================
+# Set up av function that can be used in an iterative solver. It uses the conservation
+# equations and takes an initial guess
+# =============================================================================
 def update_states(vars, p1, h1, u1, m_dot, A_cs, fluid, q=0, dp_fric=0, penalty_val=1e9):
     rho1 = CP.PropsSI('D', 'P', p1, 'H', h1, fluid)
     
@@ -54,7 +61,9 @@ def update_states(vars, p1, h1, u1, m_dot, A_cs, fluid, q=0, dp_fric=0, penalty_
     
     return [res_momentum, res_energy]
 
-
+# =============================================================================
+# Define a class for the tank 
+# =============================================================================
 class Tank:
     def __init__(self):
         self.name = 'Tank'
@@ -66,17 +75,21 @@ class Tank:
         self.rho = CP.PropsSI('D', 'P', self.p, 'T', self.T, self.fluid)
         self.h   = CP.PropsSI('H', 'P', self.p, 'T', self.T, self.fluid)
         self.frac= calc_frac(self.p, self.h, fluid=self.fluid)
-      
+    
+    # Function that can be called to calculate the evolution of the state variables
+    # in the component
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None):
         A_cs = np.pi * system[1].d**2 / 4
         u    = config.tank_initial_u
         
+        # Iteratively solve for the upstream states
         sol = cp_root(update_states,
                       x0=[self.p * 0.999, self.h],
                       method='lm',
                       args=(self.p, self.h, u, m_dot, A_cs, self.fluid, 0, 0, config.divergence_penalty))
         p2, h2 = sol.x
         
+        # Update the remaining state variables based on h and p
         rho2  = CP.PropsSI('D', 'P', p2, 'H', h2, self.fluid)
         T2    = CP.PropsSI('T', 'P', p2, 'H', h2, self.fluid)
         frac2 = calc_frac(p2, h2, fluid=self.fluid)
@@ -84,6 +97,7 @@ class Tank:
             raise ValueError(f"The hydrogen turns partially gasseous ({frac2}) as it leaves "
                              "the tank. Incompressability assumption doesn't hold.")
         
+        # Store the results as a dictionary and return
         results = {'T':   np.array([self.T, T2]), 
                    'p':   np.array([self.p, p2]),
                    'rho': np.array([self.rho, rho2]),
@@ -93,7 +107,9 @@ class Tank:
         
         return results
 
-
+# =============================================================================
+# Define a class for the pump
+# =============================================================================
 class Pump:
     def __init__(self, target_p: float,
                        diameter: float,
@@ -105,6 +121,8 @@ class Pump:
         self.fluid = config.fluid
         self.name = name
 
+    # Function that can be called to calculate the evolution of the state variables
+    # in the component
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None):
         T1, p1, h1, rho1 = get_input_states(states)
         
@@ -163,7 +181,9 @@ class Pump:
         
         return results
     
-        
+# =============================================================================
+#  Define a class for the pipe       
+# =============================================================================
 class Pipe:
     def __init__(self, length:   float,
                        diameter: float = None,   
@@ -177,6 +197,7 @@ class Pipe:
         self.fluid     = config.fluid
         self.length    = length
         
+        # Set default pipe parameters if none are overwritten
         self.d         = diameter if diameter is not None else config.pipe_default_d
         self.segments  = segments if segments is not None else int(length / config.pipe_segment_length)
         self.N         = N        if N is not None        else config.pipe_default_N
@@ -188,7 +209,9 @@ class Pipe:
         self.cr        = config.pipe_mli_cr
         self.cg        = config.pipe_mli_cg
         self.eps       = config.pipe_mli_eps
-     
+    
+    # Function that can be called to calculate the evolution of the state variables
+    # in the component
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None):
         
         T1, p1, h1, rho1 = get_input_states(states)
@@ -203,11 +226,14 @@ class Pipe:
         A_cs  = np.pi * self.d**2 / 4
         A_seg = np.pi * self.d * dz
 
+        # Loop over pipe elements to calculate state variable evolution
         for seg in range(self.segments):
             mu1  = CP.PropsSI('V', 'P', p1, 'H', h1, self.fluid)
 
             u1  = m_dot / (rho1 * A_cs)
             Re1 = 4 * m_dot / (np.pi * self.d * mu1)
+            
+            # Convert to parameter names as used in the formula
             T_h = T_amb
             T_c = T1
             T_m = (T_h + T_c) / 2
@@ -272,7 +298,9 @@ class Pipe:
             
         return results
     
-    
+# =============================================================================
+#  Define a class for the corners   
+# =============================================================================
 class Corner:
     def __init__(self, curv:     float,
                        diameter: float,
@@ -286,6 +314,8 @@ class Corner:
         self.fluid = config.fluid
         self.name = name
     
+    # Function that can be called to calculate the evolution of the state variables
+    # in the component
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None):
         T1, p1, h1, rho1 = get_input_states(states)
         
@@ -322,7 +352,9 @@ class Corner:
         
         return results
 
-
+# =============================================================================
+# Define a class for the components to be cooled
+# =============================================================================
 class COOL:
     def __init__(self, name:        str, 
                        location:    str
@@ -337,6 +369,8 @@ class COOL:
             comps = json.load(file)
         self.Q_dot    = comps[name][location]['P_cool'] * 1000
 
+    # Function that can be called to calculate the evolution of the state variables
+    # in the component
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None):
         T, p, h, rho = get_input_states(states)
         q = self.Q_dot / m_dot
