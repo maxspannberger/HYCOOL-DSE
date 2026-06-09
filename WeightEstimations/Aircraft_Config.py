@@ -192,6 +192,7 @@ def default_q400_hycool() -> AircraftConfig:
     MAC_v       = 3.5                           # Referenced
     WingLoading_Target = 3810                   # Class I Value
     ClassI_MTOW = 31_729.92                     # Class I Value
+    b_init                = 28.58,               # Class I Value
     return AircraftConfig(
         # Wing
         S_ref            = ClassI_MTOW * 9.80665 / WingLoading_Target,
@@ -272,7 +273,7 @@ def default_q400_hycool() -> AircraftConfig:
         # Propulsion
         T_TO_per_engine  = 20_000.0,            # Initial Assumption
         y_engine_2       = 7.0,                 # Assumed
-        y_engine_4       = 4.0,                 # Assumed
+        y_engine_4       = 5.0,                 # Assumed
         W_propulsion     = 2_500.0,             # Assumed
         N_engines        = 2,                   # Class I Value
         N_propellers      = 4,                   # Class I Value

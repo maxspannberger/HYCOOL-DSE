@@ -337,7 +337,7 @@ class TailSizingEstimator:
         V_mc     = d.V_MC_factor * d.V_stall
         q_mc     = 0.5 * self.rho_SL * V_mc**2
         if d.N_propellers > 2:
-            M_engine = d.T_TO *0.8 * (d.y_engine_4+d.d_propfan/2+d.d_fuselage/2)       #since only 80% of thrust is available for worst case scenario with 4 engines, per CS-25.149
+            M_engine = d.T_TO *0.8 * (d.y_engine_4)       #since only 80% of thrust is available for worst case scenario with 4 engines, per CS-25.149
         elif d.N_propellers == 2:
             M_engine = d.T_TO * (d.y_engine_2+d.d_propfan/2+d.d_fuselage/2)       #since only 80% of thrust is available for worst case scenario with 4 engines, per CS-25.149
 

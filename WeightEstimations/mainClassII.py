@@ -267,6 +267,8 @@ def run_class_ii(
     # Step 1: tail sizing (uses initial wing geometry; refined in the recheck)
     # -----------------------------------------------------------------
     cfg_updated, S_ref, b, c_root, c_tip, MAC,taper, sweep_quarter, sweep_half, sweep_LE = compute_wing_geometry(cfg.MTOW_initial, cfg, cfg.M_cruise, c_root=cfg.c_root)
+    y_engine_4 = cfg_updated.b / 2 * (2 / 3)
+    cfg_updated = replace(cfg_updated, y_engine_4=y_engine_4)
     tail_inp = TailSizing_Input.from_config(cfg_updated, S_ref=S_ref, b=b, MAC=MAC)
     tail_bd  = TailSizingEstimator(tail_inp).compute()
 
@@ -302,6 +304,8 @@ def run_class_ii(
         # constant wing loading, AR, and taper, S_ref, b, c_root, c_tip,
         # MAC all scale with the current MTOW.
         cfg_updated, S_ref, b, c_root, c_tip, MAC,taper, sweep_quarter, sweep_half, sweep_LE = compute_wing_geometry(MTOW, cfg, cfg.M_cruise, c_root=c_root)
+        y_engine_4 = cfg_updated.b / 2 * (2 / 3)
+        cfg_updated = replace(cfg_updated, y_engine_4=y_engine_4)
 
         # Recompute fuselage / H2-tank geometry from the latest W_fuel.
         cfg_iter, r_tank, L_tank, d_tank, S_wet_hump = compute_fuselage_geometry(W_fuel, cfg_updated,hump_back=hump_tank)
@@ -474,7 +478,11 @@ def run_class_ii(
     # rather than the user-supplied initial guess.
     # -----------------------------------------------------------------
     cfg_recheck = replace_T_TO(cfg_iter, pwr_bd.T_static_per_engine)
+    y_engine_4 = cfg_recheck.b / 2 * (2 / 3)
+    cfg_recheck = replace(cfg_recheck, y_engine_4=y_engine_4)
     cfg_updated, S_ref, b, c_root, c_tip, MAC,taper, sweep_quarter, sweep_half, sweep_LE = compute_wing_geometry(MTOW, cfg_recheck, cfg_recheck.M_cruise, c_root=c_root)
+    y_engine_4 = cfg_updated.b / 2 * (2 / 3)
+    cfg_updated = replace(cfg_updated, y_engine_4=y_engine_4)
     tail_inp_recheck = TailSizing_Input.from_config(
         cfg_updated, MTOW=MTOW, S_ref=S_ref, b=b, MAC=MAC, M_landing = M_landing,
     )
@@ -871,13 +879,19 @@ if __name__ == "__main__":
     # signed display and human-readable word
     mtow_word = "increase" if mtow_diff_kg > 0 else ("decrease" if mtow_diff_kg < 0 else "no change")
 
+    # Propulsion system mass change (4-prop - 2-prop)
+    propmass_diff_kg = result1.W_prop - result2.W_prop
+    propmass_pct = (propmass_diff_kg / result2.W_prop * 100.0) if result2.W_prop != 0 else 0.0
+
     # Highlight fuel, cost savings and MTOW impact in a panel to make them stand out
     savings_text = (
         f"[bold white]Switching to 4 propellers saves[/bold white]\n"
         f"[bold green]{fuelsavings:.1f} kg[/bold green]\n"
         f"[bold white]Estimated cost savings per flight:[/bold white] [bold yellow]€{costsavings:.2f}[/bold yellow]\n"
         f"[bold white]MTOW change (4 prop - 2 prop):[/bold white] [bold]{mtow_diff_kg:+.1f} kg[/bold] "
-        f"[bold white]({mtow_word}, {mtow_pct:+.2f}% vs 2-prop)[/bold white]"
+        f"[bold white]({mtow_word}, {mtow_pct:+.2f}% vs 2-prop)[/bold white]\n"
+        f"[bold white]Propulsion mass change (4 prop - 2 prop):[/bold white] [bold]{propmass_diff_kg:+.1f} kg[/bold] "
+        f"[bold white]({propmass_pct:+.2f}% vs 2-prop)[/bold white]"
     )
     print(Panel(savings_text, title="[bold cyan]Fuel, Cost & MTOW Impact[/bold cyan]", border_style="cyan", expand=False))
 
