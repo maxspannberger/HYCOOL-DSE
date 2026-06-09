@@ -119,9 +119,12 @@ L_HPC           = Stages_HPC * 2 * BladeChord * (1 + Spacing)
 # =====================================================================
 
 HPT_Inlet_HTR           = 0.80
-HPT_Outlet_HTR          = 0.70
-U_tip_HPT               = 400.0                         # m/s
-Psi_HPT                 = 1.5
+HPT_Hub_Margin          = 1.50                          # outlet hub floor = HPC inlet hub * this
+                                                        # (shaft fits through the HPC bore;
+                                                        # the HPT hub can taper to ~that bore
+                                                        # plus a small structural margin)
+U_tip_HPT               = 450.0                         # m/s
+Psi_HPT                 = 1.75
 BladeChord_HPT          = 0.04                          # m
 Spacing_HPT             = 0.3
 M_ax_HPT                = 0.3
@@ -138,8 +141,30 @@ A_HPT_outlet = mdot_tot / (rho_5 * C_ax_HPT)
 
 HPT_inlet_tip   = np.sqrt(A_HPT_inlet  / (np.pi * (1 - HPT_Inlet_HTR**2)))
 HPT_inlet_hub   = HPT_Inlet_HTR  * HPT_inlet_tip
-HPT_outlet_tip  = np.sqrt(A_HPT_outlet / (np.pi * (1 - HPT_Outlet_HTR**2)))
-HPT_outlet_hub  = HPT_Outlet_HTR * HPT_outlet_tip
+
+# Expand-inwards convention with a tapered casing.
+#
+# Preferred: hold the casing (tip radius) constant at the inlet value and
+# accommodate the larger downstream annulus by dropping the hub inward.
+# This mirrors the HPC, where the tip is roughly fixed and the hub climbs
+# as the flow compresses.
+#
+# Fallback: if the constant-tip rule would push the hub below a structural
+# floor (the shaft + a small clearance margin), pin the hub at that floor
+# and grow the tip just enough to satisfy area continuity. The casing then
+# tapers outward only as much as is strictly necessary -- the rear no
+# longer balloons out to a fixed Outlet_HTR.
+_r_hub_floor    = HPT_Hub_Margin * inlet_hub            # shaft + clearance margin
+HPT_outlet_tip  = HPT_inlet_tip
+_r_hub_sq       = HPT_outlet_tip**2 - A_HPT_outlet / np.pi
+
+if _r_hub_sq >= _r_hub_floor**2:
+    # Constant-tip case: tip flat, hub drops inward
+    HPT_outlet_hub = np.sqrt(_r_hub_sq)
+else:
+    # Tapered-casing case: hub pinned at the floor, tip grows minimally
+    HPT_outlet_hub = _r_hub_floor
+    HPT_outlet_tip = np.sqrt(A_HPT_outlet / np.pi + HPT_outlet_hub**2)
 
 r_mean_HPT_in  = 0.5 * (HPT_inlet_tip  + HPT_inlet_hub)
 r_mean_HPT_out = 0.5 * (HPT_outlet_tip + HPT_outlet_hub)
@@ -194,18 +219,18 @@ f_quench    = 0.20                                      # fraction of total air 
 # f_primary: fraction of air entering rich zone, set by stoichiometric O/F
 # f_secondary: remaining air added in lean zone
 f_primary   = OF_stoich / OF_total                      # rich zone air fraction
-f_secondary = 1.0 - f_primary - f_quench               # lean zone air fraction
+f_secondary = 1.0 - f_primary - f_quench                # lean zone air fraction
                                                         # NOTE: if f_secondary < 0, f_quench is too large
                                                         # for this cycle's overall O/F. Reduce f_quench.
 
 # --- Zone mass flows (cumulative, each zone adds air) ---
-mdot_primary = mdot_f * (1.0 + OF_stoich)              # fuel + primary air only
+mdot_primary = mdot_f * (1.0 + OF_stoich)               # fuel + primary air only
 mdot_quench  = mdot_primary + mdot_f * OF_total * f_quench  # + quench air
 mdot_lean    = mdot_tot                                 # full flow in lean zone
 
 # --- Zone mean temperatures ---
 T_rich   = T_flame                                      # peak adiabatic, rich zone
-T_quench = 0.5 * (T_flame + T4)                        # rough average during rapid mixing
+T_quench = 0.5 * (T_flame + T4)                         # rough average during rapid mixing
 T_lean   = T4                                           # lean zone exits at TIT
 
 # --- Zone densities (ideal gas, combustion products approximated as air) ---
@@ -230,21 +255,173 @@ V_rich  = tau_rich * mdot_primary / rho_rich
 V_lean  = tau_lean * mdot_lean    / rho_lean
 
 L_rich   = V_rich  / A_rich
-L_quench = 0.5 * D_quench                              # quench zone: jet penetration depth ~ 0.5*D
+L_quench = 0.5 * D_quench                               # quench zone: jet penetration depth ~ 0.5*D
 L_lean   = V_lean  / A_lean
 
-CC_L     = L_rich + L_quench + L_lean                  # total combustor length
+CC_L     = L_rich + L_quench + L_lean                   # total combustor length
 
 # --- Diameter check against HPC/HPT geometry ---
 # The combustor inlet diameter should be compatible with HPC outlet mean diameter.
 # The combustor exit diameter should be compatible with HPT inlet tip diameter.
-D_HPC_out_mean = 2 * r_mean_HPC_out                    # mean diameter at HPC outlet
-D_HPT_in_tip   = 2 * HPT_inlet_tip                     # tip diameter at HPT inlet
+D_HPC_out_mean = 2 * r_mean_HPC_out                     # mean diameter at HPC outlet
+D_HPT_in_tip   = 2 * HPT_inlet_tip                      # tip diameter at HPT inlet
                                                         # NOTE: the combustor exit D_lean will likely
                                                         # differ from D_HPT_in_tip. This discrepancy
                                                         # is handled by a transition duct (diffuser/nozzle)
                                                         # between combustor and HPT -- not sized here.
 
+
+# =====================================================================
+# SECTION 5: Engine Mass Estimation
+#
+# Strategy: two-source hybrid approach
+#
+#   (1) TOTAL BARE ENGINE MASS  from shaft power + specific power anchor
+#       Source: GE T408 turboshaft at 11.2 kW/kg (bare shaft-output,
+#               no gearbox, no nacelle). This is the best available
+#               anchor for a generator-driving turboshaft at this power
+#               class. Adler & Martins (2023) confirm only the combustor
+#               requires significant modification for H2 -- mass penalty
+#               is small and absorbed in the system margin below.
+#       Value used: 10.0 kW/kg  (conservative relative to GE T408)
+#
+#   (2) HOT-SECTION MASS FRACTIONS  from DLR V2500 teardown
+#       Source: Oestreicher et al. (2025), "Life Cycle Assessment of
+#               Turbofan Engines: A Reverse Engineering Approach",
+#               Procedia CIRP 135, pp. 837-842.  Table 1.
+#       The fan and LPC are absent from our architecture (we have no
+#       bypass or LPC), so fractions are taken over the hot-section
+#       modules only: HPC + Combustor&Diffuser + HPT.
+#           V2500 hot-section masses (Table 1):
+#               HPC                 284 kg   -> 45.4 %
+#               Diffuser+Combustor  151 kg   -> 24.1 %
+#               HPT                 191 kg   -> 30.5 %
+#               Hot-section total   626 kg
+#       Mass fractions are more architecture-transferable than absolute
+#       masses because they reflect thermodynamic loading distribution.
+#       The V2500 is a higher-OPR, higher-thrust machine, so absolute
+#       masses cannot be used directly.
+#
+#   (3) RECUPERATOR MASS  from product-level specific power
+#       Source: Microfire recuperator, ~14 kW/kg thermal duty.
+#       Applied to recuperator thermal duty = mdot_air * Cp * delta_T
+#       across the recuperator. This is sized separately because it is
+#       not a component of any reference turboshaft.
+#
+#   (4) SYSTEM MARGIN  50% on bare engine + recuperator total
+#       Covers: LH2 feed plumbing, GH2 pre-cooler HEX, engine mounts,
+#               FADEC and actuators, minor structural items.
+
+# Uncertainty: all component masses carry ~+/-30% at conceptual level.
+# =====================================================================
+
+# --- Shaft power from cycle analysis ---
+P_shaft_W       = results["total_net_W"]                # W, net shaft output to generator
+
+# --- Specific power anchor (total bare turboshaft) ---
+SP_turboshaft   = 10.0e3                                # W/kg, conservative bare turboshaft
+                                                        # GE T408: 11.2 kW/kg (bare, no gearbox)
+                                                        # 10.0 kW/kg used as design-point estimate
+                                                        # Ref: publicly available GE T408 spec sheet
+
+m_engine_total  = P_shaft_W / SP_turboshaft             # kg, total bare engine mass
+
+# --- DLR V2500 hot-section mass fractions ---
+# Source: Oestreicher et al. (2025), Table 1
+# Hot-section only (HPC + Combustor&Diffuser + HPT), fan/LPC excluded
+# as they are absent from this turboshaft architecture.
+f_HPC           = 284 / (284 + 151 + 191)               # 0.454, HPC fraction of hot section
+f_CC            = 151 / (284 + 151 + 191)               # 0.241, combustor+diffuser fraction
+f_HPT           = 191 / (284 + 151 + 191)               # 0.305, HPT fraction of hot section
+
+m_HPC           = f_HPC  * m_engine_total               # kg, estimated HPC mass
+m_CC            = f_CC   * m_engine_total               # kg, estimated combustor+diffuser mass
+m_HPT           = f_HPT  * m_engine_total               # kg, estimated HPT mass
+
+# Sanity check: fractions must sum to 1.0
+_frac_sum       = f_HPC + f_CC + f_HPT                  # should be exactly 1.0
+
+# --- Recuperator mass ---
+# Recuperator thermal duty: heat transferred from turbine exhaust to
+# compressed air.  Q_recup = mdot_air * Cp_mean * (T2p - T2)
+# where T2p is post-recuperator air temperature and T2 is post-HPC
+# temperature (before recuperator).
+# NOTE: T2p is labelled T2p in design dict but verify the direction --
+#       T2p should be HIGHER than T2 (air is heated by exhaust).
+#       If T2p < T2 something is mislabelled upstream.
+Cp_recup        = _air_cp(0.5*(P2 + Pc), 0.5*(T2p + T2))  # J/kg/K, mean Cp across recuperator
+                                                        # evaluated at mean pressure and temperature
+Q_recup_W       = mdot_air * Cp_recup * abs(T2p - T2)       # W, recuperator thermal duty
+                                                        # abs() guards against label ambiguity above
+
+SP_recup        = 14.0e3                                # W/kg, Microfire recuperator specific power
+                                                        # (thermal duty basis)
+m_recup         = Q_recup_W / SP_recup                  # kg, recuperator mass
+
+# --- Bare engine + recuperator subtotal ---
+m_bare_subtotal = m_engine_total + m_recup              # kg, before system margin
+
+# --- System margin ---
+margin          = 0.50                                  # -, 20% on bare subtotal
+                                                        # covers: LH2 feed lines, GH2 pre-cooler
+                                                        # HEX, engine mounts, FADEC, actuators
+m_system_margin = margin * m_bare_subtotal              # kg, system margin mass
+
+# --- Final propulsion system mass estimate ---
+m_propulsion    = m_bare_subtotal + m_system_margin     # kg, total propulsion system mass
+
+
+# =====================================================================
+# OUTPUT: Weight Estimation
+# =====================================================================
+
+_console.print()
+_console.rule("[bold white]PROPULSION SYSTEM MASS ESTIMATE[/bold white]")
+_console.print()
+
+# Validity warnings
+if abs(_frac_sum - 1.0) > 1e-9:
+    _console.print(f"[bold red]WARNING:[/bold red] DLR mass fractions sum to {_frac_sum:.6f}, not 1.0 -- check arithmetic.")
+
+if T2p < T2:
+    _console.print("[bold red]WARNING:[/bold red] T2p < T2: recuperator temperature labels may be inverted. "
+                   "Check design dict. Q_recup taken as abs() value.")
+
+if P_shaft_W <= 0:
+    _console.print("[bold red]WARNING:[/bold red] P_shaft_W <= 0: check results dict key for shaft power.")
+
+tbl_mass = _make_table("Propulsion System Mass  (conceptual, ±30%)", [
+    # -- Bare engine breakdown --
+    ("Shaft power",              f"{P_shaft_W/1e6:.3f}",          "MW"),
+    ("Specific power (anchor)",  f"{SP_turboshaft/1e3:.1f}",      "kW/kg"),
+    ("Bare engine mass (total)", f"{m_engine_total:.1f}",         "kg"),
+    None,
+    # -- Hot-section split via DLR fractions --
+    ("  HPC  (45.4% of engine)", f"{m_HPC:.1f}",                  "kg"),
+    ("  Combustor (24.1%)",      f"{m_CC:.1f}",                   "kg"),
+    ("  HPT  (30.5%)",           f"{m_HPT:.1f}",                  "kg"),
+    None,
+    # -- Recuperator --
+    ("Recuperator thermal duty", f"{Q_recup_W/1e3:.1f}",          "kW"),
+    ("Recup. specific power",    f"{SP_recup/1e3:.1f}",           "kW/kg"),
+    ("Recuperator mass",         f"{m_recup:.1f}",                "kg"),
+    None,
+    # -- Totals --
+    ("Bare subtotal",            f"{m_bare_subtotal:.1f}",        "kg"),
+    ("System margin (50%)",      f"{m_system_margin:.1f}",        "kg"),
+    ("PROPULSION SYSTEM TOTAL",  f"{m_propulsion:.1f}",           "kg"),
+], color="magenta")
+
+_console.print(tbl_mass)
+_console.print()
+
+# Source attribution -- keep visible in terminal output for traceability
+_console.print("[dim]Sources:[/dim]")
+_console.print("[dim]  Bare engine SP : GE T408 spec sheet (11.2 kW/kg); 10.0 kW/kg used (conservative)[/dim]")
+_console.print("[dim]  Mass fractions : Oestreicher et al. (2025), Procedia CIRP 135, Table 1[/dim]")
+_console.print("[dim]  Recuperator SP : Microfire product datasheet (~14 kW/kg thermal)[/dim]")
+_console.print("[dim]  All values ±30% at conceptual design level[/dim]")
+_console.print()
 
 # =====================================================================
 # OUTPUT

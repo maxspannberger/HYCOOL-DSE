@@ -22,6 +22,7 @@ class OffDesignEvaluator:
             TIT_min     = 550,
             TIT_tol     = 1e-4,
             max_iter    = 100,
+            Q_regen_max = None,
     ):
         self.engine     = engine
         self.TIT_limit  = TIT_limit
@@ -32,6 +33,9 @@ class OffDesignEvaluator:
 
         results = engine.results
         d       = engine._design
+
+        # Recuperator is sized at the design point — its maximum duty caps off-design heat transfer.
+        self.Q_regen_W_max          = Q_regen_max if Q_regen_max is not None else results["Q_regen_W"]
 
         self.mdot_air_design        = results["mdot_f"] * results["ideal_OF"]
         self.Pc_design              = d["Pc"]                          # fixed compressor outlet pressure [bar]
@@ -50,12 +54,17 @@ class OffDesignEvaluator:
         self.TH3_design             = d["TH3"]
 
 
-    def cycle_at_TIT(self, TIT_od):
+    def cycle_at_TIT(self, TIT_od, mdot_air=None):
         """
-        Solve the thermo cycle at the new TIT
-        Reruns everything after HPC
+        Solve the thermo cycle at the new TIT.
 
+        mdot_air : optional override of the air mass flow through the engine.
+                   Used by the auxiliary-intake mode, where extra ram air is
+                   admitted so that more fuel can be burnt at the same TIT.
+                   When None, the design air flow is used.
         """
+        if mdot_air is None:
+            mdot_air = self.mdot_air_design
 
         e = self.engine
         Pc = self.Pc_design
@@ -84,6 +93,14 @@ class OffDesignEvaluator:
         T2p             = T2
         T_hex_hot_in    = T5
         T_exh_final     = T5
+        regen_capped    = False
+
+        # Convert the duty cap into the maximum air-side temperature rise it can support.
+        # Q_regen_W = mdot_air * cp_air_reg * (T2p - T2)  =>  dT_pre_max = Q_max / (mdot_air * cp_air_reg)
+        # Note: with aux air engaged, the same fixed recuperator must heat a larger air
+        # stream, so the achievable preheat per kg drops -- this is captured by mdot_air
+        # being the actual (possibly augmented) flow rather than the design value.
+        dT_pre_max = self.Q_regen_W_max / (mdot_air * cp_air_reg)
 
         for _ in range(50):
             if e.USE_REGEN:
@@ -91,16 +108,21 @@ class OffDesignEvaluator:
                 r = OF * cp_air_reg / ((OF+1) * Cp_HPT)     # Heat capacity ratio between both recuperator sides
 
                 if e.REGEN_FIRST:
-                    T_reg_in    = T5
-                    T2p         = T2 + e.eta_regen * (T_reg_in - T2)
-                    T_after_reg  = T_reg_in - e.eta_regen * (T_reg_in - T2) * r
+                    T_reg_in     = T5
+                    dpre_ideal   = e.eta_regen * (T_reg_in - T2)
+                    dpre         = min(dpre_ideal, dT_pre_max)
+                    regen_capped = dpre_ideal > dT_pre_max
+                    T2p          = T2 + dpre
+                    T_after_reg  = T_reg_in - dpre * r
                     T_hex_hot_in = T_after_reg
                     T_exh_final  = T_hex_hot_in - dh_h2 / ((OF + 1) * Cp_HPT)
                 else:
                     T_hex_hot_in = T5
                     T_after_hex  = T5 - dh_h2 / ((OF + 1) * Cp_HPT)
                     T_reg_in     = T_after_hex
-                    dpre         = e.eta_regen * max(T_reg_in - T2, 0.0)
+                    dpre_ideal   = e.eta_regen * max(T_reg_in - T2, 0.0)
+                    dpre         = min(dpre_ideal, dT_pre_max)
+                    regen_capped = dpre_ideal > dT_pre_max
                     T2p          = T2 + dpre
                     T_exh_final  = T_reg_in - dpre * r
             else:
@@ -117,7 +139,7 @@ class OffDesignEvaluator:
 
         if not e.USE_REGEN:
             T_exh_final = T5 - dh_h2 / ((OF + 1) * Cp_HPT)
-        
+
         Q_regen_per_mf  = OF * cp_air_reg * (T2p - T2)
 
         return {
@@ -133,16 +155,26 @@ class OffDesignEvaluator:
         "T_exh_final":   T_exh_final,
         "Q_regen_per_mf": Q_regen_per_mf,
         "cp_air_reg":    cp_air_reg,
+        "regen_capped":  regen_capped,
     }
 
 
-    def _net_power(self, TIT_od):
-        od       = self.cycle_at_TIT(TIT_od)
-        mdot_f   = self.mdot_air_design / od["OF"]
-        mdot_tot = self.mdot_air_design + mdot_f
+    def _net_power(self, TIT_od, mdot_aux=0.0):
+        """
+        Net shaft power at a given TIT and (optional) auxiliary air flow.
+
+        mdot_aux : extra air admitted through an auxiliary intake (like the JT3D
+                   blow-in doors). It is taken to be processed through the HPC at
+                   the same pressure ratio and specific work as the design flow,
+                   so HPC absorbed power scales linearly with the augmented flow.
+        """
+        mdot_air = self.mdot_air_design + mdot_aux
+        od       = self.cycle_at_TIT(TIT_od, mdot_air=mdot_air)
+        mdot_f   = mdot_air / od["OF"]
+        mdot_tot = mdot_air + mdot_f
 
         P_HPT  = od["Cp_HPT"] * mdot_tot * (od["T4"] - od["T5"])
-        P_HPC  = self.P_HPC_design
+        P_HPC  = self.P_HPC_design * (mdot_air / self.mdot_air_design)
         P_H2T  = self.w_H2T_design       * mdot_f
         P_comp = self.w_compressor_design * mdot_f
 
@@ -178,26 +210,53 @@ class OffDesignEvaluator:
     def evaluate(self, P_shaft):
         from scipy.optimize import brentq
 
-        def residual(TIT_guess):
-            return self._net_power(TIT_guess) - P_shaft
+        P_at_TIT_limit = self._net_power(self.TIT_limit, mdot_aux=0.0)
 
-        # Check bracket before bisecting
-        P_lo = self._net_power(self.TIT_min)
-        P_hi = self._net_power(self.TIT_limit * 1.3)
+        aux_active = False
+        mdot_aux   = 0.0
 
-        if not (P_lo <= P_shaft <= P_hi):
-            raise ValueError(
-                f"Could not bracket a solution for P_shaft={P_shaft/1e6:.3f} MW. "
-                f"Feasible range is [{P_lo/1e6:.3f}, {P_hi/1e6:.3f}] MW for TIT in "
-                f"[{self.TIT_min}, {self.TIT_limit*1.3:.0f}] K."
+        if P_shaft <= P_at_TIT_limit:
+            # Normal mode: TIT is free, mdot_aux = 0
+            P_lo = self._net_power(self.TIT_min, mdot_aux=0.0)
+            if not (P_lo <= P_shaft <= P_at_TIT_limit):
+                raise ValueError(
+                    f"Could not bracket a solution for P_shaft={P_shaft/1e6:.3f} MW. "
+                    f"No-aux feasible range is [{P_lo/1e6:.3f}, {P_at_TIT_limit/1e6:.3f}] MW "
+                    f"for TIT in [{self.TIT_min}, {self.TIT_limit}] K."
+                )
+            TIT_od = brentq(
+                lambda T: self._net_power(T, mdot_aux=0.0) - P_shaft,
+                self.TIT_min, self.TIT_limit, xtol=0.1,
+            )
+        else:
+            # Aux mode: TIT pinned at limit, solve for the extra ram-air flow.
+            aux_active = True
+            TIT_od     = self.TIT_limit
+
+            # Grow the upper bracket until it exceeds P_shaft (doubling each step).
+            # Cap the search at 5x the design air flow as a sanity limit.
+            mdot_aux_hi = self.mdot_air_design
+            for _ in range(8):
+                if self._net_power(TIT_od, mdot_aux=mdot_aux_hi) >= P_shaft:
+                    break
+                mdot_aux_hi *= 2.0
+            else:
+                raise ValueError(
+                    f"P_shaft={P_shaft/1e6:.3f} MW unreachable even with "
+                    f"{mdot_aux_hi/self.mdot_air_design:.1f}x extra air at "
+                    f"TIT={TIT_od:.0f} K. Engine cannot deliver this power."
+                )
+
+            mdot_aux = brentq(
+                lambda m: self._net_power(TIT_od, mdot_aux=m) - P_shaft,
+                0.0, mdot_aux_hi, xtol=1e-4,
             )
 
-        TIT_od = brentq(residual, self.TIT_min, self.TIT_limit * 1.3, xtol=0.1)
-
-        # Recover all quantities at the converged TIT
-        od     = self.cycle_at_TIT(TIT_od)
-        mdot_f = self.mdot_air_design / od["OF"]
-        mdot_tot = self.mdot_air_design + mdot_f
+        # Recover all quantities at the converged operating point
+        mdot_air = self.mdot_air_design + mdot_aux
+        od       = self.cycle_at_TIT(TIT_od, mdot_air=mdot_air)
+        mdot_f   = mdot_air / od["OF"]
+        mdot_tot = mdot_air + mdot_f
 
         e         = self.engine
         q_in      = mdot_f * e.LHV_H2
@@ -227,11 +286,17 @@ class OffDesignEvaluator:
             "T5":             od["T5"],
             "T_exh_final":    od["T_exh_final"],
             "Q_regen_W":      od["Q_regen_per_mf"] * mdot_f,
+            "Q_regen_W_max":  self.Q_regen_W_max,
+            "regen_capped":   od["regen_capped"],
             "eta_total":      eta_total,
             "SFC":            SFC,
             "SFC_hr":         SFC_hr,
             "q_in_W":         q_in,
-            "tit_exceeded":   TIT_od > self.TIT_limit,
+            "tit_exceeded":   TIT_od > self.TIT_limit + 1e-6,
+            "aux_active":     aux_active,
+            "mdot_aux":       mdot_aux,
+            "mdot_air":       mdot_air,
+            "aux_fraction":   mdot_aux / self.mdot_air_design,
             "hex_feasible":   approach_min > 0,
             "approach_min":   approach_min,
         }
@@ -258,8 +323,13 @@ class OffDesignEvaluator:
         r   = result
         des = self.engine.results
 
-        tit_color = "red bold" if r["tit_exceeded"] else "green bold"
-        tit_warn  = "  [red][!] EXCEEDS TIT LIMIT[/red]" if r["tit_exceeded"] else ""
+        tit_color = "red bold" if r["tit_exceeded"] else ("yellow bold" if r["aux_active"] else "green bold")
+        if r["tit_exceeded"]:
+            tit_warn = "  [red][!] EXCEEDS TIT LIMIT[/red]"
+        elif r["aux_active"]:
+            tit_warn = "  [yellow][!] PINNED AT LIMIT (AUX OPEN)[/yellow]"
+        else:
+            tit_warn = ""
         hex_color = "green" if r["hex_feasible"] else "red"
         hex_warn  = "" if r["hex_feasible"] else "  [red][!] PINCH VIOLATED[/red]"
 
@@ -316,9 +386,11 @@ class OffDesignEvaluator:
             f"{des['T_exh_final']:.1f}",
             "K",
         )
+        regen_color = "yellow bold" if r["regen_capped"] else "yellow"
+        regen_warn  = "  [yellow][!] CAPPED[/yellow]" if r["regen_capped"] else ""
         t.add_row(
-            "Recuperator duty",
-            f"{r['Q_regen_W']/1e6:.3f}",
+            f"Recuperator duty{regen_warn}",
+            f"[{regen_color}]{r['Q_regen_W']/1e6:.3f}[/{regen_color}]",
             f"{des['Q_regen_W']/1e6:.3f}",
             "MW",
         )
@@ -340,22 +412,57 @@ class OffDesignEvaluator:
             "-",
             "K",
         )
+        aux_color = "yellow bold" if r["aux_active"] else "dim"
         t.add_row(
-            "Air flow check (should = design)",
+            "Auxiliary air intake flow",
+            f"[{aux_color}]{r['mdot_aux']:.4f}[/{aux_color}]",
+            "0.0000",
+            "kg/s",
+        )
+        t.add_row(
+            "Auxiliary air fraction",
+            f"[{aux_color}]{r['aux_fraction']*100:.1f}[/{aux_color}]",
+            "0.0",
+            "%",
+        )
+        t.add_row(
+            "Total engine air flow",
+            f"{r['mdot_air']:.4f}",
+            f"{self.mdot_air_design:.4f}",
+            "kg/s",
+        )
+        t.add_row(
+            "Air flow check (mdot_f * OF)",
             f"{r['mdot_air_check']:.4f}",
             f"{self.mdot_air_design:.4f}",
             "kg/s",
         )
         c.print(t)
 
-        if r["tit_exceeded"]:
+        if r["aux_active"]:
             c.print(Panel(
-                f"[red bold]WARNING:[/red bold] Required TIT = {r['TIT_od']:.1f} K "
-                f"exceeds the material limit of {self.TIT_limit:.1f} K by "
-                f"{r['TIT_od'] - self.TIT_limit:.1f} K.\n"
-                f"The engine cannot sustain this power level within thermal limits.\n"
-                f"Consider: higher design TIT, active cooling upgrade, or power "
-                f"derating at this condition.",
+                f"[yellow bold]AUX INTAKE ENGAGED:[/yellow bold] without auxiliary air "
+                f"the demanded P_shaft = {r['P_shaft']/1e6:.3f} MW would force "
+                f"TIT above the {self.TIT_limit:.0f} K limit. The auxiliary intake "
+                f"(JT3D blow-in-door style) admits an extra "
+                f"[bold]{r['mdot_aux']:.3f} kg/s[/bold] of ram air "
+                f"([bold]+{r['aux_fraction']*100:.1f}%[/bold] over the design "
+                f"{self.mdot_air_design:.3f} kg/s), pinning TIT exactly at the "
+                f"limit while the additional fuel keeps O/F constant and produces "
+                f"the required shaft power.\n"
+                f"Cost: HPC absorbed power scales with total air flow, and the "
+                f"fixed-size recuperator's per-kg preheat drops, both of which "
+                f"erode thermal efficiency at this operating point.",
+                border_style="yellow",
+                title="Auxiliary Air Intake Active",
+            ))
+        elif r["tit_exceeded"]:
+            c.print(Panel(
+                f"[red bold]WARNING:[/red bold] TIT = {r['TIT_od']:.1f} K still "
+                f"exceeds the material limit of {self.TIT_limit:.1f} K even with "
+                f"the auxiliary intake fully open. This operating point is not "
+                f"sustainable; consider derating power or revisiting the engine "
+                f"sizing.",
                 border_style="red",
                 title="TIT Limit Exceeded",
             ))
@@ -447,18 +554,19 @@ if __name__ == "__main__":
 
     Optimal_Power   = 2e6                   # W
     Cruise_TIT      = 1500                  # K
-    H2_Temp         = 700                   # K
+    H2_Temp         = 890                   # K
+    H2_Pressure     = 150                   # bar
     Regen           = True
     P_ambient       = 0.38                  # bar
 
-    engine = GasTurbineCycle(P_target = Optimal_Power, TIT = Cruise_TIT, TH2=H2_Temp, USE_REGEN=Regen, P_ambient=P_ambient)
+    engine = GasTurbineCycle(P_target = Optimal_Power, TIT = Cruise_TIT, TH2=H2_Temp, USE_REGEN=Regen, P_ambient=P_ambient, PH1=H2_Pressure)
     engine.size()
     engine.report()
     evaluator = OffDesignEvaluator(engine, TIT_limit=1900.0)
 
     # Single-point check at peak power
-    print("\n--- Peak power validation (2.85 MW) ---")
-    result = evaluator.evaluate(P_shaft=2.85e6)
+    print("\n--- Peak power validation (3.08 MW) ---")
+    result = evaluator.evaluate(P_shaft=0.2e6)
     evaluator.report(result)
 
     # Sweep from 30% to 110% of design power

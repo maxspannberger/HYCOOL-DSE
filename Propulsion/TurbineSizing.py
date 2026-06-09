@@ -150,10 +150,10 @@ class GasTurbineCycle:
         REGEN_FIRST    = True,
         Regen_Fraction = 0.775,
         # Hydrogen circuit
-        P_pre_comp  = 13.0,
+        P_pre_comp  = 10.0,
         T_pre_comp  = 40.0,
         PH1         = 150.0,
-        TH2         = 750.0,
+        TH2         = 890.0,
         eta_compressor = 0.7,
         eta_H2T     = 0.92,
         fluid       = "ParaHydrogen",
