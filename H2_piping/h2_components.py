@@ -413,14 +413,13 @@ class COOL:
                 f = (1 / (-1.8 * np.log10(((eps_hts / Dh) / 3.7)**1.11 + 6.9 / Re1)))**2
             
             # 3. Parallel pressure drop is just the drop of one channel.
-            dp_fric = f * (L/Dh) * (rho * u_slot**2 / 2)  
+            dp_fric = f * (L/Dh) * (rho * u**2 / 2)  
 
-            dp_fric = f * (L/Dh) * (rho * u_slot**2 / 2)
+            dp_fric = f * (L/Dh) * (rho * u**2 / 2)
             #print(f"[{self.name}] Computed Friction Drop: {dp_fric:.4f} Pa")
             print(f"[{self.name}] Computed Mass flow rate: {m_dot:.4f} kg/s")
             
             # 4. Set variables for the fsolve args so momentum is conserved properly
-            u = u_slot # The inlet velocity
             A_out = A_slot_tot * VF # The total outlet flow area for the momentum balance
         
         sol = cp_root(update_states,
