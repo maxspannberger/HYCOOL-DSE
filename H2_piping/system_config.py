@@ -9,9 +9,9 @@ class H2SystemConfig:
     fluid: str = 'Hydrogen'                  # FLUID used for simulation
     phase: str = 'cruise'
     max_error: float = 10                    # SOLVER convergence treshhold
-    tank_p: float = 100000                   # TANK pressure [Pa]
+    tank_p: float = 500000                   # TANK pressure [Pa]
     tank_T: float = 15                       # TANK temperature [T]
-    tank_d: float = 0.02                     # TANK outlet diameter [m]
+    tank_d: float = 0.015                     # TANK outlet diameter [m]
     T_amb: float = 317                       # AMBIENT temperature [K]
     m_dot: float = 0.09                      # TOTAL mass flow [kg/s]
     
@@ -38,7 +38,7 @@ class H2SystemConfig:
 
 
     # Default baseline geometric parameters for pipe segments
-    pipe_default_d: float = 0.02             # default baseline inner pipeline diameter [m]
+    pipe_default_d: float = 0.012             # default baseline inner pipeline diameter [m]
     pipe_segment_length: float = 0.1         # default baseline segment length [m]
     pipe_default_N: int = 10                 # default baseline number of MLI layers applied
     pipe_default_N_bar: float = 5.5          # default baseline insulation layer density [layers/cm]

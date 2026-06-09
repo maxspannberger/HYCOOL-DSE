@@ -127,6 +127,8 @@ if __name__ == "__main__":
         Tank(),
 
         ('Split', 1, 2),
+
+        Valve(name      =  'check'),
         
         Pipe(length     =  0.5),
 
@@ -135,6 +137,8 @@ if __name__ == "__main__":
                curv     =  2.5),
 
         Pipe(length     =  0.71),
+
+        Valve(name      =  'shutoff'),
 
         Corner(N_bend   =  1, 
                diameter =  0.02, 
@@ -150,6 +154,8 @@ if __name__ == "__main__":
         Corner(N_bend   =  1, 
                diameter =  0.02, 
                curv     =  2.5),
+
+        Valve(name      =  'shutoff'),
         
         Pipe(length     =  8.45),
 
@@ -207,8 +213,6 @@ if __name__ == "__main__":
         Corner(N_bend   =  1, 
                diameter =  0.02, 
                curv     =  2.5),
-        
-        Valve(name      =  'check'),
 
         COOL(name       = 'dc_ac', 
              location   = component_position['dc_ac'][1]),

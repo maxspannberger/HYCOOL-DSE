@@ -83,7 +83,7 @@ class Tank:
     # Function that can be called to calculate the evolution of the state variables
     # in the component
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None):
-        A_cs = np.pi * system[2].d**2 / 4
+        A_cs = np.pi * self.d**2 / 4
         u    = config.tank_initial_u
         
         # Iteratively solve for the upstream states
@@ -236,7 +236,7 @@ class Pipe:
 
             u1  = m_dot / (rho1 * A_cs)
             Re1 = 4 * m_dot / (np.pi * self.d * mu1)
-            
+
             # --- COMPRESSIBILITY CHECK ---
             a_sound = CP.PropsSI('A', 'P', p1, 'H', h1, self.fluid)
             mach_pipe = u1 / a_sound
@@ -301,10 +301,10 @@ class Pipe:
             
             x_values = np.linspace(0, self.length, self.segments)
             
-            for i, (data, label, color) in enumerate(plot_data):
-                ax[i].plot(x_values, data, color=color, linewidth=2)
-                ax[i].set_ylabel(label)
-                ax[i].grid(True, linestyle='--', alpha=0.5)
+            for idx, (data, label, color) in enumerate(plot_data):
+                ax[idx].plot(x_values, data, color=color, linewidth=2)
+                ax[idx].set_ylabel(label)
+                ax[idx].grid(True, linestyle='--', alpha=0.5)
             
             fig.suptitle('H2 State Across Pipe', fontsize=16)
             plt.tight_layout(rect=[0, 0.03, 1, 0.95])
@@ -493,28 +493,42 @@ class Valve:
     def __init__(self, name:        str,
                        diameter:    float =  config.pipe_default_d,
                        phase:       str   =  config.phase
-                       ):   
-        
+                       ):
+
         self.name     = name
         self.fluid    = config.fluid
         self.d        = diameter
-        
+        self.phase    = phase
+
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None):
         T1, p1, h1, rho1 = get_input_states(states)
         A_cs  = np.pi * self.d**2 / 4
         u1 = m_dot / (A_cs * rho1)
-        
+
+        # --- COMPRESSIBILITY CHECK ---
+        a_sound = CP.PropsSI('A', 'P', p1, 'H', h1, self.fluid)
+        mach_valve = u1 / a_sound
+        if mach_valve >= 1.0:
+            raise ValueError(f"[{self.name} valve] CHOKED FLOW! Mach number {mach_valve:.3f} >= 1.0")
+        elif mach_valve > 0.3:
+            print(f"[{self.name} valve] WARNING: Mach number is {mach_valve:.2f}. Compressibility high.")
+        # -----------------------------
+
         Q   = (m_dot / rho1) * 15850.3        # Q in gallons per minute
-        S_g = rho1 * 1 / 999                  # rho_h2 / rho_water
-        
+        S_g = rho1 / 999                       # rho_h2 / rho_water
+
         if self.name == 'check':
             Cv = 22413 * self.d ** 2.0817
-            dp = (S_g / ((Cv / Q) ** 2)) / 14.504
-            print(dp)
-            
+            dp = (S_g / ((Cv / Q) ** 2)) * 6895  # convert from psi to Pa
+            print(f"[{self.name} valve] Pressure drop: {dp:.2f} Pa")
+
         elif self.name == 'shutoff':
             Cv = 1173.6 * self.d - 10.19
-            dp = (S_g / ((Cv / Q) ** 2)) / 14.504
+            if Cv <= 0:
+                raise ValueError(f"[shutoff valve] Non-physical Cv={Cv:.4f} for diameter {self.d*1000:.1f} mm. "
+                                  "Minimum valid diameter is ~8.7 mm.")
+            dp = (S_g / ((Cv / Q) ** 2)) * 6895  # convert from psi to Pa
+            print(f"[{self.name} valve] Pressure drop: {dp:.2f} Pa")
         else:
             raise TypeError('Invalid valve type')
                   
