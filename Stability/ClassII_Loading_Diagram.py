@@ -30,6 +30,8 @@ class LoadingDiagramInput:
     rows: int
     FirstWindow: float
     LastWindow: float
+    l_n: float
+    l_c: float
 
     # ---------------- Longitudinal geometry ----------------
     LEMAC: float
@@ -81,13 +83,17 @@ class LoadingDiagramInput:
             Pax_count=Pax_count,
             rows=rows,
 
+
             FirstWindow=float(cfg.FirstWindow),
             LastWindow=float(cfg.LastWindow),
+
+            l_n = float(cfg.l_n),
+            l_c = float(cfg.l_c),
 
             LEMAC=float(cfg.LEMAC),
 
             # Prefer the final Class II MAC if available
-            mac=float(final["MAC_m"]),
+            mac=float(result.MAC),
 
             OEW_CG_global=float(cfg.OEW_cg),
             FUEL_CG_global=float(cfg.FUEL_cg),
@@ -243,9 +249,14 @@ class LoadingDiagramEstimator:
 
         OEW_CG_LEMAC = self.convert_global(d.OEW_CG_global)
 
+        #old calculation for seat positions
+        # positions_mac = self.convert_global(
+        #     np.linspace(d.FirstWindow, d.LastWindow, d.rows)
+        # )
         positions_mac = self.convert_global(
-            np.linspace(d.FirstWindow, d.LastWindow, d.rows)
+            np.linspace(d.l_n, (d.l_n+d.l_c), d.rows)
         )
+
         positions_fwd = positions_mac
         positions_aft = np.flip(positions_mac)
 
@@ -283,8 +294,24 @@ class LoadingDiagramEstimator:
             up_mass_aisle_fwd[-1],
         )
 
-        leftmost_limit = np.min(up_cg_aisle_fwd) * np.ones(2)
-        rightmost_limit = np.max(up_cg_cargo_aft) * np.ones(2)
+        all_cg_values = np.concatenate([
+            up_cg_cargo_fwd,
+            up_cg_cargo_aft,
+            up_cg_win_fwd,
+            up_cg_win_aft,
+            up_cg_aisle_fwd,
+            up_cg_aisle_aft,
+            up_cg_fuel,
+        ])
+
+        leftmost_cg = np.min(all_cg_values)
+        rightmost_cg = np.max(all_cg_values)
+
+        leftmost_limit = leftmost_cg * np.ones(2)
+        rightmost_limit = rightmost_cg * np.ones(2)
+        #old way only took into account certain load paths
+        #leftmost_limit = np.min(up_cg_aisle_fwd) * np.ones(2)
+        #rightmost_limit = np.max(up_cg_cargo_aft) * np.ones(2)
         lim_y = np.linspace(d.OEW, d.MTOW, 2)
 
         leftmost_limit_margin = leftmost_limit - d.margin_mac

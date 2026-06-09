@@ -158,6 +158,8 @@ class CgBreakdown:
     x_cg_wing_group: float
     X_LEMAC_new: float
     l_h : float
+    x_cg_tank: float
+    x_cg_wing_group_rel: float
 
 
     def summary(self) -> Table:
@@ -204,6 +206,16 @@ class CgBreakdown:
         table.add_row(
             "[bold]Tail Length Estimate (l_h)[/bold]",
             f"[bold]{self.l_h:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]Tank cg position[/bold]",
+            f"[bold]{self.x_cg_tank:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]x_cg_wing_relative_to_MAC[/bold]",
+            f"[bold]{self.x_cg_wing_group_rel:.1f}[/bold]",
         )
 
         return table
@@ -300,7 +312,7 @@ class CgCalculator:
 
 # ------------------- Fuselage Group cg locations  ------------------
 
-        x_cg_fixed = cg_location_fus * l_f                      #assume cg of fixed weight to be equal to fuselage cg, TODO: could be shifted a bit
+        x_cg_fixed = (cg_location_fus) * l_f                      #assume cg of fixed weight to be equal to fuselage cg, TODO: could be shifted a bit
         x_cg_fus = cg_location_fus * l_f
         x_cg_lg_nose = (2/3) * l_n                                  #this is just an estimate, TODO: can be calculated from required load for steering (SEAD)        
         x_cg_htail = 0.98*l_f-MAC_h+(cg_location_tail_c*MAC_h)        #took 2% fus lenght fort the little cone behind tail, then cg is at a torenbeek defined frn behind LE TODO: update when l_h is updated
@@ -351,6 +363,7 @@ class CgCalculator:
         )
 
         x_cg_OEW_rel_target = d.OEW_target_rel * MAC
+        #x_cg_wing_group_rel = x_cg_wing_group_from_LEMAC/MAC
 
         x_LEMAC = x_cg_fus_group - x_cg_OEW_rel_target + (W_wing_group/W_fus_group) * (x_cg_wing_group_rel - x_cg_OEW_rel_target)
         #x_LEMAC = 17
@@ -391,6 +404,8 @@ class CgCalculator:
             x_cg_wing_group=x_cg_wing_group,
             X_LEMAC_new = x_LEMAC,
             l_h = l_h,
+            x_cg_tank = x_cg_tank,
+            x_cg_wing_group_rel = x_cg_wing_group_rel,
         )
 
 

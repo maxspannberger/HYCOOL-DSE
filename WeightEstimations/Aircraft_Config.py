@@ -220,7 +220,7 @@ def default_q400_hycool() -> AircraftConfig:
         tc_h             = 0.12,                # Referenced
         sweep_h_half     = np.deg2rad(22.0),    # Referenced
         sweep_h_tc       = np.deg2rad(20.0),    # Referenced
-        l_h              = 19.8,                # Referenced
+        l_h              = 20.6,                # Referenced
 
         # Vertical tail
         MAC_v            = MAC_v,               
@@ -242,7 +242,7 @@ def default_q400_hycool() -> AircraftConfig:
 
         l_n              = 5.08,                # nose lenght, from class I
         l_c              = 22,                  # cabin lenght, from class I
-        l_tc           = 7.98,                # tail cone length, from class I
+        l_tc             = 7.98,                # tail cone length, from class I
 
         # H2 tank
         hump_back        = True,               # Design Decision
@@ -313,21 +313,21 @@ def default_q400_hycool() -> AircraftConfig:
         #Layout & Passengers
         PaxWeight           = 84,                   # EASA
         Pax_count           = 100,                  # Requirement
-        Max_fwd_cargo_vol   = 5,                    # Fwd cargo hold volume, placeholder for now
-        Max_aft_cargo_vol   = 1,                    # Aft cargo hold volume, placeholder for now
+        Max_fwd_cargo_vol   = 6,                    # Fwd cargo hold volume, placeholder for now
+        Max_aft_cargo_vol   = 4,                    # Aft cargo hold volume, placeholder for now
         Seats_abreast       = 4,                    # Class I
 
         FirstWindow         = 6.74,                 # Distance nose tip to first window [m], placeholder for now
         LastWindow          = 27.08,                # Distance nose tip to last window [m], placeholder for now
 
-        LEMAC               = 16.1,                 # Distance nose tip to LEMAC [m], placeholder for now
-        lfn                 = 14,                 # Distance nose tip to LE wing root
+        LEMAC               = 15.4,                 # Distance nose tip to LEMAC [m], placeholder for now
+        lfn                 = 14.35,                 # Distance nose tip to LE wing root LEMAC - 1.05
         hh                  = 4,                    # Normal distance from wing plane to tail plane, placeholder for now
 
-        OEW_cg              = 16.74,                # Distance nose tip to OEW CG [m], placeholder for now
-        FUEL_cg             = 30,                   # Distance nose tip to Fuel CG [m], placeholder for now
+        OEW_cg              = 16.98,                # Distance nose tip to OEW CG [m], placeholder for now
+        FUEL_cg             = 28.3,                   # Distance nose tip to Fuel CG [m], placeholder for now
         AftCargo_cg         = 25,                   # Distance nose tip to Aft Cargo CG [m], placeholder for now
-        FwdCargo_cg         = 10,                   # Distance nose tip to Fwd Cargo CG [m], placeholder for now
+        FwdCargo_cg         = 9,                   # Distance nose tip to Fwd Cargo CG [m], placeholder for now
     
         #cg Breakdown - VERY rough guesses for now
         x_cg_htail          = 30,
@@ -345,6 +345,6 @@ def default_q400_hycool() -> AircraftConfig:
         cg_surf_control     = 1,                    # 100% of MAC from LEMAC
 
         cg_location_engines = 0.5,                  # [m] from LEMAC to cg of the power units on the wing
-        OEW_target_rel      = 0.2,                 # % of MAC, from LEMAC. Value for config 3 (wing mtd engines) from Torenbeek p.300 (range is 0.2-0.25)
+        OEW_target_rel      = 0.5,                 # % of MAC, from LEMAC. Value for config 3 (wing mtd engines) from Torenbeek p.300 (range is 0.2-0.25)
     
     )
