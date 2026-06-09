@@ -266,6 +266,8 @@ def run_class_ii(
     # Step 1: tail sizing (uses initial wing geometry; refined in the recheck)
     # -----------------------------------------------------------------
     cfg_updated, S_ref, b, c_root, c_tip, MAC,taper, sweep_quarter, sweep_half, sweep_LE = compute_wing_geometry(cfg.MTOW_initial, cfg, cfg.M_cruise, c_root=cfg.c_root)
+    y_engine_4 = cfg_updated.b / 2 * (2 / 3)
+    cfg_updated = replace(cfg_updated, y_engine_4=y_engine_4)
     tail_inp = TailSizing_Input.from_config(cfg_updated, S_ref=S_ref, b=b, MAC=MAC)
     tail_bd  = TailSizingEstimator(tail_inp).compute()
 
@@ -301,6 +303,8 @@ def run_class_ii(
         # constant wing loading, AR, and taper, S_ref, b, c_root, c_tip,
         # MAC all scale with the current MTOW.
         cfg_updated, S_ref, b, c_root, c_tip, MAC,taper, sweep_quarter, sweep_half, sweep_LE = compute_wing_geometry(MTOW, cfg, cfg.M_cruise, c_root=c_root)
+        y_engine_4 = cfg_updated.b / 2 * (2 / 3)
+        cfg_updated = replace(cfg_updated, y_engine_4=y_engine_4)
 
         # Recompute fuselage / H2-tank geometry from the latest W_fuel.
         cfg_iter, r_tank, L_tank, d_tank, S_wet_hump = compute_fuselage_geometry(W_fuel, cfg_updated,hump_back=hump_tank)
@@ -441,7 +445,11 @@ def run_class_ii(
     # rather than the user-supplied initial guess.
     # -----------------------------------------------------------------
     cfg_recheck = replace_T_TO(cfg_iter, pwr_bd.T_static_per_engine)
+    y_engine_4 = cfg_recheck.b / 2 * (2 / 3)
+    cfg_recheck = replace(cfg_recheck, y_engine_4=y_engine_4)
     cfg_updated, S_ref, b, c_root, c_tip, MAC,taper, sweep_quarter, sweep_half, sweep_LE = compute_wing_geometry(MTOW, cfg_recheck, cfg_recheck.M_cruise, c_root=c_root)
+    y_engine_4 = cfg_updated.b / 2 * (2 / 3)
+    cfg_updated = replace(cfg_updated, y_engine_4=y_engine_4)
     tail_inp_recheck = TailSizing_Input.from_config(
         cfg_updated, MTOW=MTOW, S_ref=S_ref, b=b, MAC=MAC,
     )
