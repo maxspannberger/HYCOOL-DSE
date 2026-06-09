@@ -83,7 +83,7 @@ class Tank:
     # Function that can be called to calculate the evolution of the state variables
     # in the component
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None):
-        A_cs = np.pi * system[1].d**2 / 4
+        A_cs = np.pi * system[2].d**2 / 4
         u    = config.tank_initial_u
         
         # Iteratively solve for the upstream states
