@@ -28,3 +28,30 @@ print(f"Total pressure drop: {total_pressure_drop:.2f} bar")
 
 # PRVs are not sized due to complex sizing procedure, justify with "clogged pipe" calculation
 
+# PIPE STUFF
+
+rho_stainless_steel = 8000  # kg/m^3
+rho_stainless_steel_20_K = 8080  # kg/m^3
+rho_MLI = 21  # kg/m^3, estimated value for MLI insulation
+thickness_inner = 0.00051  # m
+thickness_outer = 0.00055  # m
+vacuum_thickness = 0.02218  # m
+vacuum_boundary_thickness = 0.002  # m
+pipe_length = 142  # m
+
+V_pipe_inner = pi * (((pipe_diameter / 2) + thickness_inner) ** 2 - (pipe_diameter / 2) **2)
+mass_pipe_inner = V_pipe_inner * rho_stainless_steel_20_K
+
+V_pipe_outer = pi * (((pipe_diameter / 2) + thickness_inner + vacuum_thickness + thickness_outer) ** 2 - ((pipe_diameter / 2) + thickness_inner + vacuum_thickness) **2)
+mass_pipe_outer = V_pipe_outer * rho_stainless_steel_20_K
+
+V_MLI = pi * (((pipe_diameter / 2) + thickness_inner + vacuum_thickness - vacuum_boundary_thickness) ** 2 - ((pipe_diameter / 2) + thickness_inner + vacuum_boundary_thickness) **2)
+mass_MLI = V_MLI * rho_MLI
+
+mass_pipe_per_meter = mass_pipe_inner + mass_pipe_outer + mass_MLI
+total_mass_pipe = mass_pipe_per_meter * pipe_length
+print(f"Weight of pipe per meter: {mass_pipe_per_meter:.2f} kg")
+print(f"Total weight of pipe: {total_mass_pipe:.2f} kg")
+
+total_system_weight = W_valves + total_mass_pipe
+print(f"Total system weight: {total_system_weight:.2f} kg")
