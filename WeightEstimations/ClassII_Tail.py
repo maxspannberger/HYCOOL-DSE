@@ -113,6 +113,7 @@ class TailSizing_Input:
         S_ref: Optional[float] = None,
         b:     Optional[float] = None,
         MAC:   Optional[float] = None,
+        M_landing: Optional[float] = None,
     ) -> "TailSizing_Input":
         return cls(
             S_ref       = S_ref if S_ref is not None else cfg.S_ref,
@@ -126,6 +127,7 @@ class TailSizing_Input:
             V_h_target  = cfg.V_h_target,
             V_v_target  = cfg.V_v_target,
             MTOW        = MTOW if MTOW is not None else cfg.MTOW_initial,
+            M_landing   = M_landing if M_landing is not None else (MTOW if MTOW is not None else cfg.MTOW_initial), 
             V_stall     = cfg.V_stall,
             V_cruise    = cfg.V_cruise,
             T_TO        = cfg.T_TO_per_engine,
@@ -300,7 +302,7 @@ class TailSizingEstimator:
         if d.N_propellers > 2:
             M_engine = d.T_TO *0.8 * (d.y_engine_4+d.d_propfan/2+d.d_fuselage/2)       #since only 80% of thrust is available for worst case scenario with 4 engines, per CS-25.149
         elif d.N_propellers == 2:
-            M_engine = d.T_TO * (d.y_engine_2+d.d_propfan/2+d.d_fuselage/2)       #since only 80% of thrust is available for worst case scenario with 4 engines, per CS-25.149
+            M_engine = d.T_TO * (d.y_engine_2+d.d_propfan/2+d.d_fuselage/2)       
 
         S_v_min = M_engine / (
             self.k_r * d.Sr_Sv_max * d.l_v * q_mc * d.delta_r_max
