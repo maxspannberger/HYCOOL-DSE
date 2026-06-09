@@ -7,6 +7,7 @@ from dataclasses import dataclass
 class H2SystemConfig:
     # Global simulation configurations
     fluid: str = 'Hydrogen'                  # FLUID used for simulation
+    phase: str = 'cruise'
     max_error: float = 10                    # SOLVER convergence treshhold
     tank_p: float = 100000                   # TANK pressure [Pa]
     tank_T: float = 15                       # TANK temperature [T]
@@ -46,3 +47,4 @@ class H2SystemConfig:
     
     # Pump parameters
     pump_efficiency: float = 0.75            # default pump isentropic efficiency
+    
