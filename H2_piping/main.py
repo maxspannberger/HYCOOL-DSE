@@ -1,5 +1,7 @@
 from pathlib import Path
 import sys
+
+# Set up paths to ensure we can import local modules
 folder = Path(__file__).resolve().parent
 sys.path.append(str(folder))
 
@@ -8,52 +10,47 @@ sys.path.append(str(root))
 
 # Import your components from h2_components and configuration from system_config
 from h2_components import Tank, Pipe, Pump, Corner, COOL
-from system_config import H2SystemConfig
 
 from rich import print as rich_print
 from rich.tree import Tree
 import matplotlib.pyplot as plt
 import numpy as np
 import json
+from system_config import H2SystemConfig as c
 
-'''
-===============================================================================
-The wall of the components Pipe and Tank should be defined in the following manner.
- 
-- Wall contains a list of tupples. 
-- Within the tupple the material is specified at index 0 and the thickness
-  at index 1. 
-- The materials should be oredered from inner tube to outer tube
-
-For example: wall = [('ss-316l', 0.01), ('polyurethene', 0.02)]
-eg. the inner layer is ss-326l and the outer layer is polyurethene
-===============================================================================
-'''
-
+# =============================================================================
+# Iterates through the defined system components to calculate fluid states.
+# Updates mass flow rate when splits or merges occur.
+# =============================================================================
 def solve_system(system, m_dot, T_amb):
+   
     states = {'p'   : [],
               'T'   : [],
               'rho' : [],
               'h'   : [],
               'frac': []}
     
-    for comp in system:
+    for i, comp in enumerate(system):
         # Update the m_dot based on pipe splits and merges
         if type(comp) == tuple:
             m_dot = m_dot * comp[1] / comp[-1]
         else:
-            component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=False, system=system)
+            # Propagate the state through the specific component solver
+            component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=False, system=system, i=i)
             
             states['p'].append(component_result['p'])
             states['T'].append(component_result['T'])
             states['rho'].append(component_result['rho'])
             states['h'].append(component_result['h'])
             states['frac'].append(component_result['frac'])
-        
+    print(m_dot)   
     return states
 
-
+# =============================================================================
+# Displays the computed states in a clean, hierarchical CLI tree format.
+# =============================================================================
 def print_tree(states):
+
     tree = Tree("\n[bold blue]System States")
     
     for key, values in states.items():
@@ -64,7 +61,12 @@ def print_tree(states):
             
     rich_print(tree)
 
+# =============================================================================
+# Visualizes the pressure, temperature, density, and enthalpy profiles.
+# Background gradient indicates the phase fraction (liquid to gas).
+# =============================================================================
 def plot_states(states):
+  
     flat_states = {}
     for prop in ['p', 'T', 'rho', 'h', 'frac']:
         temp_list = []
@@ -73,6 +75,7 @@ def plot_states(states):
                 temp_list.append(value)
         flat_states[prop] = temp_list
 
+    # Prepare phase-fraction background gradient
     frac_arr = np.array(flat_states['frac'])
     gradient = np.tile(frac_arr, (100, 1)) 
 
@@ -84,9 +87,14 @@ def plot_states(states):
     colors = ['tab:blue', 'tab:red', 'tab:green', 'tab:purple']
 
     for i, prop in enumerate(properties):
-        axes[i].imshow(gradient, aspect='auto', cmap='RdYlBu_r', 
+        y_min   = min(flat_states[prop])
+        y_max   = max(flat_states[prop])
+        margin  = (y_max - y_min) * 0.05
+        
+        # Overlay phase map (Blue = Liquid, Red = Gas)
+        axes[i].imshow(gradient, aspect='auto', cmap='RdYlBu_r',
                        vmin=0, vmax=1,
-                       extent=[0, len(flat_states[prop]), min(flat_states[prop]), max(flat_states[prop])],
+                       extent=[0, len(flat_states[prop]), y_min - margin, y_max + margin],
                        alpha=0.2)
         
         axes[i].plot(flat_states[prop], color=colors[i], marker=None, linestyle='-', linewidth=2)
@@ -106,69 +114,45 @@ with open(path, 'r') as file:
 
 component_order = {}
 for key, value in comps.items(): 
-    sorted_keys = sorted(value)
+    if key == "total":
+        continue
+    # Sort cooling locations by float
+    sorted_keys = sorted(value, key=float)
     component_order[key] = sorted_keys
 
 if __name__ == "__main__":
-    wall = [('ss-316l',      0.01), 
-            ('polyurethene', 0.02)]
 
-    # Instantiate custom baseline parameters for the configuration tracking class
-    custom_config = H2SystemConfig(
-        fluid              = 'Hydrogen',
-        divergence_penalty = 1e9,
-        pipe_mli_eps       = 0.03,
-        pipe_default_d     = 0.02,
-        pipe_default_N     = 10,
-        pipe_default_N_bar = 5.5
-    )
-
-    # Distribute the configuration tracking instance down into each custom layout element
+    # Define system topology as a sequential list of objects
     system = [
-        Tank(diameter   =  0.1, 
-             p          =  1.0*101325, 
-             T          =  15), 
+        Tank(), 
         
         Pipe(length     =  0.5),
          
-        Pump(target_p   =  20*100000, 
-             diameter   =  0.02, 
-             efficiency =  0.65),
+        Pump(target_p   =  5*100000, 
+             diameter   =  0.02),
         
-        Pipe(length     =  0.5),
+        Pipe(length     =  12),
         
         ('Split', 1, 2),
         
-        Pipe(length     =  64.0, 
-             segments   =  200,
-             eps_pipe   =  1.5), 
+        Pipe(length     =  12.0), 
         
-        ('Split', 2, 4),
-        
-        Pipe(length     =  64.0, 
-             segments   =  200,
-             eps_pipe   =  1.5), 
+        Pipe(length     =  4.0), 
         
         COOL(name       = 'hts_gen', 
              location   = component_order['hts_gen'][0]),
         
-        Pipe(length     =  64.0, 
-             segments   =  200,
-             eps_pipe   =  1.5), 
+        Pipe(length     =  2.0), 
 
         COOL(name       = 'bus', 
              location   = component_order['bus'][0]),
         
-        Pipe(length     =  64.0, 
-             segments   =  200,
-             eps_pipe   =  1.5), 
+        Pipe(length     =  2.0), 
         
         COOL(name       = 'ac_dc', 
              location   = component_order['ac_dc'][0]),
         
-        Pipe(length     =  64.0, 
-             segments   =  200,
-             eps_pipe   =  1.5), 
+        Pipe(length     = 4.0), 
         
         COOL(name       = 'dc_ac', 
              location   = component_order['dc_ac'][0]),
@@ -176,20 +160,17 @@ if __name__ == "__main__":
         COOL(name       = 'ac_dc', 
              location   = component_order['ac_dc'][0]),
         
-        Pipe(length     =  64.0, 
-             segments   =  200,
-             eps_pipe   =  1.5),                           
+        Pipe(length     =  2.0),  
         
-        ('Converge', 2, 1),
+        COOL(name       = 'hts_pow', 
+             location   = component_order['hts_pow'][0]),
         
-        COOL(name       = 'hts_gen', 
-             location   = component_order['hts_gen'][0]),
-        
-        Corner(N_bend   =  10, 
+        Corner(N_bend   =  1, 
                diameter =  0.02, 
                curv     =  2.5)
         ]
     
-    states = solve_system(system, m_dot=0.06, T_amb = 317)
+    # Execute simulation and display results
+    states = solve_system(system, m_dot=c.m_dot, T_amb=c.T_amb)
     print_tree(states)
     plot_states(states)

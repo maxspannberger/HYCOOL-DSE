@@ -14,8 +14,6 @@ from WeightEstimations.mainClassII import run_class_ii
 T_H2 = 20   # K
 T_J_design = 250    # K
 T_J_min = 77    # K
-R_th_26 = 14.3  # K/kW
-R_th = R_th_26/26
 
 cable_loss_per_m = 0.0 # kW/m
 P_AC_systems = 310.0  # kW
@@ -30,7 +28,7 @@ mu_r = 2.6 # -
 mu_0 = np.pi*4e-7 # T*m/A
 
 
-def get_cable_region_powers(component, positions, previous):
+def get_cable_region_powers(component, positions, previous, b=1.0):
     comp_powers = {}
     maximum = {}
     maximum[positions["gt"][0]] = {}
@@ -39,7 +37,7 @@ def get_cable_region_powers(component, positions, previous):
         positions_gt = positions["gt"] + [-x for x in positions["gt"]]
         for pos in positions_gt:
             comp_powers[pos] = {}
-            comp_powers[pos]["length"] = abs(pos - positions["bus"])
+            comp_powers[pos]["length"] = abs(pos - positions["bus"]) * b/2
 
             for condition in ["max", "cruise", "OEI_mot", "OEI_gt", "OEI_bus"]:
                 if condition == "OEI_gt":
@@ -82,6 +80,8 @@ def get_cable_region_powers(component, positions, previous):
                     maximum[positions["gt"][0]][condition] = max(previous[abs(pos)][condition] / frac * (1 + min(fracs)) / 2, maximum[positions["gt"][0]][condition])
                 elif condition == "OEI_bus":
                     maximum[positions["gt"][0]][condition] = max(previous[abs(pos)][condition] / frac * 2, maximum[positions["gt"][0]][condition])
+                elif condition == "OEI_gt":
+                    maximum[positions["gt"][0]][condition] = max(previous[abs(pos)][condition] / frac * 2, maximum[positions["gt"][0]][condition])
                 else:
                     maximum[positions["gt"][0]][condition] = max(previous[abs(pos)][condition] / frac, maximum[positions["gt"][0]][condition])
 
@@ -91,7 +91,7 @@ def get_cable_region_powers(component, positions, previous):
     return comp_powers, maximum
 
 
-def get_powers_per_component(P_max, P_cruise, P_OEI, positions, component_order, comp):
+def get_powers_per_component(P_max, P_cruise, P_OEI, positions, component_order, comp=comp_params, b=1.0):
     """
     Returns powers required at every component
     and cable segment powers.
@@ -106,7 +106,7 @@ def get_powers_per_component(P_max, P_cruise, P_OEI, positions, component_order,
         comp_powers["out"][pos] = {
                 "max": P_max / 2 * frac,
                 "cruise": P_cruise / 2 * frac,
-                "OEI_mot": P_OEI * (1.0 - 0.5 * max(positions["mot_frac"])) / 2 * frac,
+                "OEI_mot": P_OEI / (1 + min(positions["mot_frac"])) * frac,
                 "OEI_gt": P_OEI / 2 * frac,
                 "OEI_bus": P_OEI  * frac / 2
             }
@@ -121,7 +121,7 @@ def get_powers_per_component(P_max, P_cruise, P_OEI, positions, component_order,
         comp_powers[component] = {}
 
         if "cable" in component:
-            comp_powers_cable, previous = get_cable_region_powers(component, positions, previous)
+            comp_powers_cable, previous = get_cable_region_powers(component, positions, previous, b=b)
             comp_powers[component] = comp_powers_cable
 
         else:
@@ -138,51 +138,56 @@ def get_powers_per_component(P_max, P_cruise, P_OEI, positions, component_order,
     return comp_powers
 
 
-def get_N(P, eff, T_J):
+def get_Rth(P, eff, T_J):
     Q = (1-eff) * P
-    N = (T_J - T_H2) / (Q * R_th)
-    return int(np.ceil(N))
+    R_th = (T_J - T_H2) / Q
+    return R_th
 
 
-def get_deltaT(P, eff, N):
+def get_deltaT(P, eff, R_th):
     Q = (1-eff) * P
-    deltaT  = Q * N * R_th
+    deltaT  = Q * R_th
     return deltaT
 
 
-def get_P_idle(T_J, N):
-    P = (T_J - T_H2) / (R_th * N)
+def get_P_idle(T_J, R_th):
+    P = (T_J - T_H2) / R_th
     return P
 
 
-def size_converter(comp, powers, N=0, show=False):
-    eff = comp.efficiency
+def size_converter(component, powers, comp=comp_params, show=False):
+    eff = comp[component].efficiency
     P_OEI = max(powers["OEI_mot"], powers["OEI_gt"])
-
-    if N == 0:
-        N = get_N(powers["max"], eff, T_J_design)
-        T_J_max = 250
-    else:
-        T_J_max = T_H2 + get_deltaT(powers["max"], eff, N)
-    T_J_cruise = T_H2 + get_deltaT(powers["cruise"], eff, N)
-    T_J_OEI = T_H2 + get_deltaT(P_OEI, eff, N)
-    P_heat_idle = get_P_idle(T_J_min, N)
+    R_th = get_Rth(powers["max"], eff, T_J_design)
+    T_J_cruise = T_H2 + get_deltaT(powers["cruise"], eff, R_th)
+    T_J_OEI = T_H2 + get_deltaT(P_OEI, eff, R_th)
+    P_heat = get_P_idle(T_J_min, R_th)
 
     P_max = max(P_OEI, powers["max"])
-    m = P_max / comp.power_density
-    max_cooling = P_max * (1 - eff)
+    P_cool = P_max * (1 - eff)
+
+    mass = P_max / comp[component].power_density
+    volume = P_max / comp[component].volumetric_density
 
     if show:
-        print(f"\n{comp}:")
-        print(f"Number of chips: {N}")
-        print(f"Operating temperature: {T_J_max}")
+        print(f"Number of chips: {R_th}")
         print(f"Cruise temperature: {T_J_cruise}")
         print(f"OEI temperature: {T_J_OEI}")
-        print(f"Idle extra heat: {P_heat_idle}")
-        print(f"Max cooling power: {max_cooling}")
-        print(f"Mass: {m}")
+        print(f"Idle extra heat: {P_heat}")
+        print(f"Max cooling power: {P_cool}")
+        print(f"Mass: {mass}")
 
-    return N, T_J_max, T_J_cruise, T_J_OEI, P_heat_idle, m, max_cooling
+    results = {
+        "R_th": R_th,
+        "T_J_cruise": T_J_cruise,
+        "T_J_OEI": T_J_OEI,
+        "P_heat": P_heat,
+        "P_cool": P_cool,
+        "mass": mass,
+        "volume": volume
+    }
+
+    return results
 
 
 def size_all_components(component_order, powers, comp=comp_params, show=False):
@@ -194,30 +199,23 @@ def size_all_components(component_order, powers, comp=comp_params, show=False):
     for component in component_order:
         if "gt" not in component and "cable" not in component:
             component_sizing[component] = {}
-            if component == "bus":
-                N = 24
-            else:
-                N = 0
 
             for pos in powers[component]:
                 component_sizing[component][pos] = {}
-                if "hts" in component:
+                if "hts" in component:                  
                     P_max = max(powers[component][pos].values())
-                    P_cool = (1.0 - comp[component].efficiency) * P_max
-                    mass = P_max / comp[component].power_density
-                    component_sizing[component][pos]["P_cool"] = P_cool
-                    component_sizing[component][pos]["mass"] = mass
-                    P_cool_total += P_cool * 2
-                    m_total += mass
-                else:
-                    _, _, _, _, P_heat, mass, P_cool = size_converter(comp[component], powers[component][pos], N=N, show=show)
-                    component_sizing[component][pos]["P_heat"] = P_heat
-                    component_sizing[component][pos]["P_cool"] = P_cool
-                    component_sizing[component][pos]["mass"] = mass
+                    component_sizing[component][pos]["P_cool"] = (1.0 - comp[component].efficiency) * P_max
+                    component_sizing[component][pos]["mass"] = P_max / comp[component].power_density
+                    P_cool_total += component_sizing[component][pos]["P_cool"] * 2
+                    m_total += component_sizing[component][pos]["mass"]
 
-                    P_heat_total += P_heat * 2
-                    P_cool_total += P_cool * 2
-                    m_total += mass * 2
+                else:
+                    if show:
+                        print(f"\n{component} ({pos}):")
+                    component_sizing[component][pos] = size_converter(component, powers[component][pos], comp=comp, show=show)
+                    P_heat_total += component_sizing[component][pos]["P_heat"] * 2
+                    P_cool_total += component_sizing[component][pos]["P_cool"] * 2
+                    m_total += component_sizing[component][pos]["mass"] * 2
         
     component_sizing["total"] = {
         "P_heat": P_heat_total,
@@ -228,6 +226,32 @@ def size_all_components(component_order, powers, comp=comp_params, show=False):
     filename = "component_sizing_results.json"
     with open(filename, "w") as f:
         json.dump(component_sizing, f, indent=4)
+
+    cooling_requirements_only = {}
+    for condition in list(list(powers.values())[0].values())[0].keys():
+        cooling_requirements_only[condition] = {}
+        total = 0.0
+        for component in component_order:
+            if "gt" not in component and "cable" not in component:
+                cooling_requirements_only[condition][component] = {}
+                for pos in powers[component]:
+                    cooling_requirements_only[condition][component][pos] = (1.0 - comp[component].efficiency) * powers[component][pos][condition]
+
+                    if condition == "OEI_gt" and component in ["hts_gen", "ac_dc"]:
+                        total += cooling_requirements_only[condition][component][pos]
+                    elif condition == "OEI_mot" and component in ["dc_ac", "hts_pow"] and not np.isclose(pos, 1.0):
+                        total += cooling_requirements_only[condition][component][pos]
+                    elif condition == "OEI_bus" and component in ["bus"]:
+                        total += cooling_requirements_only[condition][component][pos]
+                    else:
+                        total += 2 * cooling_requirements_only[condition][component][pos]
+
+        cooling_requirements_only[condition]["total"] = total
+
+    filename = "only_cooling_results.json"
+    with open(filename, "w") as f:
+        json.dump(cooling_requirements_only, f, indent=4)
+
 
     return component_sizing
 
@@ -260,7 +284,7 @@ def get_maximum_powers(powers):
     with open(filename, "w") as f:
         json.dump(max_powers, f, indent=4)
 
-    length *= 2 # only counted cables connected to one bus
+    length *= 2 # only counted cables connected to one bus so far
 
     return max_powers, length
 
@@ -289,6 +313,7 @@ def size_cables(max_powers, length=200, N_cables=6, SF=1, show=False):
     
     if show:
         print(f"\ncable:")
+        print(f"Cable length [m]: {length}")
         print(f"Optimal wire radius [mm]: {1000*r_c}")
         print(f"Optimal insulator thickness [mm]: {1000*t_i}")
 
@@ -301,13 +326,14 @@ def size_cables(max_powers, length=200, N_cables=6, SF=1, show=False):
     mass = mass_density * length
 
     if show:
-        print(f"\nConservative wire radius [mm]: {1000*r_c}")
+        print(f"Conservative wire radius [mm]: {1000*r_c}")
         print(f"Conservative insulator thickness [mm]: {1000*t_i}")
         print(f"Wire diameter [mm]: {1000*d}")
         print(f"Cable mass density [kg/m]: {mass_density:.6f}")
         print(f"Cable mass [kg]: {mass:.3f}")
 
     results = {
+        "length": length,
         "r_core": r_c,
         "t_insulation": t_i,
         "d_cable": d,
@@ -326,8 +352,7 @@ def size_cables(max_powers, length=200, N_cables=6, SF=1, show=False):
 if __name__ == "__main__":
     # define electrical system architecture
     component_order = ["gt_hex", "hts_gen", "ac_dc", "cable_in", "bus", "cable_out", "dc_ac", "hts_pow"]
-    positions = {"gt": [5], "mot": [10, 15], "bus": 3, "mot_frac": [0.8, 0.2]}
-    # TODO: add real positions
+    positions = {"gt": [0.4], "mot": [0.66, 1.0], "bus": 3, "mot_frac": [0.8, 0.2]}
     show = True
 
     N_motors = 2 * len(positions["mot"])
@@ -342,11 +367,12 @@ if __name__ == "__main__":
     P_max = class_II_results.P_max_KW
     P_cruise = class_II_results.mission.P_cruise_shaft/1000.0
     P_OEI = class_II_results.weight.P_TO_OEI_KW
+    b = class_II_results.Wing_span
     if show:
         print("Class II estimations finished.")
 
     # perform sizing of electrical system
-    powers = get_powers_per_component(P_max, P_cruise, P_OEI, positions, component_order, comp=comp_params)
+    powers = get_powers_per_component(P_max, P_cruise, P_OEI, positions, component_order, comp=comp_params, b=b)
     components_with_losses = ["dc_ac", "bus", "ac_dc"]
     converter_sizing = size_all_components(component_order, powers, comp=comp_params, show=show)
     max_powers, length = get_maximum_powers(powers)
