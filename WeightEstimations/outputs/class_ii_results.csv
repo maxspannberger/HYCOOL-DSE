@@ -126,6 +126,7 @@ Weight Breakdown,t_cruise,"(0.0,)"
 Weight Breakdown,t_climb,"(0.0,)"
 Weight Breakdown,t_reserve,"(0.0,)"
 Weight Breakdown,bt_charging_ratio,0
+Weight Breakdown,P_opt,2000.93
 Weight Breakdown,W_structure [kg],12609.5
 Weight Breakdown,W_empty (OEW) [kg],14309.3
 Mission Power & Fuel,P_cruise_shaft,3.756987e+06
