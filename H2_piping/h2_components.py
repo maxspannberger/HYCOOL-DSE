@@ -373,60 +373,72 @@ class COOL:
     # Function that can be called to calculate the evolution of the state variables
     # in the component
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None):
-        T, p, h, rho = get_input_states(states)
-        q = self.Q_dot / m_dot
-        A_out = config.cool_dummy_A
-        u = config.cool_dummy_u
+        T1, p1, h1, rho1 = get_input_states(states)
         
-        dp_fric = config.cool_dummy_dp
+        # ---------------------------------------------------------
+        # 1. MACRO SYSTEM GEOMETRY (The pipes entering/exiting the component)
+        # ---------------------------------------------------------
+        # We assume the component connects to the standard system pipe.
+        d_pipe = config.pipe_default_d  
+        A_pipe = np.pi * d_pipe**2 / 4
+        
+        # Macro inlet velocity from the upstream pipe
+        u1 = m_dot / (rho1 * A_pipe)
+        
+        # Specific heat added (Total heat / branch mass flow)
+        q = self.Q_dot / m_dot 
 
+        # ---------------------------------------------------------
+        # 2. MICRO INTERNAL GEOMETRY (Calculating the friction drop)
+        # ---------------------------------------------------------
         if self.name in ['hts_gen', 'hts_pow']:
-            # Constants
             eps_hts = config.eps_hts
-            
-            # 1. config.A_slot is ALREADY the total stator area 
             N_slots = config.N_slots
-            A_slot_tot = config.A_slot * 6
+            A_slot_tot = config.A_slot * 6  # Total geometric stator area 
             L = config.L
             VF = config.VF
 
-            # 2. MISTAKE 3 FIX: Calculate physical area AND actual fluid flow area
+            # Micro geometry for a single cooling slot
             A_slot = A_slot_tot / N_slots
             A_flow_slot = A_slot * VF 
             m_dot_slot = m_dot / N_slots
 
-            # Slot wetted area
             P_wet = 2*np.pi*np.sqrt((1-VF)*A_slot/np.pi) + 2*(0.0318 + 0.0484)
-
-            # Hydraulic diameter (Using FLOW area, not total slot area)
             Dh = 4 * A_flow_slot / P_wet 
 
-            # Fluid properties at segment inlet
-            mu1  = CP.PropsSI('V', 'P', p, 'H', h, self.fluid)
+            mu1 = CP.PropsSI('V', 'P', p1, 'H', h1, self.fluid)
 
-            # Flow velocity and Reynolds number (Using FLOW area)
-            u = m_dot_slot / (rho * A_flow_slot) 
-            Re1 = 4 * m_dot_slot / (np.pi * Dh * mu1)
+            # INTERNAL velocity (Used strictly for friction, NOT for the macro energy balance!)
+            u_internal = m_dot_slot / (rho1 * A_flow_slot) 
+            Re_internal = 4 * m_dot_slot / (np.pi * Dh * mu1)
         
-            if Re1 < 2300:
-                f = 64 / Re1
+            if Re_internal < 2300:
+                f = 64 / Re_internal
             else:
-                f = (1 / (-1.8 * np.log10(((eps_hts / Dh) / 3.7)**1.11 + 6.9 / Re1)))**2
+                f = (1 / (-1.8 * np.log10(((eps_hts / Dh) / 3.7)**1.11 + 6.9 / Re_internal)))**2
             
-            # 3. Parallel pressure drop is just the drop of one channel.
-            dp_fric = f * (L/Dh) * (rho * u**2 / 2) 
+            # Pure micro-channel friction
+            dp_fric = f * (L/Dh) * (rho1 * u_internal**2 / 2) 
+            
 
-            #print(f"[{self.name}] Computed Friction Drop: {dp_fric:.4f} Pa")
-            #print(f"[{self.name}] Computed Mass flow rate: {m_dot:.4f} kg/s")
-            
-            # 4. Set variables for the fsolve args so momentum is conserved properly
-            A_out = A_slot_tot * VF # The total outlet flow area for the momentum balance
-        
+        else:
+            # ---------------------------------------------------------
+            # NON-HTS COMPONENTS (AC/DC, Bus, etc.)
+            # ---------------------------------------------------------
+            # Since we lack cold-plate micro geometry, we use the config dummy pressure drop 
+            # (e.g., assume 500 Pa across the electronics cold plate).
+            dp_fric = config.cool_dummy_dp 
+
+        # ---------------------------------------------------------
+        # 3. MACRO SOLVER EXECUTION
+        # ---------------------------------------------------------
+        # We pass u1 (inlet pipe velocity) and A_pipe (outlet pipe area). 
+        # This conserves momentum and kinetic energy correctly across the component jump.
         sol = cp_root(update_states,
-                      x0=[p, h],
+                      x0=[p1, h1],
                       method='lm',
                       options={'xtol': tol, 'ftol': tol},
-                      args=(p, h, u, m_dot, A_out, self.fluid, q, dp_fric, config.divergence_penalty))
+                      args=(p1, h1, u1, m_dot, A_pipe, self.fluid, q, dp_fric, config.divergence_penalty))
         p2, h2 = sol.x
                     
         T2    = CP.PropsSI('T', 'P', p2, 'H', h2, self.fluid)
@@ -437,7 +449,6 @@ class COOL:
                    'p':   np.array([p2]),
                    'rho': np.array([rho2]),
                    'h':   np.array([h2]),
-                   'frac':np.array([frac2])
-                   }
+                   'frac':np.array([frac2])}
         
         return results
