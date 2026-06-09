@@ -647,11 +647,11 @@ class weightEstimation:
                 elif comp_key == "pipe":
                     mass = pipe_len * comp[comp_key].mass_per_length
                 elif comp_key == "open_fan" and propeller_count<2 and g.N_propellers>2:
-                        mass = g.max_Thrust_prop_inner / comp[comp_key].thrust_density 
+                        mass = g.max_Thrust_prop_inner / comp[comp_key].thrust_density *1.1 
                         propeller_count+=1
                         fan_mass+=mass
                 elif comp_key == "open_fan" and propeller_count>=2 and g.N_propellers>2:
-                        mass = g.max_Thrust_prop_outer / comp[comp_key].thrust_density 
+                        mass = g.max_Thrust_prop_outer / comp[comp_key].thrust_density*1.1
                         fan_mass+=mass
                 elif comp_key == "open_fan" and g.N_propellers<=2:
                         mass = g.max_Thrust_prop_inner / comp[comp_key].thrust_density 

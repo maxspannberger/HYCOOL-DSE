@@ -837,13 +837,19 @@ if __name__ == "__main__":
     # signed display and human-readable word
     mtow_word = "increase" if mtow_diff_kg > 0 else ("decrease" if mtow_diff_kg < 0 else "no change")
 
+    # Propulsion system mass change (4-prop - 2-prop)
+    propmass_diff_kg = result1.W_prop - result2.W_prop
+    propmass_pct = (propmass_diff_kg / result2.W_prop * 100.0) if result2.W_prop != 0 else 0.0
+
     # Highlight fuel, cost savings and MTOW impact in a panel to make them stand out
     savings_text = (
         f"[bold white]Switching to 4 propellers saves[/bold white]\n"
         f"[bold green]{fuelsavings:.1f} kg[/bold green]\n"
         f"[bold white]Estimated cost savings per flight:[/bold white] [bold yellow]€{costsavings:.2f}[/bold yellow]\n"
         f"[bold white]MTOW change (4 prop - 2 prop):[/bold white] [bold]{mtow_diff_kg:+.1f} kg[/bold] "
-        f"[bold white]({mtow_word}, {mtow_pct:+.2f}% vs 2-prop)[/bold white]"
+        f"[bold white]({mtow_word}, {mtow_pct:+.2f}% vs 2-prop)[/bold white]\n"
+        f"[bold white]Propulsion mass change (4 prop - 2 prop):[/bold white] [bold]{propmass_diff_kg:+.1f} kg[/bold] "
+        f"[bold white]({propmass_pct:+.2f}% vs 2-prop)[/bold white]"
     )
     print(Panel(savings_text, title="[bold cyan]Fuel, Cost & MTOW Impact[/bold cyan]", border_style="cyan", expand=False))
 
