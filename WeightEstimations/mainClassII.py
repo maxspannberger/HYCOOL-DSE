@@ -704,7 +704,7 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig,drag_r
     x_c_hinge=1-c_fowler_c_wing
 
     #calculate the hinge sweep angle
-    hinge_sweep=np.arctan(np.tan(sweep_half)-x_c_hinge*2*root_chord/(Wing_span)*(1-Wing_taper))
+    hinge_sweep=np.arctan(np.tan(Wing_sweep_LE)-x_c_hinge*2*root_chord/(Wing_span)*(1-Wing_taper))
 
     #accoridng to NASA paper, a deflection angle of 30 degrees was most effective for the fowler flap, so we get deltac/cf
     deltac_cf=0.55      #extracted from the figure in toreenbeek
