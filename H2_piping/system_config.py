@@ -26,8 +26,6 @@ class H2SystemConfig:
     
     # Component setup placeholders
     tank_initial_u: float = 0.0              # flow velocity inside the storage tank [m/s]
-    cool_dummy_A: float = 0.0003             # placeholder cross-sectional area for active cooling [m^2]
-    cool_dummy_u: float = 1.0                # placeholder flow velocity for active cooling [m/s]
     cool_dummy_dp: float = 1.0               # placeholder pressure drop for active cooling [Pa]
 
     # Constants for hts
