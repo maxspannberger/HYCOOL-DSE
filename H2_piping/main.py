@@ -170,7 +170,7 @@ if __name__ == "__main__":
                diameter =  0.02, 
                curv     =  2.5),
         
-        Pipe(length     =  0.5), 
+        Pipe(length     =  1.0), 
         
         COOL(name       = 'hts_pow', 
              location   = component_position['hts_pow'][0]),
