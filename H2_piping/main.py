@@ -142,7 +142,7 @@ if __name__ == "__main__":
 
         Pipe(length     =  0.5),
          
-        Pump(target_p   =  15*100000, 
+        Pump(target_p   =  10*100000, 
              diameter   =  0.02),
         
         Pipe(length     =  15),
