@@ -9,7 +9,7 @@ root = Path(__file__).resolve().parent.parent
 sys.path.append(str(root))
 
 # Import your components from h2_components and configuration from system_config
-from h2_components import Tank, Pipe, Pump, Corner, COOL
+from h2_components import Tank, Pipe, Pump, Corner, COOL, Valve
 
 from rich import print as rich_print
 from rich.tree import Tree
@@ -207,6 +207,8 @@ if __name__ == "__main__":
         Corner(N_bend   =  1, 
                diameter =  0.02, 
                curv     =  2.5),
+        
+        Valve(name      =  'check'),
 
         COOL(name       = 'dc_ac', 
              location   = component_position['dc_ac'][1]),
