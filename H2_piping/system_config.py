@@ -24,6 +24,14 @@ class H2SystemConfig:
     cool_dummy_u: float = 1.0                # placeholder flow velocity for active cooling [m/s]
     cool_dummy_dp: float = 1.0               # placeholder pressure drop for active cooling [Pa]
 
+    # Constants for hts
+    eps_hts: float = 0.0015*10**-3           # internal surface roughness for cooling lines [m]
+    A_slot: float = 0.0092347                # slot cross sectional area [m^2]
+    N_slots: float = 24                      # number of slots of hts components
+    L: float = 0.2253                        # stator length
+    VF: float = 0.35                         # stator void factor
+
+
     # Default baseline geometric parameters for pipe segments
     pipe_default_d: float = 0.02             # default baseline inner pipeline diameter [m]
     pipe_default_segments: int = 10          # default segment mesh resolution density across components
