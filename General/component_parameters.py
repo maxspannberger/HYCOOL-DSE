@@ -81,5 +81,6 @@ component_params = {
     "hex_fc": HeatExchangeComponent("HEX for Fuel Cell", 35, 95, 4),
 
     # Open Fan Estimation
-    "open_fan": ThrustComponent("Open Fan Propellers",43.17, 6)
+    # "open_fan": ThrustComponent("Open Fan Propellers",43.17, 6)
+    "open_fan": ThrustComponent("Open Fan Propellers",80.2, 6)
 }
