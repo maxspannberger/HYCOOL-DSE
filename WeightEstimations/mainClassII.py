@@ -469,7 +469,7 @@ def run_class_ii(
         print(pwr_bd.summary())
 
 
-    aero_parameters=compute_additional_aerodynamic_parameters(cfg_updated, drag_bd, mis_bd, pwr_bd,sweep_half,MAC,MTOW,\
+    aero_parameters=compute_additional_aerodynamic_parameters(cfg_iter, drag_bd, mis_bd, pwr_bd,sweep_half,MAC,MTOW,\
                                                                   S_ref,b,taper,c_root,sweep_quarter,sweep_LE,verbose=True)
     
     M_landing = aero_parameters["W_landing"]
@@ -503,7 +503,7 @@ def run_class_ii(
     print(pwr_bd.gamma_min_engine)
 
     cgwingpos = b / 2 * 0.35
-    turbinewingpos = cfg_updated.b_f / 2 + 5 +cfg_updated.D_propfan/2
+    turbinewingpos = cfg_updated.b_f / 2 *0.5       #inner engine position chosen at half of half span
 
     # c(y) = c_root * [1 - (1 - lambda) * 2y/b] for a trapezoidal wing
     taper_slope = 1.0 - taper
@@ -601,7 +601,7 @@ def find_optimal_cl_mach(cfg: AircraftConfig, force_recompute: bool = False) -> 
     M_cruise=0.7
     sweep_rows=[]
     iterations=0
-    while M_cruise>=0.6:
+    while M_cruise>=0.59:
         factor=0.01
         cfg_updated = replace(cfg, M_cruise=M_cruise)
         result = run_class_ii(cfg_updated,comp=comp_params, tol=1.0, max_iter=100, verbose=False)
@@ -645,6 +645,8 @@ def find_optimal_cl_mach(cfg: AircraftConfig, force_recompute: bool = False) -> 
     _optimal_cl_mach_path.parent.mkdir(parents=True, exist_ok=True)
     with open(_optimal_cl_mach_path, "w", encoding="utf-8") as f:
         json.dump(_optimal_cl_mach_cache, f, indent=4)
+
+    print(best_row)
 
     return best_row
 
@@ -904,7 +906,3 @@ if __name__ == "__main__":
     print(Panel(savings_text, title="[bold cyan]Fuel, Cost & MTOW Impact[/bold cyan]", border_style="cyan", expand=False))
 
     #get_optimal_cl_mach(cfg, force_recompute=True)
-
-    # print(result1.aeroparameters["cdash_c"])
-
-    # print(result1.aeroparameters["CL_max_TO_with_new_area"])
