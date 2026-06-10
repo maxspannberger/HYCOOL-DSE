@@ -6,12 +6,13 @@ class Component:
 
 class PowerComponent(Component):
     # class for power providing components
-    def __init__(self, name, power_density, efficiency, trl, power_density_std=0.0, efficiency_std=0.0):
+    def __init__(self, name, power_density, efficiency, trl, power_density_std=0.0, efficiency_std=0.0, volumetric_density=0.0):
         super().__init__(name, trl)
         self.power_density = power_density
         self.efficiency = efficiency / 100 if efficiency else None
         self.power_density_std = power_density_std
         self.efficiency_std = efficiency_std / 100
+        self.volumetric_density = volumetric_density
 
 class StorageComponent(Component):
     # class for energy storage components (batteries)
@@ -64,8 +65,9 @@ component_params = {
     "gt_hex": PowerComponent("Gas Turbine + HEX ", 9.62, 39.5, 3, power_density_std=0.962, efficiency_std=9),
     "dc_dc_1": PowerComponent("DC-DC Converter 1", 17, 99.47, 3),
     "dc_dc_2": PowerComponent("DC-DC Converter 2", 17, 99.47, 3),
-    "ac_dc": PowerComponent("AC-DC Rectifier", 35.1, 99.4, 3),
-    "dc_ac": PowerComponent("DC-AC Inverter", 35.1, 99.4, 3),
+    "ac_dc": PowerComponent("AC-DC Rectifier", 52.9, 98.9, 3, volumetric_density=70000),
+    "dc_ac": PowerComponent("DC-AC Inverter", 52.9, 98.9, 3, volumetric_density=70000),
+    "bus": PowerComponent("Electric Bus", 22.1, 99.66, 3, volumetric_density=70000),
 
     # Battery
     "bt": StorageComponent("Battery", 0.510, 1.53, 90, 3, energy_density_std=0.102, power_density_std=0.306, efficiency_std=1),

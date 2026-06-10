@@ -749,7 +749,8 @@ class weightEstimation:
             W_fuel       = g.W_fuel,
 
             #power values for display
-            P_cruise_KW  = g.P_cruise_KW,
+            P_cruise_KW = g.P_cruise_KW,
+            P_climb_KW = g.P_climb_KW,
             P_TO_OEI_KW  = g.P_TO_OEI_KW,
             P_primary_KW = P_req_primary,
             P_secondary_KW = P_req_secondary,
