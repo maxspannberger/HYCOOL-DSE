@@ -104,6 +104,8 @@ class TailSizing_Input:
     G:              float = 9.80665
     rho_ground:     float = 1.225
 
+    # fraction from scissor plot
+    S_h_frn:        float = 0.0
 
     @classmethod
     def from_config(
@@ -135,7 +137,8 @@ class TailSizing_Input:
             y_engine_4  =cfg.y_engine_4,
             d_propfan = cfg.D_propfan,
             N_propellers   = cfg.N_propellers,
-            d_fuselage       = cfg.d_f
+            d_fuselage       = cfg.d_f,
+            S_h_frn         = cfg.S_h_frn
         )
 
 
@@ -274,6 +277,12 @@ class TailSizingEstimator:
         V_h_min         = dCM_required / (C_L_alpha_h * tau_e * delta_e_max)
         return V_h_min * d.S_ref * d.MAC / d.l_h
 
+    def _S_h_scissor(self) -> float:
+        d = self.i
+        #---------------- value read from scissor plot ------------------------
+        S_h_frn = d.S_h_frn
+        return S_h_frn * d.S_ref
+
     # ------------------------------------------------------------------
     # Vertical tail
     # ------------------------------------------------------------------
@@ -368,10 +377,20 @@ class TailSizingEstimator:
 
         S_h_stab = self._S_h_stability()
         S_h_ctrl = self._S_h_control()
-        if S_h_stab >= S_h_ctrl:
+        S_h_scissor = self._S_h_scissor()
+
+        # old statement:
+        # if S_h_stab >= S_h_ctrl:
+        #     S_h, S_h_drv = S_h_stab, "stability (V_h)"
+        # else:
+        #     S_h, S_h_drv = S_h_ctrl, "control (elevator)"
+
+        if S_h_stab >= S_h_ctrl and S_h_stab >= S_h_scissor:
             S_h, S_h_drv = S_h_stab, "stability (V_h)"
-        else:
+        elif S_h_ctrl >= S_h_stab and S_h_ctrl >= S_h_scissor:
             S_h, S_h_drv = S_h_ctrl, "control (elevator)"
+        else:
+            S_h, S_h_drv = S_h_scissor, "scissor plot"
 
         S_v_stab = self._S_v_stability()
         S_v_ctrl = self._S_v_control()

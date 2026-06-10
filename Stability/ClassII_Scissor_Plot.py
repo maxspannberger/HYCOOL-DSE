@@ -92,8 +92,8 @@ class ScissorPlotInput:
 
     # ---------------- CG range ----------------
     # Replace these with the final loading diagram output when available.
-    xcg_lower: float = 0.283 * 0.98
-    xcg_upper: float = 0.640 * 1.02
+    xcg_lower: float = 0.142
+    xcg_upper: float = 0.500
 
     # ---------------- Constants from lecture/literature ----------------
     kn: float = -4.0                # nacelle empirical factor, slide 40
@@ -113,8 +113,8 @@ class ScissorPlotInput:
         result: ClassIIResult,
         *,
         aero_dict: dict,
-        xcg_lower: Optional[float] = None,
-        xcg_upper: Optional[float] = None,
+        #xcg_lower: Optional[float] = None,
+        #xcg_upper: Optional[float] = None,
         lfn: Optional[float] = None,
         bn: Optional[float] = None,
         ln: Optional[float] = None,
@@ -193,7 +193,10 @@ class ScissorPlotInput:
         Cm0_airfoil = float(cfg.Cm_alpha0_clean)                  #moment coefficient airfoil at zero angle of attack
 
         lh = float(cfg.l_h)      
-        hh = float(cfg.hh)            
+        hh = float(cfg.hh)      
+
+        xcg_lower = float(cfg.xcg_lower)
+        xcg_upper = float(cfg.xcg_upper)
 
         kwargs = dict(
             bf=bf,
@@ -528,8 +531,8 @@ if __name__ == "__main__":
         cfg,
         result,
         # Replace these with loading diagram outputs when available.
-        xcg_lower=0.283 * 0.98,
-        xcg_upper=0.640 * 1.02,
+        #xcg_lower=0.283 * 0.98,
+        #xcg_upper=0.640 * 1.02,
         # Replace these with actual nacelle geometry when available.
         ln=0.0,
         aero_dict=aero_dict
