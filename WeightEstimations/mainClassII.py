@@ -515,7 +515,7 @@ def run_class_ii(
     print(f"MAC chord: {MAC:.3f} m, corresponding spanwise position: {machspanpos:.3f} m")
     print(f"CG chord position: {chordatcgpos:.3f} m, corresponding spanwise position: {cgwingpos:.3f} m")
     print(f"Turbine chord position: {turbinechord:.3f} m, corresponding spanwise position: {turbinewingpos:.3f} m")
-    print(f"Length from the tank to the quarter chord of the root: {cfg_updated.FUEL_cg-L_tank/2-cfg_updated.lfn+0.25*c_root:.3f} m")
+    print(f"Length from the tank to the quarter chord of the root: {cfg_updated.FUEL_cg-L_tank/2-cfg_updated.lfn-0.25*c_root:.3f} m")
 
 
 
