@@ -70,5 +70,16 @@ total_mass_pipe = mass_pipe_per_meter * pipe_length
 print(f"Weight of pipe per meter: {mass_pipe_per_meter:.2f} kg")
 print(f"Total weight of pipe: {total_mass_pipe:.2f} kg")
 
-total_system_weight = W_valves + total_mass_pipe
+# PUMPS
+
+pump_weight = 20
+pump_number = 2
+pump_total_weight = pump_weight * pump_number
+print(f"Total weight of pumps: {pump_total_weight:.2f} kg")
+
+# FITTINS AND BELLOWS
+
+
+
+total_system_weight = W_valves + total_mass_pipe + pump_total_weight
 print(f"Total system weight: {total_system_weight:.2f} kg")
