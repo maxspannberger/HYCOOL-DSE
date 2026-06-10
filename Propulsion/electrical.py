@@ -365,7 +365,7 @@ def size_cables(max_powers, length=200, N_cables=6, SF=1, show=False):
 
 
 
-def perform_complete_electrical_sizing(P_TO, P_climb, P_cruise, P_APP, P_OEI, show=False):
+def perform_complete_electrical_sizing(P_TO, P_climb, P_cruise, P_APP, P_OEI, b, show=False):
     # define electrical system architecture
     component_order = ["gt_hex", "hts_gen", "ac_dc", "cable_in", "bus", "cable_out", "dc_ac", "hts_pow"]
     positions = {"gt": [0.66], "mot": [0.66, 1.0], "bus": 0.5, "mot_frac": [0.8, 0.2]}
@@ -395,11 +395,11 @@ if __name__ == "__main__":
     class_II_results = run_class_ii(config=3, comp=comp_params, verbose=False, cfg=cfg)
     print("Class II estimations finished.")
 
-    P_TO = class_II_results.P_TO_KW
+    P_TO = class_II_results.P_takeoff_KW
     P_climb = class_II_results.mission.P_climb_shaft/1000.0
     P_cruise = class_II_results.mission.P_cruise_shaft/1000.0
-    P_APP = 0.0
+    P_APP = class_II_results.P_approach_KW
     P_OEI = class_II_results.weight.P_TO_OEI_KW
     b = class_II_results.Wing_span
 
-    mass, cooling_requirements = perform_complete_electrical_sizing(P_TO, P_climb, P_cruise, P_APP, P_OEI, show=True)
+    mass, cooling_requirements = perform_complete_electrical_sizing(P_TO, P_climb, P_cruise, P_APP, P_OEI, b, show=True)
