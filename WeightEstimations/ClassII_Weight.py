@@ -114,7 +114,7 @@ class ClassII_Input:
     t_reserve: float = 0.0
     bt_charging_ratio: float = 0.0
     P_opt: float = 0.0
-    mass_margin: float = 1.1
+    mass_margin: float = 1.05
     aero_parameters: dict = field(default_factory=dict)
 
 
@@ -499,7 +499,7 @@ class weightEstimation:
             g.k_st=1+g.const_k_st*((g.b*np.cos(g.sweep_LE))**3)/W_des*((g.V_dive/100)/g.t_r)**2*np.cos(g.sweep_half)
             W_basic=(g.const_wing*k_no*k_lam*g.k_e*g.k_uc*g.k_st*\
         ((g.k_b*g.n_ult*(W_des-0.8*W_W_init))**0.55)*\
-            (g.b**1.675)*(g.t_r**(-0.45))*np.cos(g.sweep_half)**(-1.325))*1.5
+            (g.b**1.675)*(g.t_r**(-0.45))*np.cos(g.sweep_half)**(-1.325))*1.2
         elif g.N_propellers<=2:
             g.k_e=0.95
             g.k_st=1
@@ -681,11 +681,11 @@ class weightEstimation:
                         #mass = pipe_len * comp[comp_key].mass_per_length * 2 #double the mass for 4 engines since more complex piping system with more valves and pumps needed
                         mass=320.98                     #big estimate
                 elif comp_key == "open_fan" and propeller_count<2 and g.N_propellers>2:
-                        mass = g.max_Thrust_prop_inner / comp[comp_key].thrust_density *1.05 
+                        mass = g.max_Thrust_prop_inner / comp[comp_key].thrust_density *1.1
                         propeller_count+=1
                         fan_mass+=mass
                 elif comp_key == "open_fan" and propeller_count>=2 and g.N_propellers>2:
-                        mass = g.max_Thrust_prop_outer / comp[comp_key].thrust_density*1.05
+                        mass = g.max_Thrust_prop_outer / comp[comp_key].thrust_density*1.1
                         fan_mass+=mass
                 elif comp_key == "open_fan" and g.N_propellers<=2:
                         mass = g.max_Thrust_prop_inner / comp[comp_key].thrust_density 
