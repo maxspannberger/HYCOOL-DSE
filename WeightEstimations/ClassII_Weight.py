@@ -591,7 +591,7 @@ class weightEstimation:
             3: {
                 "components": [
                     "gt_hex", "gt_hex", "hts_gen", "hts_gen", "ac_dc", "ac_dc",
-                    "dc_ac", "dc_ac","dc_ac","dc_ac", "hts_pow", "hts_pow","hts_pow","hts_pow","open_fan","open_fan","open_fan","open_fan", "cable", "pipe",
+                    "dc_ac", "dc_ac","dc_ac","dc_ac", "hts_pow", "hts_pow","hts_pow","hts_pow","open_fan","open_fan","open_fan","open_fan", "cable", "pipe+valves+pumps",
                 ],
                 "lengths": {"pipe": 142.0, "cable": 20.0},   #change cable length to 30 meters after iteration to account for more cables needed for DC Bus
             },
@@ -601,7 +601,7 @@ class weightEstimation:
             component_lists = { 3: {
                 "components": [
                     "gt_hex", "gt_hex", "hts_gen", "hts_gen", "ac_dc", "ac_dc",
-                    "dc_ac", "dc_ac", "hts_pow", "hts_pow","open_fan","open_fan", "cable", "pipe",
+                    "dc_ac", "dc_ac", "hts_pow", "hts_pow","open_fan","open_fan", "cable", "pipe+valves+pumps",
                 ],
                 "lengths": {"pipe": 102.0, "cable": 5.0},   #change cable length to 30 meters after iteration to account for more cables needed for DC Bus
             },
@@ -621,10 +621,10 @@ class weightEstimation:
         propeller_count=0
 
         for comp_key in component_list:
-            if comp_key not in comp:
-                raise ValueError(f"Component '{comp_key}' not found in component dict")
+            #if comp_key not in comp:
+                #raise ValueError(f"Component '{comp_key}' not found in component dict")
             
-            elif config == 3:
+            if config == 3:
                 efficiency = GT_GT_efficiency(comp=comp,t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
                 efficiency2 = GT_BAT_efficiency(comp=comp,t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
                 # Similar logic for config 3 but with different component assignments
@@ -644,8 +644,13 @@ class weightEstimation:
                                           g.P_TO_OEI_KW)
                 if comp_key == "cable":
                     mass = cable_len * comp[comp_key].mass_per_length
-                elif comp_key == "pipe":
-                    mass = pipe_len * comp[comp_key].mass_per_length
+                elif comp_key == "pipe+valves+pumps":
+                    if g.N_propellers>2:
+                        #mass = pipe_len * comp[comp_key].mass_per_length
+                        mass=192.6+40
+                    else:
+                        #mass = pipe_len * comp[comp_key].mass_per_length * 2 #double the mass for 4 engines since more complex piping system with more valves and pumps needed
+                        mass=120+40                     #big estimate
                 elif comp_key == "open_fan" and propeller_count<2 and g.N_propellers>2:
                         mass = g.max_Thrust_prop_inner / comp[comp_key].thrust_density *1.1 
                         propeller_count+=1
