@@ -389,7 +389,7 @@ class TailSizingEstimator:
             S_h, S_h_drv = S_h_stab, "stability (V_h)"
         elif S_h_ctrl >= S_h_stab and S_h_ctrl >= S_h_scissor:
             S_h, S_h_drv = S_h_ctrl, "control (elevator)"
-        else:
+        elif S_h_scissor >= S_h_stab and S_h_scissor >= S_h_ctrl:
             S_h, S_h_drv = S_h_scissor, "scissor plot"
 
         S_v_stab = self._S_v_stability()

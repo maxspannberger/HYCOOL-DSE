@@ -168,8 +168,8 @@ class ScissorPlotInput:
         # Current config does not store nacelle diameter and nacelle longitudinal arm separately.
         # bn defaults to propfan disk diameter. ln defaults to 0, meaning no nacelle a.c. shift.
         # Replace these if you have better nacelle geometry.
-        bn_use = float(bn) if bn is not None else (cfg.D_propfan/2)
-        ln_use = float(ln) if ln is not None else 1
+        bn_use = float(bn) if bn is not None else (cfg.D_propfan/3)
+        ln_use = float(ln) if ln is not None else 2
 
         sweep50 = float(result.Wing_sweep_half)
         sweep25 = float(result.Wing_sweep_quarter)
