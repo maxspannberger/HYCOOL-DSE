@@ -29,6 +29,11 @@ class AircraftConfig:
     sweep_tc:       float
     Loading:        float
     taper:          float          # lambda = c_tip / c_root
+    CL_max:         float          # maximum lift coefficient, clean configuration
+    CL_alpha0_clean: float         # lift curve slope, clean configuration
+    Cm_alpha0_clean: float         # moment curve slope, clean configuration
+    alpha_CL0_clean: float         # angle of attack for zero lift, clean configuration
+    t_c_flap:       float          # flap thickness-to-chord ratio, assumed for now
 
     # --- Horizontal tail -----------------------------------------------
     S_h_initial:    float
@@ -37,6 +42,7 @@ class AircraftConfig:
     sweep_h_half:   float
     sweep_h_tc:     float
     l_h:            float
+    S_h_frn:        float
 
     # --- Vertical tail -------------------------------------------------
     S_v_initial:    float
@@ -52,9 +58,14 @@ class AircraftConfig:
     # --- Fuselage -------------------------------------------------------
     l_f:            float
     b_f:            float
+    b_f_i:          float
     h_f:            float
     S_wet_f:        float
     l_t:            float
+
+    l_n:            float       #nose lenght
+    l_c:            float       #cabin lenght
+    l_tc:         float       #tail cone length
 
     # --- H2 tank --------------------------------------------------------
     # Hump-back: tank rides on top of fuselage (747-style); fuselage
@@ -63,10 +74,16 @@ class AircraftConfig:
     hump_back:      bool
     rho_LH2_eff:    float          # kg/m^3, effective LH2 density in tank
 
+    wall_thickness: float
+    divider_thickness: float
+    diameter_margin: float
+
+
     # --- Flight envelope -----------------------------------------------
     altitude_cruise: float
     M_cruise:        float
     V_cruise:        float
+    V_cruise_EAS:    float
     V_dive:          float
     V_stall:         float
 
@@ -88,9 +105,11 @@ class AircraftConfig:
 
     # --- Propulsion -----------------------------------------------------
     T_TO_per_engine:  float = 0.0
-    y_engine:         float = 0.0
+    y_engine_2:       float = 0.0
+    y_engine_4:       float = 0.0
     W_propulsion:     float = 0.0
     N_engines:        int   = 2
+    N_propellers:      int   = 4
     D_propfan:        float = 4.0
     eta_static_loss:  float = 0.80
     eta_prop_V2:      float = 0.70
@@ -120,10 +139,49 @@ class AircraftConfig:
     # --- Mission masses -------------------------------------------------
     W_payload:        float = 0.0
     W_fixed:          float = 0.0
+    W_fixed_frn:      float = 0.0
 
     # --- Iteration control ---------------------------------------------
     MTOW_initial:     float = 0.0
 
+    # --- Layout & Passengers ---------------------------------------------
+    PaxWeight:          float = 0.0
+    Pax_count:          int = 0
+    Max_fwd_cargo_vol:  float = 0.0                   
+    Max_aft_cargo_vol:  float = 0.0         
+    Seats_abreast:      int = 0       
+    LEMAC:              float = 0.0
+    lfn:                float = 0.0
+    hh:                 float = 0.0
+
+    FirstWindow:        float = 0.0
+    LastWindow:         float = 0.0
+
+    OEW_cg:             float = 0.0
+    FUEL_cg:            float = 0.0
+    AftCargo_cg:        float = 0.0
+    FwdCargo_cg:        float = 0.0
+
+    #--- cg_breakdown --------------------------------------------------
+    x_cg_htail:         float = 0.0
+    x_cg_vtail:         float = 0.0
+    x_cg_fus:           float = 0.0
+    x_cg_lg_nose:       float = 0.0
+    x_cg_lg_main:       float = 0.0
+    x_cg_sc:            float = 0.0
+    x_cg_engine:        float = 0.0
+
+    cg_location_fus:     float = 0.0                    # distance from fus. nose to fus cg, as % of fus length
+    cg_location_tail_c:  float = 0.0                    # % of chord from LE 
+    cg_location_tail_b:  float = 0.0                    # % of semi-span from root chord
+    cg_surf_control:     float = 0.0                    # 100% of MAC from LEMAC
+    cg_location_engines: float = 0.0                    # [m] distance from LEMAC to cg of power units on wings
+    
+    OEW_target_rel:      float = 0.0
+
+    # cg range from loading diagram
+    xcg_lower:           float = 0.0
+    xcg_upper:           float = 0.0
 
     # ---------- Derived helpers ---------------------------------------
     @property
@@ -145,6 +203,7 @@ def default_q400_hycool() -> AircraftConfig:
     MAC_v       = 3.5                           # Referenced
     WingLoading_Target = 3810                   # Class I Value
     ClassI_MTOW = 31_729.92                     # Class I Value
+    b_init                = 28.58,               # Class I Value
     return AircraftConfig(
         # Wing
         S_ref            = ClassI_MTOW * 9.80665 / WingLoading_Target,
@@ -152,12 +211,19 @@ def default_q400_hycool() -> AircraftConfig:
         AR               = 10,                  # Class I Value
         MAC              = 2.86,                # Class I Value
         c_root           = c_root,
-        tc_root          = 0.12,                # Referenced
+        tc_root          = 0.10,                # Referenced
         tc_mean          = 0.11,                # Referenced
         sweep_half       = np.deg2rad(23.0),    # Referenced
         sweep_tc         = np.deg2rad(24.0),    # Referenced
         Loading          = WingLoading_Target,  # Class I Value
         taper            = 0.4,                 # lambda, typical transport
+
+        #aerodynamic values for chosen airfoil mix, 64A410 for the root and SC(2)-0612 for the tip
+        CL_max=1.50,                             # taken from diagram, clean configuration
+        CL_alpha0_clean=0.265,                   # according to XFLR5 data for the chosen airfoil
+        Cm_alpha0_clean=-0.265,                   # according to XFLR5 data for the chosen airfoil
+        alpha_CL0_clean=-3.24*np.pi/180,                       # according to XFLR5 data for the chosen airfoil
+        t_c_flap=0.12,                # Assumed, typical for transport
 
         # Horizontal tail
         S_h_initial      = 24,                  # Referenced
@@ -165,14 +231,15 @@ def default_q400_hycool() -> AircraftConfig:
         tc_h             = 0.12,                # Referenced
         sweep_h_half     = np.deg2rad(22.0),    # Referenced
         sweep_h_tc       = np.deg2rad(20.0),    # Referenced
-        l_h              = 17.5,                # Referenced
+        l_h              = 21.2,                # Referenced
+        S_h_frn          = 0.23,                 # read from scissor plot
 
         # Vertical tail
         MAC_v            = MAC_v,               
         tc_v             = 0.12,                # Referenced
         sweep_v_half     = np.deg2rad(33.0),    # Referenced
         sweep_v_tc       = np.deg2rad(35.0),    # Referenced
-        l_v              = 17.5,                # Referenced
+        l_v              = 19.7,                # Referenced
         b_v_initial      = b_v_initial,         
         t_tail           = False,               # Design Decision
         h_h              = b_v_initial,
@@ -181,19 +248,30 @@ def default_q400_hycool() -> AircraftConfig:
         # Fuselage
         l_f              = 35.05,               # Class I Value
         b_f              = 2.9,                 # Class I Value
+        b_f_i            = 2.7,                 # inner fus diameter
         h_f              = 2.9,                 # Class I Value
         S_wet_f          = 298.15,              # Class I Value
         l_t              = 17.5,                # Referenced
+
+        l_n              = 5.08,                # nose lenght, from class I
+        l_c              = 22,                  # cabin lenght, from class I
+        l_tc             = 7.98,                # tail cone length, from class I
 
         # H2 tank
         hump_back        = True,               # Design Decision
         rho_LH2_eff      = 70.85,               # kg/m^3, LH2 at boiling point
 
+        wall_thickness   = 0.01,                #m
+        divider_thickness = 0.02,               #m
+        diameter_margin  = 0.8,
+
         # Flight envelope
-        altitude_cruise  = 7_620,               # From Mission Definition
-        M_cruise         = 0.7,                 # From Mission Definition
-        V_cruise         = 0.7 * 296.0,         # From Mission Definition
-        V_dive           = 213.5,               # --- TBD ---
+        altitude_cruise  = 6_096,               # From Mission Definition 7_620 old was FL250 
+        M_cruise         = 0.68,                # From Mission Definition
+        V_cruise         = 0.68 * 316,          # From Mission Definition 309.7 old for FL250
+        V_cruise_EAS     = 140.9706457,         # Equivalent cruise speed, check scissor plot excel for calc
+        V_dive           = 179.7978853,         # from CS25 CS 25.335, check scissor plot excel, 176.2133072 old
+
         V_stall          = 48.6,                # Class I Value
 
         # Mission
@@ -211,9 +289,11 @@ def default_q400_hycool() -> AircraftConfig:
 
         # Propulsion
         T_TO_per_engine  = 20_000.0,            # Initial Assumption
-        y_engine         = 5.0,                 # Assumed
+        y_engine_2       = 7.0,                 # Assumed
+        y_engine_4       = 5.0,                 # Assumed
         W_propulsion     = 2_500.0,             # Assumed
         N_engines        = 2,                   # Class I Value
+        N_propellers      = 4,                   # Class I Value
         D_propfan        = 4.0,                 # Assumed
         eta_static_loss  = 0.80,                # Assumed
         eta_prop_V2      = 0.70,                # Assumed
@@ -242,7 +322,50 @@ def default_q400_hycool() -> AircraftConfig:
         # Mission masses
         W_payload        = 10_000.0,            # Class I Value
         W_fixed          = 5_500.0,             # Torenbeek
+        W_fixed_frn      = 0.14,                # Torenbeek p. 287 14% of MTOW
 
         # Iteration
         MTOW_initial     = ClassI_MTOW,         # Class I Value
+
+        #Layout & Passengers
+        PaxWeight           = 84,                   # EASA
+        Pax_count           = 100,                  # Requirement
+        Max_fwd_cargo_vol   = 6,                    # Fwd cargo hold volume, placeholder for now
+        Max_aft_cargo_vol   = 4,                    # Aft cargo hold volume, placeholder for now
+        Seats_abreast       = 4,                    # Class I
+
+        FirstWindow         = 6.74,                 # Distance nose tip to first window [m], placeholder for now
+        LastWindow          = 27.08,                # Distance nose tip to last window [m], placeholder for now
+
+        LEMAC               = 15.4,                 # Distance nose tip to LEMAC [m], placeholder for now
+        lfn                 = 14.35,                 # Distance nose tip to LE wing root LEMAC - 1.05
+        hh                  = 4,                    # Normal distance from wing plane to tail plane, placeholder for now
+
+        OEW_cg              = 16.94,                # Distance nose tip to OEW CG [m], placeholder for now
+        FUEL_cg             = 28.6,                   # Distance nose tip to Fuel CG [m], placeholder for now
+        AftCargo_cg         = 25,                   # Distance nose tip to Aft Cargo CG [m], placeholder for now
+        FwdCargo_cg         = 9,                   # Distance nose tip to Fwd Cargo CG [m], placeholder for now
+    
+        #cg Breakdown - VERY rough guesses for now
+        x_cg_htail          = 30,
+        x_cg_vtail          = 30,
+        x_cg_fus            = 18,
+        x_cg_lg_nose        = 5,
+        x_cg_lg_main        = 14,
+        x_cg_sc             = 15,
+        x_cg_engine         = 12.5,
+
+        # torenbeek cg estimation values, table 8-15 p.294
+        cg_location_fus     = 0.41,                 # distance from fus. nose to fus cg, as % of fus length
+        cg_location_tail_c  = 0.42,                 # % of chord from LE at 0.38 span
+        cg_location_tail_b  = 0.38,                 # % of semi-span from root chord
+        cg_surf_control     = 1,                    # 100% of MAC from LEMAC
+
+        #cg_location_engines = 0.5,                  # [m] from LEMAC to cg of the power units on the wing
+        OEW_target_rel      = 0.49,                 # % of MAC, from LEMAC. Value for config 3 (wing mtd engines) from Torenbeek p.300 (range is 0.2-0.25)
+
+        # cg range from loading diagram
+        xcg_lower           = 0.262,
+        xcg_upper           = 0.609,
+    
     )

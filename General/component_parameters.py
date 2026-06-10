@@ -46,6 +46,12 @@ class HeatExchangeComponent(Component):
         self.mass_increase = mass_increase
         self.efficiency_increase = efficiency_increase
 
+class ThrustComponent(Component):
+    # class for power providing components
+    def __init__(self, name, thrust_density,trl):
+        super().__init__(name, trl)
+        self.thrust_density = thrust_density        # thrust per engine mass [kN/kg] estimation from propfan estimate and estimating a 20% decrease in mass for open fan
+
 # =============================================================================
 # Define a dictionary containing the data
 # =============================================================================
@@ -74,5 +80,9 @@ component_params = {
 
     # Heat Exchangers
     "hex_gt": HeatExchangeComponent("HEX for Gas Turbine", 4, 4.5, 3),
-    "hex_fc": HeatExchangeComponent("HEX for Fuel Cell", 35, 95, 4)
+    "hex_fc": HeatExchangeComponent("HEX for Fuel Cell", 35, 95, 4),
+
+    # Open Fan Estimation
+    # "open_fan": ThrustComponent("Open Fan Propellers",43.17, 6)
+    "open_fan": ThrustComponent("Open Fan Propellers",80.2, 6)
 }

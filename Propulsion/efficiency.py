@@ -63,7 +63,7 @@ def get_throttle(r):
     b = 1.25318
     d = 0.37341
     
-    throttle = 1/r * (1 - (a + b*r + (d-1)*r**2) / (3*a + 2*b*r + d*r**2))
+    throttle = 1/r
     eff_factor = a*r**2 + b*r + d
     
     return throttle, eff_factor
@@ -415,12 +415,13 @@ def GT_GT_efficiency(
     E_cruise_out = P_cruise * t_cruise
 
     # energy provided
-    E_climb_in = P_gt_climb * t_climb
-    E_cruise_in = P_gt_cruise * t_cruise
+    E_climb_in = P_gt_climb * t_climb / climb_eff_factor
+    E_cruise_in = P_gt_cruise * t_cruise / cruise_eff_factor
     
     # efficiencies
-    climb_eff = gt_eff * climb_eff_factor
-    cruise_eff = gt_eff * cruise_eff_factor
+    climb_eff = E_climb_out/E_climb_in
+    cruise_eff = E_cruise_out/E_cruise_in
+
     gt_gt_eff = (E_climb_out + E_cruise_out) / (E_climb_in + E_cruise_in)
 
     if show:
@@ -553,11 +554,11 @@ if __name__ == "__main__":
     cable_efficiency = 1 # change later
     t_climb, t_cruise, P_climb, P_cruise = return_wanted_params()
 
-    results_GT_BAT = GT_BAT_efficiency(comp=comp_param, t_charge=t_charge, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
-    # print(results_GT_BAT)
+    # results_GT_BAT = GT_BAT_efficiency(comp=comp_param, t_charge=t_charge, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
+    # # print(results_GT_BAT)
 
-    results_FC_BAT = FC_BAT_efficiency(comp=comp_param, t_charge=t_charge, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
-    # #print(results_FC_BAT)
+    # results_FC_BAT = FC_BAT_efficiency(comp=comp_param, t_charge=t_charge, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
+    # # #print(results_FC_BAT)
 
     results_GT_GT = GT_GT_efficiency(comp=comp_param, cable_efficiency=cable_efficiency, show=True,t_climb=t_climb, t_cruise=t_cruise, P_climb=P_climb, P_cruise=P_cruise)
     # #print(results_GT_GT)
