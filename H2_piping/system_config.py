@@ -1,0 +1,50 @@
+from dataclasses import dataclass
+
+# =============================================================================
+# Define the global configuration dataclass for the fluid properties and constants
+# =============================================================================
+@dataclass
+class H2SystemConfig:
+    # Global simulation configurations
+    fluid: str = 'Hydrogen'                  # FLUID used for simulation
+    phase: str = 'cruise'
+    max_error: float = 10                    # SOLVER convergence treshhold
+    tank_p: float = 500000                   # TANK pressure [Pa]
+    tank_T: float = 15                       # TANK temperature [T]
+    tank_d: float = 0.015                     # TANK outlet diameter [m]
+    T_amb: float = 317                       # AMBIENT temperature [K]
+    m_dot: float = 0.09                      # TOTAL mass flow [kg/s]
+    
+    # Solver configuration parameters
+    divergence_penalty: float = 1e9          # penalty value if the numerical solver diverges
+    tank_max_gas_frac: float = 0.01          # gas fraction limit before the incompressibility assumption breaks
+    
+    # MLI insulation properties (Lockheed constants)
+    pipe_mli_cs: float = 1.93 * 10**-6       # MLI conductivity coefficient [W/(m*K^(3.63))]
+    pipe_mli_cr: float = 3.88 * 10**-10      # MLI radiation coefficient [W/(m^2*K^(4.67))]
+    pipe_mli_cg: float = 5.5 * 10**4         # MLI gas conduction coefficient [W/(m^2*Torr*K^(0.52))]
+    pipe_mli_eps: float = 0.03               # MLI emissivity, typical value for aluminized Mylar
+    
+    # Component setup placeholders
+    tank_initial_u: float = 0.0              # flow velocity inside the storage tank [m/s]
+    cool_dummy_dp: float = 1000.0               # placeholder pressure drop for active cooling [Pa]
+
+    # Constants for hts
+    eps_hts: float = 0.0015*10**-3           # internal surface roughness for cooling lines [m]
+    A_slot: float = 0.0092347                # slot cross sectional area [m^2]
+    N_slots: float = 24                      # number of slots of hts components
+    L: float = 0.2253                        # stator length
+    VF: float = 0.35                         # stator void factor
+
+
+    # Default baseline geometric parameters for pipe segments
+    pipe_default_d: float = 0.012             # default baseline inner pipeline diameter [m]
+    pipe_segment_length: float = 0.1         # default baseline segment length [m]
+    pipe_default_N: int = 10                 # default baseline number of MLI layers applied
+    pipe_default_N_bar: float = 5.5          # default baseline insulation layer density [layers/cm]
+    pipe_default_P_mli: float = 10**(-4)     # default baseline residual gas pressure value [Torr]
+    pipe_default_eps: float = 2e-6           # default baseline structural pipe inner roughness [m]
+    
+    # Pump parameters
+    pump_efficiency: float = 0.75            # default pump isentropic efficiency
+    

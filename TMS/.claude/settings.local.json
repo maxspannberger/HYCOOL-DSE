@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(pip install CoolProp)",
+      "Bash(python -c \"from hycool_pipe.cases.cch2 import CcH2Config, run_analysis; run_analysis\\(\\)\")",
+      "Bash(python -c \"from hycool_pipe.cases.lh2 import LH2Config, run_analysis; run_analysis\\(\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(python -c \"from hycool_pipe.cases.cch2 import run_analysis; run_analysis\\(\\)\")",
+      "Bash(python -c \"from hycool_pipe.cases.lh2 import run_analysis; run_analysis\\(\\)\")",
+      "Bash(python -m pytest hycool_pipe/tests/ -v)",
+      "Bash(pip install *)",
+      "Bash(python -m hycool_pipe lh2 --quiet --output lh2_results.json)",
+      "Bash(python -m hycool_pipe cch2 --quiet --output cch2_results.json)",
+      "Bash(python -m hycool_pipe lh2 --quiet --output lh2_results.json --plot)",
+      "Bash(python -m hycool_pipe cch2 --quiet --output cch2_results.json --plot)",
+      "Bash(python -m hycool_pipe lh2 --m-dot 0.05 --L 20 --quiet)",
+      "Bash(python -m hycool_pipe --help)",
+      "Bash(python -m hycool_pipe lh2 --m-dot 0.05 --L 20)",
+      "Bash(ls \"C:\\\\Users\\\\franc\\\\OneDrive - Delft University of Technology\\\\TU Delft\\\\3rd year\\\\DSE\\\\HYCOOL-DSE\\\\\")",
+      "Bash(python -m hycool_pipe lh2 --quiet)",
+      "Bash(python -m hycool_pipe cch2 --quiet)",
+      "Bash(python -m pytest TMS/hycool_pipe/tests/ -q)",
+      "Bash(python -m hycool_pipe)",
+      "Bash(python TMS/mainTMS.py)",
+      "Bash(Remove-Item -Force \"C:\\\\Users\\\\franc\\\\OneDrive - Delft University of Technology\\\\TU Delft\\\\3rd year\\\\DSE\\\\HYCOOL-DSE\\\\hycool_lh2.png\" \"C:\\\\Users\\\\franc\\\\OneDrive - Delft University of Technology\\\\TU Delft\\\\3rd year\\\\DSE\\\\HYCOOL-DSE\\\\hycool_cch2.png\" \"C:\\\\Users\\\\franc\\\\OneDrive - Delft University of Technology\\\\TU Delft\\\\3rd year\\\\DSE\\\\HYCOOL-DSE\\\\lh2_results.png\" \"C:\\\\Users\\\\franc\\\\OneDrive - Delft University of Technology\\\\TU Delft\\\\3rd year\\\\DSE\\\\HYCOOL-DSE\\\\cch2_results.png\" \"C:\\\\Users\\\\franc\\\\OneDrive - Delft University of Technology\\\\TU Delft\\\\3rd year\\\\DSE\\\\HYCOOL-DSE\\\\lh2_results.json\" \"C:\\\\Users\\\\franc\\\\OneDrive - Delft University of Technology\\\\TU Delft\\\\3rd year\\\\DSE\\\\HYCOOL-DSE\\\\cch2_results.json\" -ErrorAction SilentlyContinue)",
+      "Bash(Write-Host \"done\")",
+      "Bash(rm -f \"C:/Users/franc/OneDrive - Delft University of Technology/TU Delft/3rd year/DSE/HYCOOL-DSE/hycool_lh2.png\" \\\\ *)",
+      "WebSearch",
+      "WebFetch(domain:arxiv.org)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:ntrs.nasa.gov)",
+      "WebFetch(domain:iopscience.iop.org)",
+      "WebFetch(domain:matthewwturner.com)"
+    ]
+  }
+}

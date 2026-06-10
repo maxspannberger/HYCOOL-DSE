@@ -16,9 +16,9 @@ from General.component_parameters import component_params as comp_params
 
 LHV_H2 = 120  # lower heating value of hydrogen [MJ/kg]
 
-T_start = 20.3
+T_start = 15
 T_use_fc = 433
-T_use_gt = 318.9
+T_use_gt = 180
 
 ###############################################################################
 # Cooling and piping parameters
@@ -375,7 +375,7 @@ def heat_absorption(power_kw: float, system: str, sp_work_mj_per_kg: float = LHV
     # Mass flow rate of hydrogen (kg/s) needed to supply the required power.
     # 1 kW = 1 kJ/s, so dividing by sp_kj_per_kg gives kg/s.
     m_dot = power_input_kw / sp_kj_per_kg
-
+    print(m_dot)
     # Determine the enthalpy rise per kilogram based on the component type.
     if system == "gt":
         delta_h = H_VAP + CP_GAS * (T_use_gt - T_start)
