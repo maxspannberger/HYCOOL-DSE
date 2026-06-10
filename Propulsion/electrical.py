@@ -9,7 +9,7 @@ sys.path.append(str(root))
 
 from General.component_parameters import component_params as comp_params
 from WeightEstimations.Aircraft_Config import default_q400_hycool
-from WeightEstimations.mainClassII import run_class_ii
+#from WeightEstimations.mainClassII import run_class_ii
 
 
 def get_cable_region_powers(component, positions, previous, b=1.0):

@@ -397,6 +397,8 @@ def run_class_ii(
             P_max_KW = P_max_kw,
             P_climb_KW=P_climb_kW,
             P_reserve_KW=P_reserve_kw,
+            P_approach_KW=P_approach_kW,
+            P_takeoff_KW=P_takeoff_kW,
             max_Thrust_prop_inner = pwr_bd.T_static_per_prop_inner,
             max_Thrust_prop_outer = pwr_bd.T_static_per_prop_outer,
             W_fuel = W_fuel,
@@ -518,7 +520,7 @@ def run_class_ii(
     print(pwr_bd.gamma_min_engine)
 
     cgwingpos = b / 2 * 0.35
-    turbinewingpos = cfg_updated.b_f / 2 *0.5       #inner engine position chosen at half of half span
+    turbinewingpos = cfg_updated.b / 2 *0.5       #inner engine position chosen at half of half span
 
     # c(y) = c_root * [1 - (1 - lambda) * 2y/b] for a trapezoidal wing
     taper_slope = 1.0 - taper
@@ -534,6 +536,7 @@ def run_class_ii(
     print(f"MAC chord: {MAC:.3f} m, corresponding spanwise position: {machspanpos:.3f} m")
     print(f"CG chord position: {chordatcgpos:.3f} m, corresponding spanwise position: {cgwingpos:.3f} m")
     print(f"Turbine chord position: {turbinechord:.3f} m, corresponding spanwise position: {turbinewingpos:.3f} m")
+    print(f"Length from the tank to the quarter chord of the root: {cfg_updated.FUEL_cg-L_tank/2-cfg_updated.lfn+0.25*c_root:.3f} m")
 
 
 
@@ -618,9 +621,9 @@ def find_optimal_cl_mach(cfg: AircraftConfig, force_recompute: bool = False) -> 
     M_cruise=0.7
     sweep_rows=[]
     iterations=0
-    while M_cruise>=0.59:
+    while M_cruise>=0.67:
         factor=0.01
-        cfg_updated = replace(cfg, M_cruise=M_cruise)
+        cfg_updated = replace(cfg, M_cruise=M_cruise,V_cruise=M_cruise*309.7)
         result = run_class_ii(cfg_updated,comp=comp_params, tol=1.0, max_iter=100, verbose=False)
         value = cfg_updated.M_cruise*result.drag.CL_cruise/result.drag.CD_total
         CL_cruise = result.drag.CL_cruise
@@ -924,6 +927,6 @@ if __name__ == "__main__":
     )
     print(Panel(savings_text, title="[bold cyan]Fuel, Cost & MTOW Impact[/bold cyan]", border_style="cyan", expand=False))
 
-    #get_optimal_cl_mach(cfg, force_recompute=True)
+    # get_optimal_cl_mach(cfg, force_recompute=True)
 
     print(result1.P_approach_KW)
