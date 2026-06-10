@@ -117,6 +117,8 @@ class ClassIIResult:
     P_max_KW: float = 0.0
     P_climb_KW: float = 0.0
     P_reserve_KW: float = 0.0
+    P_approach_KW: float = 0.0
+    P_takeoff_KW: float = 0.0
 
     t_climb: float = 0.0
     t_cruise: float = 0.0
@@ -161,6 +163,7 @@ class ClassIIResult:
             f"Cruise L/D: [bold]{self.L_over_D:.2f}[/bold]\n"
             f"Climb Shaft Power: {self.mission.P_max/1000000:.2f} MW\n"
             f"Max Shaft Power: {self.power.P_from_CS25_121/1000000:.2f} MW\n"
+            f"Takeoff Power: {self.P_takeoff_KW:.2f} kW\n"
             f"Static Thrust/Eng: {self.power.T_static_per_engine/1000:.2f} kN"
         )
 
@@ -298,6 +301,7 @@ def run_class_ii(
     bt_charging_ratio = 0.0
     it = 0
     iteration_log: list[dict] = []
+    CL_approach=1.53            #initial guess for the approach CL
 
     if config is None:
         config = 3
@@ -335,7 +339,7 @@ def run_class_ii(
         drag_bd = DragEstimation(drag_inp).compute()
 
         # Mission power -> LH2 fuel mass
-        mis_bd = MissionPower(cfg_iter, drag_bd, config=config,comp=comp, MTOW=MTOW, S_ref=S_ref).compute()
+        mis_bd = MissionPower(cfg_iter, drag_bd, config=config,comp=comp, MTOW=MTOW, S_ref=S_ref,CL_approach=CL_approach).compute()
         M_landing = MTOW - (
             mis_bd.m_LH2_cruise
             + mis_bd.m_LH2_climb
@@ -345,6 +349,7 @@ def run_class_ii(
         P_max_kw = mis_bd.P_max / 1000
         P_cruise_kw = mis_bd.P_cruise_shaft / 1000
         P_reserve_kw = mis_bd.P_reserve_shaft / 1000
+        P_approach_kW = mis_bd.P_app_shaft / 1000
         t_cruise = mis_bd.t_cruise
         t_climb = mis_bd.t_climb
         t_reserve = mis_bd.t_reserve
@@ -355,6 +360,7 @@ def run_class_ii(
         P_TO_OEI_kW = pwr_bd.P_total_OEI / 1000.0
         # P_climb_kW = pwr_bd.P_from_climb / 1000.0
         P_climb_kW = mis_bd.P_climb_shaft / 1000
+        P_takeoff_kW = pwr_bd.P_takeoff / 1000
 
         cfg_tail = replace_T_TO(cfg_iter, pwr_bd.T_static_per_engine)
 
@@ -461,6 +467,7 @@ def run_class_ii(
         aero_parameters=compute_additional_aerodynamic_parameters(cfg_iter, drag_bd, mis_bd, pwr_bd,sweep_half,MAC,MTOW,\
                                                                   S_ref,b,taper,c_root,sweep_quarter,sweep_LE,verbose=False)
 
+        CL_approach = aero_parameters["CL_approach"]
         if delta < tol:
             converged = True
             break
@@ -573,6 +580,8 @@ def run_class_ii(
         P_max_KW    = P_max_kw,
         P_climb_KW  = P_climb_kW,
         P_reserve_KW= P_reserve_kw,
+        P_approach_KW = P_approach_kW,
+        P_takeoff_KW = P_takeoff_kW,
         t_climb=t_climb,
         t_cruise=t_cruise,
         Wing_Area=S_ref,
@@ -759,6 +768,7 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig,drag_r
     aero["CD_total"] = drag_result.CD_total
     aero["CL_max_TO"] = power.CL_max_TO
     aero["CL_max_LD"] = CL_max_LD
+    aero["CL_approach"] = CL_max_LD_without_stall
     aero["delta_Cl_max_TO"] = deltaClmax_TO
     aero["delta_Cl_max_LD"] = deltaClmax_LD
     aero["LE_flap_area_wing"] = le_flap_area_wing_ratio
@@ -843,6 +853,7 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig,drag_r
         S_LE=le_flap_area_wing_ratio*Wing_Area,
         taper=Wing_taper,
         MAC=MAC,
+        CL_approach=aero['CL_approach']
 
         
     )
@@ -914,3 +925,5 @@ if __name__ == "__main__":
     print(Panel(savings_text, title="[bold cyan]Fuel, Cost & MTOW Impact[/bold cyan]", border_style="cyan", expand=False))
 
     #get_optimal_cl_mach(cfg, force_recompute=True)
+
+    print(result1.P_approach_KW)

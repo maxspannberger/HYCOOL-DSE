@@ -47,4 +47,5 @@ class H2SystemConfig:
     
     # Pump parameters
     pump_efficiency: float = 0.75            # default pump isentropic efficiency
+    pump_electric_efficiency: float = 0.9    # general efficiency of the pump's electric motor (for power calculations)
     

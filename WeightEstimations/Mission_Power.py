@@ -50,6 +50,7 @@ class MissionFuelBreakdown:
     P_reserve_shaft:  float = 0.0
     P_climb_shaft:    float = 0.0
     P_TO_shaft:       float = 0.0       # reference only
+    P_app_shaft:      float = 0.0      
 
     # Fuel mass flows [kg/s]
     mdot_cruise:      float = 0.0
@@ -124,14 +125,16 @@ class MissionPower:
         MTOW:       float,
         comp:       dict,
         S_ref:      Optional[float] = None,
-        config:     int = 1
+        config:     int = 1,
+        CL_approach: float = None,
     ):
         self.cfg     = cfg
         self.drag    = drag_bd
         self.MTOW    = MTOW
         self.comp    = comp
         self.config   = config
-       
+        self.CL_approach = CL_approach
+
         # S_ref is updated each MTOW iteration via S_ref = MTOW*g/Loading
         self.S_ref   = S_ref if S_ref is not None else cfg.S_ref
 
@@ -179,6 +182,19 @@ class MissionPower:
         P  = (D * V + W * ROC) / self.cfg.eta_prop
         LD = CL / CD
         return P, CL, LD
+    
+    def _shaft_power_approach(
+        self, W: float, V: float, rho: float, ROD: float,
+    ) -> tuple[float, float, float]:
+        """
+        Steady-approach shaft power.  P_prop * eta_prop = D*V + W*ROD.
+        Returns (P_shaft, CL, L/D).
+        """
+        q  = 0.5 * rho * V**2
+        CD = self._polar_CD(self.CL_approach)
+        D  = q * self.S_ref * CD
+        P  = (D * V + W * ROD) / self.cfg.eta_prop
+        return P
 
     def _mdot(self, P_shaft: float) -> float:
         """Convert shaft power to fuel mass flow."""
@@ -235,6 +251,8 @@ class MissionPower:
         t         = cfg.altitude_cruise / ROC
         m         = mdot * t
         return P, mdot, t, m, CL, LD, V_tas
+    
+    
 
     def _takeoff_reference(self) -> float:
         """Climb-out shaft power for reference (not added to fuel)."""
@@ -269,11 +287,18 @@ class MissionPower:
 
         m_TO_taxi = self.cfg.TO_taxi_frac * (m_c + m_cl)
 
+        # Evaluate at midpoint altitude
+        h_mid     = 0.5 * self.cfg.altitude_cruise
+        T, _, rho = isa(h_mid)
+
+        P_app =self._shaft_power_approach(W=self.MTOW-m_TO_taxi-m_c-m_cl,V=self.cfg.V_stall*1.3,rho=rho,ROD=self.cfg.ROD_avg)
+
         return MissionFuelBreakdown(
             P_cruise_shaft  = P_c,
             P_reserve_shaft = P_r,
             P_climb_shaft   = P_cl,
             P_TO_shaft      = P_TO,
+            P_app_shaft     = P_app,
             mdot_cruise     = md_c,
             mdot_reserve    = md_r,
             mdot_climb      = md_cl,

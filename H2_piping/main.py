@@ -270,4 +270,21 @@ if __name__ == "__main__":
     # Execute simulation and display results
     states = solve_system(system, m_dot=c.m_dot, T_amb=c.T_amb)
     print_tree(states)
+    
+    # --- ADDED: Extract and print the final state values ---
+    final_T   = states['T'][-1][-1]
+    final_p   = states['p'][-1][-1]
+    final_rho = states['rho'][-1][-1]
+    final_h   = states['h'][-1][-1]
+
+    print("\n" + "="*50)
+    print("FINAL FLUID STATE AT SYSTEM OUTLET".center(50))
+    print("="*50)
+    print(f"Temperature  :  {final_T:.2f} K")
+    print(f"Pressure     :  {final_p:.2f} Pa  ({final_p/100000:.2f} bar)")
+    print(f"Density      :  {final_rho:.2f} kg/m³")
+    print(f"Enthalpy     :  {final_h:.2f} J/kg")
+    print("="*50 + "\n")
+    # -------------------------------------------------------
+
     plot_states(states)
