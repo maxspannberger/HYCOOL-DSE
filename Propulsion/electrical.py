@@ -417,7 +417,9 @@ def perform_complete_electrical_sizing(P_TO, P_climb, P_cruise, P_APP, P_OEI, b,
     if show:
         print("\nElectrical components sizing complete.")
 
-    total_mass = converter_sizing["total"]["mass"] + cable_results["m"] + APU_results["mass"]
+    APU_mass = APU_results["mass"]
+
+    total_mass = converter_sizing["total"]["mass"] + cable_results["m"]
 
     return total_mass, cooling_requirements_only
 
