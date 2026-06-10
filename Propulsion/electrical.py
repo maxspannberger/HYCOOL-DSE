@@ -27,6 +27,9 @@ U_i = 5e7 # V/m
 mu_r = 2.6 # -
 mu_0 = np.pi*4e-7 # T*m/A
 
+converter_proportions = (0.3, 0.5, 0.2)
+prop_scaling = (0.3 * 0.5 * 0.2) ** (1.0/3.0)
+
 
 def get_cable_region_powers(component, positions, previous, b=1.0):
     comp_powers = {}
@@ -171,6 +174,9 @@ def size_converter(component, powers, comp=comp_params, show=False):
     mass = P_max / comp[component].power_density
     volume = P_max / comp[component].volumetric_density
 
+    base_side_length = volume ** (1.0/3.0)
+    converter_sizes = tuple([base_side_length * l/prop_scaling for l in converter_proportions])
+
     if show:
         print(f"Number of chips: {R_th}")
         print(f"Cruise temperature: {T_J_cruise}")
@@ -186,7 +192,8 @@ def size_converter(component, powers, comp=comp_params, show=False):
         "P_heat": P_heat,
         "P_cool": P_cool,
         "mass": mass,
-        "volume": volume
+        "volume": volume,
+        "sizes": converter_sizes
     }
 
     return results
