@@ -1,4 +1,4 @@
-from math import pi
+from math import pi, cbrt
 
 N_check_valves = 4
 N_shutoff_valves = 8
@@ -30,22 +30,39 @@ print(f"Total weight of valves: {W_valves:.2f} kg")
 
 # PIPE STUFF
 
+pressure = 2.8 * 10 ** 6
+vacuum_thickness = 0.02218  # m
+
+t_inner = (pressure * pipe_diameter) / (2 * (170000000 / 3))
+
+if t_inner < 0.00051:
+    t_inner = 0.00051
+else:
+    t_inner = t_inner
+
+t_outer = cbrt(1 / (3 * 418000)) * (pipe_diameter + 2 * vacuum_thickness)
+
+if t_outer < 0.00051:
+    t_outer = 0.00051
+else:
+    t_outer = t_outer
+
+print(f"Inner thickness: {t_inner * 1000:.2f}[mm]")
+print(f"Outer thickness: {t_outer * 1000:.2f}[mm]")
+
 rho_stainless_steel = 8000  # kg/m^3
 rho_stainless_steel_20_K = 8080  # kg/m^3
 rho_MLI = 21  # kg/m^3, estimated value for MLI insulation
-thickness_inner = 0.00051  # m
-thickness_outer = 0.00055  # m
-vacuum_thickness = 0.02218  # m
 vacuum_boundary_thickness = 0.002  # m
 pipe_length = 142  # m
 
-V_pipe_inner = pi * (((pipe_diameter / 2) + thickness_inner) ** 2 - (pipe_diameter / 2) **2)
+V_pipe_inner = pi * (((pipe_diameter / 2) + t_inner) ** 2 - (pipe_diameter / 2) **2)
 mass_pipe_inner = V_pipe_inner * rho_stainless_steel_20_K
 
-V_pipe_outer = pi * (((pipe_diameter / 2) + thickness_inner + vacuum_thickness + thickness_outer) ** 2 - ((pipe_diameter / 2) + thickness_inner + vacuum_thickness) **2)
+V_pipe_outer = pi * (((pipe_diameter / 2) + t_inner + vacuum_thickness + t_outer) ** 2 - ((pipe_diameter / 2) + t_inner + vacuum_thickness) **2)
 mass_pipe_outer = V_pipe_outer * rho_stainless_steel_20_K
 
-V_MLI = pi * (((pipe_diameter / 2) + thickness_inner + vacuum_thickness - vacuum_boundary_thickness) ** 2 - ((pipe_diameter / 2) + thickness_inner + vacuum_boundary_thickness) **2)
+V_MLI = pi * (((pipe_diameter / 2) + t_inner + vacuum_thickness - vacuum_boundary_thickness) ** 2 - ((pipe_diameter / 2) + t_inner + vacuum_boundary_thickness) **2)
 mass_MLI = V_MLI * rho_MLI
 
 mass_pipe_per_meter = mass_pipe_inner + mass_pipe_outer + mass_MLI
