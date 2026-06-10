@@ -269,8 +269,8 @@ def default_q400_hycool() -> AircraftConfig:
         altitude_cruise  = 6_096,               # From Mission Definition 7_620 old was FL250 
         M_cruise         = 0.68,                # From Mission Definition
         V_cruise         = 0.68 * 316,          # From Mission Definition 309.7 old for FL250
-        V_cruise_EAS     = 140.9706457,         # Equivalent cruise speed, check scissor plot excel for calc
-        V_dive           = 179.7978853,         # from CS25 CS 25.335, check scissor plot excel, 176.2133072 old
+        V_cruise_EAS     = 156.8861269,         # Equivalent cruise speed, check scissor plot excel for calc
+        V_dive           = 196.1076586,         # from CS25 CS 25.335, check scissor plot excel, 176.2133072 old
 
         V_stall          = 48.6,                # Class I Value
 
