@@ -184,6 +184,11 @@ class AircraftConfig:
     xcg_lower:           float = 0.0
     xcg_upper:           float = 0.0
 
+    #nacelle dimensions
+    bn:                float  = 0.0    #m diameter of nacelle
+    nacelle_arm:        float  = 0.0         #m nacelle arm from wing ac -> estimate
+    
+
     # ---------- Derived helpers ---------------------------------------
     @property
     def d_f(self) -> float:
@@ -368,5 +373,9 @@ def default_q400_hycool() -> AircraftConfig:
         # cg range from loading diagram
         xcg_lower           = 0.262,
         xcg_upper           = 0.609,
+
+        #nacelle dimensions
+        bn                  = 0.7,      #m diameter of nacelle
+        nacelle_arm         = 0.5,          #m nacelle arm from wing ac -> estimate
     
     )
