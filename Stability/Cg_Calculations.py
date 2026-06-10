@@ -356,7 +356,7 @@ class CgCalculator:
             ],
             locations=[
                 MAC,
-                0.5 * MAC,
+                0.6 * MAC,
                 location_wing_cg,
                 cg_location_engines,
             ],
