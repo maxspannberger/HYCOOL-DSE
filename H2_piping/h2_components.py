@@ -122,6 +122,7 @@ class Pump:
         self.target_p = target_p      
         self.d = diameter              
         self.efficiency = config.pump_efficiency
+        self.electric_efficiency = config.pump_electric_efficiency
         self.fluid = config.fluid
         self.name = name
 
@@ -173,8 +174,8 @@ class Pump:
         rho2 = CP.PropsSI('D', 'P', p2, 'H', h2, self.fluid)
         frac2= calc_frac(p2, h2, fluid=self.fluid)
         
-        power_W = m_dot * w_real
-        print(f"[{self.name}] Pumping to {p2/100000:.1f} bar. (Power: {power_W/1000:.2f} kW)")
+        power_W = m_dot * w_real / self.electric_efficiency
+        print(f"[{self.name}] Pumping to {p2/100000:.1f} bar. (Power per pump: {power_W/1000:.2f} kW)")
         
         results = {'T':    np.array([T2]), 
                    'p':    np.array([p2]),
