@@ -118,6 +118,7 @@ class ClassIIResult:
     P_climb_KW: float = 0.0
     P_reserve_KW: float = 0.0
     P_approach_KW: float = 0.0
+    P_takeoff_kW: float = 0.0
 
     t_climb: float = 0.0
     t_cruise: float = 0.0
@@ -162,6 +163,7 @@ class ClassIIResult:
             f"Cruise L/D: [bold]{self.L_over_D:.2f}[/bold]\n"
             f"Climb Shaft Power: {self.mission.P_max/1000000:.2f} MW\n"
             f"Max Shaft Power: {self.power.P_from_CS25_121/1000000:.2f} MW\n"
+            f"Takeoff Power: {self.P_takeoff_kW:.2f} kW\n"
             f"Static Thrust/Eng: {self.power.T_static_per_engine/1000:.2f} kN"
         )
 
@@ -358,6 +360,7 @@ def run_class_ii(
         P_TO_OEI_kW = pwr_bd.P_total_OEI / 1000.0
         # P_climb_kW = pwr_bd.P_from_climb / 1000.0
         P_climb_kW = mis_bd.P_climb_shaft / 1000
+        P_takeoff_kW = pwr_bd.P_takeoff / 1000
 
         cfg_tail = replace_T_TO(cfg_iter, pwr_bd.T_static_per_engine)
 
@@ -578,6 +581,7 @@ def run_class_ii(
         P_climb_KW  = P_climb_kW,
         P_reserve_KW= P_reserve_kw,
         P_approach_KW = P_approach_kW,
+        P_takeoff_kW = P_takeoff_kW,
         t_climb=t_climb,
         t_cruise=t_cruise,
         Wing_Area=S_ref,

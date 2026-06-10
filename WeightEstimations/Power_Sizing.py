@@ -56,6 +56,7 @@ class PowerSizingBreakdown:
 
     # Required shaft powers
     P_TO_total:        float = 0.0     # Whole aircraft [W]
+    P_takeoff:         float = 0.0     # Takeoff power requirement [W]
     P_TO_per_engine:   float = 0.0     # Per engine [W]
 
     # Sources
@@ -90,6 +91,7 @@ class PowerSizingBreakdown:
         table.add_section()
         table.add_row("[bold]Required P_TO total[/bold]", f"[bold green]{self.P_TO_total/1000:>10.1f} kW[/bold green]")
         table.add_row("Required P_TO/engine", f"{self.P_TO_per_engine/1000:>10.1f} kW")
+        table.add_row("Takeoff Power", f"{self.P_takeoff/1000:>10.1f} kW")
         table.add_row("CL_max_TO", f"{self.CL_max_TO:.2f}")
 
         detail_table = Table(title="CS-25.121 Details", show_header=True, header_style="bold magenta")
@@ -212,7 +214,10 @@ class PowerSizing:
             T_static_per_prop_inner = T_static_per_prop
             T_static_per_prop_outer = T_static_per_prop
 
+        P_TO= P_total*0.9 # assume 10% margin for TO power requirement over OEI requirement, to be conservative and account for any additional losses at takeoff power setting
+
         return PowerSizingBreakdown(
+            P_takeoff            = P_TO,
             P_TO_total          = P_total,
             P_TO_per_engine     = P_per_eng,
             P_total_OEI         = P_total_OEI,
