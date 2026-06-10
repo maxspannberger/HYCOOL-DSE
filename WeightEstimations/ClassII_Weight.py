@@ -668,14 +668,18 @@ class weightEstimation:
                 if comp_key == "electrical_sys":
                     mass_elec,cool=perform_complete_electrical_sizing(g.P_takeoff_KW,g.P_climb_KW,g.P_cruise_KW,g.P_approach_KW,
                                                                  g.P_TO_OEI_KW, g.b)
-                    mass = mass_elec
+                    if g.N_propellers>2:
+
+                        mass = mass_elec
+                    else:
+                        mass = mass_elec*0.9 #estimate that electrical system is 25% lighter for 2 engines since less complex power distribution system and less components needed
                 elif comp_key == "pipe+valves+pumps":
                     if g.N_propellers>2:
                         #mass = pipe_len * comp[comp_key].mass_per_length
-                        mass=192.6+40
+                        mass=360.98
                     else:
                         #mass = pipe_len * comp[comp_key].mass_per_length * 2 #double the mass for 4 engines since more complex piping system with more valves and pumps needed
-                        mass=120+40                     #big estimate
+                        mass=320.98                     #big estimate
                 elif comp_key == "open_fan" and propeller_count<2 and g.N_propellers>2:
                         mass = g.max_Thrust_prop_inner / comp[comp_key].thrust_density *1.05 
                         propeller_count+=1

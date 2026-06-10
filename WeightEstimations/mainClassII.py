@@ -59,27 +59,6 @@ from rich.table import Table
 
 G = 9.80665
 
-_optimal_cl_mach_cache: dict | None = None
-_optimal_cl_mach_path = Path(__file__).resolve().parent / "outputs" / "optimal_cl_mach_cache.json"
-
-
-def apply_optimal_cl_mach(cfg: AircraftConfig, best_row: dict) -> AircraftConfig:
-    """Return a copy of cfg with the optimal cruise Mach applied."""
-    from dataclasses import replace
-    return replace(cfg, M_cruise=best_row["M_cruise"])
-
-
-def get_optimal_cl_mach(cfg: AircraftConfig, force_recompute: bool = False) -> dict:
-    """Return the cached optimal Mach result, computing it only once unless forced."""
-    global _optimal_cl_mach_cache
-    if _optimal_cl_mach_cache is None and not force_recompute:
-        if _optimal_cl_mach_path.exists():
-            with open(_optimal_cl_mach_path, "r", encoding="utf-8") as f:
-                _optimal_cl_mach_cache = json.load(f)
-
-    if _optimal_cl_mach_cache is None or force_recompute:
-        _optimal_cl_mach_cache = find_optimal_cl_mach(cfg, force_recompute=force_recompute)
-    return _optimal_cl_mach_cache.copy()
 
 
 @dataclass
@@ -609,66 +588,6 @@ def replace_T_TO(cfg: AircraftConfig, T_TO_new: float) -> AircraftConfig:
     from dataclasses import replace
     return replace(cfg, T_TO_per_engine=T_TO_new)
 
-def find_optimal_cl_mach(cfg: AircraftConfig, force_recompute: bool = False) -> dict:
-    # This function is a placeholder for the actual optimal CL and Mach calculation.
-    # In a real implementation, this would involve more complex logic and possibly
-    # iterative methods to find the optimal values based on the aircraft configuration.
-    global _optimal_cl_mach_cache
-    if _optimal_cl_mach_cache is not None and not force_recompute:
-        return _optimal_cl_mach_cache.copy()
-
-    from dataclasses import replace
-    M_cruise=0.7
-    sweep_rows=[]
-    iterations=0
-    while M_cruise>=0.67:
-        factor=0.01
-        cfg_updated = replace(cfg, M_cruise=M_cruise,V_cruise=M_cruise*309.7)
-        result = run_class_ii(cfg_updated,comp=comp_params, tol=1.0, max_iter=100, verbose=False)
-        value = cfg_updated.M_cruise*result.drag.CL_cruise/result.drag.CD_total
-        CL_cruise = result.drag.CL_cruise
-        
-        sweep_rows.append({
-            "value": value,
-            "M_cruise": cfg_updated.M_cruise,
-            "CL_cruise": CL_cruise,
-            "CD_total": result.drag.CD_total,
-            "t_cruise": result.mission.t_cruise,
-            "m_LH2_cruise": result.mission.m_LH2_cruise,
-            "m_LH2_climb": result.mission.m_LH2_climb,
-            "m_LH2_taxi_TO": result.mission.m_LH2_TO_taxi,
-            "MTOW": result.MTOW,
-            "Wing Area": result.Wing_Area,
-            "Stall Speed": cfg_updated.V_stall,
-            "CL_max_TO": result.power.CL_max_TO,
-            "CL_max_clean": cfg_updated.CL_max,
-            "half_sweep": cfg_updated.sweep_half,
-            "LE_sweep": cfg_updated.sweep_tc,
-            "root_chord": cfg_updated.c_root,
-            "span": cfg_updated.b,
-            "taper": result.Wing_taper,
-            "Aileron_Area_ratio": result.tail_rechecked.Sa_Sref,
-        })
-
-        iterations+=1
-        print(f"Completed iteration {iterations} with M_cruise={M_cruise:.2f}, value={value:.6f}, CL_cruise={CL_cruise:.6f}, CD_total={result.drag.CD_total:.6f}, t_cruise={result.mission.t_cruise/60:.2f} min, m_LH2_cruise={result.mission.m_LH2_cruise:.2f} kg")
-        M_cruise=M_cruise-factor
-
-    reference_row = max(sweep_rows, key=lambda row: row["m_LH2_cruise"])
-    reference_fuel = reference_row["m_LH2_cruise"]
-    for row in sweep_rows:
-        row["fuel_savings"] = reference_fuel - row["m_LH2_cruise"]
-
-    best_row = max(sweep_rows, key=lambda row: row["value"])
-    _optimal_cl_mach_cache = best_row.copy()
-
-    _optimal_cl_mach_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(_optimal_cl_mach_path, "w", encoding="utf-8") as f:
-        json.dump(_optimal_cl_mach_cache, f, indent=4)
-
-    print(best_row)
-
-    return best_row
 
 def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig,drag_result: dict,mission: dict,power: dict,\
                                               sweep_half: float,MAC: float,MTOW: float,Wing_Area: float,\
@@ -926,7 +845,5 @@ if __name__ == "__main__":
         f"[bold white]({propmass_pct:+.2f}% vs 2-prop)[/bold white]"
     )
     print(Panel(savings_text, title="[bold cyan]Fuel, Cost & MTOW Impact[/bold cyan]", border_style="cyan", expand=False))
-
-    # get_optimal_cl_mach(cfg, force_recompute=True)
 
     print(result1.P_approach_KW)
