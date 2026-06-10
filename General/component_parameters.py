@@ -61,7 +61,7 @@ component_params = {
     "dc_dc_2": PowerComponent("DC-DC Converter 2", 17, 99.47, 3),
     "ac_dc": PowerComponent("AC-DC Rectifier", 52.9, 98.9, 3, volumetric_density=70000),
     "dc_ac": PowerComponent("DC-AC Inverter", 52.9, 98.9, 3, volumetric_density=70000),
-    "bus": PowerComponent("Electric Bus", 53.6, 99.66, 3, volumetric_density=70000),
+    "bus": PowerComponent("Electric Bus", 22.1, 99.66, 3, volumetric_density=70000),
 
     # Battery
     "bt": StorageComponent("Battery", 0.510, 1.53, 90, 3, energy_density_std=0.102, power_density_std=0.306, efficiency_std=1),
