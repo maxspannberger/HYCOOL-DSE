@@ -96,6 +96,7 @@ class AircraftConfig:
     t_reserve:        float = 2700.0
     V_climb_EAS:      float = 130.0
     ROC_avg:          float = 7.62
+    ROD_avg:          float = -7.62
     TO_taxi_frac:     float = 0.02
 
     LHV_fuel:         float = 120e6
