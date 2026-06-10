@@ -149,7 +149,7 @@ if __name__ == "__main__":
         Pump(target_p   =  28*100000, 
              diameter   =  0.02),
         
-        Pipe(length     =  15),
+        Pipe(length     =  12.62),
 
         Corner(N_bend   =  1, 
                diameter =  0.02, 
