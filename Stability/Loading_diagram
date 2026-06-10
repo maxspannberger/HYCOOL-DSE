@@ -1,0 +1,129 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+sns.set_theme(style="whitegrid")
+sns.set_palette("Paired")
+# sns.set_context("paper")
+
+# --- Constants & Data ---
+MTOW                    = 40823                 # kg
+EOW                     = 23179                 # kg
+Fuel_MaxP               = 5678                  # kg
+MaxCargo                = 3257                  # kg
+MaxFwdCargoVol          = 5.26                  # m^3
+MaxAftCargoVol          = 14.41                 # m^3
+PaxWeightTot            = 8709                  # kg
+noPax                   = 100                   # -
+rows                    = 25                    # -
+PaxWeight               = PaxWeightTot / noPax  # kg
+MaxFwdCargo             = (MaxFwdCargoVol) / (MaxFwdCargoVol + MaxAftCargoVol) * MaxCargo  # kg
+MaxAftCargo             = (MaxAftCargoVol) / (MaxFwdCargoVol + MaxAftCargoVol) * MaxCargo  # kg
+FirstWindow, LastWindow = 5.6, 27.56            # m
+LEMAC, mac              = 19.23, 3.45           # m
+
+
+def convert_global(global_dim):
+    return (global_dim - LEMAC) / mac
+
+
+EOW_CG_LEMAC    = convert_global(20.93)     # -
+FUEL_CG_LEMAC   = convert_global(21.23)     # -
+AftCargo_LEMAC  = convert_global(29.25)     # -
+FwdCargo_LEMAC  = convert_global(11.845)    # -
+
+positions_mac   = convert_global(np.linspace(FirstWindow, LastWindow, rows))    # -
+positions_fwd   = positions_mac                                                 # -
+positions_aft   = np.flip(positions_mac)                                        # -
+
+
+# --- Loading Functions ---
+def loading_pax(positions, cg_in, mass_in):
+    updated_cg, updated_mass = [cg_in], [mass_in]
+    for pos in positions:
+        new_mass = updated_mass[-1] + 2 * PaxWeight
+        new_cg = (updated_mass[-1] * updated_cg[-1] + pos * PaxWeight * 2) / new_mass
+        updated_cg.append(new_cg)
+        updated_mass.append(new_mass)
+    return np.array(updated_cg), np.array(updated_mass)
+
+
+def loading_fwd_cargo(cg_in, mass_in):
+    updated_mass = [mass_in, mass_in + MaxFwdCargo, mass_in + MaxCargo]
+    updated_cg = [
+        cg_in,
+        (cg_in * mass_in + MaxFwdCargo * FwdCargo_LEMAC) / (mass_in + MaxFwdCargo),
+        (cg_in * mass_in + MaxFwdCargo * FwdCargo_LEMAC + MaxAftCargo * AftCargo_LEMAC) / (mass_in + MaxCargo),
+    ]
+    return np.array(updated_cg), np.array(updated_mass)
+
+
+def loading_aft_cargo(cg_in, mass_in):
+    updated_mass = [mass_in, mass_in + MaxAftCargo, mass_in + MaxCargo]
+    updated_cg = [
+        cg_in,
+        (cg_in * mass_in + MaxAftCargo * AftCargo_LEMAC) / (mass_in + MaxAftCargo),
+        (cg_in * mass_in + MaxFwdCargo * FwdCargo_LEMAC + MaxAftCargo * AftCargo_LEMAC) / (mass_in + MaxCargo),
+    ]
+    return np.array(updated_cg), np.array(updated_mass)
+
+
+def loading_fuel(cg_in, mass_in):
+    new_mass = mass_in + Fuel_MaxP
+    new_cg = (mass_in * cg_in + FUEL_CG_LEMAC * Fuel_MaxP) / new_mass
+    return np.array([cg_in, new_cg]), np.array([mass_in, new_mass])
+
+
+# Both Fwd -> Aft and Aft -> Fwd Cargo Paths
+up_cg_cargo_fwd, up_mass_cargo_fwd = loading_fwd_cargo(EOW_CG_LEMAC, EOW)
+up_cg_cargo_aft, up_mass_cargo_aft = loading_aft_cargo(EOW_CG_LEMAC, EOW)
+
+# Fwd -> Aft Path
+up_cg_win_fwd, up_mass_win_fwd = loading_pax(
+    positions_fwd, up_cg_cargo_fwd[-1], up_mass_cargo_fwd[-1]
+)
+up_cg_aisle_fwd, up_mass_aisle_fwd = loading_pax(
+    positions_fwd, up_cg_win_fwd[-1], up_mass_win_fwd[-1]
+)
+
+# Aft -> Fwd Path
+up_cg_win_aft, up_mass_win_aft = loading_pax(
+    positions_aft, up_cg_cargo_aft[-1], up_mass_cargo_aft[-1]
+)
+up_cg_aisle_aft, up_mass_aisle_aft = loading_pax(
+    positions_aft, up_cg_win_aft[-1], up_mass_win_aft[-1]
+)
+
+# Final Fuel Loading
+up_cg_fuel, up_mass_fuel = loading_fuel(up_cg_aisle_fwd[-1], up_mass_aisle_fwd[-1])
+
+leftmost_limit, lim_y = (np.min(up_cg_aisle_fwd) * np.ones(2),np.linspace(EOW, MTOW, 2),)   # Leftmost section of the loading diagram
+rightmost_limit = np.max(up_cg_cargo_aft) * np.ones(2)                                      # Rightmost section of the loading diagram
+
+# Plotting
+plt.figure(figsize=(8, 6))
+
+path_fwd = {"marker": "o", "markersize": 4, "linewidth": 1.5}
+path_aft = {"marker": "o", "markersize": 4, "linewidth": 1.5, "linestyle": "--"}
+
+plt.plot(up_cg_cargo_aft, up_mass_cargo_aft, label="Cargo (Aft-Fwd)", **path_aft)
+plt.plot(up_cg_cargo_fwd, up_mass_cargo_fwd, label="Cargo (Fwd-Aft)", **path_fwd)
+plt.plot(up_cg_win_aft, up_mass_win_aft, label="Window Pax (Aft-Fwd)", **path_aft)
+plt.plot(up_cg_win_fwd, up_mass_win_fwd, label="Window Pax (Fwd-Aft)", **path_fwd)
+plt.plot(up_cg_aisle_aft, up_mass_aisle_aft, label="Aisle Pax (Aft-Fwd)", **path_aft)
+plt.plot(up_cg_aisle_fwd, up_mass_aisle_fwd, label="Aisle Pax (Fwd-Aft)", **path_fwd)
+plt.plot(up_cg_fuel, up_mass_fuel, label="Fuel Loading", marker="D", lw=2)
+
+plt.plot(leftmost_limit, lim_y, label="Stability Limit", color="black", **path_fwd)
+plt.plot(rightmost_limit, lim_y, color="black", **path_fwd)
+plt.plot(leftmost_limit - 0.02, lim_y, label=r"Stability Limit (2$\%$ LEMAC Margin)", color="black", **path_aft,)   # 2% LEMAC added margin
+plt.plot(rightmost_limit + 0.02, lim_y, color="black", **path_aft)                                                  # 2% LEMAC added margin
+
+plt.title("Aircraft Loading Diagram (Potato Plot)", fontsize=14, fontweight="bold")
+plt.xlabel(r"$x_{cg}$ [$\%$ MAC]", fontsize=12)
+plt.ylabel("Mass [kg]", fontsize=12)
+plt.xlim(0, 1)
+plt.legend(title="Loading Sequence", loc="upper right", frameon=True, shadow=True)
+
+plt.tight_layout()
+plt.show()

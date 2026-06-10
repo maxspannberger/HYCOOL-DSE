@@ -29,6 +29,14 @@ S_v sizing per Torenbeek's OEI rudder formulation:
 import numpy as np
 from dataclasses import dataclass
 from typing import Optional
+
+import sys
+from pathlib import Path
+
+# Allow running both from inside WeightEstimations and from the project root.
+root = Path(__file__).resolve().parent.parent
+if str(root) not in sys.path:
+    sys.path.append(str(root))
 from WeightEstimations.ISA import isa
 from WeightEstimations.Aircraft_Config import AircraftConfig
 
@@ -68,7 +76,11 @@ class TailSizing_Input:
 
     # OEI / rudder
     T_TO:           float = 0.0           # Per-engine thrust at V_MC [N]
-    y_engine:       float = 0.0
+    N_propellers:      int   = 0
+    y_engine_2:       float = 0.0
+    y_engine_4:       float = 0.0
+    d_propfan:       float = 0.0
+    d_fuselage:      float = 0.0
     V_MC_factor:    float = 1.13
     delta_r_max:    float = np.deg2rad(35)
 
@@ -87,6 +99,14 @@ class TailSizing_Input:
     Sr_Sv_min:      float = 0.25
     Sr_Sv_max:      float = 0.35
 
+    # Added variables for horizontal tail sizing
+    M_landing:      float = 0.0
+    G:              float = 9.80665
+    rho_ground:     float = 1.225
+
+    # fraction from scissor plot
+    S_h_frn:        float = 0.0
+
     @classmethod
     def from_config(
         cls,
@@ -95,6 +115,7 @@ class TailSizing_Input:
         S_ref: Optional[float] = None,
         b:     Optional[float] = None,
         MAC:   Optional[float] = None,
+        M_landing: Optional[float] = None,
     ) -> "TailSizing_Input":
         return cls(
             S_ref       = S_ref if S_ref is not None else cfg.S_ref,
@@ -108,10 +129,16 @@ class TailSizing_Input:
             V_h_target  = cfg.V_h_target,
             V_v_target  = cfg.V_v_target,
             MTOW        = MTOW if MTOW is not None else cfg.MTOW_initial,
+            M_landing   = M_landing if M_landing is not None else (MTOW if MTOW is not None else cfg.MTOW_initial), 
             V_stall     = cfg.V_stall,
             V_cruise    = cfg.V_cruise,
             T_TO        = cfg.T_TO_per_engine,
-            y_engine    = cfg.y_engine,
+            y_engine_2    = cfg.y_engine_2,
+            y_engine_4  =cfg.y_engine_4,
+            d_propfan = cfg.D_propfan,
+            N_propellers   = cfg.N_propellers,
+            d_fuselage       = cfg.d_f,
+            S_h_frn         = cfg.S_h_frn
         )
 
 
@@ -209,7 +236,7 @@ class TailSizingEstimator:
             S_ref=d.S_ref, MAC=d.MAC, b=d.b,
             l_h=d.l_h, l_v=d.l_v,
             MTOW=d.MTOW, V_stall=d.V_stall, V_cruise=d.V_cruise,
-            T_TO=d.T_TO, y_engine=d.y_engine,
+            T_TO=d.T_TO, y_engine_2=d.y_engine_2, y_engine_4=d.y_engine_4,d_propfan=d.d_propfan,d_fuselage=d.d_fuselage
         )
         missing = [k for k, v in required.items() if v <= 0]
         if missing:
@@ -241,7 +268,7 @@ class TailSizingEstimator:
         gives a sanity-check lower bound on S_h.
         """
         d               = self.i
-        CL_approach     = d.MTOW * 9.80665 / (0.5 * 1.225 * d.V_stall**2 * d.S_ref)
+        CL_approach     = 2*d.M_landing*d.G/(d.rho_ground*d.S_ref*(d.V_stall*1.3)**2)
         delta_CG        = 0.10                  # 10% MAC CG range
         dCM_required    = CL_approach * delta_CG
         C_L_alpha_h     = 4.5                   # /rad, reasonable for unswept HT
@@ -249,6 +276,12 @@ class TailSizingEstimator:
         delta_e_max     = np.deg2rad(25)
         V_h_min         = dCM_required / (C_L_alpha_h * tau_e * delta_e_max)
         return V_h_min * d.S_ref * d.MAC / d.l_h
+
+    def _S_h_scissor(self) -> float:
+        d = self.i
+        #---------------- value read from scissor plot ------------------------
+        S_h_frn = d.S_h_frn
+        return S_h_frn * d.S_ref
 
     # ------------------------------------------------------------------
     # Vertical tail
@@ -274,7 +307,11 @@ class TailSizingEstimator:
         d        = self.i
         V_mc     = d.V_MC_factor * d.V_stall
         q_mc     = 0.5 * self.rho_SL * V_mc**2
-        M_engine = d.T_TO * d.y_engine
+        q_mc=q_mc
+        if d.N_propellers > 2:
+            M_engine = d.T_TO *0.8 * (d.y_engine_4+d.d_propfan/2+d.d_fuselage/2)       #since only 80% of thrust is available for worst case scenario with 4 engines, per CS-25.149
+        elif d.N_propellers == 2:
+            M_engine = d.T_TO * (d.y_engine_2+d.d_propfan/2+d.d_fuselage/2)       
 
         S_v_min = M_engine / (
             self.k_r * d.Sr_Sv_max * d.l_v * q_mc * d.delta_r_max
@@ -308,7 +345,10 @@ class TailSizingEstimator:
         d        = self.i
         V_mc     = d.V_MC_factor * d.V_stall
         q_mc     = 0.5 * self.rho_SL * V_mc**2
-        M_engine = d.T_TO * d.y_engine
+        if d.N_propellers > 2:
+            M_engine = d.T_TO *0.8 * (d.y_engine_4)       #since only 80% of thrust is available for worst case scenario with 4 engines, per CS-25.149
+        elif d.N_propellers == 2:
+            M_engine = d.T_TO * (d.y_engine_2+d.d_propfan/2+d.d_fuselage/2)       #since only 80% of thrust is available for worst case scenario with 4 engines, per CS-25.149
 
         S_r_required = M_engine / (self.k_r * d.l_v * q_mc * d.delta_r_max)
         Sr_Sv        = np.clip(S_r_required / S_v, d.Sr_Sv_min, d.Sr_Sv_max)
@@ -337,10 +377,20 @@ class TailSizingEstimator:
 
         S_h_stab = self._S_h_stability()
         S_h_ctrl = self._S_h_control()
-        if S_h_stab >= S_h_ctrl:
+        S_h_scissor = self._S_h_scissor()
+
+        # old statement:
+        # if S_h_stab >= S_h_ctrl:
+        #     S_h, S_h_drv = S_h_stab, "stability (V_h)"
+        # else:
+        #     S_h, S_h_drv = S_h_ctrl, "control (elevator)"
+
+        if S_h_stab >= S_h_ctrl and S_h_stab >= S_h_scissor:
             S_h, S_h_drv = S_h_stab, "stability (V_h)"
-        else:
+        elif S_h_ctrl >= S_h_stab and S_h_ctrl >= S_h_scissor:
             S_h, S_h_drv = S_h_ctrl, "control (elevator)"
+        elif S_h_scissor >= S_h_stab and S_h_scissor >= S_h_ctrl:
+            S_h, S_h_drv = S_h_scissor, "scissor plot"
 
         S_v_stab = self._S_v_stability()
         S_v_ctrl = self._S_v_control()
