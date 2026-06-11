@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 from dataclasses import dataclass
 from rich.table import Table
+import numpy as np
 
 from rich.console import Console
 
@@ -60,6 +61,10 @@ class CgCalculationInput:
 
     distance_le_root_to_le_mac:            float       #distance LEMAC to leading edge wing root
     c_root:         float       #wing root chord
+    xcg_upper:      float
+
+    z_cg:           float
+    beta:           float
 
 
     @classmethod
@@ -111,6 +116,12 @@ class CgCalculationInput:
         distance_le_root_to_le_mac = result.distance_le_root_to_le_mac
         c_root = result.root_chord
 
+        xcg_upper = cfg.xcg_upper
+
+        z_cg = cfg.z_cg
+
+        beta = cfg.beta
+
         return cls(
             l_f = l_f,
             OEW = OEW,
@@ -149,7 +160,10 @@ class CgCalculationInput:
             OEW_target_rel = OEW_target_rel,
 
             distance_le_root_to_le_mac = distance_le_root_to_le_mac,
-            c_root = c_root
+            c_root = c_root,
+            xcg_upper = xcg_upper,
+            z_cg = z_cg,
+            beta = beta,
         )
 
 
@@ -163,6 +177,7 @@ class CgBreakdown:
     W_fus_group: float
     x_cg_fus_group: float
     x_cg_wing_group: float
+    MAC: float
     X_LEMAC_new: float
     l_h : float
     x_cg_tank: float
@@ -170,6 +185,8 @@ class CgBreakdown:
     lfn: float
     x_cg_cargo_fwd: float
     x_cg_cargo_aft: float
+    x_cg_lg_main: float
+    x_TE_wing_root: float
 
 
     def summary(self) -> Table:
@@ -214,6 +231,11 @@ class CgBreakdown:
         )
 
         table.add_row(
+            "[bold]MAC[/bold]",
+            f"[bold]{self.MAC:.1f}[/bold]",
+        )
+
+        table.add_row(
             "[bold]Tail Length Estimate (l_h)[/bold]",
             f"[bold]{self.l_h:.1f}[/bold]",
         )
@@ -241,6 +263,16 @@ class CgBreakdown:
         table.add_row(
             "[bold]x_cg_cargo_aft[/bold]",
             f"[bold]{self.x_cg_cargo_aft:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]x_cg_lg_main[/bold]",
+            f"[bold]{self.x_cg_lg_main:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]x_TE_wing_root[/bold]",
+            f"[bold]{self.x_TE_wing_root:.1f}[/bold]",
         )
 
         return table
@@ -374,6 +406,10 @@ class CgCalculator:
 
         location_wing_cg = d.location_wing_cg
 
+        beta_rad = np.pi / 180 * d.beta
+        z_cg = d.z_cg      #m = estimate for height of aricraft vertical cg
+        x_cg_lg_main_frn = (z_cg*np.tan(beta_rad) + d.xcg_upper*MAC)/MAC    # frn of MAC that main lg needs to be behind aft cg -> aft cg taken from cfg requires iteration
+
         W_wing_group, x_cg_wing_group_rel = self.cg_from_weights(
             weights=[
                 W_sc,
@@ -383,7 +419,7 @@ class CgCalculator:
             ],
             locations=[
                 MAC,
-                0.6 * MAC,
+                x_cg_lg_main_frn * MAC,
                 location_wing_cg,
                 cg_location_engines,
             ],
@@ -396,7 +432,8 @@ class CgCalculator:
         #x_LEMAC = 17
 
         x_cg_sc = x_LEMAC + MAC
-        x_cg_lg_main = x_LEMAC + 0.5 * MAC         #initial estimate from Torenbeek p.301, TODO: to be fixed for cg excursion & tipover angle
+        #x_cg_lg_main = x_LEMAC + 0.5 * MAC         #initial estimate from Torenbeek p.301, TODO: to be fixed for cg excursion & tipover angle
+        x_cg_lg_main = x_cg_lg_main_frn*MAC + x_LEMAC
         x_cg_wing = x_LEMAC + location_wing_cg
         x_cg_power_units = x_LEMAC + cg_location_engines
 
@@ -434,6 +471,7 @@ class CgCalculator:
             W_fus_group=W_fus_group,
             x_cg_fus_group=x_cg_fus_group,
             x_cg_wing_group=x_cg_wing_group,
+            MAC = MAC,
             X_LEMAC_new = x_LEMAC,
             l_h = l_h,
             x_cg_tank = x_cg_tank,
@@ -441,6 +479,8 @@ class CgCalculator:
             lfn = lfn,
             x_cg_cargo_fwd = x_cg_cargo_fwd,
             x_cg_cargo_aft = x_cg_cargo_aft,
+            x_cg_lg_main =x_cg_lg_main,
+            x_TE_wing_root = x_TE_wing_root,
         )
 
 

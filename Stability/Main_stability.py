@@ -35,6 +35,8 @@ def print_master_summary(
     loading_breakdown,
     scissor_breakdown,
     cfg,
+    l_nlg,
+    nlg_load_frn,
 ) -> None:
     table = Table(title="Master Stability Iteration Summary")
     table.add_column("Quantity")
@@ -43,9 +45,11 @@ def print_master_summary(
 
     table.add_row("OEW CG", f"{cg_breakdown.x_cg_OEW:.3f}", "m from nose")
     table.add_row("LEMAC", f"{cg_breakdown.X_LEMAC_new:.3f}", "m from nose")
-    table.add_row("lfn", f"{cfg.lfn:.3f}", "m from nose")
-    table.add_row("lfn", f"{cfg.lfn:.3f}", "m from nose")
+    table.add_row("lfn", f"{cg_breakdown.lfn:.3f}", "m from nose")
+    table.add_row("lfn", f"{cg_breakdown.lfn:.3f}", "m from nose")
     table.add_row("l_h", f"{cg_breakdown.l_h:.3f}", "m")
+    table.add_row("l_nlg", f"{l_nlg:.3f}", "m")
+    table.add_row("nlg_load_frn", f"{nlg_load_frn:.3f}", "load fraction")
 
     table.add_section()
 
@@ -87,7 +91,7 @@ def run_full_stability_sequence(
     oew_target_rel_guess: float,
     config: int = 3,
     use_loading_margin: bool = True,
-    update_lfn: bool = True,
+    #update_lfn: bool = True,
     show_plots: bool = True,
 ) -> FullStabilityRunOutput:
     """
@@ -143,6 +147,8 @@ def run_full_stability_sequence(
     cfg.AftCargo_cg = float(cg_breakdown.x_cg_cargo_aft)
     cfg.FwdCargo_cg = float(cg_breakdown.x_cg_cargo_fwd)
 
+    cfg.lfn = float(cg_breakdown.lfn)
+
     # ------------------------------------------------------------
     # Step 5: run loading diagram
     # ------------------------------------------------------------
@@ -187,11 +193,26 @@ def run_full_stability_sequence(
         save_path="scissor_plot_master.png",
     )
 
+    beta = cfg.beta
+    beta_rad = np.pi / 180 * beta
+    MAC = cfg.MAC
+    z_cg = cfg.z_cg      #m = estimate for height of aricraft vertical cg
+    x_cg_lg_main_frn = (z_cg*np.tan(beta_rad) + cfg.xcg_upper*MAC)/MAC
+    x_cg_lg_main = x_cg_lg_main_frn*MAC + cfg.LEMAC
+    l_cg_aft = cfg.xcg_upper*MAC + cfg.LEMAC
+    l_cg_fwd = cfg.xcg_lower*MAC + cfg.LEMAC 
+
+    l_nlg = ((1-0.08)*x_cg_lg_main-l_cg_aft)/(-0.08)
+
+    nlg_load_frn = (x_cg_lg_main-l_cg_fwd)/(x_cg_lg_main-l_nlg)
+
     print_master_summary(
         cg_breakdown=cg_breakdown,
         loading_breakdown=loading_breakdown,
         scissor_breakdown=scissor_breakdown,
         cfg=cfg,
+        l_nlg = l_nlg,
+        nlg_load_frn = nlg_load_frn
     )
 
     return FullStabilityRunOutput(
@@ -205,9 +226,9 @@ def run_full_stability_sequence(
 
 if __name__ == "__main__":
     run_full_stability_sequence(
-        oew_target_rel_guess=0.50,   # your OEW/MAC fraction guess
+        oew_target_rel_guess=0.5,   # your OEW/MAC fraction guess
         config=3,
         use_loading_margin=True,
-        update_lfn=True,
+        #update_lfn=True,
         show_plots=True,
     )
