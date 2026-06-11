@@ -258,7 +258,7 @@ if __name__ == "__main__":
     
     # Execute simulation and display results
     states = solve_system(system, m_dot=c.m_dot, T_amb=c.T_amb)
-    print_tree(states)
+    # print_tree(states)
     
     # --- ADDED: Extract and print the final state values ---
     final_T   = states['T'][-1][-1]

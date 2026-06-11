@@ -498,11 +498,17 @@ class COOL:
 
 
         # HEX design
-        # f is the "film" temperature
+        # f is the "film" temperature (boundary layer of H2 next to the pipe walls)
+        if self.name in ['hts_gen', 'hts_pow']:
+            N_pipes = N_slots
+            D_input = np.sqrt(4 * A_slot / np.pi)
+        else:
+            N_pipes = 1
+            D_input = system[i-1].d
+
         Tf = 0.5 * (0.5 * (T1 + T2) + T_component)
         pf = 0.5 * (p1 + p2)
         muf = CP.PropsSI('V', 'P', pf, 'T', Tf, self.fluid)
-        D_input = system[i-1].d
 
         Prf = CP.PropsSI('Prandtl', 'P', pf, 'T', Tf, self.fluid) # Prandtl number
         Ref = 4 * m_dot / (np.pi * D_input * muf)  # Reynolds number
@@ -510,8 +516,24 @@ class COOL:
         U = 0.021 * Ref**0.8 * Prf**0.4 * kf / D_input
         
         deltaT = T_component - 0.5 * (T1 + T2)
-        A_contact = 1000 * self.Q_dot / (U * deltaT)
-        pipe_length = A_contact / (np.pi * D_input)
+        A_contact = self.Q_dot / (U * deltaT)
+        pipe_length = A_contact / (np.pi * D_input * N_pipes)
+
+        if not Ref >= 10000:
+            raise Warning("Formulas used are not valid for the required Reynolds number\n" +\
+                    "Required Re range: Re >= 1000\n" +\
+                    f"Used Re: {Ref}"
+                )
+        if not 0.6 <= Prf <= 160:
+            raise Warning("Formulas used are not valid for the required Prandtl number\n" +\
+                    "Required Pr range: 0.6 <= Pr <= 160\n" +\
+                    f"Used Pr: {Prf}"
+                )
+        if not pipe_length/D_input >= 19:
+            raise Warning("Formulas used are not valid for the required length/diameter ratio\n" +\
+                    "Required L/D range: L/D >= 19\n" +\
+                    f"Used L/D: {pipe_length/D_input}"
+                )
 
         results = {'T':   np.array([T2]), 
                    'p':   np.array([p2]),
