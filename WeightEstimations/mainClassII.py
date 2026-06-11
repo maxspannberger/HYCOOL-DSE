@@ -525,6 +525,7 @@ def run_class_ii(
 
     #distance from Root chord leading edge to MAC leading edge
     distance_le_root_to_le_mac = np.tan(sweep_LE)*(cfg_updated.d_f/2-machspanpos)
+    print(f"Distance from Root Chord LE to MAC LE: {distance_le_root_to_le_mac:.3f} m")
 
 
     # Distance from MAC leading edge (front edge) CG location
@@ -579,7 +580,7 @@ def run_class_ii(
         aeroparameters=aero_parameters,
         distance_le_mac_to_cg=distance_le_mac_to_cg,
         distance_le_mac_to_turbine=distance_le_mac_to_turbine,
-        distance_le_root_to_le_mac=distance_le_root_to_le_mac
+        distance_le_root_to_le_mac=distance_le_root_to_le_mac,
     )
 
 
@@ -646,7 +647,7 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig,drag_r
     hinge_sweep=np.arctan(np.tan(Wing_sweep_LE)-x_c_hinge*2*root_chord/(Wing_span)*(1-Wing_taper))
 
     #accoridng to NASA paper, a deflection angle of 30 degrees was most effective for the fowler flap, so we get deltac/cf
-    deltac_cf=0.55      #extracted from the figure in toreenbeek
+    deltac_cf=0.7      #extracted from the figure in toreenbeek
 
     #get the fraction of the increase of the chord with extended fowler flaps with respect to original chord
     deltac_c=deltac_cf*c_fowler_c_wing
@@ -655,11 +656,11 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig,drag_r
     Clneeded=CL_adjusted/(np.cos(Wing_sweep_quarter)**2)
 
     #get increase in Clmax for landing and takeoff according to flap use, takeoff lower deflection wanted
-    deltaClmax_LD=1.3*cdash_c
+    deltaClmax_LD=1.6*cdash_c
     deltaClmax_TO=deltaClmax_LD*0.6
 
     #get increase in Clmax for landing and takeoff according to LE HLD use, takeoff lower deflection wanted
-    le_flap_area_wing_ratio = 0.7          #assume 70% of wing area used for slats
+    le_flap_area_wing_ratio = 0.6          #assume 70% of wing area used for slats
     deltaClmax_LE_LD=0.3                #assume slats give 0.3 increase in Clmax for landing
     deltaCLmax_LE_LD=0.9*deltaClmax_LE_LD*le_flap_area_wing_ratio*np.cos(Wing_sweep_LE)
     deltaCLmax_LE_TO=deltaCLmax_LE_LD*0.6
@@ -858,6 +859,7 @@ if __name__ == "__main__":
 
     aileron_span=result1.tail_rechecked.S_aileron/(result1.root_chord*result1.Wing_taper)
 
+
     taper_slope = 1.0 - result1.Wing_taper
     chordataileronpos = result1.root_chord * (1.0 - taper_slope * ((result1.Wing_span / 2-aileron_span) / (result1.Wing_span / 2)))
 
@@ -866,5 +868,8 @@ if __name__ == "__main__":
 
     print(f"Aileron Area needed for control: {result1.tail_rechecked.Sa_Sref*100:.2f} %")   
 
+    average_chord=(result1.root_chord+cfg.LEMAC)/2
+    area_wing_covered_by_fuselage=average_chord*cfg.d_f
+    print(f"Area of wing covered by fuselage: {area_wing_covered_by_fuselage/result1.Wing_Area*100:.2f} %")
+
     print(f"Cruise Thrust total: {result1.mission.T_cruise:.2f} N")
-    print(result1.power.V_2)
