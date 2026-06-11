@@ -373,9 +373,11 @@ class Corner:
 class COOL:
     def __init__(self, name:        str, 
                        location:    str,
-                       phase:       str   =  config.phase
+                       phase:       str   =  config.phase,
+                       diameter:    float =  config.pipe_default_d
                        ):   
         
+        self.d        = diameter
         self.location = location
         self.name     = name
         self.fluid    = config.fluid
@@ -384,7 +386,7 @@ class COOL:
     # Function that can be called to calculate the evolution of the state variables
     # in the component
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None):
-        T1, p1, h1, rho1 = get_input_states(states)
+        T0, p0, h0, rho0 = get_input_states(states)
         
         # ---------------------------------------------------------
         # 1. MACRO SYSTEM GEOMETRY (The pipes entering/exiting the component)
@@ -395,7 +397,21 @@ class COOL:
         T_component = config.operating_temp[self.name]
         
         # Macro inlet velocity from the upstream pipe
-        u1 = m_dot / (rho1 * A_pipe)
+        u0 = m_dot / (rho0 * A_pipe)
+        
+        A_HEX = np.pi * self.d**2 / 4
+        
+        # Calculate state variables directly as they enter the HEX
+        sol = cp_root(update_states,
+                      x0=[p0, h0],
+                      method='lm',
+                      options={'xtol': tol, 'ftol': tol},
+                      args=(p0, h0, u0, m_dot, A_HEX, self.fluid, 0, 0, config.divergence_penalty))
+        p1, h1 = sol.x
+        
+        T1    = CP.PropsSI('T', 'P', p1, 'H', h1, self.fluid)
+        rho1  = CP.PropsSI('D', 'P', p1, 'H', h1, self.fluid)
+        u1    = m_dot / (A_HEX * rho1)
         
         # Specific heat added (Total heat / branch mass flow)
         q = self.Q_dot / m_dot 
