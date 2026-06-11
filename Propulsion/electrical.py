@@ -195,7 +195,7 @@ def size_converter(component, powers, comp=comp_params, show=False):
     return results
 
 
-def size_all_components(component_order, powers, comp=comp_params, show=False):
+def size_all_components(component_order, powers, HTS_dimensions, comp=comp_params, show=False):
     component_sizing = {}
     P_heat_total = 0.0
     P_cool_total = 0.0
@@ -211,6 +211,17 @@ def size_all_components(component_order, powers, comp=comp_params, show=False):
                     P_max = max(powers[component][pos].values())
                     component_sizing[component][pos]["P_cool"] = (1.0 - comp[component].efficiency) * P_max
                     component_sizing[component][pos]["mass"] = P_max / comp[component].power_density
+                    if "gen" in component:
+                        component_sizing[component][pos]["L"] = HTS_dimensions["hts_gen"]["L"]
+                        component_sizing[component][pos]["D"] = HTS_dimensions["hts_gen"]["D"]
+                    else:
+                        if np.isclose(pos, 1.0):
+                            component_sizing[component][pos]["L"] = HTS_dimensions["hts_pow_2"]["L"]
+                            component_sizing[component][pos]["D"] = HTS_dimensions["hts_pow_2"]["D"]
+                        else:
+                            component_sizing[component][pos]["L"] = HTS_dimensions["hts_pow_1"]["L"]
+                            component_sizing[component][pos]["D"] = HTS_dimensions["hts_pow_1"]["D"]
+
                     P_cool_total += component_sizing[component][pos]["P_cool"] * 2
                     m_total += component_sizing[component][pos]["mass"]
 
@@ -408,13 +419,29 @@ def perform_complete_electrical_sizing(P_TO, P_climb, P_cruise, P_APP, P_OEI, b,
     positions = {"gt": [0.5], "mot": [0.5, 1.0], "bus": 0.5, "mot_frac": [0.8, 0.2]}
     apu = "bt"
 
+    # HTS dimensions:
+    HTS_dimensions = {
+        "hts_gen": {
+            "L": 0.3,
+            "D": 0.3
+        },
+        "hts_pow_1": {
+            "L": 0.3,
+            "D": 0.3
+        },
+        "hts_pow_2": {
+            "L": 0.18,
+            "D": 0.18
+        },
+    }
+
     N_motors = 2 * len(positions["mot"])
     N_turbines = 4 * len(positions["gt"])
     N_cables = N_motors + N_turbines
 
     # perform sizing of electrical system
     powers = get_powers_per_component(P_TO, P_climb, P_cruise, P_APP, P_OEI, P_AC_systems, positions, component_order, comp=comp_params, b=b)
-    converter_sizing, cooling_requirements_only = size_all_components(component_order, powers, comp=comp_params, show=show)
+    converter_sizing, cooling_requirements_only = size_all_components(component_order, powers, HTS_dimensions, comp=comp_params, show=show)
     max_powers, length = get_maximum_powers(powers)
     cable_results = size_cables(max_powers, length=length, N_cables=N_cables/2, SF=2, show=show)
     APU_results = size_APU(converter_sizing["total"]["P_heat"], P_AC_systems, component=apu, comp=comp_params, show=True)

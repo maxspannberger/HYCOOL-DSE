@@ -501,7 +501,8 @@ class COOL:
         # f is the "film" temperature (boundary layer of H2 next to the pipe walls)
         if self.name in ['hts_gen', 'hts_pow']:
             N_pipes = N_slots
-            D_input = np.sqrt(4 * A_slot / np.pi)
+            D_input = np.sqrt(4 * A_flow_slot / np.pi)
+            print(D_input)
         else:
             N_pipes = 1
             D_input = system[i-1].d
@@ -518,8 +519,6 @@ class COOL:
         deltaT = T_component - 0.5 * (T1 + T2)
         A_contact = self.Q_dot / (U * deltaT)
         pipe_length = A_contact / (np.pi * D_input * N_pipes)
-
-        print(self.Q_dot)
 
         # if not Ref >= 10000:
         #     raise Warning("Formulas used are not valid for the required Reynolds number\n" +\
