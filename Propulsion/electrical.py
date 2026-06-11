@@ -6,10 +6,11 @@ import json
 # Add parent directory to path so General module can be imported
 root = Path(__file__).resolve().parent.parent
 sys.path.append(str(root))
+import os
 
 from General.component_parameters import component_params as comp_params
 from WeightEstimations.Aircraft_Config import default_q400_hycool
-#from WeightEstimations.mainClassII import run_class_ii
+# from WeightEstimations.mainClassII import run_class_ii
 
 
 def get_cable_region_powers(component, positions, previous, b=1.0):
@@ -124,7 +125,7 @@ def get_powers_per_component(P_TO, P_climb, P_cruise, P_APP, P_OEI, P_AC_systems
                         comp_powers[component][pos][condition] += 0.5 * P_AC_systems / comp[component].efficiency
             previous = comp_powers[component].copy()
 
-    filename = "power_chain_results.json"
+    filename = os.path.join(root, "Propulsion", "power_chain_results.json")
     with open(filename, "w") as f:
         json.dump(comp_powers, f, indent=4)
 
@@ -227,7 +228,7 @@ def size_all_components(component_order, powers, comp=comp_params, show=False):
         "mass": m_total
     }
 
-    filename = "component_sizing_results.json"
+    filename = os.path.join(root, "Propulsion", "component_sizing_results.json")
     with open(filename, "w") as f:
         json.dump(component_sizing, f, indent=4)
 
@@ -252,7 +253,7 @@ def size_all_components(component_order, powers, comp=comp_params, show=False):
 
         cooling_requirements_only[condition]["total"] = total
 
-    filename = "only_cooling_results.json"
+    filename = os.path.join(root, "Propulsion", "only_cooling_results.json")
     with open(filename, "w") as f:
         json.dump(cooling_requirements_only, f, indent=4)
 
@@ -286,7 +287,7 @@ def get_maximum_powers(powers):
                     if powers[component][pos][condition] > max_powers[component][pos]:
                         max_powers[component][pos] = powers[component][pos][condition]
 
-    filename = "max_power_results.json"
+    filename = os.path.join(root, "Propulsion", "max_power_results.json")
     with open(filename, "w") as f:
         json.dump(max_powers, f, indent=4)
 
@@ -356,7 +357,7 @@ def size_cables(max_powers, length=200, N_cables=6, SF=1, show=False):
         "m": mass
     }
 
-    filename = "cable_results.json"
+    filename = os.path.join(root, "Propulsion", "cable_results.json")
     with open(filename, "w") as f:
         json.dump(results, f, indent=4)
 
@@ -373,19 +374,23 @@ def size_APU(P_transient, P_base, component, comp=comp_params, show=False):
     if hasattr(comp[component], "energy_density"):
         energy = mass * comp[component].energy_density
         time = energy * np.sqrt(comp[component].efficiency) / P_base * 60
+        P_cool = (1 - np.sqrt(comp[component].efficiency)) * P_total
     else:
         time = np.inf
+        P_cool = 0.0
 
     if show:
         print(f"\nAPU mass [kg]: {mass}")
         print(f"APU run time [min]: {time}")
+        print(f"APU peak cooling power required [kW]: {P_cool}")
 
     APU_results = {
         "mass": mass,
-        "time": time
+        "time": time,
+        "P_cool": P_cool
     }
 
-    filename = "APU_results.json"
+    filename = os.path.join(root, "Propulsion", "APU_results.json")
     with open(filename, "w") as f:
         json.dump(APU_results, f, indent=4)
 
@@ -400,7 +405,7 @@ def perform_complete_electrical_sizing(P_TO, P_climb, P_cruise, P_APP, P_OEI, b,
 
     # define electrical system architecture
     component_order = ["gt_hex", "hts_gen", "ac_dc", "cable_in", "bus", "cable_out", "dc_ac", "hts_pow"]
-    positions = {"gt": [0.66], "mot": [0.66, 1.0], "bus": 0.5, "mot_frac": [0.8, 0.2]}
+    positions = {"gt": [0.5], "mot": [0.5, 1.0], "bus": 0.5, "mot_frac": [0.8, 0.2]}
     apu = "bt"
 
     N_motors = 2 * len(positions["mot"])

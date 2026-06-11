@@ -136,6 +136,8 @@ class LoadingDiagramBreakdown:
     xcg_lower_margin: float
     xcg_upper_margin: float
 
+    MaxCargo: float
+
 
 class LoadingDiagramEstimator:
     def __init__(self, inputs: LoadingDiagramInput):
@@ -350,6 +352,8 @@ class LoadingDiagramEstimator:
             xcg_upper=float(rightmost_limit[0]),
             xcg_lower_margin=float(leftmost_limit_margin[0]),
             xcg_upper_margin=float(rightmost_limit_margin[0]),
+
+            MaxCargo=d.MaxCargo,
         )
 
     def plot(
@@ -429,3 +433,5 @@ if __name__ == "__main__":
     print(f"CG upper without margin: {breakdown.xcg_upper:.3f}")
     print(f"CG lower with margin: {breakdown.xcg_lower_margin:.3f}")
     print(f"CG upper with margin: {breakdown.xcg_upper_margin:.3f}")
+    print(f"Max cargo [kg]: {breakdown.MaxCargo:.3f}")
+ 

@@ -184,6 +184,8 @@ class AircraftConfig:
     xcg_lower:           float = 0.0
     xcg_upper:           float = 0.0
 
+    z_cg:                float = 0.0
+
     #nacelle dimensions
     bn:                float  = 0.0    #m diameter of nacelle
     nacelle_arm:        float  = 0.0         #m nacelle arm from wing ac -> estimate
@@ -237,7 +239,7 @@ def default_q400_hycool() -> AircraftConfig:
         tc_h             = 0.12,                # Referenced
         sweep_h_half     = np.deg2rad(22.0),    # Referenced
         sweep_h_tc       = np.deg2rad(20.0),    # Referenced
-        l_h              = 21.3,                # Referenced
+        l_h              = 21.291,                # Referenced
         S_h_frn          = 0.225,                 # read from scissor plot
 
         # Vertical tail
@@ -336,21 +338,21 @@ def default_q400_hycool() -> AircraftConfig:
         #Layout & Passengers
         PaxWeight           = 84,                   # EASA
         Pax_count           = 100,                  # Requirement
-        Max_fwd_cargo_vol   = 6,                    # Fwd cargo hold volume, placeholder for now
-        Max_aft_cargo_vol   = 4,                    # Aft cargo hold volume, placeholder for now
+        Max_fwd_cargo_vol   = 10.8,                    # Fwd cargo hold volume, taken from embraer e190, only for ratio front/back
+        Max_aft_cargo_vol   = 8.9,                    # Aft cargo hold volume, taken from embraer e190, only for ratio front/back
         Seats_abreast       = 4,                    # Class I
 
         FirstWindow         = 6.74,                 # Distance nose tip to first window [m], placeholder for now
         LastWindow          = 27.08,                # Distance nose tip to last window [m], placeholder for now
 
-        LEMAC               = 15.3,                 # Distance nose tip to LEMAC [m], placeholder for now
-        lfn                 = 14.25,                 # Distance nose tip to LE wing root LEMAC - 1.05
+        LEMAC               = 15.315,                 # Distance nose tip to LEMAC [m], placeholder for now
+        lfn                 = 13.857,                 # Distance nose tip to LE wing root LEMAC
         hh                  = 4,                    # Normal distance from wing plane to tail plane, placeholder for now
 
-        OEW_cg              = 16.87,                # Distance nose tip to OEW CG [m], placeholder for now
+        OEW_cg              = 16.887,                # Distance nose tip to OEW CG [m], placeholder for now
         FUEL_cg             = 28.6,                   # Distance nose tip to Fuel CG [m], placeholder for now
-        AftCargo_cg         = 25,                   # Distance nose tip to Aft Cargo CG [m], placeholder for now
-        FwdCargo_cg         = 9,                   # Distance nose tip to Fwd Cargo CG [m], placeholder for now
+        AftCargo_cg         = 22.6,                   # Distance nose tip to Aft Cargo CG [m], placeholder for now
+        FwdCargo_cg         = 9.5,                   # Distance nose tip to Fwd Cargo CG [m], placeholder for now
     
         #cg Breakdown - VERY rough guesses for now
         x_cg_htail          = 30,
@@ -371,8 +373,11 @@ def default_q400_hycool() -> AircraftConfig:
         OEW_target_rel      = 0.5,                 # % of MAC, from LEMAC. Value for config 3 (wing mtd engines) from Torenbeek p.300 (range is 0.2-0.25)
 
         # cg range from loading diagram
-        xcg_lower           = 0.277,
-        xcg_upper           = 0.618,
+        xcg_lower           = 0.116,
+        xcg_upper           = 0.495,
+
+        # vertical cg position estimate
+        z_cg                = 2.0,                   #[m] this is an estimate, but denotes distance ground to aircraft vertical cg
 
         #nacelle dimensions
         bn                  = 0.7,      #m diameter of nacelle

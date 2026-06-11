@@ -78,6 +78,8 @@ class MissionFuelBreakdown:
     V_reserve_TAS:    float = 0.0
     V_climb_TAS:      float = 0.0
 
+    T_cruise:        float = 0.0
+
     @property
     def m_LH2_total(self) -> float:
         return (self.m_LH2_cruise + self.m_LH2_reserve
@@ -213,7 +215,8 @@ class MissionPower:
         mdot      = self._mdot(P)
         t         = cfg.range_m / V
         m         = mdot * t
-        return P, mdot, t, m, CL, LD
+        T_total=P*cfg.eta_prop/V
+        return P, mdot, t, m, CL, LD,T_total
 
     def _reserve(self) -> tuple[float, float, float, float, float, float, float]:
         cfg       = self.cfg
@@ -265,7 +268,7 @@ class MissionPower:
 
     def compute(self) -> MissionFuelBreakdown:
 
-        P_c, md_c, t_c, m_c, CL_c, LD_c                       = self._cruise()
+        P_c, md_c, t_c, m_c, CL_c, LD_c, T_c                      = self._cruise()
         P_r, md_r, t_r, m_r, CL_r, LD_r, V_r                  = self._reserve()
         P_cl, md_cl, t_cl, m_cl, CL_cl, LD_cl, V_cl           = self._climb()
         P_TO                                                  = self._takeoff_reference()
@@ -317,4 +320,5 @@ class MissionPower:
             LD_climb        = LD_cl,
             V_reserve_TAS   = V_r,
             V_climb_TAS     = V_cl,
+            T_cruise         = T_c,
         )
