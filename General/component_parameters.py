@@ -84,5 +84,5 @@ component_params = {
 
     # Open Fan Estimation
     # "open_fan": ThrustComponent("Open Fan Propellers",43.17, 6)
-    "open_fan": ThrustComponent("Open Fan Propellers",80.2, 6)
+    "open_fan": ThrustComponent("Open Fan Propellers",82.63, 6)
 }

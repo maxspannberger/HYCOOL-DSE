@@ -417,7 +417,7 @@ def perform_complete_electrical_sizing(P_TO, P_climb, P_cruise, P_APP, P_OEI, b,
     converter_sizing, cooling_requirements_only = size_all_components(component_order, powers, comp=comp_params, show=show)
     max_powers, length = get_maximum_powers(powers)
     cable_results = size_cables(max_powers, length=length, N_cables=N_cables/2, SF=2, show=show)
-    APU_results = size_APU(converter_sizing["total"]["P_heat"], P_AC_systems, component=apu, comp=comp_params, show=True)
+    APU_results = size_APU(converter_sizing["total"]["P_heat"], P_AC_systems, component=apu, comp=comp_params, show=False)
 
     if show:
         print("\nElectrical components sizing complete.")

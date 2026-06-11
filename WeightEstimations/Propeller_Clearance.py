@@ -14,7 +14,7 @@ from General.component_parameters import component_params as comp_params
 
 cfg = default_q400_hycool()
 result1 = run_class_ii(cfg,comp=comp_params, tol=1.0, max_iter=100, verbose=True)
-ground_clearance_needed = 2/3*2.5+0.18 # 2.5 m for open fan diameter + 0.18 m for safety margin
+ground_clearance_needed = 2/3*2.5+0.18+0.3 # 2.5 m for open fan diameter + 0.18 m for safety margin +0.3 m for wing box underneath fuselage
 print(f"Ground clearance needed for the propellers: {ground_clearance_needed:.2f} m")
 height_inside_dihedral=np.tan(11*np.pi/180)*result1.Wing_span/2*0.35
 print(f"Clearance of the wing at 35% span with 11 degree dihedral: {height_inside_dihedral:.2f} m")
