@@ -9,7 +9,7 @@ sys.path.append(str(root))
 
 from General.component_parameters import component_params as comp_params
 from WeightEstimations.Aircraft_Config import default_q400_hycool
-from WeightEstimations.mainClassII import run_class_ii
+#from WeightEstimations.mainClassII import run_class_ii
 
 
 def get_cable_region_powers(component, positions, previous, b=1.0):
@@ -77,12 +77,11 @@ def get_cable_region_powers(component, positions, previous, b=1.0):
     return comp_powers, maximum
 
 
-def get_powers_per_component(P_TO, P_climb, P_cruise, P_APP, P_OEI, positions, component_order, comp=comp_params, b=1.0):
+def get_powers_per_component(P_TO, P_climb, P_cruise, P_APP, P_OEI, P_AC_systems, positions, component_order, comp=comp_params, b=1.0):
     """
     Returns powers required at every component
     and cable segment powers.
     """
-    P_AC_systems = 310.0  # kW
 
     # -------------------------------------------------------------
     # Initial power demand at motor outputs
@@ -364,24 +363,61 @@ def size_cables(max_powers, length=200, N_cables=6, SF=1, show=False):
     return results
 
 
+def size_APU(P_transient, P_base, component, comp=comp_params, show=False):
+    if hasattr(comp[component], "energy_density"):
+        P_total = (P_transient + P_base) / np.sqrt(comp[component].efficiency)
+    else:
+        P_total = P_transient + P_base
+    mass = P_total / comp[component].power_density
+
+    if hasattr(comp[component], "energy_density"):
+        energy = mass * comp[component].energy_density
+        time = energy * np.sqrt(comp[component].efficiency) / P_base * 60
+    else:
+        time = np.inf
+
+    if show:
+        print(f"\nAPU mass [kg]: {mass}")
+        print(f"APU run time [min]: {time}")
+
+    APU_results = {
+        "mass": mass,
+        "time": time
+    }
+
+    filename = "APU_results.json"
+    with open(filename, "w") as f:
+        json.dump(APU_results, f, indent=4)
+
+    return APU_results
+
+
+
+
 
 def perform_complete_electrical_sizing(P_TO, P_climb, P_cruise, P_APP, P_OEI, b, show=False):
+    P_AC_systems = 315.0  # kW
+
     # define electrical system architecture
     component_order = ["gt_hex", "hts_gen", "ac_dc", "cable_in", "bus", "cable_out", "dc_ac", "hts_pow"]
     positions = {"gt": [0.66], "mot": [0.66, 1.0], "bus": 0.5, "mot_frac": [0.8, 0.2]}
+    apu = "bt"
 
     N_motors = 2 * len(positions["mot"])
     N_turbines = 4 * len(positions["gt"])
     N_cables = N_motors + N_turbines
 
     # perform sizing of electrical system
-    powers = get_powers_per_component(P_TO, P_climb, P_cruise, P_APP, P_OEI, positions, component_order, comp=comp_params, b=b)
-    components_with_losses = ["dc_ac", "bus", "ac_dc"]
+    powers = get_powers_per_component(P_TO, P_climb, P_cruise, P_APP, P_OEI, P_AC_systems, positions, component_order, comp=comp_params, b=b)
     converter_sizing, cooling_requirements_only = size_all_components(component_order, powers, comp=comp_params, show=show)
     max_powers, length = get_maximum_powers(powers)
     cable_results = size_cables(max_powers, length=length, N_cables=N_cables/2, SF=2, show=show)
+    APU_results = size_APU(converter_sizing["total"]["P_heat"], P_AC_systems, component=apu, comp=comp_params, show=True)
+
     if show:
         print("\nElectrical components sizing complete.")
+
+    APU_mass = APU_results["mass"]
 
     total_mass = converter_sizing["total"]["mass"] + cable_results["m"]
 

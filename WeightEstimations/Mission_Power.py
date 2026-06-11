@@ -147,7 +147,7 @@ class MissionPower:
     def _polar_CD(self, CL: float) -> float:
         """Quadratic drag polar at the cached CD0 and e."""
         if self.cfg.N_propellers > 2:
-            cd_polar=(self.CD0 + CL**2 / (np.pi * self.cfg.AR * self.e))*0.9
+            cd_polar=(self.CD0 + CL**2 / (np.pi * self.cfg.AR * self.e))*0.91
         else:
             cd_polar=self.CD0 + CL**2 / (np.pi * self.cfg.AR * self.e)
         return cd_polar

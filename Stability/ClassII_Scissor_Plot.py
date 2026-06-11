@@ -115,9 +115,9 @@ class ScissorPlotInput:
         aero_dict: dict,
         #xcg_lower: Optional[float] = None,
         #xcg_upper: Optional[float] = None,
-        lfn: Optional[float] = None,
-        bn: Optional[float] = None,
-        ln: Optional[float] = None,
+        #lfn: Optional[float] = None,
+        #bn: Optional[float] = None,
+        #ln: Optional[float] = None,
         Vlanding: Optional[float] = None,
         mu1: float = 0.182,
         mu2: float = 1.2,
@@ -165,11 +165,12 @@ class ScissorPlotInput:
         # Current config does not store the wing longitudinal location directly.
         lfn = float(cfg.lfn)
 
-        # Current config does not store nacelle diameter and nacelle longitudinal arm separately.
-        # bn defaults to propfan disk diameter. ln defaults to 0, meaning no nacelle a.c. shift.
         # Replace these if you have better nacelle geometry.
-        bn_use = float(bn) if bn is not None else (cfg.D_propfan/3)
-        ln_use = float(ln) if ln is not None else 2
+        #bn_use = float(bn) if bn is not None else (cfg.D_propfan/3)
+        #ln_use = float(ln) if ln is not None else 2
+
+        bn_use = float(cfg.bn)
+        ln_use = float(cfg.nacelle_arm)
 
         sweep50 = float(result.Wing_sweep_half)
         sweep25 = float(result.Wing_sweep_quarter)
@@ -197,6 +198,8 @@ class ScissorPlotInput:
 
         xcg_lower = float(cfg.xcg_lower)
         xcg_upper = float(cfg.xcg_upper)
+
+
 
         kwargs = dict(
             bf=bf,
@@ -534,7 +537,7 @@ if __name__ == "__main__":
         #xcg_lower=0.283 * 0.98,
         #xcg_upper=0.640 * 1.02,
         # Replace these with actual nacelle geometry when available.
-        ln=0.0,
+        #ln=0.0,
         aero_dict=aero_dict
     )
 
