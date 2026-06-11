@@ -373,8 +373,8 @@ def default_q400_hycool() -> AircraftConfig:
         OEW_target_rel      = 0.5,                 # % of MAC, from LEMAC. Value for config 3 (wing mtd engines) from Torenbeek p.300 (range is 0.2-0.25)
 
         # cg range from loading diagram
-        xcg_lower           = 0.116,
-        xcg_upper           = 0.495,
+        xcg_lower           = 0.276,
+        xcg_upper           = 0.619,
 
         # vertical cg position estimate
         z_cg                = 2.0,                   #[m] this is an estimate, but denotes distance ground to aircraft vertical cg
