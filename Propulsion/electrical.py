@@ -373,16 +373,20 @@ def size_APU(P_transient, P_base, component, comp=comp_params, show=False):
     if hasattr(comp[component], "energy_density"):
         energy = mass * comp[component].energy_density
         time = energy * np.sqrt(comp[component].efficiency) / P_base * 60
+        P_cool = (1 - np.sqrt(comp[component].efficiency)) * P_total
     else:
         time = np.inf
+        P_cool = 0.0
 
     if show:
         print(f"\nAPU mass [kg]: {mass}")
         print(f"APU run time [min]: {time}")
+        print(f"APU peak cooling power required [kW]: {P_cool}")
 
     APU_results = {
         "mass": mass,
-        "time": time
+        "time": time,
+        "P_cool": P_cool
     }
 
     filename = "APU_results.json"
