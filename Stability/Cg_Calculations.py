@@ -64,6 +64,7 @@ class CgCalculationInput:
     xcg_upper:      float
 
     z_cg:           float
+    beta:           float
 
 
     @classmethod
@@ -119,6 +120,8 @@ class CgCalculationInput:
 
         z_cg = cfg.z_cg
 
+        beta = cfg.beta
+
         return cls(
             l_f = l_f,
             OEW = OEW,
@@ -160,6 +163,7 @@ class CgCalculationInput:
             c_root = c_root,
             xcg_upper = xcg_upper,
             z_cg = z_cg,
+            beta = beta,
         )
 
 
@@ -173,6 +177,7 @@ class CgBreakdown:
     W_fus_group: float
     x_cg_fus_group: float
     x_cg_wing_group: float
+    MAC: float
     X_LEMAC_new: float
     l_h : float
     x_cg_tank: float
@@ -223,6 +228,11 @@ class CgBreakdown:
         table.add_row(
             "[bold]X_LEMAC[/bold]",
             f"[bold]{self.X_LEMAC_new:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]MAC[/bold]",
+            f"[bold]{self.MAC:.1f}[/bold]",
         )
 
         table.add_row(
@@ -396,9 +406,9 @@ class CgCalculator:
 
         location_wing_cg = d.location_wing_cg
 
-        beta = np.pi / 180 *16
+        beta_rad = np.pi / 180 * d.beta
         z_cg = d.z_cg      #m = estimate for height of aricraft vertical cg
-        x_cg_lg_main_frn = (z_cg*np.tan(beta) + d.xcg_upper*MAC)/MAC    # frn of MAC that main lg needs to be behind aft cg -> aft cg taken from cfg requires iteration
+        x_cg_lg_main_frn = (z_cg*np.tan(beta_rad) + d.xcg_upper*MAC)/MAC    # frn of MAC that main lg needs to be behind aft cg -> aft cg taken from cfg requires iteration
 
         W_wing_group, x_cg_wing_group_rel = self.cg_from_weights(
             weights=[
@@ -461,6 +471,7 @@ class CgCalculator:
             W_fus_group=W_fus_group,
             x_cg_fus_group=x_cg_fus_group,
             x_cg_wing_group=x_cg_wing_group,
+            MAC = MAC,
             X_LEMAC_new = x_LEMAC,
             l_h = l_h,
             x_cg_tank = x_cg_tank,
