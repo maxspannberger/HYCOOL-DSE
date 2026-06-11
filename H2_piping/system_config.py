@@ -11,9 +11,9 @@ class H2SystemConfig:
     max_error: float = 10                    # SOLVER convergence treshhold
     tank_p: float = 500000                   # TANK pressure [Pa]
     tank_T: float = 15                       # TANK temperature [T]
-    tank_d: float = 0.015                     # TANK outlet diameter [m]
+    tank_d: float = 0.012                     # TANK outlet diameter [m]
     T_amb: float = 317                       # AMBIENT temperature [K]
-    m_dot: float = 0.09                      # TOTAL mass flow [kg/s]
+    m_dot: float = 0.0718                      # TOTAL mass flow [kg/s]
     
     # Solver configuration parameters
     divergence_penalty: float = 1e9          # penalty value if the numerical solver diverges

@@ -1,7 +1,7 @@
 from math import pi, cbrt
 
 N_check_valves = 4
-N_shutoff_valves = 8
+N_shutoff_valves = 11
 pipe_diameter = 0.012
 # m_dot = 0.09
 # rho = 70.8
@@ -9,7 +9,7 @@ pipe_diameter = 0.012
 # full bore valves - inner diameter is same as pipe diameter
 
 W_check_valve = 2440.4 * pipe_diameter ** 2 + 44.903 * pipe_diameter + 1.2973
-print(f"Weight of check valve: {W_check_valve:.2f} kg")
+# print(f"Weight of check valve: {W_check_valve:.2f} kg")
 W_shutoff_valve = 5
 W_valves = N_check_valves * W_check_valve + N_shutoff_valves * W_shutoff_valve
 
@@ -48,13 +48,14 @@ if t_outer < 0.00051:
 else:
     t_outer = t_outer
 
-print(f"Inner thickness: {t_inner * 1000:.2f}[mm]")
-print(f"Outer thickness: {t_outer * 1000:.2f}[mm]")
+# print(f"Inner thickness: {t_inner * 1000:.2f}[mm]")
+# print(f"Outer thickness: {t_outer * 1000:.2f}[mm]")
 
 rho_stainless_steel = 8000  # kg/m^3
 rho_MLI = 21  # kg/m^3, estimated value for MLI insulation
 vacuum_boundary_thickness = 0.002  # m
-pipe_length = 138.74  # m
+n_fittings = 82
+pipe_length = 137.82 - 0.0508 * n_fittings  # m
 
 V_pipe_inner = pi * (((pipe_diameter / 2) + t_inner) ** 2 - (pipe_diameter / 2) **2)
 mass_pipe_inner = V_pipe_inner * rho_stainless_steel
@@ -67,7 +68,7 @@ mass_MLI = V_MLI * rho_MLI
 
 mass_pipe_per_meter = mass_pipe_inner + mass_pipe_outer + mass_MLI
 total_mass_pipe = mass_pipe_per_meter * pipe_length
-print(f"Weight of pipe per meter: {mass_pipe_per_meter:.2f} kg")
+# print(f"Weight of pipe per meter: {mass_pipe_per_meter:.2f} kg")
 print(f"Total weight of pipe: {total_mass_pipe:.2f} kg")
 
 # PUMPS
@@ -79,7 +80,6 @@ print(f"Total weight of pumps: {pump_total_weight:.2f} kg")
 
 # FITTINS AND BELLOWS
 
-n_fittings = 82
 # 68 fittings for exit and entering components (makes all components replaceable: generator, motors, all converters, Dc bus, pumps, tank, GT) + 
 # 8 fittings for 5.5m pipe between motors + 4 fittings for 8.45m pipe between fuselage and first motor + 2 fittings for 12.62m pipe between tank and wing-line pipe
 
