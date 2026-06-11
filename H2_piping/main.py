@@ -37,6 +37,10 @@ def solve_system(system, m_dot, T_amb):
         else:
             # Propagate the state through the specific component solver
             component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=False, system=system, i=i)
+            if "A_contact" in component_result:
+                print(f"\n{comp.name}:")
+                print(f"Contact area: {component_result["A_contact"]}")
+                print(f"Pipe length: {component_result["pipe_length"]}")
             
             states['p'].append(component_result['p'])
             states['T'].append(component_result['T'])
@@ -132,16 +136,14 @@ if __name__ == "__main__":
         
         Pipe(length     =  0.5),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
         Pipe(length     =  0.71),
 
         Valve(name      =  'shutoff'),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
        Valve(name      =  'shutoff'),
@@ -149,22 +151,20 @@ if __name__ == "__main__":
         Pipe(length     =  0.5),
          
         Pump(target_p   =  28*100000, 
-             diameter   =  0.02),
+             diameter   =  0.012),
         
         Pipe(length     =  12.62),
 
         Valve(name      =  'shutoff'),
 
         Corner(N_bend   =  1, 
-               diameter =  0.02, 
                curv     =  2.5),
 
         Valve(name      =  'shutoff'),
         
         Pipe(length     =  8.45),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
         Pipe(length     =  0.5), 
@@ -173,11 +173,9 @@ if __name__ == "__main__":
              location   = component_position['hts_gen'][0]),
 
         Corner(N_bend   =  1, 
-               diameter =  0.02, 
                curv     =  2.5),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
         
         Pipe(length     =  1.0), 
@@ -185,24 +183,20 @@ if __name__ == "__main__":
         COOL(name       = 'hts_pow', 
              location   = component_position['hts_pow'][0]),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
         Pipe(length     =  0.5),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
         Pipe(length     =  5.5),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
         Pipe(length     =  0.5),
@@ -210,12 +204,10 @@ if __name__ == "__main__":
         COOL(name       = 'hts_pow', 
              location   = component_position['hts_pow'][1]),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
         Corner(N_bend   =  1, 
-               diameter =  0.02, 
                curv     =  2.5),
 
         COOL(name       = 'dc_ac', 
@@ -223,14 +215,12 @@ if __name__ == "__main__":
 
         Pipe(length     =  0.5),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
         Pipe(length     =  5.5),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
         Pipe(length     =  0.5),
@@ -238,12 +228,10 @@ if __name__ == "__main__":
         COOL(name       = 'dc_ac', 
              location   = component_position['dc_ac'][0]),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
         Corner(N_bend   =  1, 
-               diameter =  0.02, 
                curv     =  2.5),
 
         Pipe(length     =  1.0),
@@ -251,8 +239,7 @@ if __name__ == "__main__":
         COOL(name       = 'ac_dc', 
              location   = component_position['ac_dc'][0]),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
         Pipe(length     =  1.0),
@@ -261,11 +248,9 @@ if __name__ == "__main__":
              location   = component_position['bus'][0]),
 
         Corner(N_bend   =  1, 
-               diameter =  0.02, 
                curv     =  2.5),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
         Pipe(length     =  1.0)
@@ -273,7 +258,7 @@ if __name__ == "__main__":
     
     # Execute simulation and display results
     states = solve_system(system, m_dot=c.m_dot, T_amb=c.T_amb)
-    print_tree(states)
+    # print_tree(states)
     
     # --- ADDED: Extract and print the final state values ---
     final_T   = states['T'][-1][-1]

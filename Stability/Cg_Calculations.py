@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 from dataclasses import dataclass
 from rich.table import Table
+import numpy as np
 
 from rich.console import Console
 
@@ -58,7 +59,11 @@ class CgCalculationInput:
 
     OEW_target_rel: float
 
+    distance_le_root_to_le_mac:            float       #distance LEMAC to leading edge wing root
+    c_root:         float       #wing root chord
+    xcg_upper:      float
 
+    z_cg:           float
 
 
     @classmethod
@@ -107,6 +112,13 @@ class CgCalculationInput:
 
         OEW_target_rel = cfg.OEW_target_rel                     # statistically determined factor from torenbeek: % of MAC for OEW cg
 
+        distance_le_root_to_le_mac = result.distance_le_root_to_le_mac
+        c_root = result.root_chord
+
+        xcg_upper = cfg.xcg_upper
+
+        z_cg = cfg.z_cg
+
         return cls(
             l_f = l_f,
             OEW = OEW,
@@ -143,6 +155,11 @@ class CgCalculationInput:
             location_wing_cg = location_wing_cg,
 
             OEW_target_rel = OEW_target_rel,
+
+            distance_le_root_to_le_mac = distance_le_root_to_le_mac,
+            c_root = c_root,
+            xcg_upper = xcg_upper,
+            z_cg = z_cg,
         )
 
 
@@ -160,6 +177,11 @@ class CgBreakdown:
     l_h : float
     x_cg_tank: float
     x_cg_wing_group_rel: float
+    lfn: float
+    x_cg_cargo_fwd: float
+    x_cg_cargo_aft: float
+    x_cg_lg_main: float
+    x_TE_wing_root: float
 
 
     def summary(self) -> Table:
@@ -216,6 +238,31 @@ class CgBreakdown:
         table.add_row(
             "[bold]x_cg_wing_relative_to_MAC[/bold]",
             f"[bold]{self.x_cg_wing_group_rel:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]lfn[/bold]",
+            f"[bold]{self.lfn:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]x_cg_cargo_fwd[/bold]",
+            f"[bold]{self.x_cg_cargo_fwd:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]x_cg_cargo_aft[/bold]",
+            f"[bold]{self.x_cg_cargo_aft:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]x_cg_lg_main[/bold]",
+            f"[bold]{self.x_cg_lg_main:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]x_TE_wing_root[/bold]",
+            f"[bold]{self.x_TE_wing_root:.1f}[/bold]",
         )
 
         return table
@@ -299,6 +346,9 @@ class CgCalculator:
         cg_location_tail_c = d.cg_location_tail_c
         cg_location_engines = d.cg_location_engines
 
+        distance_le_root_to_le_mac = d.distance_le_root_to_le_mac
+        c_root = d.c_root
+
 
 
 
@@ -312,13 +362,12 @@ class CgCalculator:
 
 # ------------------- Fuselage Group cg locations  ------------------
 
-        x_cg_fixed = (cg_location_fus) * l_f                      #assume cg of fixed weight to be equal to fuselage cg, TODO: could be shifted a bit
+        x_cg_fixed = (cg_location_fus-0.04) * l_f                       #assume cg of fixed weight to be equal to fuselage cg, TODO: could be shifted a bit
         x_cg_fus = cg_location_fus * l_f
         x_cg_lg_nose = (2/3) * l_n                                  #this is just an estimate, TODO: can be calculated from required load for steering (SEAD)        
         x_cg_htail = 0.98*l_f-MAC_h+(cg_location_tail_c*MAC_h)        #took 2% fus lenght fort the little cone behind tail, then cg is at a torenbeek defined frn behind LE TODO: update when l_h is updated
         x_cg_vtail = 0.98*l_f-MAC_v+(cg_location_tail_c*MAC_v)        #took 2% fus lenght fort the little cone behind tail, then cg is at a torenbeek defined frn behind LE
         x_cg_tank = l_n + l_c + 1/2 * L_tank
-
         
         W_fus_group, x_cg_fus_group = self.cg_from_weights(
             weights=[
@@ -347,6 +396,10 @@ class CgCalculator:
 
         location_wing_cg = d.location_wing_cg
 
+        beta = np.pi / 180 *16
+        z_cg = d.z_cg      #m = estimate for height of aricraft vertical cg
+        x_cg_lg_main_frn = (z_cg*np.tan(beta) + d.xcg_upper*MAC)/MAC    # frn of MAC that main lg needs to be behind aft cg -> aft cg taken from cfg requires iteration
+
         W_wing_group, x_cg_wing_group_rel = self.cg_from_weights(
             weights=[
                 W_sc,
@@ -356,7 +409,7 @@ class CgCalculator:
             ],
             locations=[
                 MAC,
-                0.5 * MAC,
+                x_cg_lg_main_frn * MAC,
                 location_wing_cg,
                 cg_location_engines,
             ],
@@ -369,7 +422,8 @@ class CgCalculator:
         #x_LEMAC = 17
 
         x_cg_sc = x_LEMAC + MAC
-        x_cg_lg_main = x_LEMAC + 0.5 * MAC         #initial estimate from Torenbeek p.301, TODO: to be fixed for cg excursion & tipover angle
+        #x_cg_lg_main = x_LEMAC + 0.5 * MAC         #initial estimate from Torenbeek p.301, TODO: to be fixed for cg excursion & tipover angle
+        x_cg_lg_main = x_cg_lg_main_frn*MAC + x_LEMAC
         x_cg_wing = x_LEMAC + location_wing_cg
         x_cg_power_units = x_LEMAC + cg_location_engines
 
@@ -394,6 +448,11 @@ class CgCalculator:
 
         l_h = l_f - (x_LEMAC - 1/4 * MAC) - 0.02*l_f - 3/4 * MAC_h      #TODO here I assumed a 2% of fus length for little cone behind tail considered l_h distance 1/4c wing to 1/4 horizontal tail. 
 
+        lfn = x_LEMAC + distance_le_root_to_le_mac
+        x_cg_cargo_fwd = l_n + (lfn-l_n)/2
+        x_TE_wing_root = lfn + c_root       #trailing edge of wing root from nose tip
+        x_cg_cargo_aft = x_TE_wing_root + (l_n + l_c - x_TE_wing_root)/2
+
         return CgBreakdown(
             OEW_check=OEW_check,
             OEW_excl_fixed=OEW_excl_fixed,
@@ -406,6 +465,11 @@ class CgCalculator:
             l_h = l_h,
             x_cg_tank = x_cg_tank,
             x_cg_wing_group_rel = x_cg_wing_group_rel,
+            lfn = lfn,
+            x_cg_cargo_fwd = x_cg_cargo_fwd,
+            x_cg_cargo_aft = x_cg_cargo_aft,
+            x_cg_lg_main =x_cg_lg_main,
+            x_TE_wing_root = x_TE_wing_root,
         )
 
 
