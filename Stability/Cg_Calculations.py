@@ -58,7 +58,8 @@ class CgCalculationInput:
 
     OEW_target_rel: float
 
-
+    distance_le_root_to_le_mac:            float       #distance LEMAC to leading edge wing root
+    c_root:         float       #wing root chord
 
 
     @classmethod
@@ -107,6 +108,9 @@ class CgCalculationInput:
 
         OEW_target_rel = cfg.OEW_target_rel                     # statistically determined factor from torenbeek: % of MAC for OEW cg
 
+        distance_le_root_to_le_mac = result.distance_le_root_to_le_mac
+        c_root = result.root_chord
+
         return cls(
             l_f = l_f,
             OEW = OEW,
@@ -143,6 +147,9 @@ class CgCalculationInput:
             location_wing_cg = location_wing_cg,
 
             OEW_target_rel = OEW_target_rel,
+
+            distance_le_root_to_le_mac = distance_le_root_to_le_mac,
+            c_root = c_root
         )
 
 
@@ -160,6 +167,9 @@ class CgBreakdown:
     l_h : float
     x_cg_tank: float
     x_cg_wing_group_rel: float
+    lfn: float
+    x_cg_cargo_fwd: float
+    x_cg_cargo_aft: float
 
 
     def summary(self) -> Table:
@@ -216,6 +226,21 @@ class CgBreakdown:
         table.add_row(
             "[bold]x_cg_wing_relative_to_MAC[/bold]",
             f"[bold]{self.x_cg_wing_group_rel:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]lfn[/bold]",
+            f"[bold]{self.lfn:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]x_cg_cargo_fwd[/bold]",
+            f"[bold]{self.x_cg_cargo_fwd:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]x_cg_cargo_aft[/bold]",
+            f"[bold]{self.x_cg_cargo_aft:.1f}[/bold]",
         )
 
         return table
@@ -299,6 +324,9 @@ class CgCalculator:
         cg_location_tail_c = d.cg_location_tail_c
         cg_location_engines = d.cg_location_engines
 
+        distance_le_root_to_le_mac = d.distance_le_root_to_le_mac
+        c_root = d.c_root
+
 
 
 
@@ -318,7 +346,6 @@ class CgCalculator:
         x_cg_htail = 0.98*l_f-MAC_h+(cg_location_tail_c*MAC_h)        #took 2% fus lenght fort the little cone behind tail, then cg is at a torenbeek defined frn behind LE TODO: update when l_h is updated
         x_cg_vtail = 0.98*l_f-MAC_v+(cg_location_tail_c*MAC_v)        #took 2% fus lenght fort the little cone behind tail, then cg is at a torenbeek defined frn behind LE
         x_cg_tank = l_n + l_c + 1/2 * L_tank
-
         
         W_fus_group, x_cg_fus_group = self.cg_from_weights(
             weights=[
@@ -394,6 +421,11 @@ class CgCalculator:
 
         l_h = l_f - (x_LEMAC - 1/4 * MAC) - 0.02*l_f - 3/4 * MAC_h      #TODO here I assumed a 2% of fus length for little cone behind tail considered l_h distance 1/4c wing to 1/4 horizontal tail. 
 
+        lfn = x_LEMAC + distance_le_root_to_le_mac
+        x_cg_cargo_fwd = l_n + (lfn-l_n)/2
+        x_TE_wing_root = lfn + c_root       #trailing edge of wing root from nose tip
+        x_cg_cargo_aft = x_TE_wing_root + (l_n + l_c - x_TE_wing_root)/2
+
         return CgBreakdown(
             OEW_check=OEW_check,
             OEW_excl_fixed=OEW_excl_fixed,
@@ -406,6 +438,9 @@ class CgCalculator:
             l_h = l_h,
             x_cg_tank = x_cg_tank,
             x_cg_wing_group_rel = x_cg_wing_group_rel,
+            lfn = lfn,
+            x_cg_cargo_fwd = x_cg_cargo_fwd,
+            x_cg_cargo_aft = x_cg_cargo_aft,
         )
 
 
