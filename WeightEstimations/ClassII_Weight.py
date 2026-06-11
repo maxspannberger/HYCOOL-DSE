@@ -434,7 +434,7 @@ class WeightBreakdown:
 
         table.add_section()
         table.add_row(
-            "[bold green]OEW (Empty Weight)[/bold green]",
+            "[bold green]Empty Weight (excl W_fixed)[/bold green]",
             f"[bold green]{self.W_empty:.1f}[/bold green]",
             "",
         )
