@@ -132,16 +132,14 @@ if __name__ == "__main__":
         
         Pipe(length     =  0.5),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
         Pipe(length     =  0.71),
 
         Valve(name      =  'shutoff'),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
        Valve(name      =  'shutoff'),
@@ -149,22 +147,20 @@ if __name__ == "__main__":
         Pipe(length     =  0.5),
          
         Pump(target_p   =  28*100000, 
-             diameter   =  0.02),
+             diameter   =  0.012),
         
         Pipe(length     =  12.62),
 
         Valve(name      =  'shutoff'),
 
         Corner(N_bend   =  1, 
-               diameter =  0.02, 
                curv     =  2.5),
 
         Valve(name      =  'shutoff'),
         
         Pipe(length     =  8.45),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
         Pipe(length     =  0.5), 
@@ -173,11 +169,9 @@ if __name__ == "__main__":
              location   = component_position['hts_gen'][0]),
 
         Corner(N_bend   =  1, 
-               diameter =  0.02, 
                curv     =  2.5),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
         
         Pipe(length     =  1.0), 
@@ -185,24 +179,20 @@ if __name__ == "__main__":
         COOL(name       = 'hts_pow', 
              location   = component_position['hts_pow'][0]),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
         Pipe(length     =  0.5),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
         Pipe(length     =  5.5),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
         Pipe(length     =  0.5),
@@ -210,12 +200,10 @@ if __name__ == "__main__":
         COOL(name       = 'hts_pow', 
              location   = component_position['hts_pow'][1]),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
         Corner(N_bend   =  1, 
-               diameter =  0.02, 
                curv     =  2.5),
 
         COOL(name       = 'dc_ac', 
@@ -223,14 +211,12 @@ if __name__ == "__main__":
 
         Pipe(length     =  0.5),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
         Pipe(length     =  5.5),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
         Pipe(length     =  0.5),
@@ -238,12 +224,10 @@ if __name__ == "__main__":
         COOL(name       = 'dc_ac', 
              location   = component_position['dc_ac'][0]),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
         Corner(N_bend   =  1, 
-               diameter =  0.02, 
                curv     =  2.5),
 
         Pipe(length     =  1.0),
@@ -251,8 +235,7 @@ if __name__ == "__main__":
         COOL(name       = 'ac_dc', 
              location   = component_position['ac_dc'][0]),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
         Pipe(length     =  1.0),
@@ -261,11 +244,9 @@ if __name__ == "__main__":
              location   = component_position['bus'][0]),
 
         Corner(N_bend   =  1, 
-               diameter =  0.02, 
                curv     =  2.5),
 
-        Corner(N_bend   =  1, 
-               diameter =  0.02, 
+        Corner(N_bend   =  1,  
                curv     =  2.5),
 
         Pipe(length     =  1.0)
