@@ -1,6 +1,6 @@
 from math import pi, cbrt
 
-N_check_valves = 4
+N_check_valves = 2
 N_shutoff_valves = 11
 pipe_diameter = 0.012
 # m_dot = 0.09
