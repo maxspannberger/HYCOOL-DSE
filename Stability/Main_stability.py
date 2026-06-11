@@ -205,7 +205,7 @@ def run_full_stability_sequence(
 
 if __name__ == "__main__":
     run_full_stability_sequence(
-        oew_target_rel_guess=0.50,   # your OEW/MAC fraction guess
+        oew_target_rel_guess=0.5,   # your OEW/MAC fraction guess
         config=3,
         use_loading_margin=True,
         update_lfn=True,
