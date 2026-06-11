@@ -318,7 +318,7 @@ class Pipe:
 # =============================================================================
 class Corner:
     def __init__(self, curv:     float,
-                       diameter: float,
+                       diameter: float   =  config.pipe_default_d,
                        name:      str    = 'Bend',
                        N_bend:    int    = 1
                        ):
