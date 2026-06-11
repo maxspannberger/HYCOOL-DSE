@@ -519,21 +519,23 @@ class COOL:
         A_contact = self.Q_dot / (U * deltaT)
         pipe_length = A_contact / (np.pi * D_input * N_pipes)
 
-        if not Ref >= 10000:
-            raise Warning("Formulas used are not valid for the required Reynolds number\n" +\
-                    "Required Re range: Re >= 1000\n" +\
-                    f"Used Re: {Ref}"
-                )
-        if not 0.6 <= Prf <= 160:
-            raise Warning("Formulas used are not valid for the required Prandtl number\n" +\
-                    "Required Pr range: 0.6 <= Pr <= 160\n" +\
-                    f"Used Pr: {Prf}"
-                )
-        if not pipe_length/D_input >= 19:
-            raise Warning("Formulas used are not valid for the required length/diameter ratio\n" +\
-                    "Required L/D range: L/D >= 19\n" +\
-                    f"Used L/D: {pipe_length/D_input}"
-                )
+        print(self.Q_dot)
+
+        # if not Ref >= 10000:
+        #     raise Warning("Formulas used are not valid for the required Reynolds number\n" +\
+        #             "Required Re range: Re >= 1000\n" +\
+        #             f"Used Re: {Ref}"
+        #         )
+        # if not 0.6 <= Prf <= 160:
+        #     raise Warning("Formulas used are not valid for the required Prandtl number\n" +\
+        #             "Required Pr range: 0.6 <= Pr <= 160\n" +\
+        #             f"Used Pr: {Prf}"
+        #         )
+        # if not pipe_length/D_input >= 19:
+        #     raise Warning("Formulas used are not valid for the required length/diameter ratio\n" +\
+        #             "Required L/D range: L/D >= 19\n" +\
+        #             f"Used L/D: {pipe_length/D_input}"
+        #         )
 
         results = {'T':   np.array([T2]), 
                    'p':   np.array([p2]),

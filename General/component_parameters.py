@@ -13,6 +13,7 @@ class PowerComponent(Component):
         self.power_density_std = power_density_std
         self.efficiency_std = efficiency_std / 100
         self.volumetric_density = volumetric_density
+        self.HEX_area = None
 
 class StorageComponent(Component):
     # class for energy storage components (batteries)
