@@ -448,10 +448,6 @@ class COOL:
             # Pure micro-channel friction
             dp_fric = f * (L/Dh) * (rho1 * u_internal**2 / 2) 
             
-            # Optional minor losses for contraction/expansion moving from pipe -> tiny slots -> pipe
-            dp_minor = (0.5 + 1.0) * (rho1 * u_internal**2 / 2)
-            dp_fric += dp_minor
-
         else:
             # ---------------------------------------------------------
             # NON-HTS COMPONENTS (AC/DC, Bus, etc.)
@@ -518,8 +514,6 @@ class COOL:
         deltaT = T_component - 0.5 * (T1 + T2)
         A_contact = self.Q_dot / (U * deltaT)
         pipe_length = A_contact / (np.pi * D_input * N_pipes)
-
-        print(self.Q_dot)
 
         # if not Ref >= 10000:
         #     raise Warning("Formulas used are not valid for the required Reynolds number\n" +\
