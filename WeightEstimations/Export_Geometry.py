@@ -107,6 +107,12 @@ def collect_final_geometry(cfg, result) -> dict:
             "P_TO_OEI_kW": result.P_TO_OEI_KW,
             "static_thrust_per_engine_kN": result.power.T_static_per_engine / 1000,
         },
+
+        "Distances_mac": {
+            "distance_le_mac_to_cg": result.distance_le_mac_to_cg,
+            "distance_le_mac_to_turbine": result.distance_le_mac_to_turbine,
+            "distance_le_root_to_le_mac": result.distance_le_root_to_le_mac,
+        },
     }
 
     return geometry

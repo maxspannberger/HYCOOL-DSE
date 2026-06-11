@@ -415,7 +415,7 @@ class COOL:
         
         # Specific heat added (Total heat / branch mass flow)
         q = self.Q_dot / m_dot 
-
+        q += 34.79 / m_dot  # Heat from fittings and cable extraction divided into all components
         # ---------------------------------------------------------
         # 2. MICRO INTERNAL GEOMETRY (Calculating the friction drop)
         # ---------------------------------------------------------
@@ -497,7 +497,8 @@ class COOL:
         # f is the "film" temperature (boundary layer of H2 next to the pipe walls)
         if self.name in ['hts_gen', 'hts_pow']:
             N_pipes = N_slots
-            D_input = np.sqrt(4 * A_slot / np.pi)
+            D_input = np.sqrt(4 * A_flow_slot / np.pi)
+            print(D_input)
         else:
             N_pipes = 1
             D_input = system[i-1].d
