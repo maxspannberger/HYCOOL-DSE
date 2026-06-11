@@ -31,11 +31,11 @@ def solve_system(system, m_dot, T_amb, branch_name=""):
               'frac': []}
     
     for i, comp in enumerate(system):
-        # Update the m_dot based on pipe splits and merges 
+        # Update the m_dot based on pipe splits and merges
         if type(comp) == tuple:
             m_dot = m_dot * comp[1] / comp[-1]
         else:
-            # --- THE REQUESTED HTS COMPONENT MASS FLOW SANITY CHECK ---
+            # --- HTS COMPONENT MASS FLOW SANITY CHECK ---
             if hasattr(comp, 'name') and comp.name in ['hts_gen', 'hts_pow']:
                 print(f"[{branch_name}] Mass flow entering {comp.name.upper()} ({comp.location}): {m_dot:.5f} kg/s")
             # ----------------------------------------------------------
@@ -64,8 +64,8 @@ def print_tree(states, branch_name):
     rich_print(tree)
 
 # =============================================================================
+# PLOTTING VISUALS (With Explicit Split Background for Both Wings)
 # Visualizes the pressure, temperature, density, and enthalpy profiles.
-# Background gradient indicates the phase fraction (liquid to gas).
 # =============================================================================
 def plot_combined_states(states_W, states_F):
   
@@ -75,9 +75,11 @@ def plot_combined_states(states_W, states_F):
         flat_W[prop] = [value for component_data in states_W[prop] for value in component_data]
         flat_F[prop] = [value for component_data in states_F[prop] for value in component_data]
 
-    # Prepare phase-fraction background gradient using the Working branch profile
-    frac_arr = np.array(flat_W['frac'])
-    gradient = np.tile(frac_arr, (100, 1)) 
+    # --- POINT 1 FIX: Stack the phase-fractions for a split background ---
+    frac_W_arr = np.array(flat_W['frac'])
+    frac_F_arr = np.array(flat_F['frac'])
+    # Top half (50 rows) = Working Wing, Bottom half (50 rows) = Failed Wing
+    gradient = np.vstack((np.tile(frac_W_arr, (50, 1)), np.tile(frac_F_arr, (50, 1)))) 
 
     fig, axes = plt.subplots(2, 2, figsize=(14, 9))
     axes = axes.flatten()
@@ -89,14 +91,20 @@ def plot_combined_states(states_W, states_F):
         y_min   = min(min(flat_W[prop]), min(flat_F[prop]))
         y_max   = max(max(flat_W[prop]), max(flat_F[prop]))
         margin  = (y_max - y_min) * 0.05 if (y_max - y_min) > 0 else 1.0
+        y_mid   = (y_max + y_min) / 2.0
         
-        # Overlay original phase map gradient (Blue = Liquid, Red = Gas)
+        # Overlay the split phase map gradient
         axes[i].imshow(gradient, aspect='auto', cmap='RdYlBu_r',
                        vmin=0, vmax=1,
                        extent=[0, len(flat_W[prop]), y_min - margin, y_max + margin],
-                       alpha=0.2)
+                       alpha=0.25)
         
-        # Plot both branches on the exact same graph layout
+        # Explicit visual separator for the split backgrounds
+        axes[i].axhline(y_mid, color='black', linestyle='-.', linewidth=1.2, alpha=0.4)
+        axes[i].text(len(flat_W[prop])*0.01, y_max, " Working Wing Phase Map", fontsize=8, color='black', alpha=0.7, va='top')
+        axes[i].text(len(flat_W[prop])*0.01, y_min, " Failed Wing Phase Map", fontsize=8, color='black', alpha=0.7, va='bottom')
+
+        # Plot both branches
         axes[i].plot(flat_W[prop], color='tab:blue', linestyle='-', linewidth=2.5, label='Working Wing')
         axes[i].plot(flat_F[prop], color='tab:red', linestyle='--', linewidth=2.0, label='Failed Wing')
         
@@ -109,7 +117,6 @@ def plot_combined_states(states_W, states_F):
     fig.suptitle(f'Hydrogen State Profile Comparison (Phase: {c.phase.upper()})', fontsize=16, fontweight='bold')
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.show()
-
 
 # =============================================================================
 # MAIN RUNTIME ENVIRONMENT
@@ -159,7 +166,7 @@ if __name__ == "__main__":
     # 3. Explicitly construct the full sequential list for the Working Branch
     system_W = [
         Tank(),
-        ('Split', frac_W, 1.0), # Dynamically captures step-down inside your loop
+        ('Split', frac_W, 1.0),
         Valve(name      =  'check'),
         Pipe(length     =  0.5),
         Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
@@ -278,7 +285,14 @@ if __name__ == "__main__":
 
     m_dot_mix = final_mdot_W + final_mdot_F
     h_mix = (final_mdot_W * h_W + final_mdot_F * h_F) / m_dot_mix
-    p_mix = min(p_W, p_F) # Bound to the lower exit pressure threshold
+    
+    # --- POINT 2 FIX: Thermodynamic Pressure Balancing ---
+    # In a parallel pipe network, fluid naturally distributes itself to equalize pressure drop.
+    # By forcing a 70/30 split mathematically, we must assume a physical flow-control 
+    # valve is actively choking the lower-friction (Failed) side to match the high-friction side.
+    # Taking the minimum pressure accurately simulates this pressure destruction.
+    p_mix = min(p_W, p_F) 
+    # -----------------------------------------------------
     
     T_mix = CP.PropsSI('T', 'P', p_mix, 'H', h_mix, c.fluid)
     rho_mix = CP.PropsSI('D', 'P', p_mix, 'H', h_mix, c.fluid)
