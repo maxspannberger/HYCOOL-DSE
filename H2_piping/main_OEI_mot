@@ -1,0 +1,296 @@
+from pathlib import Path
+import sys
+import numpy as np
+import json
+import CoolProp.CoolProp as CP
+from rich import print as rich_print
+from rich.tree import Tree
+import matplotlib.pyplot as plt
+
+# Set up paths to ensure we can import local modules
+folder = Path(__file__).resolve().parent
+sys.path.append(str(folder))
+
+root = Path(__file__).resolve().parent.parent
+sys.path.append(str(root))
+
+# Import your components from h2_components and configuration from system_config
+from h2_components import Tank, Pipe, Pump, Corner, COOL, Valve, calc_frac
+from system_config import H2SystemConfig as c
+
+# =============================================================================
+# Iterates through the defined system components to calculate fluid states.
+# Updates mass flow rate when splits or merges occur via the Tuple.
+# =============================================================================
+def solve_system(system, m_dot, T_amb, branch_name=""):
+   
+    states = {'p'   : [],
+              'T'   : [],
+              'rho' : [],
+              'h'   : [],
+              'frac': []}
+    
+    for i, comp in enumerate(system):
+        # Update the m_dot based on pipe splits and merges
+        if type(comp) == tuple:
+            m_dot = m_dot * comp[1] / comp[-1]
+        else:
+            # --- HTS COMPONENT MASS FLOW SANITY CHECK ---
+            if hasattr(comp, 'name') and comp.name in ['hts_gen', 'hts_pow']:
+                print(f"[{branch_name}] Mass flow entering {comp.name.upper()} ({comp.location}): {m_dot:.5f} kg/s")
+            # ----------------------------------------------------------
+
+            # Propagate the state through the specific component solver
+            component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=False, system=system, i=i)
+            
+            states['p'].append(component_result['p'])
+            states['T'].append(component_result['T'])
+            states['rho'].append(component_result['rho'])
+            states['h'].append(component_result['h'])
+            states['frac'].append(component_result['frac'])
+            
+    return states, m_dot
+
+# =============================================================================
+# Displays the computed states in a clean, hierarchical CLI tree format.
+# =============================================================================
+def print_tree(states, branch_name):
+    tree = Tree(f"\n[bold blue]System States - {branch_name}")
+    for key, values in states.items():
+        branch = tree.add(f"[bold red]{key.upper()}")
+        for comp_idx, data in enumerate(values):
+            comp_node = branch.add(f"[bold yellow]Component {comp_idx}")
+            comp_node.add(str(data))
+    rich_print(tree)
+
+# =============================================================================
+# PLOTTING VISUALS (With Explicit Split Background for Both Wings)
+# Visualizes the pressure, temperature, density, and enthalpy profiles.
+# =============================================================================
+def plot_combined_states(states_W, states_F):
+  
+    flat_W = {}
+    flat_F = {}
+    for prop in ['p', 'T', 'rho', 'h', 'frac']:
+        flat_W[prop] = [value for component_data in states_W[prop] for value in component_data]
+        flat_F[prop] = [value for component_data in states_F[prop] for value in component_data]
+
+    # Stack the phase-fractions for a split background 
+    frac_W_arr = np.array(flat_W['frac'])
+    frac_F_arr = np.array(flat_F['frac'])
+    # Top half (50 rows) = Working Wing, Bottom half (50 rows) = Failed Wing
+    gradient = np.vstack((np.tile(frac_W_arr, (50, 1)), np.tile(frac_F_arr, (50, 1)))) 
+
+    fig, axes = plt.subplots(2, 2, figsize=(14, 9))
+    axes = axes.flatten()
+    
+    properties = ['p', 'T', 'rho', 'h']
+    titles = ['Pressure (Pa)', 'Temperature (K)', 'Density (kg/m³)', 'Enthalpy (J/kg)']
+
+    for i, prop in enumerate(properties):
+        y_min   = min(min(flat_W[prop]), min(flat_F[prop]))
+        y_max   = max(max(flat_W[prop]), max(flat_F[prop]))
+        margin  = (y_max - y_min) * 0.05 if (y_max - y_min) > 0 else 1.0
+        y_mid   = (y_max + y_min) / 2.0
+        
+        # Overlay the split phase map gradient
+        axes[i].imshow(gradient, aspect='auto', cmap='RdYlBu_r',
+                       vmin=0, vmax=1,
+                       extent=[0, len(flat_W[prop]), y_min - margin, y_max + margin],
+                       alpha=0.25)
+        
+        # Explicit visual separator for the split backgrounds
+        axes[i].axhline(y_mid, color='black', linestyle='-.', linewidth=1.2, alpha=0.4)
+        axes[i].text(len(flat_W[prop])*0.01, y_max, " Working Wing Phase Map", fontsize=8, color='black', alpha=0.7, va='top')
+        axes[i].text(len(flat_W[prop])*0.01, y_min, " Failed Wing Phase Map", fontsize=8, color='black', alpha=0.7, va='bottom')
+
+        # Plot both branches
+        axes[i].plot(flat_W[prop], color='tab:blue', linestyle='-', linewidth=2.5, label='Working Wing')
+        axes[i].plot(flat_F[prop], color='tab:red', linestyle='--', linewidth=2.0, label='Failed Wing')
+        
+        axes[i].set_title(titles[i])
+        axes[i].grid(True, linestyle='--', alpha=0.7)
+        axes[i].set_ylabel(titles[i])
+        axes[i].set_xlabel("Total System Step (Index)")
+        axes[i].legend()
+
+    fig.text(0.5, 0.01, "Background Gradient: Top Half = Working Wing Phase | Bottom Half = Failed Wing Phase (Blue=Liquid, Red=Gas)", ha='center', fontsize=10, style='italic')
+
+    fig.suptitle(f'Hydrogen State Profile Comparison (Phase: {c.phase.upper()})', fontsize=16, fontweight='bold')
+    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.show()
+
+# =============================================================================
+# MAIN RUNTIME ENVIRONMENT
+# =============================================================================
+if __name__ == "__main__":
+
+    # 1. Load the component cooling requirements from the propulsion json file
+    path = str(root / "Propulsion/only_cooling_results.json")
+    with open(path, 'r') as file:
+        comps = json.load(file)
+
+    component_position = {}
+    for key, value in comps[c.phase].items(): 
+        if key == "total":
+            continue
+        component_position[key] = sorted(value, key=float)
+
+    # 2. Mass Flow Apportionment Calculations
+    # Since BOTH gas turbines are running, the mass flow split is strictly 50/50.
+    frac_W = 0.50
+    frac_F = 0.50
+
+    print("\n" + "="*50)
+    print(f"SYMMETRIC MASS FLOW SPLIT ({c.phase.upper()})".center(50))
+    print("="*50)
+    print(f"Working Branch Mass Flow Fraction : {frac_W*100:.2f}%")
+    print(f"Failed Branch Mass Flow Fraction  : {frac_F*100:.2f}%")
+    print("="*50 + "\n")
+
+    # 3. Explicitly construct the full sequential list for the Working Branch
+    system_W = [
+        Tank(),
+        ('Split', frac_W, 1.0), 
+        Valve(name      =  'check'),
+        Pipe(length     =  0.5),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  0.71),
+        Valve(name      =  'shutoff'),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  0.5),
+        Pump(target_p   =  28*100000, diameter   =  0.02),
+        Pipe(length     =  15),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Valve(name      =  'shutoff'),
+        Pipe(length     =  8.45),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  0.5), 
+        COOL(name       = 'hts_gen', location   = component_position['hts_gen'][0]),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  1.0), 
+        COOL(name       = 'hts_pow', location   = component_position['hts_pow'][0]),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  0.5),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  5.5),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  0.5),
+        COOL(name       = 'hts_pow', location   = component_position['hts_pow'][1]),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        COOL(name       = 'dc_ac', location   = component_position['dc_ac'][1]),
+        Pipe(length     =  0.5),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  5.5),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  0.5),
+        COOL(name       = 'dc_ac', location   = component_position['dc_ac'][0]),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  1.0),
+        COOL(name       = 'ac_dc', location   = component_position['ac_dc'][0]),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  1.0),
+        COOL(name       = 'bus', location   = component_position['bus'][0]),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  1.0)
+    ]
+
+    # 4. Explicitly construct the full sequential list for the Failed Branch
+    system_F = [
+        Tank(),
+        ('Split', frac_F, 1.0),
+        Valve(name      =  'check'),
+        Pipe(length     =  0.5),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  0.71),
+        Valve(name      =  'shutoff'),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  0.5),
+        Pump(target_p   =  28*100000, diameter   =  0.02),
+        Pipe(length     =  15),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Valve(name      =  'shutoff'),
+        Pipe(length     =  8.45),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  0.5), 
+        COOL(name       = 'hts_gen', location   = component_position['hts_gen'][0]),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  1.0), 
+        COOL(name       = 'hts_pow', location   = component_position['hts_pow'][0]),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  0.5),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  5.5),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  0.5),
+        COOL(name       = 'hts_pow', location   = component_position['hts_pow'][1]),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        COOL(name       = 'dc_ac', location   = component_position['dc_ac'][1]),
+        Pipe(length     =  0.5),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  5.5),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  0.5),
+        COOL(name       = 'dc_ac', location   = component_position['dc_ac'][0]),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  1.0),
+        COOL(name       = 'ac_dc', location   = component_position['ac_dc'][0]),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  1.0),
+        COOL(name       = 'bus', location   = component_position['bus'][0]),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Corner(N_bend   =  1, diameter =  0.02, curv     =  2.5),
+        Pipe(length     =  1.0)
+    ]
+
+    # Adjust heat loads directly on the instanced classes based on branch conditions
+    for comp_W, comp_F in zip(system_W, system_F):
+        if isinstance(comp_W, COOL):
+            # --- THE OEI_MOT LOGIC ---
+            # Zero out the dead inboard motor and inboard inverter on the failed wing
+            if c.phase == 'OEI_mot':
+                if comp_F.name in ['hts_pow', 'dc_ac'] and comp_F.location == component_position[comp_F.name][0]:
+                    comp_F.Q_dot = 0.0
+
+    # 5. Execute Simulation Routines
+    states_W, final_mdot_W = solve_system(system_W, m_dot=c.m_dot, T_amb=c.T_amb, branch_name="Working Wing")
+    states_F, final_mdot_F = solve_system(system_F, m_dot=c.m_dot, T_amb=c.T_amb, branch_name="Failed Wing")
+
+    # 6. Print Separate Output Structures (No Mixing Node!)
+    print_tree(states_W, "Working Wing")
+    print_tree(states_F, "Failed Wing")
+
+    # Extract final states separately
+    T_W, p_W, rho_W, h_W = states_W['T'][-1][-1], states_W['p'][-1][-1], states_W['rho'][-1][-1], states_W['h'][-1][-1]
+    T_F, p_F, rho_F, h_F = states_F['T'][-1][-1], states_F['p'][-1][-1], states_F['rho'][-1][-1], states_F['h'][-1][-1]
+
+    print("\n" + "="*50)
+    print("WORKING WING FLUID STATE (GAS TURBINE INLET)".center(50))
+    print("="*50)
+    print(f"Final Mass Flow       :  {final_mdot_W:.5f} kg/s")
+    print(f"Temperature           :  {T_W:.2f} K")
+    print(f"Pressure              :  {p_W:.2f} Pa  ({p_W/100000:.2f} bar)")
+    print(f"Density               :  {rho_W:.2f} kg/m³")
+    print(f"Enthalpy              :  {h_W:.2f} J/kg")
+    
+    print("\n" + "="*50)
+    print("FAILED WING FLUID STATE (GAS TURBINE INLET)".center(50))
+    print("="*50)
+    print(f"Final Mass Flow       :  {final_mdot_F:.5f} kg/s")
+    print(f"Temperature           :  {T_F:.2f} K")
+    print(f"Pressure              :  {p_F:.2f} Pa  ({p_F/100000:.2f} bar)")
+    print(f"Density               :  {rho_F:.2f} kg/m³")
+    print(f"Enthalpy              :  {h_F:.2f} J/kg")
+    print("="*50 + "\n")
+
+    # Render Graph Visuals
+    plot_combined_states(states_W, states_F)
