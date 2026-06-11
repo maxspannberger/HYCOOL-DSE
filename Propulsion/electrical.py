@@ -212,15 +212,12 @@ def size_all_components(component_order, powers, HTS_dimensions, comp=comp_param
                     component_sizing[component][pos]["P_cool"] = (1.0 - comp[component].efficiency) * P_max
                     component_sizing[component][pos]["mass"] = P_max / comp[component].power_density
                     if "gen" in component:
-                        component_sizing[component][pos]["L"] = HTS_dimensions["hts_gen"]["L"]
-                        component_sizing[component][pos]["D"] = HTS_dimensions["hts_gen"]["D"]
+                        component_sizing[component][pos]["sizes"] = (HTS_dimensions["hts_gen"]["L"], HTS_dimensions["hts_gen"]["D"])
                     else:
                         if np.isclose(pos, 1.0):
-                            component_sizing[component][pos]["L"] = HTS_dimensions["hts_pow_2"]["L"]
-                            component_sizing[component][pos]["D"] = HTS_dimensions["hts_pow_2"]["D"]
+                            component_sizing[component][pos]["sizes"] = (HTS_dimensions["hts_pow_2"]["L"], HTS_dimensions["hts_pow_2"]["D"])
                         else:
-                            component_sizing[component][pos]["L"] = HTS_dimensions["hts_pow_1"]["L"]
-                            component_sizing[component][pos]["D"] = HTS_dimensions["hts_pow_1"]["D"]
+                            component_sizing[component][pos]["sizes"] = (HTS_dimensions["hts_pow_1"]["L"], HTS_dimensions["hts_pow_1"]["D"])
 
                     P_cool_total += component_sizing[component][pos]["P_cool"] * 2
                     m_total += component_sizing[component][pos]["mass"]
@@ -242,6 +239,17 @@ def size_all_components(component_order, powers, HTS_dimensions, comp=comp_param
     filename = os.path.join(root, "Propulsion", "component_sizing_results.json")
     with open(filename, "w") as f:
         json.dump(component_sizing, f, indent=4)
+
+    dimensions_only = {}
+    for component in component_sizing:
+        if component != "total":
+            dimensions_only[component] = {}
+            for loc in component_sizing[component]:
+                dimensions_only[component][loc] = component_sizing[component][loc]["sizes"]
+
+    filename = os.path.join(root, "Propulsion", "only_sizing_results.json")
+    with open(filename, "w") as f:
+        json.dump(dimensions_only, f, indent=4)
 
     cooling_requirements_only = {}
     for condition in list(list(powers.values())[0].values())[0].keys():
