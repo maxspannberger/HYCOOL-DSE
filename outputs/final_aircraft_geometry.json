@@ -1,19 +1,35 @@
 {
     "Masses": {
+<<<<<<< HEAD
         "MTOW_kg": 33072.19479980335,
         "MZFW_kg": 32461.992089699586,
         "OEW_kg": 22461.992089699586,
         "fuel_mass_kg": 610.2027101037633,
+=======
+        "MTOW_kg": 33072.19480998907,
+        "MZFW_kg": 32461.992099752802,
+        "OEW_kg": 22461.992099752802,
+        "fuel_mass_kg": 610.2027102362716,
+>>>>>>> 8d53c5d5d59bbe3eaec95878ee9240e1b17f802c
         "payload_kg": 10000.0,
         "fixed_equipment_kg": 4442.1888
     },
     "Wing": {
+<<<<<<< HEAD
         "S_ref_m2": 85.12330085408392,
         "span_m": 29.175897733246174,
         "aspect_ratio": 10,
         "root_chord_m": 4.328075680331015,
         "tip_chord_m": 1.5071038663182197,
         "MAC_m": 3.1448858919740235,
+=======
+        "S_ref_m2": 85.12330088028972,
+        "span_m": 29.175897737737174,
+        "aspect_ratio": 10,
+        "root_chord_m": 4.328075680997229,
+        "tip_chord_m": 1.5071038665502061,
+        "MAC_m": 3.1448858924581113,
+>>>>>>> 8d53c5d5d59bbe3eaec95878ee9240e1b17f802c
         "taper_ratio": 0.34821569159875576,
         "sweep_half_rad": 0.4014257279586958,
         "sweep_half_deg": 23.0,
@@ -21,6 +37,7 @@
         "sweep_tc_deg": 24.0,
         "thickness_to_chord_root": 0.1,
         "thickness_to_chord_mean": 0.11,
+<<<<<<< HEAD
         "root_thickness_m": 0.4328075680331015,
         "LEMAC_m_from_nose": 15.3
     },
@@ -32,10 +49,24 @@
         "aspect_ratio_h": 4.5,
         "V_h": 1.5238846648567534,
         "elevator_area_m2": 5.937490519569824,
+=======
+        "root_thickness_m": 0.432807568099723,
+        "LEMAC_m_from_nose": 15.291
+    },
+    "Horizontal_tail": {
+        "S_h_m2": 19.153195230317678,
+        "span_h_m": 9.283823486927655,
+        "MAC_h_m": 2.1,
+        "tail_arm_l_h_m": 21.314,
+        "aspect_ratio_h": 4.5,
+        "V_h": 1.5248862789556419,
+        "elevator_area_m2": 5.93749052139848,
+>>>>>>> 8d53c5d5d59bbe3eaec95878ee9240e1b17f802c
         "Se_Sh": 0.31,
         "driver": "scissor plot"
     },
     "Vertical_tail": {
+<<<<<<< HEAD
         "S_v_m2": 34.424959722085184,
         "span_v_m": 7.649995524674822,
         "MAC_v_m": 3.5,
@@ -79,5 +110,55 @@
         "P_TO_kW": 6209.795402555031,
         "P_TO_OEI_kW": 3104.8977012775154,
         "static_thrust_per_engine_kN": 53.36465111471096
+=======
+        "S_v_m2": 34.42495973306648,
+        "span_v_m": 7.649995525894967,
+        "MAC_v_m": 3.5,
+        "tail_arm_l_v_m": 19.7,
+        "aspect_ratio_v": 1.7,
+        "V_v": 0.2730559164236997,
+        "rudder_area_m2": 8.893758124224513,
+        "Sr_Sv": 0.2583520269359014,
+        "driver": "control (OEI rudder)"
+    },
+    "Fuselage": {
+        "length_m": 38.15769601591195,
+        "diameter_equivalent_m": 2.9,
+        "width_m": 2.9,
+        "height_m": 2.9,
+        "wetted_area_m2": 313.2527843181379,
+        "LEMAC_m_from_nose": 15.291
+    },
+    "LH2_tank": {
+        "fuel_mass_kg": 610.2027102362716,
+        "effective_LH2_density_kg_m3": 70.85,
+        "volume_m3": 8.612600003334816,
+        "radius_m": 1.07,
+        "diameter_m": 2.14,
+        "length_m": 3.1076960159119573,
+        "hump_back": true,
+        "extra_wetted_area_hump_m2": 0.0,
+        "tank_weight_kg": 377.5629269586931
+    },
+    "Aerodynamics": {
+        "cruise_CL": 0.28064715063669854,
+        "cruise_L_over_D": 15.266690431087847,
+        "CD0": 0.015270374696676959,
+        "CD_total": 0.01838297251807841,
+        "oswald_e": 0.8054681881272995
+    },
+    "Power": {
+        "P_cruise_kW": 4424.353122738684,
+        "P_climb_kW": 5595.575066677241,
+        "P_reserve_kW": 1511.8921612926808,
+        "P_TO_kW": 6209.7954044667595,
+        "P_TO_OEI_kW": 3104.8977022333797,
+        "static_thrust_per_engine_kN": 53.36465112566796
+    },
+    "Distances_mac": {
+        "distance_le_mac_to_cg": 1.476116064584882,
+        "distance_le_mac_to_turbine": 0.36116595139115065,
+        "distance_le_root_to_le_mac": -1.4345137607085556
+>>>>>>> 8d53c5d5d59bbe3eaec95878ee9240e1b17f802c
     }
 }
