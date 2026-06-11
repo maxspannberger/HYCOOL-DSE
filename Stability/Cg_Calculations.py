@@ -312,7 +312,7 @@ class CgCalculator:
 
 # ------------------- Fuselage Group cg locations  ------------------
 
-        x_cg_fixed = (cg_location_fus) * l_f                      #assume cg of fixed weight to be equal to fuselage cg, TODO: could be shifted a bit
+        x_cg_fixed = (cg_location_fus-0.04) * l_f                       #assume cg of fixed weight to be equal to fuselage cg, TODO: could be shifted a bit
         x_cg_fus = cg_location_fus * l_f
         x_cg_lg_nose = (2/3) * l_n                                  #this is just an estimate, TODO: can be calculated from required load for steering (SEAD)        
         x_cg_htail = 0.98*l_f-MAC_h+(cg_location_tail_c*MAC_h)        #took 2% fus lenght fort the little cone behind tail, then cg is at a torenbeek defined frn behind LE TODO: update when l_h is updated

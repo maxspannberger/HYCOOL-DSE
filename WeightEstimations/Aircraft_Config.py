@@ -237,8 +237,8 @@ def default_q400_hycool() -> AircraftConfig:
         tc_h             = 0.12,                # Referenced
         sweep_h_half     = np.deg2rad(22.0),    # Referenced
         sweep_h_tc       = np.deg2rad(20.0),    # Referenced
-        l_h              = 20.8,                # Referenced
-        S_h_frn          = 0.23,                 # read from scissor plot
+        l_h              = 21.3,                # Referenced
+        S_h_frn          = 0.225,                 # read from scissor plot
 
         # Vertical tail
         MAC_v            = MAC_v,               
@@ -343,11 +343,11 @@ def default_q400_hycool() -> AircraftConfig:
         FirstWindow         = 6.74,                 # Distance nose tip to first window [m], placeholder for now
         LastWindow          = 27.08,                # Distance nose tip to last window [m], placeholder for now
 
-        LEMAC               = 15.8,                 # Distance nose tip to LEMAC [m], placeholder for now
-        lfn                 = 14.75,                 # Distance nose tip to LE wing root LEMAC - 1.05
+        LEMAC               = 15.3,                 # Distance nose tip to LEMAC [m], placeholder for now
+        lfn                 = 14.25,                 # Distance nose tip to LE wing root LEMAC - 1.05
         hh                  = 4,                    # Normal distance from wing plane to tail plane, placeholder for now
 
-        OEW_cg              = 17.39,                # Distance nose tip to OEW CG [m], placeholder for now
+        OEW_cg              = 16.87,                # Distance nose tip to OEW CG [m], placeholder for now
         FUEL_cg             = 28.6,                   # Distance nose tip to Fuel CG [m], placeholder for now
         AftCargo_cg         = 25,                   # Distance nose tip to Aft Cargo CG [m], placeholder for now
         FwdCargo_cg         = 9,                   # Distance nose tip to Fwd Cargo CG [m], placeholder for now
@@ -368,11 +368,11 @@ def default_q400_hycool() -> AircraftConfig:
         cg_surf_control     = 1,                    # 100% of MAC from LEMAC
 
         #cg_location_engines = 0.5,                  # [m] from LEMAC to cg of the power units on the wing
-        OEW_target_rel      = 0.51,                 # % of MAC, from LEMAC. Value for config 3 (wing mtd engines) from Torenbeek p.300 (range is 0.2-0.25)
+        OEW_target_rel      = 0.5,                 # % of MAC, from LEMAC. Value for config 3 (wing mtd engines) from Torenbeek p.300 (range is 0.2-0.25)
 
         # cg range from loading diagram
-        xcg_lower           = 0.241,
-        xcg_upper           = 0.597,
+        xcg_lower           = 0.277,
+        xcg_upper           = 0.618,
 
         #nacelle dimensions
         bn                  = 0.7,      #m diameter of nacelle
