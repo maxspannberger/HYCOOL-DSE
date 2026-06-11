@@ -373,9 +373,11 @@ class Corner:
 class COOL:
     def __init__(self, name:        str, 
                        location:    str,
-                       phase:       str   =  config.phase
+                       phase:       str   =  config.phase,
+                       diameter:    float =  config.pipe_default_d
                        ):   
         
+        self.d        = diameter
         self.location = location
         self.name     = name
         self.fluid    = config.fluid
@@ -384,7 +386,7 @@ class COOL:
     # Function that can be called to calculate the evolution of the state variables
     # in the component
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None):
-        T1, p1, h1, rho1 = get_input_states(states)
+        T0, p0, h0, rho0 = get_input_states(states)
         
         # ---------------------------------------------------------
         # 1. MACRO SYSTEM GEOMETRY (The pipes entering/exiting the component)
@@ -392,9 +394,24 @@ class COOL:
         # We assume the component connects to the standard system pipe.
         d_pipe = config.pipe_default_d  
         A_pipe = np.pi * d_pipe**2 / 4
+        T_component = config.operating_temp[self.name]
         
         # Macro inlet velocity from the upstream pipe
-        u1 = m_dot / (rho1 * A_pipe)
+        u0 = m_dot / (rho0 * A_pipe)
+        
+        A_HEX = np.pi * self.d**2 / 4
+        
+        # Calculate state variables directly as they enter the HEX
+        sol = cp_root(update_states,
+                      x0=[p0, h0],
+                      method='lm',
+                      options={'xtol': tol, 'ftol': tol},
+                      args=(p0, h0, u0, m_dot, A_HEX, self.fluid, 0, 0, config.divergence_penalty))
+        p1, h1 = sol.x
+        
+        T1    = CP.PropsSI('T', 'P', p1, 'H', h1, self.fluid)
+        rho1  = CP.PropsSI('D', 'P', p1, 'H', h1, self.fluid)
+        u1    = m_dot / (A_HEX * rho1)
         
         # Specific heat added (Total heat / branch mass flow)
         q = self.Q_dot / m_dot 
@@ -478,12 +495,53 @@ class COOL:
         T2    = CP.PropsSI('T', 'P', p2, 'H', h2, self.fluid)
         rho2  = CP.PropsSI('D', 'P', p2, 'H', h2, self.fluid)
         frac2 = calc_frac(p2, h2, fluid=self.fluid)
+
+
+        # HEX design
+        # f is the "film" temperature (boundary layer of H2 next to the pipe walls)
+        if self.name in ['hts_gen', 'hts_pow']:
+            N_pipes = N_slots
+            D_input = np.sqrt(4 * A_slot / np.pi)
+        else:
+            N_pipes = 1
+            D_input = system[i-1].d
+
+        Tf = 0.5 * (0.5 * (T1 + T2) + T_component)
+        pf = 0.5 * (p1 + p2)
+        muf = CP.PropsSI('V', 'P', pf, 'T', Tf, self.fluid)
+
+        Prf = CP.PropsSI('Prandtl', 'P', pf, 'T', Tf, self.fluid) # Prandtl number
+        Ref = 4 * m_dot / (np.pi * D_input * muf)  # Reynolds number
+        kf = 9.248 + 0.01571 * Tf # thermal conductivity of stainless steel 613L
+        U = 0.021 * Ref**0.8 * Prf**0.4 * kf / D_input
         
+        deltaT = T_component - 0.5 * (T1 + T2)
+        A_contact = self.Q_dot / (U * deltaT)
+        pipe_length = A_contact / (np.pi * D_input * N_pipes)
+
+        if not Ref >= 10000:
+            raise Warning("Formulas used are not valid for the required Reynolds number\n" +\
+                    "Required Re range: Re >= 1000\n" +\
+                    f"Used Re: {Ref}"
+                )
+        if not 0.6 <= Prf <= 160:
+            raise Warning("Formulas used are not valid for the required Prandtl number\n" +\
+                    "Required Pr range: 0.6 <= Pr <= 160\n" +\
+                    f"Used Pr: {Prf}"
+                )
+        if not pipe_length/D_input >= 19:
+            raise Warning("Formulas used are not valid for the required length/diameter ratio\n" +\
+                    "Required L/D range: L/D >= 19\n" +\
+                    f"Used L/D: {pipe_length/D_input}"
+                )
+
         results = {'T':   np.array([T2]), 
                    'p':   np.array([p2]),
                    'rho': np.array([rho2]),
                    'h':   np.array([h2]),
-                   'frac':np.array([frac2])}
+                   'frac':np.array([frac2]),
+                   'A_contact': np.array([A_contact]),
+                   'pipe_length': np.array([pipe_length])}
         
         return results
     
