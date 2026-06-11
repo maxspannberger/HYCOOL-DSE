@@ -37,6 +37,10 @@ def solve_system(system, m_dot, T_amb):
         else:
             # Propagate the state through the specific component solver
             component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=False, system=system, i=i)
+            if "A_contact" in component_result:
+                print(f"\n{comp.name}:")
+                print(f"Contact area: {component_result["A_contact"]}")
+                print(f"Pipe length: {component_result["pipe_length"]}")
             
             states['p'].append(component_result['p'])
             states['T'].append(component_result['T'])

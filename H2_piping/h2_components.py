@@ -392,6 +392,7 @@ class COOL:
         # We assume the component connects to the standard system pipe.
         d_pipe = config.pipe_default_d  
         A_pipe = np.pi * d_pipe**2 / 4
+        T_component = config.operating_temp[self.name]
         
         # Macro inlet velocity from the upstream pipe
         u1 = m_dot / (rho1 * A_pipe)
@@ -478,12 +479,31 @@ class COOL:
         T2    = CP.PropsSI('T', 'P', p2, 'H', h2, self.fluid)
         rho2  = CP.PropsSI('D', 'P', p2, 'H', h2, self.fluid)
         frac2 = calc_frac(p2, h2, fluid=self.fluid)
+
+
+        # HEX design
+        # f is the "film" temperature
+        Tf = 0.5 * (0.5 * (T1 + T2) + T_component)
+        pf = 0.5 * (p1 + p2)
+        muf = CP.PropsSI('V', 'P', pf, 'T', Tf, self.fluid)
+        D_input = system[i-1].d
+
+        Prf = CP.PropsSI('Prandtl', 'P', pf, 'T', Tf, self.fluid) # Prandtl number
+        Ref = 4 * m_dot / (np.pi * D_input * muf)  # Reynolds number
+        kf = 9.248 + 0.01571 * Tf # thermal conductivity of stainless steel 613L
+        U = 0.021 * Ref**0.8 * Prf**0.4 * kf / D_input
         
+        deltaT = T_component - 0.5 * (T1 + T2)
+        A_contact = 1000 * self.Q_dot / (U * deltaT)
+        pipe_length = A_contact / (np.pi * D_input)
+
         results = {'T':   np.array([T2]), 
                    'p':   np.array([p2]),
                    'rho': np.array([rho2]),
                    'h':   np.array([h2]),
-                   'frac':np.array([frac2])}
+                   'frac':np.array([frac2]),
+                   'A_contact': np.array([A_contact]),
+                   'pipe_length': np.array([pipe_length])}
         
         return results
     
