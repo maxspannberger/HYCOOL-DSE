@@ -1,7 +1,7 @@
 from math import pi, cbrt
 
-N_check_valves = 2
-N_ball_valves = 10
+N_check_valves = 3
+N_ball_valves = 18
 N_prvs = 6
 pipe_diameter = 0.012
 # m_dot = 0.09
@@ -57,7 +57,7 @@ else:
 rho_stainless_steel = 8000  # kg/m^3
 rho_MLI = 21  # kg/m^3, estimated value for MLI insulation
 vacuum_boundary_thickness = 0.002  # m
-n_fittings = 80
+n_fittings = 94
 pipe_length = 137.82 - 0.0508 * n_fittings  # m
 
 V_pipe_inner = pi * (((pipe_diameter / 2) + t_inner) ** 2 - (pipe_diameter / 2) **2)
@@ -65,6 +65,7 @@ mass_pipe_inner = V_pipe_inner * rho_stainless_steel
 
 V_pipe_outer = pi * (((pipe_diameter / 2) + t_inner + vacuum_thickness + t_outer) ** 2 - ((pipe_diameter / 2) + t_inner + vacuum_thickness) **2)
 mass_pipe_outer = V_pipe_outer * rho_stainless_steel
+# print(f"Outer pipe diameter: {(pipe_diameter + 2 * t_inner + 2 * vacuum_thickness + 2 * t_outer) * 1000:.2f} mm")
 
 V_MLI = pi * (((pipe_diameter / 2) + t_inner + vacuum_thickness - vacuum_boundary_thickness) ** 2 - ((pipe_diameter / 2) + t_inner + vacuum_boundary_thickness) **2)
 mass_MLI = V_MLI * rho_MLI
@@ -83,7 +84,7 @@ print(f"Total weight of pumps: {pump_total_weight:.2f} kg")
 
 # FITTINS AND BELLOWS
 
-# 68 fittings for exit and entering components (makes all components replaceable: generator, motors, all converters, Dc bus, pumps, tank, GT) + 
+# 80 fittings for exit and entering components (makes all components replaceable: generator, motors, all converters, Dc bus, pumps, tank, GT) + 
 # 8 fittings for 5.5m pipe between motors + 4 fittings for 8.45m pipe between fuselage and first motor + 2 fittings for 12.62m pipe between tank and wing-line pipe
 
 fitting_weight = 1.54 # male and female bayonet fitting weight
