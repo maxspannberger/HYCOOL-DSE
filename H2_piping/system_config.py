@@ -57,11 +57,11 @@ class H2SystemConfig:
 
     operating_temp = {
         "hts_gen": 50.0,
-        "ac_dc": 250.0,
-        "bus": 250.0,
-        "dc_ac": 250.0,
+        "ac_dc": 300.0,
+        "bus": 300.0,
+        "dc_ac": 300.0,
         "hts_pow": 50.0,
     }
 
-    HEX_default_d = 0.008
+    HEX_default_d = 0.01
     

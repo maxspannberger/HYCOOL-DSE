@@ -582,6 +582,7 @@ class COOL:
                 else:
                     internal_system.extend([
                         Pipe(length=self.length, diameter=self.d, q_set=q_L*self.length),
+                        Corner(curv=curvature, diameter=self.d),
                         Corner(curv=curvature, diameter=self.d)
                     ])
                     N_corners += 1
