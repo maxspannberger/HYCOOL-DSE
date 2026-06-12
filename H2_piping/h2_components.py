@@ -433,7 +433,7 @@ class COOL:
     def __init__(self, name:        str, 
                        location:    str,
                        phase:       str   =  config.phase,
-                       diameter:    float =  config.pipe_default_d,
+                       diameter:    float =  config.HEX_default_d,
                        areas:       dict  = None
                        ):   
         
