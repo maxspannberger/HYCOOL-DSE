@@ -46,10 +46,12 @@ def save_results_to_json(phase_name, T, p, rho, h, m_dot_final):
 # =============================================================================
 # Solver & Visualization
 # =============================================================================
-def solve_system(system, m_dot, T_amb, branch_name=""):
+def solve_OEI_system(system, m_dot, T_amb, branch_name=""):
     # Add 'u': [] to the initialization
     states = {'p': [], 'T': [], 'rho': [], 'h': [], 'frac': [], 'u': []}
     
+    Temps = {}
+
     for i, comp in enumerate(system):
         if type(comp) == tuple:
             m_dot = m_dot * comp[1] / comp[-1]
@@ -64,9 +66,15 @@ def solve_system(system, m_dot, T_amb, branch_name=""):
             states['h'].append(component_result['h'])
             states['frac'].append(component_result['frac'])
             states['u'].append(component_result['u']) 
+
+            if "temperature" in component_result:
+                 if comp.name not in Temps:
+                     Temps[comp.name] = {}
+                 Temps[comp.name][comp.location] = component_result['temperature']
+
             
     print(f"[{branch_name}] Ending Branch mass flow: {m_dot:.5f} kg/s")
-    return states, m_dot
+    return states, m_dot, None, Temps
 
 def plot_combined_states(states_W, states_F, phase_name):
     flat_W = {}
@@ -120,6 +128,14 @@ if __name__ == "__main__":
     with open(path, 'r') as file:
         comps = json.load(file)
 
+    filename = "HEX_temps.json"
+    with open(filename, 'r') as f:
+        All_temps = json.load(f)
+
+    filename = "HEX_areas.json"
+    with open(filename, 'r') as f:
+        HEX_areas = json.load(f)
+
     for current_phase, current_mdot in zip(c.oei_phases, c.oei_m_dots):
         print("\n" + "*"*60)
         print(f" STARTING SIMULATION: {current_phase.upper()} ".center(60, "*"))
@@ -151,19 +167,19 @@ if __name__ == "__main__":
                 Pipe(length=0.71), Valve(name='shutoff'), Corner(N_bend=1, curv=2.5), Valve(name='shutoff'),
                 Pipe(length=0.5), Pump(target_p=28*100000, diameter=0.012), Pipe(length=12.62), Valve(name='shutoff'),
                 Corner(N_bend=1, curv=2.5), Valve(name='shutoff'), Pipe(length=8.45), Corner(N_bend=1, curv=2.5), Pipe(length=0.5), 
-                COOL(name='hts_gen', location=component_position['hts_gen'][0], phase=current_phase),
+                COOL(name='hts_gen', location=component_position['hts_gen'][0], phase=current_phase, areas = HEX_areas),
                 Corner(N_bend=1, curv=2.5), Corner(N_bend=1, curv=2.5), Pipe(length=1.0), 
-                COOL(name='hts_pow', location=component_position['hts_pow'][0], phase=current_phase),
+                COOL(name='hts_pow', location=component_position['hts_pow'][0], phase=current_phase, areas = HEX_areas),
                 Corner(N_bend=1, curv=2.5), Corner(N_bend=1, curv=2.5), Pipe(length=0.5), Corner(N_bend=1, curv=2.5), Pipe(length=5.5), Corner(N_bend=1, curv=2.5), Pipe(length=0.5),
-                COOL(name='hts_pow', location=component_position['hts_pow'][1], phase=current_phase),
+                COOL(name='hts_pow', location=component_position['hts_pow'][1], phase=current_phase, areas = HEX_areas),
                 Corner(N_bend=1, curv=2.5), Corner(N_bend=1, curv=2.5),
-                COOL(name='dc_ac', location=component_position['dc_ac'][1], phase=current_phase),
+                COOL(name='dc_ac', location=component_position['dc_ac'][1], phase=current_phase, areas = HEX_areas),
                 Pipe(length=0.5), Corner(N_bend=1, curv=2.5), Pipe(length=5.5), Corner(N_bend=1, curv=2.5), Pipe(length=0.5),
-                COOL(name='dc_ac', location=component_position['dc_ac'][0], phase=current_phase),
+                COOL(name='dc_ac', location=component_position['dc_ac'][0], phase=current_phase, areas = HEX_areas),
                 Corner(N_bend=1, curv=2.5), Corner(N_bend=1, curv=2.5), Pipe(length=1.0),
-                COOL(name='ac_dc', location=component_position['ac_dc'][0], phase=current_phase),
+                COOL(name='ac_dc', location=component_position['ac_dc'][0], phase=current_phase, areas = HEX_areas),
                 Corner(N_bend=1, curv=2.5), Pipe(length=1.0),
-                COOL(name='bus', location=component_position['bus'][0], phase=current_phase),
+                COOL(name='bus', location=component_position['bus'][0], phase=current_phase, areas = HEX_areas),
                 Corner(N_bend=1, curv=2.5), Corner(N_bend=1, curv=2.5), Pipe(length=1.0)
             ]
 
@@ -181,8 +197,13 @@ if __name__ == "__main__":
                     if comp_F.name == 'bus': comp_F.Q_dot = 0.0
 
         # 4. Execute Simulation
-        states_W, final_mdot_W = solve_system(system_W, m_dot=current_mdot, T_amb=c.T_amb, branch_name="Working Wing")
-        states_F, final_mdot_F = solve_system(system_F, m_dot=current_mdot, T_amb=c.T_amb, branch_name="Failed Wing")
+        states_W, final_mdot_W, _, Temps_W = solve_OEI_system(system_W, m_dot=current_mdot, T_amb=c.T_amb, branch_name="Working Wing")
+        states_F, final_mdot_F, _, Temps_F = solve_OEI_system(system_F, m_dot=current_mdot, T_amb=c.T_amb, branch_name="Failed Wing")
+        
+        All_temps[current_phase] = {}
+        All_temps[current_phase]["W"] = Temps_W
+        All_temps[current_phase]["F"] = Temps_F
+
 
         # 5. Output and JSON Export
         T_W, p_W, rho_W, h_W = states_W['T'][-1][-1], states_W['p'][-1][-1], states_W['rho'][-1][-1], states_W['h'][-1][-1]

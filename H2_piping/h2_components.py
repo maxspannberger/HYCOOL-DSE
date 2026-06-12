@@ -582,12 +582,12 @@ class COOL:
                     N_corners += 1
             
             solved_internal_system = solve_system(internal_system, m_dot, T_amb, input_states=states)
-            p2 = solved_internal_system['p'][-1]
-            T2 = solved_internal_system['T'][-1]
-            rho2 = solved_internal_system['rho'][-1]
-            h2 = solved_internal_system['h'][-1]
-            u2 = solved_internal_system['u'][-1]
-            frac2 = solved_internal_system['T'][-1]
+            p2 = solved_internal_system['p'][-1][-1]
+            T2 = solved_internal_system['T'][-1][-1]
+            rho2 = solved_internal_system['rho'][-1][-1]
+            h2 = solved_internal_system['h'][-1][-1]
+            u2 = solved_internal_system['u'][-1][-1]
+            frac2 = solved_internal_system['T'][-1][-1]
 
             # HEX design
             # f is the "film" temperature (boundary layer of H2 next to the pipe walls)
