@@ -373,7 +373,7 @@ class Corner:
 class COOL:
     def __init__(self, name:        str, 
                        location:    str,
-                       phase:       str   =  config.phase,
+                       phase:       str,
                        diameter:    float =  config.pipe_default_d
                        ):   
         
@@ -548,13 +548,11 @@ class COOL:
 class Valve:
     def __init__(self, name:        str,
                        diameter:    float =  config.pipe_default_d,
-                       phase:       str   =  config.phase
                        ):
 
         self.name     = name
         self.fluid    = config.fluid
         self.d        = diameter
-        self.phase    = phase
 
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None):
         T1, p1, h1, rho1 = get_input_states(states)
