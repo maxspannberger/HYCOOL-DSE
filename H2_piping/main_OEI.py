@@ -226,3 +226,7 @@ if __name__ == "__main__":
             save_results_to_json(f"{current_phase}_Failed", T_F, p_F, rho_F, h_F, final_mdot_F)
 
         plot_combined_states(states_W, states_F, current_phase)
+
+    filename_temps = "HEX_temps.json"
+    with open(filename_temps, "w") as f:
+            json.dump(All_temps, f, indent=4)

@@ -586,7 +586,6 @@ class COOL:
             
             solved_internal_system = solve_system(internal_system, m_dot, T_amb, input_states=states,
                                                   initial_conditions=(T1, p1, h1, rho1, u1))[0]
-            print(solved_internal_system)
             p2 = solved_internal_system['p'][-1][-1]
             T2 = solved_internal_system['T'][-1][-1]
             rho2 = solved_internal_system['rho'][-1][-1]
