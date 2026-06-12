@@ -96,6 +96,7 @@ def update_states(p1, h1, u1, m_dot, A, fluid, q=0, dp=0, penalty=1e9, w=0):
                   options={'xtol': tol, 'ftol': tol},
                   args=(p1, h1, u1, m_dot, A, fluid, q, dp, config.divergence_penalty))
     p2, h2 = sol.x
+
     T2    = CP.PropsSI('T', 'P', p2, 'H',  h2, fluid)
     rho2  = CP.PropsSI('D', 'P', p2, 'H',  h2, fluid)
     u2    = m_dot / (rho2 * A)
@@ -159,7 +160,7 @@ def heat_transfer_coefficient(T1, T2, T_comp, p1, p2, m_dot, d, fluid):
 # Iterates through the defined system components to calculate fluid states.
 # Updates mass flow rate when splits or merges occur.
 # =============================================================================
-def solve_system(system, m_dot, T_amb, input_states=None):
+def solve_system(system, m_dot, T_amb, input_states=None, initial_conditions=None):
     
     if input_states == None:
         states = {'p'   : [],
@@ -185,7 +186,8 @@ def solve_system(system, m_dot, T_amb, input_states=None):
             m_dot = m_dot * comp[1] / comp[-1]
         else:
             # Propagate the state through the specific component solver
-            component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=False, system=system, i=i)
+            component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=False, system=system, i=i, initial_conditions=initial_conditions)
+            initial_conditions = None # just a quick patch, better fix later
             
             states['p'].append(component_result['p'])
             states['T'].append(component_result['T'])
@@ -222,7 +224,7 @@ class Tank:
     
     # Function that can be called to calculate the evolution of the state variables
     # in the component
-    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None):
+    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None, initial_conditions=None):
         
         # Account for isentropic expansion as hydrogen exits the pipe
         u1 = config.tank_initial_u
@@ -262,7 +264,7 @@ class Pump:
 
     # Function that can be called to calculate the evolution of the state variables
     # in the component
-    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None):
+    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None, initial_conditions=None):
         T1, p1, h1, rho1, u1 = get_input_states(states, system, i, m_dot, self.fluid)
         
         s1 = CP.PropsSI('S', 'P', p1, 'H', h1, self.fluid)
@@ -339,7 +341,7 @@ class Pipe:
         # Set default pipe parameters if none are overwritten
         self.d         = diameter if diameter is not None else config.pipe_default_d
         self.A         = area(self.d)
-        self.segments  = segments if segments is not None else int(length / config.pipe_segment_length)
+        self.segments  = segments if segments is not None else int(np.ceil(length / config.pipe_segment_length))
         self.N         = N        if N is not None        else config.pipe_default_N
         self.N_bar     = N_bar    if N_bar is not None    else config.pipe_default_N_bar
         self.P_mli     = P_mli    if P_mli is not None    else config.pipe_default_P_mli
@@ -354,9 +356,12 @@ class Pipe:
     
     # Function that can be called to calculate the evolution of the state variables
     # in the component
-    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None):
+    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None, initial_conditions=None):
         
-        T1, p1, h1, rho1, u1 = get_input_states(states, system, i, m_dot, self.fluid)
+        if initial_conditions is None:
+            T1, p1, h1, rho1, u1 = get_input_states(states, system, i, m_dot, self.fluid)
+        else:
+            T1, p1, h1, rho1, u1 = initial_conditions
         
         
         # Get pipe segment dimensions
@@ -398,16 +403,15 @@ class Pipe:
                     (self.cs * T_m * self.N_bar**2.63 * (T_h - T_c)) / (self.N - 1)
                 + (self.cr * self.eps * (T_h**4.67 - T_c**4.67)) / self.N
                 + (self.cg * (self.P_mli) * (T_h**0.52 - T_c**0.52)) / self.N
-                )
-                
-                if Re1 < 2300:
-                    f = 64 / Re1
-                else:
-                    f = (1 / (-1.8 * np.log10(((self.eps_pipe / self.d) / 3.7)**1.11 + 6.9 / Re1)))**2
-                
+                )        
                 q       = Q_dot / m_dot
             else:
                 q = self.q_set
+
+            if Re1 < 2300:
+                f = 64 / Re1
+            else:
+                f = (1 / (-1.8 * np.log10(((self.eps_pipe / self.d) / 3.7)**1.11 + 6.9 / Re1)))**2
 
             dp_fric = f * (dz / self.d) * 0.5 * rho1 * u1**2
             
@@ -469,7 +473,7 @@ class Corner:
     
     # Function that can be called to calculate the evolution of the state variables
     # in the component
-    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None):
+    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None, initial_conditions=None):
         
         T1, p1, h1, rho1, u1 = get_input_states(states, system, i, m_dot, self.fluid)
         
@@ -532,7 +536,7 @@ class COOL:
 
     # Function that can be called to calculate the evolution of the state variables
     # in the component
-    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None):
+    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None, initial_conditions=None):
         T1, p1, h1, rho1, u1 = get_input_states(states, system, i, m_dot, self.fluid)
         
         # ---------------------------------------------------------
@@ -570,10 +574,9 @@ class COOL:
             while cumulative_length < L:
                 cumulative_length += self.length
 
-                if cumulative_length > L:
-                    remaining_length = self.length - (cumulative_length - (L - self.width))
-                    internal_system.append(Pipe(length=remaining_length, diameter=self.d, q_set=q_L*remaining_length),
-                                           Corner(curv=curvature, diameter=self.d))
+                if cumulative_length >= L:
+                    remaining_length = self.length - (cumulative_length - L)
+                    internal_system.extend([Pipe(length=remaining_length, diameter=self.d, q_set=q_L*remaining_length)])
                 else:
                     internal_system.extend([
                         Pipe(length=self.length, diameter=self.d, q_set=q_L*self.length),
@@ -581,7 +584,9 @@ class COOL:
                     ])
                     N_corners += 1
             
-            solved_internal_system = solve_system(internal_system, m_dot, T_amb, input_states=states)
+            solved_internal_system = solve_system(internal_system, m_dot, T_amb, input_states=states,
+                                                  initial_conditions=(T1, p1, h1, rho1, u1))[0]
+            print(solved_internal_system)
             p2 = solved_internal_system['p'][-1][-1]
             T2 = solved_internal_system['T'][-1][-1]
             rho2 = solved_internal_system['rho'][-1][-1]
@@ -661,7 +666,7 @@ class Valve:
         self.d        = diameter
         self.A        = area(self.d)
 
-    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None):
+    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None, initial_conditions=None):
         
         T1, p1, h1, rho1, u1 = get_input_states(states, system, i, m_dot, self.fluid)
 
