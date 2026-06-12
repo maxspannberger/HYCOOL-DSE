@@ -540,12 +540,6 @@ class COOL:
                 deltaT = self.T - 0.5 * (T1 + T2)
 
                 self.area = self.Q_dot / (U * deltaT)
-                L = self.area / (np.pi * self.d)
-                N_corners = int(np.ceil(L / (self.length - self.width)))
-
-                print(f"\n{self.name}:")
-                print(f"Contact area: {self.area}")
-                print(f"Pipe length: {L}")
 
             else:
                 T_old = 0.0
@@ -559,8 +553,38 @@ class COOL:
                     deltaT = self.Q_dot / (U * self.area)
                     self.T = deltaT + 0.5 * (T1 + T2)
 
-                print(f"\n{self.name}:")
-                print(f"Temperature: {self.T}")
+            L = self.area / (np.pi * self.d)
+            L_parallel = L - self.width
+
+            if N_corners > 0:
+                R = self.width / (2 * N_corners)
+                curvature = R / self.area
+            else:
+                curvature = 2.5
+
+            cumulative_length = 0.0
+            N_corners = 0
+            internal_system = []
+            while cumulative_length < L:
+
+                if cumulative_length > L:
+                    remaining_length = self.length - (cumulative_length - (L - self.width))
+                    internal_system.append(Pipe(length=remaining_length, diameter=self.d))
+                else:
+                    internal_system.extend([
+                        Pipe(length=self.length, diameter=self.d),
+                        Corner(curv=curvature, diameter=self.d)
+                    ])
+
+        
+        if self.area_calc_mode:
+            print(f"\n{self.name}:")
+            print(f"Contact area: {self.area}")
+            print(f"Pipe length: {L}")
+            print(f"Number of corners: {N_corners}")
+        else:
+            print(f"\n{self.name}:")
+            print(f"Temperature: {self.T}")
 
         # if not Ref >= 10000:
         #     raise Warning("Formulas used are not valid for the required Reynolds number\n" +\
