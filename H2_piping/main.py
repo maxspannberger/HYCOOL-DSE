@@ -55,6 +55,7 @@ def solve_system(system, m_dot, T_amb):
               'T'   : [],
               'rho' : [],
               'h'   : [],
+              'u'   : [],
               'frac': []}
     
     for i, comp in enumerate(system):
@@ -64,17 +65,14 @@ def solve_system(system, m_dot, T_amb):
         else:
             # Propagate the state through the specific component solver
             component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=False, system=system, i=i)
-            if "A_contact" in component_result:
-                print(f"\n{comp.name}:")
-                print(f"Contact area: {component_result["A_contact"]}")
-                print(f"Pipe length: {component_result["pipe_length"]}")
             
             states['p'].append(component_result['p'])
             states['T'].append(component_result['T'])
             states['rho'].append(component_result['rho'])
             states['h'].append(component_result['h'])
+            states['u'].append(component_result['u'])
             states['frac'].append(component_result['frac'])
-    print(m_dot)   
+
     return states, m_dot
 
 # =============================================================================
@@ -316,4 +314,4 @@ if __name__ == "__main__":
               # Save to JSON
               save_results_to_json(current_phase, final_T, final_p, final_rho, final_h, final_mdot)
 
-              plot_states(states, current_phase)
+              plot_states(states)
