@@ -58,6 +58,9 @@ def solve_system(system, m_dot, T_amb):
               'u'   : [],
               'frac': []}
     
+    HEX_areas = {}
+    Temps = {}
+    
     for i, comp in enumerate(system):
         # Update the m_dot based on pipe splits and merges
         if type(comp) == tuple:
@@ -73,7 +76,14 @@ def solve_system(system, m_dot, T_amb):
             states['u'].append(component_result['u'])
             states['frac'].append(component_result['frac'])
 
-    return states, m_dot
+            if "area" in component_result:
+                 if comp.name not in HEX_areas:
+                     HEX_areas[comp.name] = {}
+                     Temps[comp.name] = {}
+                 HEX_areas[comp.name][comp.location] = component_result['area']
+                 Temps[comp.name][comp.location] = component_result['temperature']
+
+    return states, m_dot, HEX_areas, Temps
 
 # =============================================================================
 # Displays the computed states in a clean, hierarchical CLI tree format.
@@ -143,6 +153,9 @@ if __name__ == "__main__":
        with open(path, 'r') as file:
               comps = json.load(file)
 
+       HEX_areas = None
+       All_temps = {}
+
        for current_phase, current_mdot in zip(c.normal_phases, c.normal_m_dots):
               print("\n" + "*"*60)
               print(f" STARTING SIMULATION: {current_phase.upper()} ".center(60, "*"))
@@ -199,7 +212,8 @@ if __name__ == "__main__":
               
               COOL(name       = 'hts_gen', 
               location   = component_position['hts_gen'][0],
-              phase = current_phase),
+              phase = current_phase,
+              areas = HEX_areas),
 
               Corner(N_bend   =  1, 
                      curv     =  2.5),
@@ -211,7 +225,8 @@ if __name__ == "__main__":
               
               COOL(name       = 'hts_pow', 
               location   = component_position['hts_pow'][0],
-              phase = current_phase),
+              phase = current_phase,
+              areas = HEX_areas),
 
               Corner(N_bend   =  1,  
                      curv     =  2.5),
@@ -233,7 +248,8 @@ if __name__ == "__main__":
 
               COOL(name       = 'hts_pow', 
               location   = component_position['hts_pow'][1],
-              phase = current_phase),
+              phase = current_phase,
+              areas = HEX_areas),
 
               Corner(N_bend   =  1,  
                      curv     =  2.5),
@@ -243,7 +259,8 @@ if __name__ == "__main__":
 
               COOL(name       = 'dc_ac', 
               location   = component_position['dc_ac'][1],
-              phase = current_phase),
+              phase = current_phase,
+              areas = HEX_areas),
 
               Pipe(length     =  0.5),
 
@@ -259,7 +276,8 @@ if __name__ == "__main__":
 
               COOL(name       = 'dc_ac', 
               location   = component_position['dc_ac'][0],
-              phase = current_phase),
+              phase = current_phase,
+              areas = HEX_areas),
 
               Corner(N_bend   =  1,  
                      curv     =  2.5),
@@ -271,7 +289,8 @@ if __name__ == "__main__":
 
               COOL(name       = 'ac_dc', 
               location   = component_position['ac_dc'][0],
-              phase = current_phase),
+              phase = current_phase,
+              areas = HEX_areas),
 
               Corner(N_bend   =  1,  
                      curv     =  2.5),
@@ -280,7 +299,8 @@ if __name__ == "__main__":
 
               COOL(name       = 'bus', 
               location   = component_position['bus'][0],
-              phase = current_phase),
+              phase = current_phase,
+              areas = HEX_areas),
 
               Corner(N_bend   =  1, 
                      curv     =  2.5),
@@ -292,8 +312,9 @@ if __name__ == "__main__":
               ]
        
               # Execute simulation and display results
-              states, final_mdot = solve_system(system, m_dot=current_mdot, T_amb=c.T_amb)
-               # print_tree(states)
+              states, final_mdot, HEX_areas, Temps = solve_system(system, m_dot=current_mdot, T_amb=c.T_amb)
+              All_temps[current_phase] = Temps
+              # print_tree(states)
     
               # --- Extract and print the final state values ---
               final_T   = states['T'][-1][-1]
@@ -315,3 +336,11 @@ if __name__ == "__main__":
               save_results_to_json(current_phase, final_T, final_p, final_rho, final_h, final_mdot)
 
               plot_states(states)
+
+       filename_areas = "HEX_areas.json"
+       with open(filename_areas, "w") as f:
+              json.dump(HEX_areas, f, indent=4)
+
+       filename_temps = "HEX_temps.json"
+       with open(filename_temps, "w") as f:
+              json.dump(All_temps, f, indent=4)

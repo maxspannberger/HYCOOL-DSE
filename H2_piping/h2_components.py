@@ -138,6 +138,21 @@ def isentropic_expansion(p1, h1, u1, m_dot, A2, fluid, penalty=config.divergence
     frac2 = calc_frac(p2, h2, fluid=fluid)
     
     return T2, p2, h2, rho2, u2, frac2
+
+
+def heat_transfer_coefficient(T1, T2, T_comp, p1, p2, m_dot, d, fluid):
+    
+    Tf = 0.5 * (0.5 * (T1 + T2) + T_comp)
+    pf = 0.5 * (p1 + p2)
+
+    muf = CP.PropsSI('V', 'P', pf, 'T', Tf, fluid)
+
+    Prf = CP.PropsSI('Prandtl', 'P', pf, 'T', Tf, fluid) # Prandtl number
+    Ref = 4 * m_dot / (np.pi * d * muf)  # Reynolds number
+    kf = 9.248 + 0.01571 * Tf # thermal conductivity of stainless steel 613L
+    U = 0.021 * Ref**0.8 * Prf**0.4 * kf / d
+
+    return U
     
 
 # =============================================================================
@@ -444,14 +459,14 @@ class COOL:
         self.fluid    = config.fluid
         self.Q_dot    = comps[phase][name][location] * 1000
         self.size     = sizes[name][location]
+        self.T = config.operating_temp[self.name]
+
         if areas is None:
             self.area_calc_mode = True
             self.area = None
-            self.T = config.operating_temp[self.name]
         else:
             self.area_calc_mode = False
             self.area = areas[name][location]
-            self.T = None
 
 
         if "hts" in self.name:
@@ -520,24 +535,32 @@ class COOL:
 
             # HEX design
             # f is the "film" temperature (boundary layer of H2 next to the pipe walls)
-            Tf = 0.5 * (0.5 * (T1 + T2) + self.T)
-            pf = 0.5 * (p1 + p2)
-            muf = CP.PropsSI('V', 'P', pf, 'T', Tf, self.fluid)
-
-            Prf = CP.PropsSI('Prandtl', 'P', pf, 'T', Tf, self.fluid) # Prandtl number
-            Ref = 4 * m_dot / (np.pi * self.d * muf)  # Reynolds number
-            kf = 9.248 + 0.01571 * Tf # thermal conductivity of stainless steel 613L
-            U = 0.021 * Ref**0.8 * Prf**0.4 * kf / self.d
-            
-            deltaT = self.T - 0.5 * (T1 + T2)
-
             if self.area_calc_mode:
+                U = heat_transfer_coefficient(T1, T2, self.T, p1, p2, m_dot, self.d, self.fluid)
+                deltaT = self.T - 0.5 * (T1 + T2)
+
                 self.area = self.Q_dot / (U * deltaT)
                 L = self.area / (np.pi * self.d)
                 N_corners = int(np.ceil(L / (self.length - self.width)))
+
+                print(f"\n{self.name}:")
+                print(f"Contact area: {self.area}")
+                print(f"Pipe length: {L}")
+
             else:
-                deltaT = self.Q_dot / (U * self.area)
-                self.T = deltaT + 0.5 * (T1 + T2)
+                T_old = 0.0
+                k = 0
+                while abs(self.T - T_old) > 1e-2 and k < 100:
+                    T_old = self.T
+                    k += 1
+
+                    U = heat_transfer_coefficient(T1, T2, self.T, p1, p2, m_dot, self.d, self.fluid)
+                
+                    deltaT = self.Q_dot / (U * self.area)
+                    self.T = deltaT + 0.5 * (T1 + T2)
+
+                print(f"\n{self.name}:")
+                print(f"Temperature: {self.T}")
 
         # if not Ref >= 10000:
         #     raise Warning("Formulas used are not valid for the required Reynolds number\n" +\
@@ -555,18 +578,14 @@ class COOL:
         #             f"Used L/D: {pipe_length/D_input}"
         #         )
 
-        print(f"\n{self.name}:")
-        print(f"Contact area: {self.area}")
-        print(f"Pipe length: {L}")
-
         results = {'T':   np.array([T2]), 
                    'p':   np.array([p2]),
                    'rho': np.array([rho2]),
                    'h':   np.array([h2]),
                    'u':   np.array([u2]),
                    'frac':np.array([frac2]),
-                   'area': np.array([self.area]),
-                   'temperature': np.array([self.T])}
+                   'area': self.area,
+                   'temperature': self.T}
         
         return results
     
