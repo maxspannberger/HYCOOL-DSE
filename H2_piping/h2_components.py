@@ -564,12 +564,14 @@ class COOL:
 
                 if cumulative_length > L:
                     remaining_length = self.length - (cumulative_length - (L - self.width))
-                    internal_system.append(Pipe(length=remaining_length, diameter=self.d, q_set=q_L*remaining_length))
+                    internal_system.append(Pipe(length=remaining_length, diameter=self.d, q_set=q_L*remaining_length),
+                                           Corner(curv=curvature, diameter=self.d))
                 else:
                     internal_system.extend([
                         Pipe(length=self.length, diameter=self.d, q_set=q_L*self.length),
                         Corner(curv=curvature, diameter=self.d)
                     ])
+                    N_corners += 1
             
             solved_internal_system = solve_system(internal_system, m_dot, T_amb)
             p2 = solved_internal_system['p'][-1]
