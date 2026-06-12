@@ -30,7 +30,7 @@ spherical = False # boolean, whether the tank is spherical or cylindrical
 f_ullage = 0.0425 # fraction of tank volume reserved for ullage (empty space to allow for expansion of the liquid)
 
 tank_options = {
-    'LH2': {'P_int': 300000, 'P_ext': 37600}, # internap pressure of 3 bar, external 376 hPa (atmospheric pressure at FL250)
+    'LH2': {'P_int': 100000, 'P_ext': 37600}, # internap pressure of 3 bar, external 376 hPa (atmospheric pressure at FL250)
     'cCH2': {'P_int': 3.5e7, 'P_ext': 37600}, # internal pressure of 350 bar, external 376 hPa (atmospheric pressure at FL250)
     'sLH2': {'P_int': 30000, 'P_ext': 101325}, # internal pressure of 0.3 bar, external pressure of 1 bar (atmospheric pressure on ground)
     'sLH2_p':  {'P_int': 500000,  'P_ext': 37600,  'T': 20.0},  # 5 bar, 20 K
@@ -253,7 +253,7 @@ def plot_efficiency_grid(T_values, P_values, eff_grid, best, title, output_path)
     plt.close(fig)
 
 #different densities for LH2 at different conditions
-rho_LH2 = PropsSI('D', 'P', 1 * 100000, 'T', 20, 'parahydrogen')  # kg/m^3
+rho_LH2 = PropsSI('D', 'P', 5 * 100000, 'T', 15, 'parahydrogen')  # kg/m^3
 rho_cCH2 = PropsSI('D', 'P', 350 * 100000, 'T', 40, 'parahydrogen')  # kg/m^3
 rho_sLH2 = PropsSI('D', 'P', 0.3 * 100000, 'T', 16, 'parahydrogen')  # kg/m^3
 rho_sLH2_p = PropsSI('D', 'T', 20.0, 'P', 5e5, 'parahydrogen')

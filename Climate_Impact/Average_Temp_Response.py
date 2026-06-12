@@ -30,7 +30,10 @@ h = 6100 # m, based on the operating altitude of Dash 8 Q400 [Janes]
 g0 = 9.80665 # m/s^2, standard gravity
 latitude = 51.0 # degrees, based on the location of interest (central Europe/Germany)
 f_day = 0.5 # day fraction, assuming 12 hours of daylight on average
-f_ISSR  = 0.02 # ISSR fraction [Lamquin 2012]
+if h == 6100:
+    f_ISSR  = 0.02 # ISSR fraction 20,000 ft [Lamquin 2012]
+elif h == 7620:
+    f_ISSR = 0.15 # ISSR fraction at 25,000 ft [Lamquin 2012]
 pv = pv.pv_472 # PV at 376 hPa in PVU
 olr = olr.olr # OLR in W/m2 
 t = 248.5 # K, temperature altitude [standard atmosphere at 6100 m]
@@ -497,10 +500,10 @@ def calc_aCCF_co2():
     return aCCF_co2, aCCF_co2_100
 
 
-def calc_atr_per_design(h2_masses):
+def calc_atr_per_design(h2_masses, exclude_contrails=False):
     aCCF_nox, aCCF_nox_100 = calc_aCCF_nox()
     aCCF_h2o, aCCF_h2o_100 = calc_aCCF_h2o()
-    aCCF_contrail, aCCF_contrail_100 = calc_aCCF_contrail()
+    aCCF_contrail, aCCF_contrail_100 = (0.0, 0.0) if exclude_contrails else calc_aCCF_contrail()
     aCCF_co2, aCCF_co2_100 = calc_aCCF_co2()
 
     atrs = {}
@@ -554,7 +557,7 @@ def calc_atr_per_design(h2_masses):
                     atr_cruise_100 += val_100
                     cruise_co2_100 += val_100
             # add contrail once, scaled by fraction of cruise mass from contrail-producing sources
-            if total_cruise_mass > 0 and total_contrail_mass > 0:
+            if not exclude_contrails and total_cruise_mass > 0 and total_contrail_mass > 0:
                 contrail_total = d_mission * f_ISSR * aCCF_contrail * (total_contrail_mass / total_cruise_mass)
                 atr_cruise += contrail_total
                 cruise_contrail += contrail_total
@@ -579,7 +582,7 @@ def calc_atr_per_design(h2_masses):
                     atr_cruise += cruise_h2o
                     cruise_h2o_100 = m_fuel_cruise * EI_H2O['Jet'] * aCCF_h2o_100
                     atr_cruise_100 += cruise_h2o_100
-                if source_props[cruise['source']]['contrail']:
+                if not exclude_contrails and source_props[cruise['source']]['contrail']:
                     cruise_contrail = d_mission * f_ISSR * aCCF_contrail
                     atr_cruise += cruise_contrail
                     cruise_contrail_100 = d_mission * f_ISSR * aCCF_contrail_100
@@ -602,7 +605,7 @@ def calc_atr_per_design(h2_masses):
 
                     cruise_h2o_100 = cruise['m_h2_kg'] * EI_H2O[cruise['source']] * aCCF_h2o_100 * f_ed
                     atr_cruise_100 += cruise_h2o_100
-                if source_props[cruise['source']]['contrail']:
+                if not exclude_contrails and source_props[cruise['source']]['contrail']:
                     cruise_contrail = d_mission * f_ISSR * aCCF_contrail
                     atr_cruise += cruise_contrail
 
@@ -675,11 +678,11 @@ def calc_atr_per_design(h2_masses):
     return atrs, f_atr_100s
 
 
-def get_results(comp=None):
+def get_results(comp=None, exclude_contrails=False):
     """Return the ATR results dictionary for all designs."""
     if comp is None:
         comp = component_params
-    return calc_atr_per_design(calc_mass_h2(comp))
+    return calc_atr_per_design(calc_mass_h2(comp), exclude_contrails=exclude_contrails)
 
 
 if __name__ == "__main__":
