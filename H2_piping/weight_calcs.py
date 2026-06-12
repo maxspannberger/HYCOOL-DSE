@@ -1,7 +1,8 @@
 from math import pi, cbrt
 
 N_check_valves = 2
-N_shutoff_valves = 11
+N_ball_valves = 10
+N_prvs = 6
 pipe_diameter = 0.012
 # m_dot = 0.09
 # rho = 70.8
@@ -10,8 +11,10 @@ pipe_diameter = 0.012
 
 W_check_valve = 2440.4 * pipe_diameter ** 2 + 44.903 * pipe_diameter + 1.2973
 # print(f"Weight of check valve: {W_check_valve:.2f} kg")
-W_shutoff_valve = 5
-W_valves = N_check_valves * W_check_valve + N_shutoff_valves * W_shutoff_valve
+W_ball_valve = 5
+W_prv = 0.0086 * pipe_diameter ** 2 + 0.1701 * pipe_diameter + 1.4174
+# print(f"Weight of PRV: {W_prv:.2f} kg")
+W_valves = N_check_valves * W_check_valve + N_ball_valves * W_ball_valve + N_prvs * W_prv
 
 # Cv_check_valve = 22413 * pipe_diameter ** 2.0817
 # Cv_shutoff_valve = 1173.6 * pipe_diameter - 10.19
@@ -54,7 +57,7 @@ else:
 rho_stainless_steel = 8000  # kg/m^3
 rho_MLI = 21  # kg/m^3, estimated value for MLI insulation
 vacuum_boundary_thickness = 0.002  # m
-n_fittings = 82
+n_fittings = 80
 pipe_length = 137.82 - 0.0508 * n_fittings  # m
 
 V_pipe_inner = pi * (((pipe_diameter / 2) + t_inner) ** 2 - (pipe_diameter / 2) **2)
@@ -87,5 +90,14 @@ fitting_weight = 1.54 # male and female bayonet fitting weight
 total_fitting_weight = n_fittings * fitting_weight
 print(f"Total weight of fittings: {total_fitting_weight:.2f} kg")
 
-total_system_weight = W_valves + total_mass_pipe + pump_total_weight + total_fitting_weight
+# PRESSURE RELIEF PIPE
+
+length_relief_pipes = 7
+
+V_pipe_relief = pi * (((pipe_diameter / 2) + t_inner) ** 2 - (pipe_diameter / 2) **2)
+mass_pipe_relief = V_pipe_relief * rho_stainless_steel
+total_mass_pipe_relief = mass_pipe_relief * length_relief_pipes
+print(f"Total weight of relief pipe: {total_mass_pipe_relief:.2f} kg")
+
+total_system_weight = W_valves + total_mass_pipe + pump_total_weight + total_fitting_weight + total_mass_pipe_relief
 print(f"Total system weight: {total_system_weight:.2f} kg")

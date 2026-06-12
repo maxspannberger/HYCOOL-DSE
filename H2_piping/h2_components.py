@@ -21,6 +21,10 @@ with open(path, 'r') as file:
 def area(d):
     return np.pi * d**2 / 4
 
+path = root / "Propulsion" / "only_sizing_results.json"
+with open(path, 'r') as file:
+    sizes = json.load(file)
+
 # =============================================================================
 # Calculate the fraction of gas. Get rid of supercriticals by forcing to o or 1
 # =============================================================================
@@ -429,7 +433,8 @@ class COOL:
     def __init__(self, name:        str, 
                        location:    str,
                        phase:       str   =  config.phase,
-                       diameter:    float =  config.pipe_default_d
+                       diameter:    float =  config.pipe_default_d,
+                       areas:       dict  = None
                        ):   
         
         self.d        = diameter
@@ -438,109 +443,101 @@ class COOL:
         self.name     = name
         self.fluid    = config.fluid
         self.Q_dot    = comps[phase][name][location] * 1000
+        self.size     = sizes[name][location]
+        if areas is None:
+            self.area_calc_mode = True
+            self.area = None
+            self.T = config.operating_temp[self.name]
+        else:
+            self.area_calc_mode = False
+            self.area = areas[name][location]
+            self.T = None
+
+
+        if "hts" in self.name:
+            self.length = self.size[0]
+            self.width = np.pi * self.size[1] # this is PI * D
+        else:
+            self.length = self.size[1]
+            self.width = self.size[0]
 
     # Function that can be called to calculate the evolution of the state variables
     # in the component
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None):
         T1, p1, h1, rho1, u1 = get_input_states(states, system, i, m_dot, self.fluid)
         
-        T_component = config.operating_temp[self.name]
+        # ---------------------------------------------------------
+        # 1. MACRO SYSTEM GEOMETRY (The pipes entering/exiting the component)
+        # ---------------------------------------------------------
+        # We assume the component connects to the standard system pipe.
+        eps = config.pipe_default_eps
+        L = self.length
+        N_corners = 0
+        
         
         # Specific heat added (Total heat / branch mass flow)
         q = self.Q_dot / m_dot 
-        
-        # Calculate pressure drop if component is motor or generator
-        if self.name in ['hts_gen', 'hts_pow']:
-            eps_hts = config.eps_hts
-            N_slots = config.N_slots
-            A_slot_tot = config.A_slot * 6  # Total geometric stator area 
-            L = config.L
-            VF = config.VF
+        q += 34.79 / m_dot  # Heat from fittings and cable extraction divided into all components
+        # ---------------------------------------------------------
+        # 2. MICRO INTERNAL GEOMETRY (Calculating the friction drop)
+        # ---------------------------------------------------------
 
-            # Micro geometry for a single cooling slot
-            A_slot = A_slot_tot / N_slots
-            A_flow_slot = A_slot * VF 
-            m_dot_slot = m_dot / N_slots
-
-            P_wet = 2*np.pi*np.sqrt((1-VF)*A_slot/np.pi) + 2*(0.0318 + 0.0484)
-            Dh = 4 * A_flow_slot / P_wet 
+        p2_old = np.inf
+        p2 = p1
+        j = 0
+        while abs(p2 - p2_old) > 1e-2 and j < 100:
+            p2_old = p2
+            j += 1
 
             mu1 = CP.PropsSI('V', 'P', p1, 'H', h1, self.fluid)
-
-            # INTERNAL velocity (Used strictly for friction, NOT for the macro energy balance!)
-            u_internal = m_dot_slot / (rho1 * A_flow_slot) 
-            Re_internal = 4 * m_dot_slot / (np.pi * Dh * mu1)
+            Re = 4 * m_dot / (np.pi * self.d * mu1)
         
-            if Re_internal < 2300:
-                f = 64 / Re_internal
+            if Re < 2300:
+                f = 64 / Re
             else:
-                f = (1 / (-1.8 * np.log10(((eps_hts / Dh) / 3.7)**1.11 + 6.9 / Re_internal)))**2
+                f = (1 / (-1.8 * np.log10(((eps / self.d) / 3.7)**1.11 + 6.9 / Re)))**2
             
             # Pure micro-channel friction
-            dp_fric = f * (L/Dh) * (rho1 * u_internal**2 / 2) 
+            dp_fric = f * (L/self.d) * (rho1 * u1**2 / 2) 
+
+            # ---------------------------------------------------------
+            # --- COMPRESSIBILITY CHECK ---
+            # ---------------------------------------------------------
+            a_sound = CP.PropsSI('A', 'P', p1, 'H', h1, self.fluid)
             
-            # Optional minor losses for contraction/expansion moving from pipe -> tiny slots -> pipe
-            dp_minor = (0.5 + 1.0) * (rho1 * u_internal**2 / 2)
-            dp_fric += dp_minor
+            # Macro Pipe Check
+            mach_macro = u1 / a_sound
+            if mach_macro >= 1.0:
+                raise ValueError(f"[{self.name}] CHOKED FLOW! Macro Mach number {mach_macro:.3f} >= 1.0")
+            elif mach_macro > 0.3:
+                print(f"[{self.name}] WARNING: Macro Mach number is {mach_macro:.2f}. Compressibility high.")
 
-        else:
             # ---------------------------------------------------------
-            # NON-HTS COMPONENTS (AC/DC, Bus, etc.)
+            # 3. MACRO SOLVER EXECUTION
             # ---------------------------------------------------------
-            # Since we lack cold-plate micro geometry, we use the config dummy pressure drop 
-            dp_fric = config.cool_dummy_dp 
+            T2, p2, h2, rho2, u2, frac2 = update_states(p1, h1, u1, m_dot, self.A, self.fluid, q=q, dp=dp_fric)
 
 
-        a_sound = CP.PropsSI('A', 'P', p1, 'H', h1, self.fluid)
-        
-        # --- COMPRESSIBILITY CHECK ---
-        # =====================================================================
-        mach_macro = u1 / a_sound
-        if mach_macro >= 1.0:
-            raise ValueError(f"[{self.name}] CHOKED FLOW! Macro Mach number {mach_macro:.3f} >= 1.0")
-        elif mach_macro > 0.3:
-            print(f"[{self.name}] WARNING: Macro Mach number is {mach_macro:.2f}. Compressibility high.")
+            # HEX design
+            # f is the "film" temperature (boundary layer of H2 next to the pipe walls)
+            Tf = 0.5 * (0.5 * (T1 + T2) + self.T)
+            pf = 0.5 * (p1 + p2)
+            muf = CP.PropsSI('V', 'P', pf, 'T', Tf, self.fluid)
 
-        # Micro Slot Check (Only for HTS)
-        if self.name in ['hts_gen', 'hts_pow']:
-            mach_micro = u_internal / a_sound
-            if mach_micro >= 1.0:
-                raise ValueError(f"[{self.name}] CHOKED FLOW IN SLOTS! Micro Mach {mach_micro:.3f} >= 1.0")
-            elif mach_micro > 0.3:
-                print(f"[{self.name}] WARNING: Micro Mach number in slots is {mach_micro:.2f}.")
-        # =====================================================================
+            Prf = CP.PropsSI('Prandtl', 'P', pf, 'T', Tf, self.fluid) # Prandtl number
+            Ref = 4 * m_dot / (np.pi * self.d * muf)  # Reynolds number
+            kf = 9.248 + 0.01571 * Tf # thermal conductivity of stainless steel 613L
+            U = 0.021 * Ref**0.8 * Prf**0.4 * kf / self.d
+            
+            deltaT = self.T - 0.5 * (T1 + T2)
 
-        # ---------------------------------------------------------
-        # 3. MACRO SOLVER EXECUTION
-        # ---------------------------------------------------------
-        # We pass u1 (inlet pipe velocity) and A_pipe (outlet pipe area). 
-        # This conserves momentum and kinetic energy correctly across the component jump.
-        T2, p2, h2, rho2, u2, frac2 = update_states(p1, h1, u1, m_dot, self.A, self.fluid, q=q, dp=dp_fric)
-
-
-        # HEX design
-        # f is the "film" temperature (boundary layer of H2 next to the pipe walls)
-        if self.name in ['hts_gen', 'hts_pow']:
-            N_pipes = N_slots
-            D_input = np.sqrt(4 * A_slot / np.pi)
-        else:
-            N_pipes = 1
-            D_input = system[i-1].d
-
-        Tf = 0.5 * (0.5 * (T1 + T2) + T_component)
-        pf = 0.5 * (p1 + p2)
-        muf = CP.PropsSI('V', 'P', pf, 'T', Tf, self.fluid)
-
-        Prf = CP.PropsSI('Prandtl', 'P', pf, 'T', Tf, self.fluid) # Prandtl number
-        Ref = 4 * m_dot / (np.pi * D_input * muf)  # Reynolds number
-        kf = 9.248 + 0.01571 * Tf # thermal conductivity of stainless steel 613L
-        U = 0.021 * Ref**0.8 * Prf**0.4 * kf / D_input
-        
-        deltaT = T_component - 0.5 * (T1 + T2)
-        A_contact = self.Q_dot / (U * deltaT)
-        pipe_length = A_contact / (np.pi * D_input * N_pipes)
-
-        print(self.Q_dot)
+            if self.area_calc_mode:
+                self.area = self.Q_dot / (U * deltaT)
+                L = self.area / (np.pi * self.d)
+                N_corners = int(np.ceil(L / (self.length - self.width)))
+            else:
+                deltaT = self.Q_dot / (U * self.area)
+                self.T = deltaT + 0.5 * (T1 + T2)
 
         # if not Ref >= 10000:
         #     raise Warning("Formulas used are not valid for the required Reynolds number\n" +\
@@ -564,8 +561,8 @@ class COOL:
                    'h':   np.array([h2]),
                    'u':   np.array([u2]),
                    'frac':np.array([frac2]),
-                   'A_contact': np.array([A_contact]),
-                   'pipe_length': np.array([pipe_length])}
+                   'area': np.array([self.area]),
+                   'temperature': np.array([self.T])}
         
         return results
     

@@ -664,6 +664,10 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig,drag_r
     deltaCLmax_LE_LD=0.9*deltaClmax_LE_LD*le_flap_area_wing_ratio*np.cos(Wing_sweep_LE)
     deltaCLmax_LE_TO=deltaCLmax_LE_LD*0.6
 
+    #get wing deltaCLmax for HLD used for increases for landing
+    deltaCL_max_TO_total=power.CL_max_TO-cfg_updated.CL_max
+    deltaCL_max_LD_total=CL_max_LD-cfg_updated.CL_max
+
     #get wing deltaCLmax for flaps used for increases for takeoff and landing
     deltaCL_max_TO=power.CL_max_TO-cfg_updated.CL_max-deltaCLmax_LE_TO
     deltaCL_max_LD=CL_max_LD-cfg_updated.CL_max-deltaCLmax_LE_LD
@@ -731,6 +735,8 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig,drag_r
         table.add_column("approach speed landing CL", justify="right")
         table.add_column("delta CL_max_TO", justify="right")
         table.add_column("delta CL_max_LD", justify="right")
+        table.add_column("delta CL_max_total", justify="right")
+        table.add_column("delta CL_max_total_LD", justify="right")
         table.add_column("LE Area [m^2]", justify="right")
         table.add_column("TE Area [m^2]", justify="right")
         table.add_column("Flap Hinge Sweep [degree]", justify="right")
@@ -743,6 +749,8 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig,drag_r
             f"{CL_max_LD_without_stall:.6f}",
             f"{deltaCL_max_TO:.6f}",
             f"{deltaCL_max_LD:.6f}",
+            f"{deltaCL_max_TO_total:.6f}",
+            f"{deltaCL_max_LD_total:.6f}",
             f"{aero['LE_flap_area_wing']:.2f}",
             f"{aero['TE_flap_area_wing']:.2f}",
             f"{aero['hinge_sweep_deg']:.2f}",
@@ -847,3 +855,16 @@ if __name__ == "__main__":
     print(Panel(savings_text, title="[bold cyan]Fuel, Cost & MTOW Impact[/bold cyan]", border_style="cyan", expand=False))
 
     print(result1.P_approach_KW)
+
+    aileron_span=result1.tail_rechecked.S_aileron/(result1.root_chord*result1.Wing_taper)
+
+    taper_slope = 1.0 - result1.Wing_taper
+    chordataileronpos = result1.root_chord * (1.0 - taper_slope * ((result1.Wing_span / 2-aileron_span) / (result1.Wing_span / 2)))
+
+    print(aileron_span*(chordataileronpos)/result1.Wing_Area)
+    print(aileron_span/(result1.Wing_span/2))
+
+    print(f"Aileron Area needed for control: {result1.tail_rechecked.Sa_Sref*100:.2f} %")   
+
+    print(f"Cruise Thrust total: {result1.mission.T_cruise:.2f} N")
+    print(result1.power.V_2)
