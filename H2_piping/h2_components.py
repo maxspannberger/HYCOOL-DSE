@@ -576,14 +576,12 @@ class COOL:
 class Valve:
     def __init__(self, name:        str,
                        diameter:    float =  config.pipe_default_d,
-                       phase:       str   =  config.phase
                        ):
 
         self.name     = name
         self.fluid    = config.fluid
         self.d        = diameter
         self.A        = area(self.d)
-        self.phase    = phase
 
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None):
         
