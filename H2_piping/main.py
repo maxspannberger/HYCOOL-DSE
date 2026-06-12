@@ -64,7 +64,7 @@ def print_tree(states):
 # Visualizes the pressure, temperature, density, and enthalpy profiles.
 # Background gradient indicates the phase fraction (liquid to gas).
 # =============================================================================
-def plot_states(states):
+def plot_states(states, phase_name):
   
     flat_states = {}
     for prop in ['p', 'T', 'rho', 'h', 'frac']:
@@ -102,7 +102,7 @@ def plot_states(states):
         axes[i].set_ylabel(titles[i])
         axes[i].set_xlabel("Total System Step (Index)")
 
-    fig.suptitle('Hydrogen State Profile (Gradient: Blue=Liquid, Red=Gas)', fontsize=16)
+    fig.suptitle(f'Hydrogen State Profile (Phase: {phase_name.upper()} | Gradient: Blue=Liquid, Red=Gas)', fontsize=16)
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.show()
 
@@ -295,7 +295,7 @@ if __name__ == "__main__":
               # Save to JSON
               save_results_to_json(current_phase, final_T, final_p, final_rho, final_h, final_mdot)
 
-              plot_states(states)
+              plot_states(states, current_phase)
 
        filename_areas = "HEX_areas.json"
        with open(filename_areas, "w") as f:
