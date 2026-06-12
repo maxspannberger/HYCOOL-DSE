@@ -7,7 +7,7 @@ import numpy as np
 from dataclasses import dataclass
 import properties as props
 
-FLUID = "parahydrogen"   # physically correct LH2 near 20 K; 'hydrogen' = normal H2
+FLUID = "parahydrogen"   
 
 @dataclass(frozen=True)
 class Geometry:
@@ -18,6 +18,7 @@ class Geometry:
     lt: float      # total length
     V_tank: float      # tank volume
     A_tank: float      # total surface area
+    ull: float
 
     def print_summary(self):
         fields = [
@@ -26,16 +27,35 @@ class Geometry:
             ("lt",     "Total length",             self.lt,      "m"   ),
             ("V_tank", "Tank volume",              self.V_tank,  "m^3" ),
             ("A_tank", "Total surface area",       self.A_tank,  "m^2" ),
+            ("U", "Ullage Factor", self.ull, "-")
         ]
-        w = 58
-        print("\n" + "=" * w)
-        print(f"{'  TANK GEOMETRY SUMMARY':^{w}}")
-        print("=" * w)
-        print(f"  {'Var':<7}  {'Description':<24}  {'Value':>10}  Unit")
-        print("-" * w)
+
+        RESET = '\033[0m'
+        CYAN = '\033[96m'
+        WHITE = '\033[97m'
+        GREEN = '\033[92m'
+        ORANGE = '\033[38;5;208m'
+        BOLD = '\033[1m'
+
+        widths = [7, 24, 10, 5]
+
+        def make_border(left, mid, right):
+            return left + mid.join('-' * (w + 2) for w in widths) + right
+
+        title_width = sum(widths) + 3 * len(widths) + (len(widths) - 1)
+        print(f"\n{BOLD}{'TANK GEOMETRY SUMMARY':^{title_width}}{RESET}")
+        print(make_border('+', '+', '+'))
+        print('|' + '|'.join(f" {CYAN}{h:^{w}}{RESET} " for h, w in zip(['Var', 'Description', 'Value', 'Unit'], widths)) + '|')
+        print(make_border('+', '+', '+'))
         for var, desc, val, unit in fields:
-            print(f"  {var:<7}  {desc:<24}  {val:>10.4f}  {unit}")
-        print("=" * w + "\n")
+            row = [
+                f"{WHITE}{var:<{widths[0]}}{RESET}",
+                f"{GREEN}{desc:<{widths[1]}}{RESET}",
+                f"{ORANGE}{val:>{widths[2]}.4f}{RESET}",
+                f"{ORANGE}{unit:<{widths[3]}}{RESET}",
+            ]
+            print('| ' + ' | '.join(row) + ' |')
+        print(make_border('+', '+', '+') + "\n")
 
 class GeomDesign:
     def __init__(self, p_vent, p_fill, y_max):
@@ -52,17 +72,16 @@ class GeomDesign:
     # Calculate the liquid mass fraction at a given pressure and initial liquid mass fraction.
     def calculateInitialLiquidMassFraction(self, yl_vent):        
         """Calculate the liquid mass fraction at a given pressure based on the initial liquid mass fraction and the pressure ratio."""
-        # Placeholder: replace with actual calculation using properties
 
-        rhol = (yl_vent / self.vl_vent) + ((1 - yl_vent) / self.vg_vent)  # Example calculation; adjust as needed
-        yl_0 = (rhol - (1/self.vg_0)) / (1/self.vl_0 - 1/self.vg_0)  # Example calculation; adjust as needed
+        rhol = (yl_vent / self.vl_vent) + ((1 - yl_vent) / self.vg_vent)  
+        yl_0 = (rhol - (1/self.vg_0)) / (1/self.vl_0 - 1/self.vg_0)  
         return yl_0
 
     # Calculated the required tank volume based on the mass of hydrogen, initial liquid mass fraction, and density.
     def calculateTankVolume(self, rho_H2, m_H2, yl_0):
         """Calculate the required tank volume V from the input parameters."""
-        # Placeholder: replace with actual calculation using properties and geometry
-        V_tank = m_H2 / (rho_H2 * yl_0)  # Example calculation; adjust as needed
+
+        V_tank = m_H2 / (rho_H2 * yl_0)  
         return V_tank 
     
     # Calculate the tank geometry (e.g., radius, length) based on the volume and design constraints.
@@ -74,39 +93,41 @@ class GeomDesign:
         ls = 2 * b * Lambda / (1 - Lambda)
         lt = ls + 2 * b
 
-        # Elliptical shell surface area (Ramanujan's approximation)
-        h = ((a - c) / (a + c))**2
-        p_ellipse = np.pi * (a + c) * (1 + 3*h / (10 + np.sqrt(4 - 3*h)))
-        A_body = p_ellipse * ls
+        # Cylindrical Surface Area
+        if phi == 1.0 and psi == 1.0:
+            A_body = 2 * np.pi * c * ls 
+        else:
+            h = ((a - c) / (a + c))**2
+            p_ellipse = np.pi * (a + c) * (1 + 3*h / (10 + np.sqrt(4 - 3*h)))
+            A_body = p_ellipse * ls
 
-        # End-cap surface area (Thomsen's approximation)
+        # End-cap surface area
         if Lambda == 0:
-            A_heads = 4 * np.pi * b**2
+            A_heads = 4 * np.pi * (c**2)
         else:
             p = 1.6075
             A_heads = 4*np.pi * (((a*c)**p + (a*b)**p + (c*b)**p) / 3)**(1/p)
 
         A_tank = A_body + A_heads
 
-        return Geometry(a=a, b=b, c=c, ls=ls, lt=lt, V_tank=V_tank, A_tank=A_tank)
+        return Geometry(a=a, b=b, c=c, ls=ls, lt=lt, V_tank=V_tank, A_tank=A_tank, ull=ullage_factor)
    
 
 
 if __name__ == "__main__":
-    m_H2 = 494.67 / 2 # kg, mass of hydrogen to be stored
-
-    # 1. Construct once — __init__ caches the fill-condition specific volumes
-    p_fill = 1.0 # bar, fill pressure
+    # 1. Define inputs and call geom_design
+    m_H2 = 600 # kg, mass of hydrogen to be stored
+    p_fill = 1. # bar, fill pressure
     p_vent = 1.5 * p_fill # bar, venting pressure
     geom_design = GeomDesign(p_vent=p_vent, p_fill=p_fill, y_max=0.97)
 
     # 2. Initial liquid fraction at fill so that y_l = y_max at venting
     yl_0 = geom_design.calculateInitialLiquidMassFraction(yl_vent=geom_design.y_max)
+    ullage_factor = 1 - yl_0
 
     # 3. Mean mixture density at venting (from CoolProp / fluids module)
-    
-    rho_H2_fill = PropsSI('D', 'P', p_fill*geom_design.BAR, 'T', 20, 'Hydrogen')
-    rho_H2_vent = PropsSI('D', 'P', p_vent*geom_design.BAR, 'T', 20, 'Hydrogen')
+    rho_H2_fill = PropsSI('D', 'P', p_fill*geom_design.BAR, 'T', 15, 'Hydrogen')
+    rho_H2_vent = PropsSI('D', 'P', p_vent*geom_design.BAR, 'T', 15, 'Hydrogen')
 
     # 4. Calculate the required volume
     V_tank = geom_design.calculateTankVolume(rho_H2=rho_H2_vent, m_H2=m_H2, yl_0=yl_0)
