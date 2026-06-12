@@ -555,6 +555,10 @@ class COOL:
         #             f"Used L/D: {pipe_length/D_input}"
         #         )
 
+        print(f"\n{self.name}:")
+        print(f"Contact area: {self.area}")
+        print(f"Pipe length: {L}")
+
         results = {'T':   np.array([T2]), 
                    'p':   np.array([p2]),
                    'rho': np.array([rho2]),
