@@ -647,7 +647,7 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig,drag_r
     hinge_sweep=np.arctan(np.tan(Wing_sweep_LE)-x_c_hinge*2*root_chord/(Wing_span)*(1-Wing_taper))
 
     #accoridng to NASA paper, a deflection angle of 30 degrees was most effective for the fowler flap, so we get deltac/cf
-    deltac_cf=0.7      #extracted from the figure in toreenbeek
+    deltac_cf=0.7      #extracted from the figure in toreenbeek was 0.55 for fowler
 
     #get the fraction of the increase of the chord with extended fowler flaps with respect to original chord
     deltac_c=deltac_cf*c_fowler_c_wing
@@ -656,7 +656,7 @@ def compute_additional_aerodynamic_parameters(cfg_updated: AircraftConfig,drag_r
     Clneeded=CL_adjusted/(np.cos(Wing_sweep_quarter)**2)
 
     #get increase in Clmax for landing and takeoff according to flap use, takeoff lower deflection wanted
-    deltaClmax_LD=1.6*cdash_c
+    deltaClmax_LD=1.6*cdash_c           #this is 1.3 for fowler flaps
     deltaClmax_TO=deltaClmax_LD*0.6
 
     #get increase in Clmax for landing and takeoff according to LE HLD use, takeoff lower deflection wanted

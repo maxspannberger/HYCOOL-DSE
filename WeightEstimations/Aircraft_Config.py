@@ -240,7 +240,7 @@ def default_q400_hycool() -> AircraftConfig:
         tc_h             = 0.12,                # Referenced
         sweep_h_half     = np.deg2rad(22.0),    # Referenced
         sweep_h_tc       = np.deg2rad(20.0),    # Referenced
-        l_h              = 21.197,                # Referenced
+        l_h              = 21.185,                # Referenced
         S_h_frn          = 0.225,                 # read from scissor plot
 
         # Vertical tail
@@ -346,11 +346,11 @@ def default_q400_hycool() -> AircraftConfig:
         FirstWindow         = 6.74,                 # Distance nose tip to first window [m], placeholder for now
         LastWindow          = 27.08,                # Distance nose tip to last window [m], placeholder for now
 
-        LEMAC               = 15.408,                 # Distance nose tip to LEMAC [m], placeholder for now
-        lfn                 = 13.974,                 # Distance nose tip to LE wing root LEMAC
+        LEMAC               = 15.375,                 # Distance nose tip to LEMAC [m], placeholder for now
+        lfn                 = 13.961,                 # Distance nose tip to LE wing root LEMAC
         hh                  = 4,                    # Normal distance from wing plane to tail plane, placeholder for now
 
-        OEW_cg              = 16.981,                # Distance nose tip to OEW CG [m], placeholder for now
+        OEW_cg              = 16.930,                # Distance nose tip to OEW CG [m], placeholder for now
         FUEL_cg             = 28.6,                   # Distance nose tip to Fuel CG [m], placeholder for now
         AftCargo_cg         = 22.6,                   # Distance nose tip to Aft Cargo CG [m], placeholder for now
         FwdCargo_cg         = 9.5,                   # Distance nose tip to Fwd Cargo CG [m], placeholder for now

@@ -86,9 +86,9 @@ class ScissorPlotInput:
 
     # ---------------- Controllability inputs from old scissor plot ----------------
     
-    mu1: float = 0.182
-    mu2: float = 1.2
-    mu3: float = 0.0295
+    mu1: float = 0.1835           #old = 0.182
+    mu2: float = 0.96           #old = 1.2
+    mu3: float = 0.038           #old = 0.0295
 
     # ---------------- CG range ----------------
     # Replace these with the final loading diagram output when available.
@@ -119,9 +119,9 @@ class ScissorPlotInput:
         #bn: Optional[float] = None,
         #ln: Optional[float] = None,
         Vlanding: Optional[float] = None,
-        mu1: float = 0.182,
-        mu2: float = 1.2,
-        mu3: float = 0.0295,
+        mu1: float = 0.1835,
+        mu2: float = 0.96,
+        mu3: float = 0.038,
     ) -> "ScissorPlotInput":
         """
         Build scissor plot inputs from the converged Class II output.
@@ -165,6 +165,7 @@ class ScissorPlotInput:
         # Current config does not store the wing longitudinal location directly.
         lfn = float(cfg.lfn)
 
+        # bn defaults to propfan disk diameter. ln defaults to 0, meaning no nacelle a.c. shift.
         # Replace these if you have better nacelle geometry.
         #bn_use = float(bn) if bn is not None else (cfg.D_propfan/3)
         #ln_use = float(ln) if ln is not None else 2
