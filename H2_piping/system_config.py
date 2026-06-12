@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import List
 
 # =============================================================================
 # Define the global configuration dataclass for the fluid properties and constants
@@ -7,14 +8,20 @@ from dataclasses import dataclass
 class H2SystemConfig:
     # Global simulation configurations
     fluid: str = 'Hydrogen'                  # FLUID used for simulation
-    phase: str = 'cruise'
     max_error: float = 10                    # SOLVER convergence treshhold
-    tank_p: float = 500000                   # TANK pressure [Pa]
-    tank_T: float = 15                       # TANK temperature [T]
-    tank_d: float = 0.012                     # TANK outlet diameter [m]
+    tank_p: float = 200000                   # TANK pressure [Pa]
+    tank_T: float = 20.3                       # TANK temperature [T]
+    tank_d: float = 0.012                    # TANK outlet diameter [m]
     T_amb: float = 317                       # AMBIENT temperature [K]
-    m_dot: float = 0.0718                      # TOTAL mass flow [kg/s]
     
+    # ------------------------------
+    normal_phases: List[str]   = field(default_factory=lambda: ['TO', 'climb', 'cruise', 'APP'])
+    normal_m_dots: List[float] = field(default_factory=lambda: [0.0894, 0.0874, 0.0658, 0.0306])  
+    
+    oei_phases: List[str]      = field(default_factory=lambda: ['OEI_gt', 'OEI_mot', 'OEI_bus'])
+    oei_m_dots: List[float]    = field(default_factory=lambda:  [0.0493, 0.0493, 0.0493]) 
+    # ------------------------------
+
     # Solver configuration parameters
     divergence_penalty: float = 1e9          # penalty value if the numerical solver diverges
     tank_max_gas_frac: float = 0.01          # gas fraction limit before the incompressibility assumption breaks
@@ -27,7 +34,7 @@ class H2SystemConfig:
     
     # Component setup placeholders
     tank_initial_u: float = 0.0              # flow velocity inside the storage tank [m/s]
-    cool_dummy_dp: float = 1000.0               # placeholder pressure drop for active cooling [Pa]
+    cool_dummy_dp: float = 1000.0            # placeholder pressure drop for active cooling [Pa]
 
     # Constants for hts
     eps_hts: float = 0.0015*10**-3           # internal surface roughness for cooling lines [m]
@@ -36,9 +43,8 @@ class H2SystemConfig:
     L: float = 0.2253                        # stator length
     VF: float = 0.35                         # stator void factor
 
-
     # Default baseline geometric parameters for pipe segments
-    pipe_default_d: float = 0.012             # default baseline inner pipeline diameter [m]
+    pipe_default_d: float = 0.012            # default baseline inner pipeline diameter [m]
     pipe_segment_length: float = 0.1         # default baseline segment length [m]
     pipe_default_N: int = 10                 # default baseline number of MLI layers applied
     pipe_default_N_bar: float = 5.5          # default baseline insulation layer density [layers/cm]
@@ -56,4 +62,3 @@ class H2SystemConfig:
         "dc_ac": 250.0,
         "hts_pow": 50.0,
     }
-    
