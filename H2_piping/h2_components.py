@@ -408,7 +408,7 @@ class Pipe:
                 )        
                 q       = Q_dot / m_dot
             else:
-                q = self.q_set
+                q = self.q_set / self.segments
 
             if Re1 < 2300:
                 f = 64 / Re1
@@ -594,7 +594,7 @@ class COOL:
             rho2 = solved_internal_system['rho'][-1][-1]
             h2 = solved_internal_system['h'][-1][-1]
             u2 = solved_internal_system['u'][-1][-1]
-            frac2 = solved_internal_system['T'][-1][-1]
+            frac2 = solved_internal_system['frac'][-1][-1]
 
             # HEX design
             # f is the "film" temperature (boundary layer of H2 next to the pipe walls)
