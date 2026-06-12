@@ -549,7 +549,6 @@ class COOL:
         L = self.length
         N_corners = 0
         
-        
         # Specific heat added (Total heat / branch mass flow)
         q = self.Q_dot / m_dot 
         q += 34.79 / m_dot  # Heat from fittings and cable extraction divided into all components
@@ -573,6 +572,7 @@ class COOL:
             q_L = q / L
 
             # get internal geometry to compute final states
+            N_corners = 0
             while cumulative_length < L:
                 cumulative_length += self.length
 
