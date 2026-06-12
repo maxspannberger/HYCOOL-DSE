@@ -63,5 +63,5 @@ class H2SystemConfig:
         "hts_pow": 50.0,
     }
 
-    HEX_default_d = 0.009
+    HEX_default_d = 0.008
     

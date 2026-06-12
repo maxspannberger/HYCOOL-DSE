@@ -150,7 +150,9 @@ def heat_transfer_coefficient(T1, T2, T_comp, p1, p2, m_dot, d, fluid):
 
     Prf = CP.PropsSI('Prandtl', 'P', pf, 'T', Tf, fluid) # Prandtl number
     Ref = 4 * m_dot / (np.pi * d * muf)  # Reynolds number
-    kf = 9.248 + 0.01571 * Tf # thermal conductivity of stainless steel 613L
+    # kf = 9.248 + 0.01571 * Tf # thermal conductivity of stainless steel 613L - NOT this one should be used!!!
+    kf = CP.PropsSI('L', 'P', pf, 'T', Tf, fluid)
+
     U = 0.021 * Ref**0.8 * Prf**0.4 * kf / d
 
     return U
