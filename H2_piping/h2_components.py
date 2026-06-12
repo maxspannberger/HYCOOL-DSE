@@ -432,8 +432,8 @@ class Corner:
 class COOL:
     def __init__(self, name:        str, 
                        location:    str,
-                       phase:       str,
-                       diameter:    float =  config.pipe_default_d,
+                       phase:       str   =  config.phase,
+                       diameter:    float =  config.HEX_default_d,
                        areas:       dict  = None
                        ):   
         
