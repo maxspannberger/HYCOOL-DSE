@@ -430,16 +430,16 @@ def perform_complete_electrical_sizing(P_TO, P_climb, P_cruise, P_APP, P_OEI, b,
     # HTS dimensions:
     HTS_dimensions = {
         "hts_gen": {
-            "L": 0.30,
-            "D": 0.40
+            "L": 0.5333,
+            "D": 0.30
         },
         "hts_pow_1": {
-            "L": 0.30,
-            "D": 0.40
+            "L": 0.4244,
+            "D": 0.30
         },
         "hts_pow_2": {
-            "L": 0.175,
-            "D": 0.234
+            "L": 0.24,
+            "D": 0.20
         },
     }
 
