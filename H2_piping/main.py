@@ -9,7 +9,7 @@ root = Path(__file__).resolve().parent.parent
 sys.path.append(str(root))
 
 # Import your components from h2_components and configuration from system_config
-from h2_components import Tank, Pipe, Pump, Corner, COOL, Valve
+from h2_components import Tank, Pipe, Pump, Corner, COOL, Valve, solve_system
 
 from rich import print as rich_printv
 from rich.tree import Tree
@@ -44,46 +44,6 @@ def save_results_to_json(phase_name, T, p, rho, h, m_dot_final):
     
     with open(results_file, 'w') as f:
         json.dump(data, f, indent=4)
-
-# =============================================================================
-# Iterates through the defined system components to calculate fluid states.
-# Updates mass flow rate when splits or merges occur.
-# =============================================================================
-def solve_system(system, m_dot, T_amb):
-   
-    states = {'p'   : [],
-              'T'   : [],
-              'rho' : [],
-              'h'   : [],
-              'u'   : [],
-              'frac': []}
-    
-    HEX_areas = {}
-    Temps = {}
-    
-    for i, comp in enumerate(system):
-        # Update the m_dot based on pipe splits and merges
-        if type(comp) == tuple:
-            m_dot = m_dot * comp[1] / comp[-1]
-        else:
-            # Propagate the state through the specific component solver
-            component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=False, system=system, i=i)
-            
-            states['p'].append(component_result['p'])
-            states['T'].append(component_result['T'])
-            states['rho'].append(component_result['rho'])
-            states['h'].append(component_result['h'])
-            states['u'].append(component_result['u'])
-            states['frac'].append(component_result['frac'])
-
-            if "area" in component_result:
-                 if comp.name not in HEX_areas:
-                     HEX_areas[comp.name] = {}
-                     Temps[comp.name] = {}
-                 HEX_areas[comp.name][comp.location] = component_result['area']
-                 Temps[comp.name][comp.location] = component_result['temperature']
-
-    return states, m_dot, HEX_areas, Temps
 
 # =============================================================================
 # Displays the computed states in a clean, hierarchical CLI tree format.

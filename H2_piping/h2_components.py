@@ -153,6 +153,47 @@ def heat_transfer_coefficient(T1, T2, T_comp, p1, p2, m_dot, d, fluid):
     U = 0.021 * Ref**0.8 * Prf**0.4 * kf / d
 
     return U
+
+
+# =============================================================================
+# Iterates through the defined system components to calculate fluid states.
+# Updates mass flow rate when splits or merges occur.
+# =============================================================================
+def solve_system(system, m_dot, T_amb):
+   
+    states = {'p'   : [],
+              'T'   : [],
+              'rho' : [],
+              'h'   : [],
+              'u'   : [],
+              'frac': []}
+    
+    HEX_areas = {}
+    Temps = {}
+    
+    for i, comp in enumerate(system):
+        # Update the m_dot based on pipe splits and merges
+        if type(comp) == tuple:
+            m_dot = m_dot * comp[1] / comp[-1]
+        else:
+            # Propagate the state through the specific component solver
+            component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=False, system=system, i=i)
+            
+            states['p'].append(component_result['p'])
+            states['T'].append(component_result['T'])
+            states['rho'].append(component_result['rho'])
+            states['h'].append(component_result['h'])
+            states['u'].append(component_result['u'])
+            states['frac'].append(component_result['frac'])
+
+            if "area" in component_result:
+                 if comp.name not in HEX_areas:
+                     HEX_areas[comp.name] = {}
+                     Temps[comp.name] = {}
+                 HEX_areas[comp.name][comp.location] = component_result['area']
+                 Temps[comp.name][comp.location] = component_result['temperature']
+
+    return states, m_dot, HEX_areas, Temps
     
 
 # =============================================================================
@@ -280,7 +321,8 @@ class Pipe:
                        N:        int   = None,
                        N_bar:    float = None,      
                        P_mli:    float = None,
-                       eps_pipe: float = None):
+                       eps_pipe: float = None,
+                       q_set:    float = None):
 
         self.name      = 'Pipe'
         self.fluid     = config.fluid
@@ -299,6 +341,8 @@ class Pipe:
         self.cr        = config.pipe_mli_cr
         self.cg        = config.pipe_mli_cg
         self.eps       = config.pipe_mli_eps
+
+        self.q_set     = q_set
     
     # Function that can be called to calculate the evolution of the state variables
     # in the component
@@ -318,8 +362,6 @@ class Pipe:
                    'h':   np.zeros(self.segments),
                    'u':   np.zeros(self.segments),
                    'frac':np.zeros(self.segments)}
-        
-
 
         # Loop over pipe elements to calculate state variable evolution
         for seg in range(self.segments):
@@ -343,18 +385,22 @@ class Pipe:
             T_c = T1
             T_m = (T_h + T_c) / 2
             
-            Q_dot = A_seg * (
-                (self.cs * T_m * self.N_bar**2.63 * (T_h - T_c)) / (self.N - 1)
-              + (self.cr * self.eps * (T_h**4.67 - T_c**4.67)) / self.N
-              + (self.cg * (self.P_mli) * (T_h**0.52 - T_c**0.52)) / self.N
-            )
-            
-            if Re1 < 2300:
-                f = 64 / Re1
+            if self.q_set is None:
+                Q_dot = A_seg * (
+                    (self.cs * T_m * self.N_bar**2.63 * (T_h - T_c)) / (self.N - 1)
+                + (self.cr * self.eps * (T_h**4.67 - T_c**4.67)) / self.N
+                + (self.cg * (self.P_mli) * (T_h**0.52 - T_c**0.52)) / self.N
+                )
+                
+                if Re1 < 2300:
+                    f = 64 / Re1
+                else:
+                    f = (1 / (-1.8 * np.log10(((self.eps_pipe / self.d) / 3.7)**1.11 + 6.9 / Re1)))**2
+                
+                q       = Q_dot / m_dot
             else:
-                f = (1 / (-1.8 * np.log10(((self.eps_pipe / self.d) / 3.7)**1.11 + 6.9 / Re1)))**2
-            
-            q       = Q_dot / m_dot
+                q = self.q_set
+
             dp_fric = f * (dz / self.d) * 0.5 * rho1 * u1**2
             
             T2, p2, h2, rho2, u2, frac2 = update_states(p1, h1, u1, m_dot, self.A, self.fluid, q=q, dp=dp_fric)          
@@ -493,9 +539,6 @@ class COOL:
         # Specific heat added (Total heat / branch mass flow)
         q = self.Q_dot / m_dot 
         q += 34.79 / m_dot  # Heat from fittings and cable extraction divided into all components
-        # ---------------------------------------------------------
-        # 2. MICRO INTERNAL GEOMETRY (Calculating the friction drop)
-        # ---------------------------------------------------------
 
         p2_old = np.inf
         p2 = p1
@@ -504,34 +547,37 @@ class COOL:
             p2_old = p2
             j += 1
 
-            mu1 = CP.PropsSI('V', 'P', p1, 'H', h1, self.fluid)
-            Re = 4 * m_dot / (np.pi * self.d * mu1)
-        
-            if Re < 2300:
-                f = 64 / Re
+            cumulative_length = 0.0
+            internal_system = []
+
+            if N_corners > 0:
+                R = self.width / (2 * N_corners)
+                curvature = R / self.area
             else:
-                f = (1 / (-1.8 * np.log10(((eps / self.d) / 3.7)**1.11 + 6.9 / Re)))**2
+                curvature = 2.5
+
+            q_L = q / L
+
+            # get internal geometry to compute final states
+            while cumulative_length < L:
+                cumulative_length += self.length
+
+                if cumulative_length > L:
+                    remaining_length = self.length - (cumulative_length - (L - self.width))
+                    internal_system.append(Pipe(length=remaining_length, diameter=self.d, q_set=q_L*remaining_length))
+                else:
+                    internal_system.extend([
+                        Pipe(length=self.length, diameter=self.d, q_set=q_L*self.length),
+                        Corner(curv=curvature, diameter=self.d)
+                    ])
             
-            # Pure micro-channel friction
-            dp_fric = f * (L/self.d) * (rho1 * u1**2 / 2) 
-
-            # ---------------------------------------------------------
-            # --- COMPRESSIBILITY CHECK ---
-            # ---------------------------------------------------------
-            a_sound = CP.PropsSI('A', 'P', p1, 'H', h1, self.fluid)
-            
-            # Macro Pipe Check
-            mach_macro = u1 / a_sound
-            if mach_macro >= 1.0:
-                raise ValueError(f"[{self.name}] CHOKED FLOW! Macro Mach number {mach_macro:.3f} >= 1.0")
-            elif mach_macro > 0.3:
-                print(f"[{self.name}] WARNING: Macro Mach number is {mach_macro:.2f}. Compressibility high.")
-
-            # ---------------------------------------------------------
-            # 3. MACRO SOLVER EXECUTION
-            # ---------------------------------------------------------
-            T2, p2, h2, rho2, u2, frac2 = update_states(p1, h1, u1, m_dot, self.A, self.fluid, q=q, dp=dp_fric)
-
+            solved_internal_system = solve_system(internal_system, m_dot, T_amb)
+            p2 = solved_internal_system['p'][-1]
+            T2 = solved_internal_system['T'][-1]
+            rho2 = solved_internal_system['rho'][-1]
+            h2 = solved_internal_system['h'][-1]
+            u2 = solved_internal_system['u'][-1]
+            frac2 = solved_internal_system['T'][-1]
 
             # HEX design
             # f is the "film" temperature (boundary layer of H2 next to the pipe walls)
@@ -554,27 +600,6 @@ class COOL:
                     self.T = deltaT + 0.5 * (T1 + T2)
 
             L = self.area / (np.pi * self.d)
-            L_parallel = L - self.width
-
-            if N_corners > 0:
-                R = self.width / (2 * N_corners)
-                curvature = R / self.area
-            else:
-                curvature = 2.5
-
-            cumulative_length = 0.0
-            N_corners = 0
-            internal_system = []
-            while cumulative_length < L:
-
-                if cumulative_length > L:
-                    remaining_length = self.length - (cumulative_length - (L - self.width))
-                    internal_system.append(Pipe(length=remaining_length, diameter=self.d))
-                else:
-                    internal_system.extend([
-                        Pipe(length=self.length, diameter=self.d),
-                        Corner(curv=curvature, diameter=self.d)
-                    ])
 
         
         if self.area_calc_mode:
