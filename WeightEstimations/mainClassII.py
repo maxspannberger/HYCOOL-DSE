@@ -108,7 +108,7 @@ class ClassIIResult:
     l_f_m: float = 0.0
     root_chord: float = 0.0
     MAC: float = 0.0
-    l_f: float = 0.0
+    d_f: float = 0.0
     Wing_sweep_quarter: float = 0.0
     Wing_sweep_half: float = 0.0
     Wing_sweep_LE: float = 0.0
@@ -132,7 +132,7 @@ class ClassIIResult:
             f"Wing Sweep (Quarter): {self.Wing_sweep_quarter*180/np.pi:.2f} deg\n"
             f"Wing Sweep (Half): {self.Wing_sweep_half*180/np.pi:.2f} deg\n"
             f"Wing Sweep (LE): {self.Wing_sweep_LE*180/np.pi:.2f} deg\n"
-            f"Fuselage Diameter: {self.l_f:.2f} m\n"
+            f"Fuselage Diameter: {self.d_f:.2f} m\n"
             f"Distance from MAC Leading Edge to CG: {self.distance_le_mac_to_cg:.2f} m\n"
             f"Distance from MAC Leading Edge to Turbine: {self.distance_le_mac_to_turbine:.2f} m\n"
             f"Distance from Root Chord Leading Edge to MAC Leading Edge: {self.distance_le_root_to_le_mac:.2f} m\n"
@@ -200,7 +200,7 @@ def compute_fuselage_geometry(W_fuel: float, cfg: AircraftConfig,hump_back: bool
         S_wet_f = cfg.S_wet_f + S_wet_hump
     else:
         S_wet_hump = 0.0
-        l_f = cfg.l_f + L_tank
+        l_f = cfg.l_f + (L_tank-r_tank)
         b_f = max(cfg.b_f, d_tank)
         h_f = max(cfg.h_f, d_tank)
         d_eq = 0.5 * (b_f + h_f)
@@ -573,7 +573,7 @@ def run_class_ii(
         l_f_m=cfg_iter.l_f,
         root_chord=c_root,
         MAC=MAC,
-        l_f=cfg_updated.d_f,
+        d_f=cfg_updated.d_f,
         Wing_sweep_quarter=sweep_quarter,
         Wing_sweep_half=sweep_half,
         Wing_sweep_LE=sweep_LE,

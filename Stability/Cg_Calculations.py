@@ -48,13 +48,15 @@ class CgCalculationInput:
     MAC_h:          float
     MAC_v:          float
     MAC:            float       # m 
-    x_LEMAC:        float           #intital guess x_LEMAC
+    #x_LEMAC:        float           #intital guess x_LEMAC
 
 
     W_wing:         float
     W_sc:           float   #surface control system weight
     W_engine:       float
+    W_TMS:          float
 
+    cg_location_TMS:       float
     location_wing_cg: float 
 
     OEW_target_rel: float
@@ -65,7 +67,6 @@ class CgCalculationInput:
 
     z_cg:           float
     beta:           float
-
 
     @classmethod
     def from_class_ii(
@@ -102,13 +103,14 @@ class CgCalculationInput:
         MAC_v = cfg.MAC_v
 
         MAC = result.MAC
-        x_LEMAC = cfg.LEMAC
+        #x_LEMAC = cfg.LEMAC
 
         W_wing = result.weight.W_wing_accurate
         W_sc = result.weight.W_sc
         W_engine = result.weight.W_engine         #total propulsion system weight, excluding lh2 tank but including piping TODO: perhaps exclude piping & cabling for the cg calc
+        W_TMS = cfg.TMS_mass_N4                   #TODO if nr of engine changes use N2
 
-
+        cg_location_TMS = cfg.cg_location_TMS                  #[m] distance from 1/4MAC to TMS cg
         location_wing_cg = result.distance_le_mac_to_cg         #[m] distance from LEMAC to wing cg 
 
         OEW_target_rel = cfg.OEW_target_rel                     # statistically determined factor from torenbeek: % of MAC for OEW cg
@@ -153,7 +155,7 @@ class CgCalculationInput:
             W_engine = W_engine,
 
             MAC = MAC,
-            x_LEMAC = x_LEMAC,
+            #x_LEMAC = x_LEMAC,
 
             location_wing_cg = location_wing_cg,
 
@@ -164,6 +166,8 @@ class CgCalculationInput:
             xcg_upper = xcg_upper,
             z_cg = z_cg,
             beta = beta,
+            W_TMS = W_TMS,
+            cg_location_TMS = cg_location_TMS,
         )
 
 
@@ -187,6 +191,14 @@ class CgBreakdown:
     x_cg_cargo_aft: float
     x_cg_lg_main: float
     x_TE_wing_root: float
+    x_cg_htail: float
+    x_cg_vtail: float
+    MAC_h: float
+    MAC_v: float
+    l_f: float
+    x_cg_power_units: float
+    x_cg_TMS: float
+    cg_location_engines: float
 
 
     def summary(self) -> Table:
@@ -273,6 +285,46 @@ class CgBreakdown:
         table.add_row(
             "[bold]x_TE_wing_root[/bold]",
             f"[bold]{self.x_TE_wing_root:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]x_cg_htail[/bold]",
+            f"[bold]{self.x_cg_htail:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]x_cg_vtail[/bold]",
+            f"[bold]{self.x_cg_vtail:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]MAC_h[/bold]",
+            f"[bold]{self.MAC_h:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]MAC_v[/bold]",
+            f"[bold]{self.MAC_v:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]fuselage length[/bold]",
+            f"[bold]{self.l_f:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]cg_loc_eng from LEMAC[/bold]",
+            f"[bold]{self.cg_location_engines:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]x_cg_power_units[/bold]",
+            f"[bold]{self.x_cg_power_units:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]x_cg_TMS[/bold]",
+            f"[bold]{self.x_cg_TMS:.1f}[/bold]",
         )
 
         return table
@@ -372,9 +424,9 @@ class CgCalculator:
 
 # ------------------- Fuselage Group cg locations  ------------------
 
-        x_cg_fixed = (cg_location_fus-0.04) * l_f                       #assume cg of fixed weight to be equal to fuselage cg, TODO: could be shifted a bit
+        x_cg_fixed = (cg_location_fus) * l_f                       #assume cg of fixed weight to be equal to fuselage cg, TODO: could be shifted a bit
         x_cg_fus = cg_location_fus * l_f
-        x_cg_lg_nose = (2/3) * l_n                                  #this is just an estimate, TODO: can be calculated from required load for steering (SEAD)        
+        x_cg_lg_nose = 4.017    #old: (2/3) * l_n                                    #this is just an estimate, TODO: can be calculated from required load for steering (SEAD)        
         x_cg_htail = 0.98*l_f-MAC_h+(cg_location_tail_c*MAC_h)        #took 2% fus lenght fort the little cone behind tail, then cg is at a torenbeek defined frn behind LE TODO: update when l_h is updated
         x_cg_vtail = 0.98*l_f-MAC_v+(cg_location_tail_c*MAC_v)        #took 2% fus lenght fort the little cone behind tail, then cg is at a torenbeek defined frn behind LE
         x_cg_tank = l_n + l_c + 1/2 * L_tank
@@ -403,6 +455,12 @@ class CgCalculator:
         W_lg_main = d.W_lg_main
         W_wing = d.W_wing
         W_engine = d.W_engine
+        W_TMS = d.W_TMS
+
+        #-------------split engine mass in propulsion + TMS
+        W_propulsion = W_engine - W_TMS
+        
+        cg_location_TMS = d.cg_location_TMS         #[m] behind LEMAC
 
         location_wing_cg = d.location_wing_cg
 
@@ -415,13 +473,15 @@ class CgCalculator:
                 W_sc,
                 W_lg_main,
                 W_wing,
-                W_engine,
+                W_propulsion,
+                W_TMS,
             ],
             locations=[
                 MAC,
                 x_cg_lg_main_frn * MAC,
                 location_wing_cg,
                 cg_location_engines,
+                cg_location_TMS,
             ],
         )
 
@@ -436,19 +496,22 @@ class CgCalculator:
         x_cg_lg_main = x_cg_lg_main_frn*MAC + x_LEMAC
         x_cg_wing = x_LEMAC + location_wing_cg
         x_cg_power_units = x_LEMAC + cg_location_engines
+        x_cg_TMS = x_LEMAC + cg_location_TMS
 
         W_wing_group, x_cg_wing_group = self.cg_from_weights(
             weights=[
                 W_sc,
                 W_lg_main,
                 W_wing,
-                W_engine,
+                W_propulsion,
+                W_TMS,
             ],
             locations=[
                 x_cg_sc,
                 x_cg_lg_main,
                 x_cg_wing,
                 x_cg_power_units,
+                x_cg_TMS,
             ]
         )
 
@@ -481,6 +544,14 @@ class CgCalculator:
             x_cg_cargo_aft = x_cg_cargo_aft,
             x_cg_lg_main =x_cg_lg_main,
             x_TE_wing_root = x_TE_wing_root,
+            x_cg_htail = x_cg_htail,
+            x_cg_vtail = x_cg_vtail,
+            MAC_h = MAC_h,
+            MAC_v = MAC_v,
+            l_f = l_f,
+            x_cg_power_units = x_cg_power_units,
+            x_cg_TMS = x_cg_TMS,
+            cg_location_engines = cg_location_engines
         )
 
 

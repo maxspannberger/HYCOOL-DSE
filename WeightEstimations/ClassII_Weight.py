@@ -117,7 +117,11 @@ class ClassII_Input:
     mass_margin: float = 1.05
     aero_parameters: dict = field(default_factory=dict)
 
+    #TMS masses
+    TMS_mass_N2: float = 0,
+    TMS_mass_N4: float = 0,
 
+    frn_tank_support: float = 0,
 
     @classmethod
     def from_config(
@@ -155,7 +159,7 @@ class ClassII_Input:
         P_opt: float = 0.0,
         mass_margin: float = 1.1,
         taper: float = 0.0,
-        sweep_LE: float = 0.0
+        sweep_LE: float = 0.0,
     ) -> "ClassII_Input":
         """
         Build the weight-estimator input from a shared AircraftConfig.
@@ -236,6 +240,9 @@ class ClassII_Input:
             mass_margin = mass_margin,
             N_propellers = cfg.N_propellers,
             aero_parameters = aero_parameters if aero_parameters is not None else {},
+            TMS_mass_N2 = cfg.TMS_mass_N2,
+            TMS_mass_N4 = cfg.TMS_mass_N4,
+            frn_tank_support = cfg.frn_tank_support,
         )
 
 
@@ -676,10 +683,10 @@ class weightEstimation:
                 elif comp_key == "pipe+valves+pumps":
                     if g.N_propellers>2:
                         #mass = pipe_len * comp[comp_key].mass_per_length
-                        mass=360.98
+                        mass = g.TMS_mass_N4
                     else:
                         #mass = pipe_len * comp[comp_key].mass_per_length * 2 #double the mass for 4 engines since more complex piping system with more valves and pumps needed
-                        mass=320.98                     #big estimate
+                        mass = g.TMS_mass_N2                     #big estimate
                 elif comp_key == "open_fan" and propeller_count<2 and g.N_propellers>2:
                         mass = g.max_Thrust_prop_inner / comp[comp_key].thrust_density *1.1
                         propeller_count+=1
@@ -733,7 +740,7 @@ class weightEstimation:
         return total_mass * g.mass_margin,fan_mass, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff,eff_climb, eff_cruise, bt_charging_ratio, P_opt,cool
     
     def _h2_tank_weight(self) -> float:
-        return self.g.W_fuel * (1 / self.g.grav_density - 1)* self.g.mass_margin
+        return (self.g.W_fuel * (1 / self.g.grav_density - 1)*(1+self.g.frn_tank_support))* self.g.mass_margin
 
     def compute(self) -> WeightBreakdown:
         self._validate()

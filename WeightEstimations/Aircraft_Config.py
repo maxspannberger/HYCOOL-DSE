@@ -190,6 +190,14 @@ class AircraftConfig:
     #nacelle dimensions
     bn:                float  = 0.0    #m diameter of nacelle
     nacelle_arm:        float  = 0.0         #m nacelle arm from wing ac -> estimate
+
+    #TMS mass and cg
+    TMS_mass_N2:        float = 0.0
+    TMS_mass_N4:        float = 0.0
+
+    cg_location_TMS:           float = 0.0
+
+    frn_tank_support:        float = 0.0
     
 
     # ---------- Derived helpers ---------------------------------------
@@ -240,8 +248,8 @@ def default_q400_hycool() -> AircraftConfig:
         tc_h             = 0.12,                # Referenced
         sweep_h_half     = np.deg2rad(22.0),    # Referenced
         sweep_h_tc       = np.deg2rad(20.0),    # Referenced
-        l_h              = 21.185,                # Referenced
-        S_h_frn          = 0.225,                 # read from scissor plot
+        l_h              = 19.826,                # Referenced
+        S_h_frn          = 0.25,                 # read from scissor plot
 
         # Vertical tail
         MAC_v            = MAC_v,               
@@ -346,11 +354,11 @@ def default_q400_hycool() -> AircraftConfig:
         FirstWindow         = 6.74,                 # Distance nose tip to first window [m], placeholder for now
         LastWindow          = 27.08,                # Distance nose tip to last window [m], placeholder for now
 
-        LEMAC               = 15.375,                 # Distance nose tip to LEMAC [m], placeholder for now
-        lfn                 = 13.961,                 # Distance nose tip to LE wing root LEMAC
+        LEMAC               = 15.671,                 # Distance nose tip to LEMAC [m], placeholder for now
+        lfn                 = 14.263,                 # Distance nose tip to LE wing root LEMAC
         hh                  = 4,                    # Normal distance from wing plane to tail plane, placeholder for now
 
-        OEW_cg              = 16.930,                # Distance nose tip to OEW CG [m], placeholder for now
+        OEW_cg              = 17.221,                # Distance nose tip to OEW CG [m], placeholder for now
         FUEL_cg             = 28.6,                   # Distance nose tip to Fuel CG [m], placeholder for now
         AftCargo_cg         = 22.6,                   # Distance nose tip to Aft Cargo CG [m], placeholder for now
         FwdCargo_cg         = 9.5,                   # Distance nose tip to Fwd Cargo CG [m], placeholder for now
@@ -374,8 +382,8 @@ def default_q400_hycool() -> AircraftConfig:
         OEW_target_rel      = 0.5,                 # % of MAC, from LEMAC. Value for config 3 (wing mtd engines) from Torenbeek p.300 (range is 0.2-0.25)
 
         # cg range from loading diagram
-        xcg_lower           = 0.269,
-        xcg_upper           = 0.616,
+        xcg_lower           = 0.241,
+        xcg_upper           = 0.612,
 
         # vertical cg position estimate
         z_cg                = 2.5,                   # [m] this is an estimate, but denotes distance ground to aircraft vertical cg
@@ -384,5 +392,14 @@ def default_q400_hycool() -> AircraftConfig:
         #nacelle dimensions
         bn                  = 0.7,      #m diameter of nacelle
         nacelle_arm         = 0.5,          #m nacelle arm from wing ac -> estimate
+
+        # TMS system mass and c.g., includes pipes, valves and pumps
+        TMS_mass_N2         = 320.98,
+        TMS_mass_N4         = 356,
+
+        cg_location_TMS            = 3.6,      # [m] behind LEMAC
+
+        # tank intgration mass penalty fraction
+        frn_tank_support        = 0.1,          #from Dannet, 10% of tank mass
     
     )
