@@ -47,7 +47,9 @@ def save_results_to_json(phase_name, T, p, rho, h, m_dot_final):
 # Solver & Visualization
 # =============================================================================
 def solve_system(system, m_dot, T_amb, branch_name=""):
-    states = {'p': [], 'T': [], 'rho': [], 'h': [], 'frac': []}
+    # Add 'u': [] to the initialization
+    states = {'p': [], 'T': [], 'rho': [], 'h': [], 'frac': [], 'u': []}
+    
     for i, comp in enumerate(system):
         if type(comp) == tuple:
             m_dot = m_dot * comp[1] / comp[-1]
@@ -61,6 +63,7 @@ def solve_system(system, m_dot, T_amb, branch_name=""):
             states['rho'].append(component_result['rho'])
             states['h'].append(component_result['h'])
             states['frac'].append(component_result['frac'])
+            states['u'].append(component_result['u']) 
             
     print(f"[{branch_name}] Ending Branch mass flow: {m_dot:.5f} kg/s")
     return states, m_dot
