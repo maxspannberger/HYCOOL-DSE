@@ -38,6 +38,12 @@ class TankResult:
     # ---- Stored inputs ----
     T_fill:            float   # fill temperature [K]
 
+    # ---- Ullage ----
+    ullage_fraction:   float   # vapor (ullage) volume fraction at fill [-]
+
+    # ---- MLI ----
+    N_layers:          int     # number of MLI reflector layers [-]
+
     def print_summary(self):
         ins = self.insulation
         self.geom.print_summary()
@@ -50,11 +56,13 @@ class TankResult:
         print(f"  {'Heat flux':<30}  {ins.flux:>10.4f}  W/m2")
         print(f"  {'Allowable heat leak':<30}  {ins.Q_target:>10.2f}  W")
         print(f"  {'Actual heat leak':<30}  {ins.Q_leak:>10.2f}  W")
+        print(f"  {'Surface temperature':<30}  {ins.T_s:>10.2f}  K")
         print(f"  {'Insulation mass':<30}  {self.m_ins:>10.3f}  kg")
         print("=" * w)
         print(f"{'  WALL & SYSTEM SUMMARY':^{w}}")
         print("=" * w)
         print(f"  {'Fill temperature':<30}  {self.T_fill:>10.2f}  K")
+        print(f"  {'Ullage fraction':<30}  {self.ullage_fraction:>10.4f}  -")
         print(f"  {'Wall thickness':<30}  {self.t_wall * 1000:>10.3f}  mm")
         print(f"  {'Wall mass':<30}  {self.m_wall:>10.3f}  kg")
         print(f"  {'Insulation mass':<30}  {self.m_ins:>10.3f}  kg")
@@ -77,6 +85,7 @@ def sizeTank(
     phi:      float = 1.0,
     psi:      float = 1.0,
     Lambda:   float = 0.55,
+    Nbar:     float = 24.0,
 ) -> TankResult:
     """
     Size the complete LH2 storage tank.
@@ -94,6 +103,7 @@ def sizeTank(
     phi             : tank shape ratio a/c [-]
     psi             : tank shape ratio b/c [-]
     Lambda          : shell fraction ls / (ls + 2b) [-]
+    Nbar            : MLI layer density [layers/cm]
 
     Returns
     -------
@@ -123,6 +133,7 @@ def sizeTank(
         y_l0=yl_0,
         tau_H=tau_H_s,
         T_c=T_fill,
+        Nbar=Nbar,
     )
     _RHO_LAYER_AREAL = 0.20   # kg/m² per MLI layer
     m_ins = insulation.N_layers * _RHO_LAYER_AREAL * insulation.A
@@ -132,7 +143,7 @@ def sizeTank(
         P_int     = p_vent * BAR,
         P_ext     = p_ext,
         D         = 2.0 * geom.a,
-        S_t       = mat['S_t'],
+        S_y       = mat['S_y'],
         spherical = False,
     )
 
@@ -154,6 +165,8 @@ def sizeTank(
         m_full            = m_full,
         gravimetric_index = gravimetric_index,
         T_fill            = T_fill,
+        ullage_fraction   = 1.0 - yl_0,
+        N_layers          = insulation.N_layers,
     )
 
 
@@ -161,9 +174,9 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------ #
     #  USER INPUTS                                                         #
     # ------------------------------------------------------------------ #
-    m_LH2           = 533        # hydrogen mass [kg]
-    p_fill          = 1.0            # fill pressure [bar]
-    p_vent          = 1.5           # vent pressure [bar]
+    m_LH2           = 600        # hydrogen mass [kg]
+    p_fill          = 1.75          # fill pressure [bar]
+    p_vent          = 1.5 * p_fill          # vent pressure [bar]
     p_ext           = 37600.0        # external pressure for wall sizing [Pa]  (e.g. 101325 = SL, 37600 = FL250)
     T_fill          = 15          # fill temperature [K]
     tank_material   = 'Al-2219-T87'  # see material_options in lh2_tank_trade.py
@@ -171,6 +184,8 @@ if __name__ == "__main__":
     phi             = 1.0            # tank shape: a/c (major/minor radius ratio) [-]
     psi             = 1.0            # tank shape: b/c (cap height ratio) [-]
     Lambda          = 0.55           # tank shape: ls/(ls + 2b) (shell fraction) [-]
+    Nbar            = 30.0           # MLI layer density [layers/cm]
+    
     # ------------------------------------------------------------------ #
 
     w = 58
@@ -187,6 +202,7 @@ if __name__ == "__main__":
     print(f"  {'phi  (a/c)':<30}  {phi:>10.2f}  -")
     print(f"  {'psi  (b/c)':<30}  {psi:>10.2f}  -")
     print(f"  {'Lambda (ls/(ls+2b))':<30}  {Lambda:>10.2f}  -")
+    print(f"  {'Nbar (MLI layers/cm)':<30}  {Nbar:>10.2f}  layers/cm")
     print("=" * w)
 
     result = sizeTank(
@@ -200,6 +216,7 @@ if __name__ == "__main__":
         phi             = phi,
         psi             = psi,
         Lambda          = Lambda,
+        Nbar            = Nbar,
     )
 
     result.print_summary()

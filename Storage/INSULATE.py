@@ -1,21 +1,16 @@
 """
-insulation_thickness.py
+INSULATE.py
 ========================
-Minimum insulation-layer thickness for a liquid-hydrogen (LH2) aircraft tank,
-implementing the method of:
+MLI vacuum-jacket sizing for a liquid-hydrogen (LH2) aircraft tank, following
+the heat-leak budget approach of:
 
     P. Virdi, W. Guo, L. Cattafesta III, et al.,
     "Design and optimization of a liquid-hydrogen storage tank and thermal
      management system", Applied Energy 393 (2025) 126054.
 
 --------------------------------------------------------------------------
-THE METHOD (Section 2.1, Fig. 3a flow chart)
+THE METHOD
 --------------------------------------------------------------------------
-The closed-cell polyurethane foam is applied externally to the tank wall.
-Its thickness delta_ins is the MINIMUM that keeps the heat-leak rate low
-enough that, over a standby period tau_H = 120 min on the ground, the tank
-pressure does not exceed the vent pressure P_vent (so no LH2 is vented).
-
 1. Maximum allowable heat-leak rate (pressure-rise constraint):
 
        Q_leak = (E_f - E_i) / tau_H
@@ -27,37 +22,23 @@ pressure does not exceed the vent pressure P_vent (so no LH2 is vented).
    from P0 to P_vent:   E_f - E_i = m * (u(P_vent, rho) - u(P0, rho)),
    with rho = m/V fixed.
 
-2. Minimum required thickness (paper Eq. 2):
+2. MLI blanket sizing (Lockheed equation):
+   Solve for the number of reflector layers N that achieves the target
+   heat flux q_target = Q_leak / A.
 
-       delta_ins = (A / Q_leak) * integral_{20 K}^{T_s} k_ins(T) dT
-
-   A        = tank outer surface area (from the tank geometry)
-   k_ins(T) = temperature-dependent conductivity of the foam
-   T_s      = insulation outer-surface temperature
-   The cold boundary is the LH2 temperature (~20 K).
-
-3. Outer-surface temperature from natural convection of ambient air:
+3. Outer (vacuum-jacket) surface temperature from natural convection of
+   ambient air:
 
        Q_leak = h_air * A * (T0 - T_s)          (T0 = 293 K ambient)
 
    h_air from the standard Nusselt correlation for natural convection on a
    horizontal cylinder (Churchill-Chu).
 
-4. Frost constraint (Fig. 3a loop "T_s > 0 C ?"):
-   If T_s < 273 K, increase delta_ins (reduce Q_leak) until T_s >= 273 K so
-   that ice does not form on the insulation surface.
-
 --------------------------------------------------------------------------
 WHAT THE PAPER LEAVES TO REFERENCES (clearly flagged below)
 --------------------------------------------------------------------------
-The paper specifies the governing equations but defers three sub-models to
-external references. Each is implemented here behind a clean interface so it
-can be swapped for the exact source correlation:
-
   * hydrogen properties  -> CoolProp (preferred) or a documented approximate
                             para-hydrogen saturation table fallback.
-  * k_ins(T) foam model  -> Ref [34]; here a quadratic fit (REPLACE with the
-                            exact polynomial if you have it).
   * h_air correlation    -> Ref [35]; Churchill-Chu horizontal-cylinder.
 
 Only numpy is required. CoolProp is used automatically if installed.
@@ -78,46 +59,26 @@ except Exception:                                   # pragma: no cover
 
 # =====================================================================
 # 1. TANK GEOMETRY
-#    Elliptical shell (semi-axes a, c; length l_s) + two half-ellipsoid
-#    end caps of height c  ->  full spheroid with semi-axes (a, c, c).
+#    Cylindrical shell (radius a; length l_s) + two hemispherical end
+#    caps of radius a.
 #    Shape ratios:  phi = a/c ,  lambda = l_s / (l_s + 2 c).
 #    Volume constraint:  V = (4/3) pi a c^2 + pi a c l_s.
 # =====================================================================
 @dataclass
 class TankGeometry:
-    a: float        # major radius of the elliptical cross-section [m]
+    a: float        # cylinder / hemisphere-cap radius [m]
     c: float        # minor radius of the cross-section / cap height [m]
     l_s: float      # length of the cylindrical shell section [m]
     V: float        # enclosed volume [m^3]
-    A: float        # outer surface area [m^2]
-
-
-def _ellipse_perimeter(a: float, c: float) -> float:
-    """Ramanujan-II approximation for the perimeter of an ellipse."""
-    h = ((a - c) / (a + c)) ** 2
-    return math.pi * (a + c) * (1.0 + 3.0 * h / (10.0 + math.sqrt(4.0 - 3.0 * h)))
-
-
-def _spheroid_area(a: float, c: float) -> float:
-    """
-    Surface area of the spheroid formed by the two half-ellipsoid end caps,
-    with semi-axes (a, c, c) -- symmetry axis = a, equatorial radius = c.
-    """
-    if abs(a - c) < 1e-12:                      # sphere
-        return 4.0 * math.pi * c * c
-    if a > c:                                   # prolate (a is the long axis)
-        e = math.sqrt(1.0 - (c * c) / (a * a))
-        return 2.0 * math.pi * c * c * (1.0 + (a / (c * e)) * math.asin(e))
-    # oblate (a < c)
-    e = math.sqrt(1.0 - (a * a) / (c * c))
-    return 2.0 * math.pi * c * c + math.pi * (a * a / e) * math.log((1.0 + e) / (1.0 - e))
+    A_out: float    # outer surface area [m^2]
 
 
 def build_tank(V: float, phi: float, lam: float) -> TankGeometry:
     """
     Solve the tank dimensions from the required volume V and the two
     dimensionless shape ratios phi = a/c and lambda = l_s/(l_s + 2c),
-    then return the geometry including the outer surface area A.
+    then return the geometry including the outer surface area A_out of a
+    cylinder with hemispherical end caps (radius a, length l_s).
     """
     if not (0.0 < lam < 1.0):
         raise ValueError("lambda must be in (0, 1)")
@@ -131,9 +92,9 @@ def build_tank(V: float, phi: float, lam: float) -> TankGeometry:
     a = phi * c
     l_s = 2.0 * c * lam / (1.0 - lam)
 
-    # Outer area = elliptical-cylinder lateral area + spheroid (two caps).
-    A = _ellipse_perimeter(a, c) * l_s + _spheroid_area(a, c)
-    return TankGeometry(a=a, c=c, l_s=l_s, V=V, A=A)
+    # Outer area = cylinder lateral area + two hemispherical caps (= one sphere).
+    A_out = 2.0 * math.pi * a * l_s + 4.0 * math.pi * a * a
+    return TankGeometry(a=a, c=c, l_s=l_s, V=V, A_out=A_out)
 
 
 # =====================================================================
@@ -219,28 +180,8 @@ def heat_leak_budget(geom: TankGeometry, P_vent: float, y_l0: float,
 
 
 # =====================================================================
-# 3. SUB-MODELS:  foam conductivity  and  air natural convection
+# 3. SUB-MODEL:  air natural convection
 # =====================================================================
-# --- k_ins(T): closed-cell rigid polyurethane foam, Ref [34] -----------
-# APPROXIMATE quadratic fit, k in W/(m.K). Anchors: ~0.0065 @20 K,
-# ~0.013 @150 K, ~0.022 @293 K. REPLACE with the exact Ref [34] polynomial.
-_K_T = np.array([20.0, 150.0, 293.0])
-_K_V = np.array([0.0065, 0.0130, 0.0220])
-_K_COEF = np.polyfit(_K_T, _K_V, 2)
-
-
-def k_ins(T):
-    """Foam thermal conductivity [W/(m.K)] at temperature T [K]."""
-    return np.polyval(_K_COEF, T)
-
-
-def _integral_k(T_s: float, T_cold: float = 20.0) -> float:
-    """integral_{T_cold}^{T_s} k_ins(T) dT  [W/m] (trapezoid, fine grid)."""
-    T = np.linspace(T_cold, T_s, 400)
-    trap = getattr(np, "trapezoid", np.trapz)   # numpy>=2.0 renamed trapz
-    return float(trap(k_ins(T), T))
-
-
 # --- Air properties (film temperature) and Churchill-Chu, Ref [35] -----
 def _air_props(Tf: float):
     """Simple correlations for dry air at film temperature Tf [K], ~1 atm."""
@@ -275,7 +216,7 @@ def solve_Ts_for_Q(Q: float, geom: TankGeometry, T0: float = 293.0) -> float:
     Solve the convection balance  Q = h_air(Ts) * A * (T0 - Ts)  for Ts,
     by bisection on Ts in (20 K, T0).
     """
-    A = geom.A
+    A = geom.A_out
     f = lambda Ts: h_air_horizontal_cylinder(Ts, geom, T0) * A * (T0 - Ts) - Q
     lo, hi = 20.0, T0 - 1e-4
     flo, fhi = f(lo), f(hi)
@@ -294,65 +235,8 @@ def solve_Ts_for_Q(Q: float, geom: TankGeometry, T0: float = 293.0) -> float:
 
 
 # =====================================================================
-# 4. MAIN SOLVER  (Fig. 3a "Calculate delta_ins" -> "T_s > 0 C ?" loop)
+# 4. MAIN SOLVER  (MLI vacuum-jacket sizing via the Lockheed equation)
 # =====================================================================
-@dataclass
-class InsulationResult:
-    delta_ins: float        # required insulation thickness [m]
-    Q_leak: float           # design heat-leak rate [W]
-    T_s: float              # insulation outer-surface temperature [K]
-    h_air: float            # convection coefficient [W/(m^2.K)]
-    frost_limited: bool     # True if the 273 K frost constraint bound
-    A: float                # tank surface area [m^2]
-    m_H2: float             # hydrogen mass [kg]
-
-
-def insulation_thickness(V: float, phi: float, lam: float, P_vent: float,
-                         y_l0: float = 0.97, tau_H: float = 24*3600.0,
-                         T0: float = 293.0, T_cold: float = 20.0,
-                         T_frost: float = 273.15) -> InsulationResult:
-    """
-    Determine the minimum insulation-layer thickness following the paper.
-
-    Parameters
-    ----------
-    V       : required tank volume [m^3]   (= V_LH2 / y_l0)
-    phi     : shape ratio a/c
-    lam     : shape ratio l_s/(l_s + 2c)
-    P_vent  : vent pressure [Pa]
-    y_l0    : initial liquid volume fraction (paper sets vent at y_l = 0.97)
-    tau_H   : standby period [s] (paper: 7200 s)
-    T0      : ambient temperature [K] (paper: 293 K)
-    T_cold  : cold-side (LH2) temperature [K] (~20 K)
-    T_frost : minimum allowed surface temperature [K] (0 C, no ice)
-    """
-    geom = build_tank(V, phi, lam)
-
-    # Step 1: maximum heat leak allowed by the standby pressure-rise limit.
-    budget = heat_leak_budget(geom, P_vent, y_l0, tau_H)
-    Q_max = budget["Q_leak"]
-
-    # Step 2: surface temperature if we use the full allowable heat leak.
-    Ts = solve_Ts_for_Q(Q_max, geom, T0)
-
-    # Step 3: frost loop -- if Ts < 273 K, reduce Q_leak (thicker foam) so
-    #         that Ts is pinned at the frost limit.
-    frost_limited = Ts < T_frost
-    if frost_limited:
-        Ts = T_frost
-        Q_leak = h_air_horizontal_cylinder(Ts, geom, T0) * geom.A * (T0 - Ts)
-    else:
-        Q_leak = Q_max
-
-    # Step 4: minimum thickness from Eq. (2).
-    delta_ins = (geom.A / Q_leak) * _integral_k(Ts, T_cold)
-
-    return InsulationResult(
-        delta_ins=delta_ins, Q_leak=Q_leak, T_s=Ts,
-        h_air=h_air_horizontal_cylinder(Ts, geom, T0),
-        frost_limited=frost_limited, A=geom.A, m_H2=budget["m_H2"])
-
-
 @dataclass
 class MLIResult:
     N_layers: int           # number of reflector layers (rounded up)
@@ -360,6 +244,7 @@ class MLIResult:
     flux: float             # achieved heat flux [W/m^2]
     Q_leak: float           # total heat leak q*A [W]
     Q_target: float         # allowable heat leak from pressure budget [W]
+    T_s: float              # outer (vacuum-jacket) surface temperature [K]
     A: float                # tank surface area [m^2]
     m_H2: float             # hydrogen mass [kg]
  
@@ -378,7 +263,7 @@ def lockheed_flux(N: float, T_h: float, T_c: float, Nbar: float,
     """
     C_S = 8.95e-8
     C_R = 5.39e-10
-    C_G = 1.46e4
+    C_G = 1.46e-4
 
     T_m = 0.5 * (T_h + T_c)
     q_solid = C_S * T_m * Nbar ** 2.63 * (T_h - T_c) / (N - 1.0)
@@ -401,7 +286,7 @@ def _solve_layers_for_flux(q_target: float, T_h: float, T_c: float, Nbar: float,
     """
     C_S = 8.95e-8
     C_R = 5.39e-10
-    C_G = 1.46e4
+    C_G = 1.46e-4
 
     T_m = 0.5 * (T_h + T_c)
     a = C_S * T_m * Nbar ** 2.63 * (T_h - T_c)
@@ -419,7 +304,7 @@ def _solve_layers_for_flux(q_target: float, T_h: float, T_c: float, Nbar: float,
  
  
 def mli_thickness(V: float, phi: float, lam: float, P_vent: float,
-                  y_l0: float = 0.97, tau_H: float = 24*3600,
+                  y_l0: float = 0.97, tau_H: float = 2*3600,
                   T_h: float = 293.0, T_c: float = 20.0,
                   Nbar: float = 24.0, eps: float = 0.043,
                   P_torr: float = 1e-5,
@@ -445,18 +330,23 @@ def mli_thickness(V: float, phi: float, lam: float, P_vent: float,
     budget = heat_leak_budget(geom, P_vent, y_l0, tau_H)
     Q_target = budget["Q_leak"]
  
-    q_target = target_flux if target_flux is not None else Q_target / geom.A
- 
+    q_target = target_flux if target_flux is not None else Q_target / geom.A_out
+
     N_real = _solve_layers_for_flux(q_target, T_h, T_c, Nbar, eps, P_torr)
     N = int(math.ceil(N_real))                      # whole layers, round up
- 
+
     q_achieved = lockheed_flux(N, T_h, T_c, Nbar, eps, P_torr)
     thickness = N / Nbar / 100.0                    # layers/(layers/cm) -> m
- 
+    Q_leak = q_achieved * geom.A_out
+
+    # Outer surface temperature from natural convection of ambient air,
+    # balancing the achieved heat leak against h_air(Ts)*A*(T0 - Ts).
+    T_s = solve_Ts_for_Q(Q_leak, geom, T_h)
+
     return MLIResult(
         N_layers=N, thickness=thickness, flux=q_achieved,
-        Q_leak=q_achieved * geom.A, Q_target=Q_target,
-        A=geom.A, m_H2=budget["m_H2"])
+        Q_leak=Q_leak, Q_target=Q_target, T_s=T_s,
+        A=geom.A_out, m_H2=budget["m_H2"])
  
  
 # =====================================================================
@@ -472,26 +362,17 @@ if __name__ == "__main__":
     tau_H = 24 * 3600.0      # standby period [s]  (paper: 120 min)
     Nbar = 30.0             # MLI layer density [layers/cm]
 
-    res = insulation_thickness(V=V, phi=1.0, lam=0.55,
-                               P_vent=1.63e5, y_l0=y_l0, tau_H=tau_H)
- 
     print(f"CoolProp available : {_HAS_COOLPROP}")
-    print(f"Tank surface area A: {res.A:8.2f} m^2")
-    print(f"H2 mass            : {res.m_H2:8.1f} kg")
- 
-    print("\n--- Option A: external polyurethane foam (paper Eq. 2) ---")
-    print(f"Design heat leak   : {res.Q_leak:8.1f} W")
-    print(f"Surface temp T_s   : {res.T_s:8.2f} K")
-    print(f"h_air              : {res.h_air:8.2f} W/m^2K")
-    print(f"Frost-limited      : {res.frost_limited}")
-    print(f"Insulation delta   : {res.delta_ins * 1000:8.2f} mm")
- 
-    print("\n--- Option B: MLI vacuum jacket (Lockheed equation) ---")
+
+    print("\n--- MLI vacuum jacket (Lockheed equation) ---")
     mli = mli_thickness(V=V, phi=1.0, lam=0.55, P_vent=1.63e5, y_l0=y_l0,
                         tau_H=tau_H, T_h=293.0, T_c=20.0, Nbar=Nbar,
                         eps=0.043, P_torr=1e-5)
+    print(f"Tank surface area A: {mli.A:8.2f} m^2")
+    print(f"H2 mass            : {mli.m_H2:8.1f} kg")
     print(f"Allowable heat leak: {mli.Q_target:8.1f} W")
     print(f"Number of layers N : {mli.N_layers:8d}")
     print(f"Achieved flux q    : {mli.flux:8.4f} W/m^2")
     print(f"Total heat leak    : {mli.Q_leak:8.1f} W")
+    print(f"Surface temp T_s   : {mli.T_s:8.2f} K")
     print(f"Blanket thickness  : {mli.thickness * 1000:8.2f} mm  (at {Nbar} layers/cm)")
