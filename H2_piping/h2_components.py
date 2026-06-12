@@ -159,15 +159,23 @@ def heat_transfer_coefficient(T1, T2, T_comp, p1, p2, m_dot, d, fluid):
 # Iterates through the defined system components to calculate fluid states.
 # Updates mass flow rate when splits or merges occur.
 # =============================================================================
-def solve_system(system, m_dot, T_amb):
-   
-    states = {'p'   : [],
-              'T'   : [],
-              'rho' : [],
-              'h'   : [],
-              'u'   : [],
-              'frac': []}
+def solve_system(system, m_dot, T_amb, input_states=None):
     
+    if input_states == None:
+        states = {'p'   : [],
+                  'T'   : [],
+                  'rho' : [],
+                  'h'   : [],
+                  'u'   : [],
+                  'frac': []}
+    else: 
+        states = {'p'   : [np.array([input_states['p'][-1][-1]])],
+                  'T'   : [np.array([input_states['T'][-1][-1]])],
+                  'rho' : [np.array([input_states['rho'][-1][-1]])],
+                  'h'   : [np.array([input_states['h'][-1][-1]])],
+                  'u'   : [np.array([input_states['u'][-1][-1]])],
+                  'frac': [np.array([input_states['frac'][-1][-1]])]}
+        
     HEX_areas = {}
     Temps = {}
     
@@ -573,7 +581,7 @@ class COOL:
                     ])
                     N_corners += 1
             
-            solved_internal_system = solve_system(internal_system, m_dot, T_amb)
+            solved_internal_system = solve_system(internal_system, m_dot, T_amb, input_states=states)
             p2 = solved_internal_system['p'][-1]
             T2 = solved_internal_system['T'][-1]
             rho2 = solved_internal_system['rho'][-1]
