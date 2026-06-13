@@ -213,7 +213,10 @@ def solve_system(system, m_dot, T_amb, input_states=None, initial_conditions=Non
                  if comp.name not in HEX_areas:
                      HEX_areas[comp.name] = {}
                      Temps[comp.name] = {}
-                 HEX_areas[comp.name][comp.location] = component_result['area']
+                 HEX_areas[comp.name][comp.location] = {}
+                 HEX_areas[comp.name][comp.location]['area'] = component_result['area']
+                 HEX_areas[comp.name][comp.location]['pipe_length'] = component_result['pipe_length']
+                 HEX_areas[comp.name][comp.location]['N_corners'] = component_result['N_corners']
                  Temps[comp.name][comp.location] = component_result['temperature']
 
     return states, m_dot, HEX_areas, Temps
@@ -535,13 +538,6 @@ class COOL:
         self.size     = sizes[name][location]
         self.T = config.operating_temp[self.name]
 
-        if areas is None:
-            self.area_calc_mode = True
-            self.area = None
-        else:
-            self.area_calc_mode = False
-            self.area = areas[name][location]
-
         if "hts" in self.name:
             self.length = self.size[0]
             self.width = np.pi * self.size[1] # this is PI * D
@@ -550,6 +546,17 @@ class COOL:
             self.length = self.size[1]
             self.width = self.size[0]
             self.N_channels = 1
+
+        if areas is None:
+            self.area_calc_mode = True
+            self.area = None
+            self.L = self.length
+            self.N_corners = 0
+        else:
+            self.area_calc_mode = False
+            self.area = areas[name][location]['area']
+            self.L = areas[name][location]['pipe_length']
+            self.N_corners = areas[name][location]['N_corners']
 
     # Function that can be called to calculate the evolution of the state variables
     # in the component
@@ -568,102 +575,92 @@ class COOL:
         q /= self.N_channels
         m_dot /= self.N_channels
 
+        L_old = np.inf
+        j = 0
+        while abs((self.L - L_old)/self.L) > 1e-4 and j < 100:
+            L_old = self.L
+            j += 1
 
-        N_corners_assumed = 0
-        N_corners = 1
-        while N_corners != N_corners_assumed and N_corners_assumed <= 20:
+            cumulative_length = 0.0
+            internal_system = []
+
+            self.N_corners = int(np.floor(self.L/self.length))
+            if self.N_corners > 0:
+                R = self.width / (2 * self.N_corners)
+                curvature = R / self.d
+            else:
+                curvature = 2.5
+
+            q_L = q / self.L
+
+            # get internal geometry to compute final states
+            while cumulative_length < self.L:
+                cumulative_length += self.length
+
+                if cumulative_length >= self.L:
+                    remaining_length = self.length - (cumulative_length - self.L)
+                    internal_system.extend([Pipe(length=remaining_length, diameter=self.d, q_set=q_L*remaining_length)])
+                else:
+                    internal_system.extend([
+                        Pipe(length=self.length, diameter=self.d, q_set=q_L*self.length),
+                        Corner(curv=curvature, diameter=self.d),
+                        Corner(curv=curvature, diameter=self.d)
+                    ])
+            
+            solved_internal_system = solve_system(internal_system, m_dot, T_amb, input_states=states,
+                                                initial_conditions=(T1, p1, h1, rho1, u1))[0]
+            p2 = solved_internal_system['p'][-1][-1]
+            T2 = solved_internal_system['T'][-1][-1]
+            rho2 = solved_internal_system['rho'][-1][-1]
+            h2 = solved_internal_system['h'][-1][-1]
+            u2 = solved_internal_system['u'][-1][-1]
+            frac2 = solved_internal_system['frac'][-1][-1]
 
             if "hts" in self.name:
                 HEX_effectiveness = config.HEX_effectiveness
             else:
                 t = self.d + 2 * config.HEX_extra_thickness
-                w_c = self.width/(N_corners_assumed+1) + t/2
+                w_c = self.width * self.length / self.L + t/2
                 m = np.sqrt(config.h_TMI / (config.k_Al * t))
                 HEX_effectiveness = np.tanh(m * w_c) / (m * w_c)
 
-            print(f"Effectiveness for N={N_corners_assumed}: {HEX_effectiveness}")
+            # print(f"Effectiveness: {HEX_effectiveness}")
 
-            L_old = np.inf
-            L = self.length
-            j = 0
-            while abs((L - L_old)/L) > 1e-4 and j < 100:
-                L_old = L
-                j += 1
+            # HEX design
+            # f is the "film" temperature (boundary layer of H2 next to the pipe walls)
+            if self.area_calc_mode:
+                U = heat_transfer_coefficient(T1, T2, self.T, p1, p2, m_dot, self.d, self.fluid)
+                deltaT = self.T - 0.5 * (T1 + T2)
+                self.area = self.N_channels * self.Q_dot / (U * deltaT * HEX_effectiveness)
 
-                cumulative_length = 0.0
-                internal_system = []
+            else:
+                T_old = 0.0
+                k = 0
+                while abs(self.T - T_old) > 1e-2 and k < 100:
+                    T_old = self.T
+                    k += 1
 
-                if N_corners_assumed > 0:
-                    R = self.width / (2 * N_corners_assumed)
-                    curvature = R / self.d
-                else:
-                    curvature = 2.5
-
-                q_L = q / L
-
-                # get internal geometry to compute final states
-                N_corners = 0
-                while cumulative_length < L:
-                    cumulative_length += self.length
-
-                    if cumulative_length >= L:
-                        remaining_length = self.length - (cumulative_length - L)
-                        internal_system.extend([Pipe(length=remaining_length, diameter=self.d, q_set=q_L*remaining_length)])
-                    else:
-                        internal_system.extend([
-                            Pipe(length=self.length, diameter=self.d, q_set=q_L*self.length),
-                            Corner(curv=curvature, diameter=self.d),
-                            Corner(curv=curvature, diameter=self.d)
-                        ])
-                        N_corners += 1
-                
-                solved_internal_system = solve_system(internal_system, m_dot, T_amb, input_states=states,
-                                                    initial_conditions=(T1, p1, h1, rho1, u1))[0]
-                p2 = solved_internal_system['p'][-1][-1]
-                T2 = solved_internal_system['T'][-1][-1]
-                rho2 = solved_internal_system['rho'][-1][-1]
-                h2 = solved_internal_system['h'][-1][-1]
-                u2 = solved_internal_system['u'][-1][-1]
-                frac2 = solved_internal_system['frac'][-1][-1]
-
-                # HEX design
-                # f is the "film" temperature (boundary layer of H2 next to the pipe walls)
-                if self.area_calc_mode:
                     U = heat_transfer_coefficient(T1, T2, self.T, p1, p2, m_dot, self.d, self.fluid)
-                    deltaT = self.T - 0.5 * (T1 + T2)
-                    self.area = self.N_channels * self.Q_dot / (U * deltaT * HEX_effectiveness)
+                
+                    deltaT = self.Q_dot / (U * self.area * HEX_effectiveness)
+                    self.T = deltaT + 0.5 * (T1 + T2)
 
-                else:
-                    T_old = 0.0
-                    k = 0
-                    while abs(self.T - T_old) > 1e-2 and k < 100:
-                        T_old = self.T
-                        k += 1
+            self.L = self.area / (np.pi * self.d)
+            self.L = config.FPI_relaxation * self.L + (1 - config.FPI_relaxation * L_old)
+            print(f"{1000*self.L:.2f}")
 
-                        U = heat_transfer_coefficient(T1, T2, self.T, p1, p2, m_dot, self.d, self.fluid)
-                    
-                        deltaT = self.Q_dot / (U * self.area * HEX_effectiveness)
-                        self.T = deltaT + 0.5 * (T1 + T2)
-
-                L = self.area / (np.pi * self.d)
-                L = config.FPI_relaxation * L + (1 - config.FPI_relaxation * L_old)
-                print(f"{1000*L:.2f}")
-
-                # if not L/self.d >= 19:
-                #     raise Warning("Formulas used are not valid for the required length/diameter ratio\n" +\
-                #             "Required L/D range: L/D >= 19\n" +\
-                #             f"Used L/D: {L/self.d}"
-                #         )
-
-            N_corners_assumed += 1
-            print(f"Final number of corners: {N_corners}")
+            # if not L/self.d >= 19:
+            #     raise Warning("Formulas used are not valid for the required length/diameter ratio\n" +\
+            #             "Required L/D range: L/D >= 19\n" +\
+            #             f"Used L/D: {L/self.d}"
+            #         )
 
         
         if self.area_calc_mode:
             print(f"{self.name}:")
             print(f"Contact area: {self.area}")
-            print(f"Pipe length: {L}")
-            print(f"Number of corners: {N_corners}\n")
+            print(f"Pipe length: {self.L}")
+            print(f"Number of corners: {self.N_corners}\n")
         else:
             print(f"{self.name}:")
             print(f"Temperature: {self.T}\n")
@@ -676,6 +673,8 @@ class COOL:
                    'u':   np.array([u2]),
                    'frac':np.array([frac2]),
                    'area': self.area,
+                   'pipe_length': self.L,
+                   'N_corners': self.N_corners,
                    'temperature': self.T}
         
         return results

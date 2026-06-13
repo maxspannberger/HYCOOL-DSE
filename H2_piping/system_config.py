@@ -73,5 +73,5 @@ class H2SystemConfig:
     HTS_default_d = 0.004
     HTS_channels = 8
 
-    FPI_relaxation = 0.5    # relaxation for fixed point iteration to stabilize convergence
+    FPI_relaxation = 0.3    # relaxation for fixed point iteration to stabilize convergence
     
