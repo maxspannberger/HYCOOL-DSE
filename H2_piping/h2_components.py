@@ -155,6 +155,17 @@ def heat_transfer_coefficient(T1, T2, T_comp, p1, p2, m_dot, d, fluid):
 
     U = 0.021 * Ref**0.8 * Prf**0.4 * kf / d
 
+    if not Ref >= 10000:
+        raise Warning("Formulas used are not valid for the required Reynolds number\n" +\
+                "Required Re range: Re >= 1000\n" +\
+                f"Used Re: {Ref}"
+            )
+    if not 0.6 <= Prf <= 160:
+        raise Warning("Formulas used are not valid for the required Prandtl number\n" +\
+                "Required Pr range: 0.6 <= Pr <= 160\n" +\
+                f"Used Pr: {Prf}"
+            )
+
     return U
 
 
@@ -202,7 +213,10 @@ def solve_system(system, m_dot, T_amb, input_states=None, initial_conditions=Non
                  if comp.name not in HEX_areas:
                      HEX_areas[comp.name] = {}
                      Temps[comp.name] = {}
-                 HEX_areas[comp.name][comp.location] = component_result['area']
+                 HEX_areas[comp.name][comp.location] = {}
+                 HEX_areas[comp.name][comp.location]['area'] = component_result['area']
+                 HEX_areas[comp.name][comp.location]['pipe_length'] = component_result['pipe_length']
+                 HEX_areas[comp.name][comp.location]['N_corners'] = component_result['N_corners']
                  Temps[comp.name][comp.location] = component_result['temperature']
 
     return states, m_dot, HEX_areas, Temps
@@ -512,7 +526,10 @@ class COOL:
                        areas:       dict  = None
                        ):   
         
-        self.d        = diameter
+        if "hts" in name:
+            self.d = config.HTS_default_d
+        else:
+            self.d        = diameter
         self.A        = area(self.d)
         self.location = location
         self.name     = name
@@ -521,20 +538,25 @@ class COOL:
         self.size     = sizes[name][location]
         self.T = config.operating_temp[self.name]
 
-        if areas is None:
-            self.area_calc_mode = True
-            self.area = None
-        else:
-            self.area_calc_mode = False
-            self.area = areas[name][location]
-
-
         if "hts" in self.name:
             self.length = self.size[0]
             self.width = np.pi * self.size[1] # this is PI * D
+            self.N_channels = config.HTS_channels
         else:
             self.length = self.size[1]
             self.width = self.size[0]
+            self.N_channels = 1
+
+        if areas is None:
+            self.area_calc_mode = True
+            self.area = None
+            self.L = self.length
+            self.N_corners = 0
+        else:
+            self.area_calc_mode = False
+            self.area = areas[name][location]['area']
+            self.L = areas[name][location]['pipe_length']
+            self.N_corners = areas[name][location]['N_corners']
 
     # Function that can be called to calculate the evolution of the state variables
     # in the component
@@ -545,39 +567,38 @@ class COOL:
         # 1. MACRO SYSTEM GEOMETRY (The pipes entering/exiting the component)
         # ---------------------------------------------------------
         # We assume the component connects to the standard system pipe.
-        eps = config.pipe_default_eps
-        L = self.length
-        N_corners = 0
         
         # Specific heat added (Total heat / branch mass flow)
         q = self.Q_dot / m_dot 
         q += 34.79 / m_dot  # Heat from fittings and cable extraction divided into all components
 
-        p2_old = np.inf
-        p2 = p1
+        q /= self.N_channels
+        m_dot /= self.N_channels
+
+        L_old = np.inf
         j = 0
-        while abs(p2 - p2_old) > 1e-2 and j < 100:
-            p2_old = p2
+        while abs((self.L - L_old)/self.L) > 1e-4 and j < 100:
+            L_old = self.L
             j += 1
 
             cumulative_length = 0.0
             internal_system = []
 
-            if N_corners > 0:
-                R = self.width / (2 * N_corners)
-                curvature = R / self.area
+            self.N_corners = int(np.floor(self.L/self.length))
+            if self.N_corners > 0:
+                R = self.width / (2 * self.N_corners)
+                curvature = R / self.d
             else:
                 curvature = 2.5
 
-            q_L = q / L
+            q_L = q / self.L
 
             # get internal geometry to compute final states
-            N_corners = 0
-            while cumulative_length < L:
+            while cumulative_length < self.L:
                 cumulative_length += self.length
 
-                if cumulative_length >= L:
-                    remaining_length = self.length - (cumulative_length - L)
+                if cumulative_length >= self.L:
+                    remaining_length = self.length - (cumulative_length - self.L)
                     internal_system.extend([Pipe(length=remaining_length, diameter=self.d, q_set=q_L*remaining_length)])
                 else:
                     internal_system.extend([
@@ -585,10 +606,9 @@ class COOL:
                         Corner(curv=curvature, diameter=self.d),
                         Corner(curv=curvature, diameter=self.d)
                     ])
-                    N_corners += 1
             
             solved_internal_system = solve_system(internal_system, m_dot, T_amb, input_states=states,
-                                                  initial_conditions=(T1, p1, h1, rho1, u1))[0]
+                                                initial_conditions=(T1, p1, h1, rho1, u1))[0]
             p2 = solved_internal_system['p'][-1][-1]
             T2 = solved_internal_system['T'][-1][-1]
             rho2 = solved_internal_system['rho'][-1][-1]
@@ -596,13 +616,22 @@ class COOL:
             u2 = solved_internal_system['u'][-1][-1]
             frac2 = solved_internal_system['frac'][-1][-1]
 
+            if "hts" in self.name:
+                HEX_effectiveness = config.HEX_effectiveness
+            else:
+                t = self.d + 2 * config.HEX_extra_thickness
+                w_c = self.width * self.length / self.L # + t/2 # the t/2 is added only if the wing tip contributes
+                m = np.sqrt(config.h_TMI / (config.k_Al * t))
+                HEX_effectiveness = np.tanh(m * w_c) / (m * w_c)
+
+            # print(f"Effectiveness: {HEX_effectiveness}")
+
             # HEX design
             # f is the "film" temperature (boundary layer of H2 next to the pipe walls)
             if self.area_calc_mode:
                 U = heat_transfer_coefficient(T1, T2, self.T, p1, p2, m_dot, self.d, self.fluid)
                 deltaT = self.T - 0.5 * (T1 + T2)
-
-                self.area = self.Q_dot / (U * deltaT)
+                self.area = self.N_channels * self.Q_dot / (U * deltaT * HEX_effectiveness)
 
             else:
                 T_old = 0.0
@@ -613,36 +642,29 @@ class COOL:
 
                     U = heat_transfer_coefficient(T1, T2, self.T, p1, p2, m_dot, self.d, self.fluid)
                 
-                    deltaT = self.Q_dot / (U * self.area)
+                    deltaT = self.Q_dot / (U * self.area * HEX_effectiveness)
                     self.T = deltaT + 0.5 * (T1 + T2)
 
-            L = self.area / (np.pi * self.d)
+            self.L = self.area / (np.pi * self.d)
+            self.L = config.FPI_relaxation * self.L + (1 - config.FPI_relaxation * L_old)
+            print(f"{1000*self.L:.2f}")
+
+            if not self.L/self.d >= 10:
+                raise Warning("Formulas used are not valid for the required length/diameter ratio\n" +\
+                        "Required L/D range: L/D >= 10\n" +\
+                        f"Used L/D: {self.L/self.d}"
+                    )
 
         
         if self.area_calc_mode:
-            print(f"\n{self.name}:")
+            print(f"{self.name}:")
             print(f"Contact area: {self.area}")
-            print(f"Pipe length: {L}")
-            print(f"Number of corners: {N_corners}")
+            print(f"Pipe length: {self.L}")
+            print(f"Number of corners: {self.N_corners}\n")
         else:
-            print(f"\n{self.name}:")
-            print(f"Temperature: {self.T}")
+            print(f"{self.name}:")
+            print(f"Temperature: {self.T}\n")
 
-        # if not Ref >= 10000:
-        #     raise Warning("Formulas used are not valid for the required Reynolds number\n" +\
-        #             "Required Re range: Re >= 1000\n" +\
-        #             f"Used Re: {Ref}"
-        #         )
-        # if not 0.6 <= Prf <= 160:
-        #     raise Warning("Formulas used are not valid for the required Prandtl number\n" +\
-        #             "Required Pr range: 0.6 <= Pr <= 160\n" +\
-        #             f"Used Pr: {Prf}"
-        #         )
-        # if not pipe_length/D_input >= 19:
-        #     raise Warning("Formulas used are not valid for the required length/diameter ratio\n" +\
-        #             "Required L/D range: L/D >= 19\n" +\
-        #             f"Used L/D: {pipe_length/D_input}"
-        #         )
 
         results = {'T':   np.array([T2]), 
                    'p':   np.array([p2]),
@@ -651,6 +673,8 @@ class COOL:
                    'u':   np.array([u2]),
                    'frac':np.array([frac2]),
                    'area': self.area,
+                   'pipe_length': self.L,
+                   'N_corners': self.N_corners,
                    'temperature': self.T}
         
         return results

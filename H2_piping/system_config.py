@@ -10,7 +10,7 @@ class H2SystemConfig:
     fluid: str = 'Hydrogen'                  # FLUID used for simulation
     max_error: float = 10                    # SOLVER convergence treshhold
     tank_p: float = 200000                   # TANK pressure [Pa]
-    tank_T: float = 20.3                       # TANK temperature [T]
+    tank_T: float = 20.3                     # TANK temperature [T]
     tank_d: float = 0.012                    # TANK outlet diameter [m]
     T_amb: float = 317                       # AMBIENT temperature [K]
     
@@ -57,11 +57,21 @@ class H2SystemConfig:
 
     operating_temp = {
         "hts_gen": 50.0,
-        "ac_dc": 300.0,
-        "bus": 300.0,
-        "dc_ac": 300.0,
+        "ac_dc": 250.0,
+        "bus": 250.0,
+        "dc_ac": 250.0,
         "hts_pow": 50.0,
     }
 
-    HEX_default_d = 0.01
+    HEX_default_d = 0.008
+    HEX_effectiveness = 1.0
+    HEX_extra_thickness = 0.005
+
+    k_Al = 240      # W/m K     # TODO: find better value
+    h_TMI = 6828    # W/m^2 K   # TODO: find better value
+    
+    HTS_default_d = 0.004
+    HTS_channels = 8
+
+    FPI_relaxation = 0.3    # relaxation for fixed point iteration to stabilize convergence
     
