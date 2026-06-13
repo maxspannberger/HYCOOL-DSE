@@ -155,16 +155,16 @@ def heat_transfer_coefficient(T1, T2, T_comp, p1, p2, m_dot, d, fluid):
 
     U = 0.021 * Ref**0.8 * Prf**0.4 * kf / d
 
-    # if not Ref >= 10000:
-    #     raise Warning("Formulas used are not valid for the required Reynolds number\n" +\
-    #             "Required Re range: Re >= 1000\n" +\
-    #             f"Used Re: {Ref}"
-    #         )
-    # if not 0.6 <= Prf <= 160:
-    #     raise Warning("Formulas used are not valid for the required Prandtl number\n" +\
-    #             "Required Pr range: 0.6 <= Pr <= 160\n" +\
-    #             f"Used Pr: {Prf}"
-    #         )
+    if not Ref >= 10000:
+        raise Warning("Formulas used are not valid for the required Reynolds number\n" +\
+                "Required Re range: Re >= 1000\n" +\
+                f"Used Re: {Ref}"
+            )
+    if not 0.6 <= Prf <= 160:
+        raise Warning("Formulas used are not valid for the required Prandtl number\n" +\
+                "Required Pr range: 0.6 <= Pr <= 160\n" +\
+                f"Used Pr: {Prf}"
+            )
 
     return U
 
@@ -649,11 +649,11 @@ class COOL:
             self.L = config.FPI_relaxation * self.L + (1 - config.FPI_relaxation * L_old)
             print(f"{1000*self.L:.2f}")
 
-            # if not L/self.d >= 19:
-            #     raise Warning("Formulas used are not valid for the required length/diameter ratio\n" +\
-            #             "Required L/D range: L/D >= 19\n" +\
-            #             f"Used L/D: {L/self.d}"
-            #         )
+            if not self.L/self.d >= 10:
+                raise Warning("Formulas used are not valid for the required length/diameter ratio\n" +\
+                        "Required L/D range: L/D >= 10\n" +\
+                        f"Used L/D: {self.L/self.d}"
+                    )
 
         
         if self.area_calc_mode:
