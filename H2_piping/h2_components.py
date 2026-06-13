@@ -620,7 +620,7 @@ class COOL:
                 HEX_effectiveness = config.HEX_effectiveness
             else:
                 t = self.d + 2 * config.HEX_extra_thickness
-                w_c = self.width * self.length / self.L + t/2
+                w_c = self.width * self.length / self.L # + t/2 # the t/2 is added only if the wing tip contributes
                 m = np.sqrt(config.h_TMI / (config.k_Al * t))
                 HEX_effectiveness = np.tanh(m * w_c) / (m * w_c)
 
