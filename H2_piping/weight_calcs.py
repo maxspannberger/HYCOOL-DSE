@@ -58,7 +58,7 @@ rho_stainless_steel = 8000  # kg/m^3
 rho_MLI = 21  # kg/m^3, estimated value for MLI insulation
 vacuum_boundary_thickness = 0.002  # m
 n_fittings = 94
-pipe_length = 137.82 - 0.0508 * n_fittings  # m
+pipe_length = 137.82 + 12 - 0.0508 * n_fittings  # 12 m of tank piping, estimated
 
 V_pipe_inner = pi * (((pipe_diameter / 2) + t_inner) ** 2 - (pipe_diameter / 2) **2)
 mass_pipe_inner = V_pipe_inner * rho_stainless_steel
