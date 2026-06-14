@@ -12,7 +12,7 @@ except ImportError:
     plt = None
 
 #import calculated tank dimensions
-from geomDesign import GeomDesign
+from Storage.tank_size_shape import GeomDesign
 gd = GeomDesign(p_vent=2.0, p_fill=1.2, y_max=0.97)
 geom = gd.calculateTankGeometry(V_tank=12.3, phi=1.0, psi=1.0, Lambda=0.5)
 
@@ -37,7 +37,7 @@ tank_options = {
 }
 
 material_options = {
-    'Al-2219-T87': {'E': 73.1e9, 'nu': 0.33, 'S': 300e6, 'S_t': 476e6, 'density': 2840},
+    'Al-2219-T87': {'E': 85.46e9, 'nu': 0.3184, 'S': 526e6, 'S_t': 717e6, 'density': 2825},  # Material properties at 20K
 }
 
 def t_hoop_stress(P_int, P_ext, D, S_t, spherical=False):
