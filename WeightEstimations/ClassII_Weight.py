@@ -674,7 +674,7 @@ class weightEstimation:
                 # if comp_key == "cable":
                 #     mass = cable_len * comp[comp_key].mass_per_length
                 if comp_key == "electrical_sys":
-                    mass_elec,cool=perform_complete_electrical_sizing(g.P_takeoff_KW,g.P_climb_KW,g.P_cruise_KW,g.P_approach_KW,
+                    mass_elec, cool, all_powers = perform_complete_electrical_sizing(g.P_takeoff_KW,g.P_climb_KW,g.P_cruise_KW,g.P_approach_KW,
                                                                  g.P_TO_OEI_KW, g.b)
                     if g.N_propellers>2:
 
@@ -740,9 +740,11 @@ class weightEstimation:
 
 
         # TODO: add masses from the rest of the code
-        P_per_flight_condition = [1, 2, 3, 4, 5, 6, 7]
+        P_per_flight_condition = list(list(all_powers["hts_gen"].values())[0].values())
         gt_results_dict = run_gt_sizing(P_opt=P_opt, off_design_cases=P_per_flight_condition, input_conditions=None, cfg=None, show=False, write=False)
-        mass_flows = [gt_results_dict.od_cases[P]["mdot_f"] for P in P_per_flight_condition]
+        mass_flows = [gt_results_dict["od_cases"][P]["mdot_f"] for P in P_per_flight_condition]
+        for P, m in zip(P_per_flight_condition, mass_flows):
+            print(f"{P}: {m}")
 
 
         return total_mass * g.mass_margin,fan_mass, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff,eff_climb, eff_cruise, bt_charging_ratio, P_opt,cool

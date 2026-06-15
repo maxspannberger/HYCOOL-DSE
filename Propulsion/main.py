@@ -33,11 +33,11 @@ import json
 
 from rocketcea.cea_obj_w_units import CEA_Obj
 
-from config         import Config
-from TurbineSizing  import GasTurbineCycle
-from OffDesign      import OffDesignEvaluator
-from DimSizing      import DimensionalSizing
-from ExpanderSizing import PistonExpander
+from Propulsion.config         import Config
+from Propulsion.TurbineSizing  import GasTurbineCycle
+from Propulsion.OffDesign      import OffDesignEvaluator
+from Propulsion.DimSizing      import DimensionalSizing
+from Propulsion.ExpanderSizing import PistonExpander
 
 
 # ----------------------------------------------------------------------

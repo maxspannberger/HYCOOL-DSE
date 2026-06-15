@@ -24,7 +24,7 @@ from rich.table import Table
 from rich.columns import Columns
 from rich import box
 
-from TurbineSizing import GasTurbineCycle
+from Propulsion.TurbineSizing import GasTurbineCycle
 
 
 class PistonExpander:

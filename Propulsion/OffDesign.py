@@ -8,7 +8,7 @@ from rich.table import Table
 from rich.panel import Panel
 from rich import box
 from rich.rule import Rule
-from TurbineSizing import GasTurbineCycle
+from Propulsion.TurbineSizing import GasTurbineCycle
 
 
 

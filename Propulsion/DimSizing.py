@@ -38,7 +38,7 @@ from rich.rule import Rule
 from rich.columns import Columns
 from rich import box
 
-from TurbineSizing import GasTurbineCycle
+from Propulsion.TurbineSizing import GasTurbineCycle
 
 
 # ----------------------------------------------------------------------
