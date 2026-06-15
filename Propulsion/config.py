@@ -122,11 +122,11 @@ class OffDesignConfig:
 
     # H2 feed temperature at off-design (cryogenic feed to the H2 compressor).
     # If None, falls back to the design-point T_pre_comp.
-    T_pre_comp:  Optional[float] = 180     # K
+    T_pre_comp:  List[float] = field(default_factory=lambda: [180])     # K
 
     # H2 feed pressure at off-design (cryogenic feed to the H2 compressor).
     # If None, falls back to the design-point P_pre_comp.
-    P_pre_comp:  Optional[float] = None    # bar
+    P_pre_comp:  List[float] = field(default_factory=lambda: [25])      # bar
 
     P_shaft_cases: List[float] = field(default_factory=lambda: [3.075e6])
     P_sweep_min:   float = 0.6e6

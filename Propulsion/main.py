@@ -152,14 +152,25 @@ def run(cfg=None):
     engine = GasTurbineCycle.from_config(cfg).size(cea=cea)
 
     # --- 2. Off-design sweep + headline cases ---
+    # Each off-design case pairs a shaft power with an H2 feed condition
+    # (T_pre_comp / P_pre_comp). Lists of length 1 are broadcast across all
+    # power cases; see OffDesignEvaluator.resolve_cases.
     od_eval = OffDesignEvaluator.from_config(engine, cfg)
     od_cases = {}
-    for P in cfg.offdesign.P_shaft_cases:
+    for P, T_pre, P_pre in OffDesignEvaluator.cases_from_config(cfg):
+        # Distinct label per case so cases sharing a power but differing in
+        # feed condition don't collide. Feed suffix is added only when this
+        # case overrides the design-point feed.
+        base_label = f"{P/1e6:.3f}MW"
         try:
-            od_cases[P] = od_eval.evaluate(P)
+            res   = od_eval.evaluate(P, T_pre_comp=T_pre, P_pre_comp=P_pre)
+            label = base_label
+            if T_pre is not None or P_pre is not None:
+                label += f"_{res['T_pre_comp']:.0f}K_{res['P_pre_comp']:.0f}bar"
+            od_cases[label] = res
         except ValueError as exc:
             print(f"[warn] OffDesign at {P/1e6:.3f} MW failed: {exc}")
-            od_cases[P] = None
+            od_cases[base_label] = None
 
     # --- 3. Dimensional sizing ---
     dim = DimensionalSizing.from_config(engine, cfg, cea=cea).size()
@@ -170,7 +181,7 @@ def run(cfg=None):
     # --- Reports ---
     if cfg.output.print_report:
         engine.report()
-        for P, res in od_cases.items():
+        for label, res in od_cases.items():
             if res is not None:
                 od_eval.report(res)
         dim.report()
@@ -225,10 +236,10 @@ def run(cfg=None):
     shared.update(expander.to_csv_row())
 
     cases = {"design": dict(shared)}
-    for P, res in od_cases.items():
+    for label, res in od_cases.items():
         if res is None:
             continue
-        col_name = f"offdesign_{P/1e6:.3f}MW"
+        col_name = f"offdesign_{label}"
         case_data = dict(shared)
         case_data.update(OffDesignEvaluator.to_csv_row(res, prefix="offdesign"))
         cases[col_name] = case_data

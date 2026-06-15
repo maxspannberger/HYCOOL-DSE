@@ -58,33 +58,55 @@ class OffDesignEvaluator:
         self.h3_actual_design       = d["h3_actual"]
         self.TH3_design             = d["TH3"]
 
+        # Design-point H2 compressor feed state (fallback when no override given)
+        self.h2_compressorout_design = d["h2_compressorout"]
+
         # --- Off-design H2 feed condition ---
-        # Allow the cryogenic feed temperature and/or pressure into the H2 fuel
-        # compressor to differ at off-design. h2_compressorout (state at H2 HEX
-        # cold-side inlet) and w_compressor scale with these. If an override is
-        # None, the design point value is used.
+        # The cryogenic feed temperature and/or pressure into the H2 fuel
+        # compressor may differ at off-design. Each is resolved per evaluate()
+        # call, defaulting to the values passed here (and ultimately to the
+        # design point when left as None). _apply_feed() sets the active feed
+        # state used by the solver: h2_compressorout (H2 HEX cold-side inlet)
+        # and w_compressor_od both scale with it.
+        self._default_T_pre_comp = T_pre_comp
+        self._default_P_pre_comp = P_pre_comp
+        self._apply_feed(T_pre_comp, P_pre_comp)
+
+    # ------------------------------------------------------------------
+    # H2 compressor feed condition
+    # ------------------------------------------------------------------
+    def _apply_feed(self, T_pre_comp=None, P_pre_comp=None):
+        """
+        Set the active H2 compressor feed condition used by the next solve.
+
+        T_pre_comp / P_pre_comp are the cryogenic feed temperature [K] and
+        pressure [bar] into the H2 fuel compressor. Either left as None falls
+        back to the design-point value. Updates self.T_pre_comp_od,
+        self.P_pre_comp_od, self.h2_compressorout and self.w_compressor_od.
+        """
+        e = self.engine
         self.T_pre_comp_od = (
-            T_pre_comp if T_pre_comp is not None else engine.T_pre_comp
+            T_pre_comp if T_pre_comp is not None else e.T_pre_comp
         )
         self.P_pre_comp_od = (
-            P_pre_comp if P_pre_comp is not None else engine.P_pre_comp
+            P_pre_comp if P_pre_comp is not None else e.P_pre_comp
         )
         feed_changed = (
-            self.T_pre_comp_od != engine.T_pre_comp or
-            self.P_pre_comp_od != engine.P_pre_comp
+            self.T_pre_comp_od != e.T_pre_comp or
+            self.P_pre_comp_od != e.P_pre_comp
         )
         if feed_changed:
             h1_od = PropsSI("H", "P", self.P_pre_comp_od*1e5,
-                            "T", self.T_pre_comp_od, engine.fluid)
+                            "T", self.T_pre_comp_od, e.fluid)
             s1_od = PropsSI("S", "P", self.P_pre_comp_od*1e5,
-                            "T", self.T_pre_comp_od, engine.fluid)
-            h2s_od = PropsSI("H", "P", engine.PH1*1e5, "S", s1_od, engine.fluid)
-            h2_od  = h1_od + (h2s_od - h1_od) / engine.eta_compressor
+                            "T", self.T_pre_comp_od, e.fluid)
+            h2s_od = PropsSI("H", "P", e.PH1*1e5, "S", s1_od, e.fluid)
+            h2_od  = h1_od + (h2s_od - h1_od) / e.eta_compressor
             self.h2_compressorout = h2_od
             self.w_compressor_od  = h2_od - h1_od
         else:
-            self.h2_compressorout = d["h2_compressorout"]
-            self.w_compressor_od  = d["w_compressor"]
+            self.h2_compressorout = self.h2_compressorout_design
+            self.w_compressor_od  = self.w_compressor_design
 
     # ------------------------------------------------------------------
     # Build from external config
@@ -94,6 +116,11 @@ class OffDesignEvaluator:
         """
         Construct from a sized `GasTurbineCycle` and a `Config` (or
         `OffDesignConfig`) defined in config.py.
+
+        The per-case H2 feed lists (`T_pre_comp`, `P_pre_comp`) are NOT baked
+        into the evaluator here -- they are applied per off-design case via
+        `evaluate()` (see `cases_from_config`). The evaluator therefore starts
+        at the design-point feed condition.
         """
         o = cfg.offdesign if hasattr(cfg, "offdesign") else cfg
         return cls(
@@ -103,9 +130,60 @@ class OffDesignEvaluator:
             TIT_tol     = o.TIT_tol,
             max_iter    = o.max_iter,
             Q_regen_max = o.Q_regen_max,
-            T_pre_comp  = o.T_pre_comp,
-            P_pre_comp  = o.P_pre_comp,
         )
+
+    # ------------------------------------------------------------------
+    # Off-design case list helpers
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _as_list(x):
+        """Wrap a scalar (or None) into a list; pass lists/tuples through."""
+        if x is None:
+            return None
+        if isinstance(x, (list, tuple)):
+            return list(x)
+        return [x]
+
+    @classmethod
+    def resolve_cases(cls, P_shaft_cases, T_pre_comp=None, P_pre_comp=None):
+        """
+        Zip the off-design case lists into per-scenario tuples.
+
+        Returns a list of (P_shaft, T_pre_comp, P_pre_comp) tuples, one per
+        entry in `P_shaft_cases`. A feed list of length 1 (or a bare scalar)
+        is broadcast across all power cases; otherwise its length must match
+        `P_shaft_cases`. A None feed list leaves that feed at the design point
+        for every case.
+        """
+        P_list  = cls._as_list(P_shaft_cases) or []
+        n       = len(P_list)
+        T_list  = cls._as_list(T_pre_comp)
+        Pp_list = cls._as_list(P_pre_comp)
+
+        def _broadcast(lst, name):
+            if lst is None:
+                return [None] * n
+            if len(lst) == 1:
+                return lst * n
+            if len(lst) == n:
+                return lst
+            raise ValueError(
+                f"{name} has length {len(lst)} but must be length 1 or "
+                f"{n} (to match P_shaft_cases)."
+            )
+
+        T_b  = _broadcast(T_list,  "T_pre_comp")
+        Pp_b = _broadcast(Pp_list, "P_pre_comp")
+        return list(zip(P_list, T_b, Pp_b))
+
+    @classmethod
+    def cases_from_config(cls, cfg):
+        """
+        Build the list of (P_shaft, T_pre_comp, P_pre_comp) off-design cases
+        from a `Config` (or `OffDesignConfig`).
+        """
+        o = cfg.offdesign if hasattr(cfg, "offdesign") else cfg
+        return cls.resolve_cases(o.P_shaft_cases, o.T_pre_comp, o.P_pre_comp)
 
     # ------------------------------------------------------------------
     # Flat dict for CSV export -- given a single evaluate() result
@@ -123,6 +201,7 @@ class OffDesignEvaluator:
             "P_shaft", "TIT_od", "mdot_f", "mdot_air", "mdot_aux",
             "aux_active", "aux_fraction",
             "OF", "T2p", "T5", "T_exh_final",
+            "T_pre_comp", "P_pre_comp",
             "TH2", "T_hex_hot_in", "P_H2T_W", "P_H2comp_W", "h2_net_W",
             "Q_regen_W", "Q_regen_W_max", "regen_capped",
             "eta_total", "SFC", "SFC_hr", "q_in_W",
@@ -295,8 +374,23 @@ class OffDesignEvaluator:
 
         return x1
     
-    def evaluate(self, P_shaft):
+    def evaluate(self, P_shaft, T_pre_comp=None, P_pre_comp=None):
+        """
+        Solve the off-design operating point at a given shaft power.
+
+        T_pre_comp / P_pre_comp : optional H2 compressor feed condition for this
+            case [K] / [bar]. If None, the evaluator's default feed is used
+            (which itself falls back to the design point). Passing them here
+            lets each off-design case use a distinct cryogenic feed state.
+        """
         from scipy.optimize import brentq
+
+        # Apply this case's H2 feed condition (falls back to the evaluator
+        # default, then the design point, when an override is None).
+        self._apply_feed(
+            T_pre_comp if T_pre_comp is not None else self._default_T_pre_comp,
+            P_pre_comp if P_pre_comp is not None else self._default_P_pre_comp,
+        )
 
         P_at_TIT_limit = self._net_power(self.TIT_limit, mdot_aux=0.0)
 
@@ -377,6 +471,8 @@ class OffDesignEvaluator:
             "T2p":            od["T2p"],
             "T5":             od["T5"],
             "T_exh_final":    od["T_exh_final"],
+            "T_pre_comp":     self.T_pre_comp_od,
+            "P_pre_comp":     self.P_pre_comp_od,
             "TH2":            od["TH2"],
             "T_hex_hot_in":   od["T_hex_hot_in"],
             "P_H2T_W":        od["w_H2T"]          * mdot_f,
@@ -488,6 +584,18 @@ class OffDesignEvaluator:
             f"{r['TH2']:.1f}",
             f"{des['TH2']:.1f}",
             "K",
+        )
+        t.add_row(
+            "H2 feed T (pre-compressor)",
+            f"{r['T_pre_comp']:.1f}",
+            f"{self.engine.T_pre_comp:.1f}",
+            "K",
+        )
+        t.add_row(
+            "H2 feed P (pre-compressor)",
+            f"{r['P_pre_comp']:.1f}",
+            f"{self.engine.P_pre_comp:.1f}",
+            "bar",
         )
         t.add_row(
             "GH2 expander output",
@@ -687,9 +795,10 @@ if __name__ == "__main__":
 
     evaluator = OffDesignEvaluator.from_config(engine, cfg)
 
-    for P in cfg.offdesign.P_shaft_cases:
-        print(f"\n--- Off-design point at {P/1e6:.3f} MW ---")
-        evaluator.report(evaluator.evaluate(P))
+    for P, T_pre, P_pre in OffDesignEvaluator.cases_from_config(cfg):
+        print(f"\n--- Off-design point at {P/1e6:.3f} MW "
+              f"(T_pre_comp={T_pre}, P_pre_comp={P_pre}) ---")
+        evaluator.report(evaluator.evaluate(P, T_pre_comp=T_pre, P_pre_comp=P_pre))
 
     print("\n--- Power sweep ---")
     sweep = evaluator.sweep(
