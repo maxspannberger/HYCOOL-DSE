@@ -486,19 +486,25 @@ class Corner:
         self.A = area(self.d)
         self.fluid = config.fluid
         self.name = name
+        self.corner_factor = config.corner_loss_factor
     
     # Function that can be called to calculate the evolution of the state variables
     # in the component
     def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None, initial_conditions=None):
         
-        T1, p1, h1, rho1, u1 = get_input_states(states, system, i, m_dot, self.fluid)
+        # --- Check if we are running an isolated component test ---
+        if initial_conditions is None:
+            T1, p1, h1, rho1, u1 = get_input_states(states, system, i, m_dot, self.fluid)
+        else:
+            T1, p1, h1, rho1, u1 = initial_conditions
+        # -------------------------------------------------------------------
         
         mu1  = CP.PropsSI('V', 'P', p1, 'H', h1, self.fluid)
         Re1  = 4 * m_dot / (np.pi * self.d * mu1)
         
         alpha = 0.95 + 4.42 * (self.curv)**(-1.96)
         
-        K_bend = 0.388 * alpha * (self.curv)**0.84 * Re1**(-0.17)
+        K_bend = 0.388 * alpha * (self.curv)**0.84 * Re1**(-0.17) * self.corner_factor
         
         dp_fric = K_bend * self.N_bend * 0.5 * rho1 * u1**2
         q       = 0
