@@ -3,24 +3,22 @@ Size the MLI insulation layer of the LH2 tank.
 """
 import numpy as np
 from CoolProp.CoolProp import PropsSI
-from scipy.optimize import brentq
 from tank_size_shape import Geometry
 import properties as props
 
 #vl_vent = props.saturated_specific_volumes(self.p_vent * self.BAR, FLUID)[0] 
 # Filling condition
 mLH2 = 600
-Pfill = 1.75e5
-Pvent = 1.5 * Pfill
+Pfill = 1.0e5
+Pvent = 1.75 * Pfill
 rhoLH2 = 70
 Ef = PropsSI('U', 'P', Pfill , 'D', rhoLH2, 'parahydrogen')
 Ei = PropsSI('U', 'P', Pvent , 'D', rhoLH2, 'parahydrogen')
 tauH = 24 * 3600
 
 # Tank geometry
-ls = 2.0 # Geometry.ls
-twall = 0.004
-Rtank = 0.8 # Geometry.a
+ls = 2.1789 # Geometry.ls
+Rtank = 0.8913 # Geometry.a
 Atank = 4 * np.pi * (Rtank ** 2) + 2 * np.pi * Rtank * ls
 
 SF = 1
@@ -51,12 +49,6 @@ def qleak_func():
     return qs + qr + qg
 
 
-
-
-def residual(N):
-    return Qtank - qleak_func(N) * Atank
-
-
 # Solve Qtank = qleak * Aout for the number of MLI layers N
 qleak = qleak_func()
 qtank = Qleak / Atank
@@ -64,14 +56,15 @@ N = np.ceil(qleak / qtank)
 qMLI = qleak / N
 tMLI = (N / Nbar) * 0.01    # Nbar is in layers/cm, convert thickness to [m]
 Aout = 4 * np.pi * ((Rtank + tMLI) ** 2) + 2 * np.pi * (Rtank + tMLI) * ls
-
-mMLI = rhoMLI * tMLI * (Aout - Atank)
+hMLI = qMLI / (Ts - Tc)
+mMLI = rhoMLI * tMLI * Aout
 print(f'Surface Area: {Atank} [m^2]')
 print(f'Nbar:{Nbar} [layer/cm]')
 print(f'Number of Layers: {N} [layers]')
 print(f'Allowable Heat Flux: {qtank} [W / m^2]')
 print(f'MLI Heat Flux: {qMLI} [W / m^2]')
 print(f'Qleak: {Qleak} [W]')
+print(f'hMLI: {hMLI} [W/(m^2 K)]')
 print(f'MLI Heat Ingress Rate: {qMLI * Atank} [W]')
 print(f'MLI Thickness: {tMLI} [m]')
 print(f'MLI Mass: {mMLI} [kg]')

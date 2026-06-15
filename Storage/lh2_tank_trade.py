@@ -12,19 +12,19 @@ except ImportError:
     plt = None
 
 #import calculated tank dimensions
-from Storage.tank_size_shape import GeomDesign
-gd = GeomDesign(p_vent=2.0, p_fill=1.2, y_max=0.97)
-geom = gd.calculateTankGeometry(V_tank=12.3, phi=1.0, psi=1.0, Lambda=0.5)
+from tank_size_shape import GeomDesign
+#gd = GeomDesign(p_vent=2.0, p_fill=1.2, y_max=0.97)
+#geom = gd.calculateTankGeometry(V_tank=12.3, phi=1.0, psi=1.0, Lambda=0.5)
 
 # hard coded dimensions for testing
-D = 2.5 # m, inner diameter of the tank
-L = 2.8 # m, length of the tank
+D = 0.8913*2 # m, inner diameter of the tank
+L = 2.1789 # m, length of the tank
 # for Sphericaltank:
 V = 7.3808 # m^3, volume of the tank
 d = (6*V/np.pi)**(1/3) # m, diameter of the spherical tank with the same volume as the cylindrical tank
 
-D = geom.a * 2  # m, inner diameter of the tank (from geomDesign)
-L = geom.ls     # m, length of the cylindrical section of the tank (from geomDesign)
+#D = geom.a * 2  # m, inner diameter of the tank (from geomDesign)
+#L = geom.ls     # m, length of the cylindrical section of the tank (from geomDesign)
 
 spherical = False # boolean, whether the tank is spherical or cylindrical
 f_ullage = 0.0425 # fraction of tank volume reserved for ullage (empty space to allow for expansion of the liquid)
@@ -104,7 +104,7 @@ def t_spherical_buckling(p_diff, d, E, nu, SF=2.0, t_min=1e-4):
 # If external pressure exceeds internal (vacuum or sub-atmospheric internal),
 # the failure mode is buckling — use the Windenburg-Trilling external-pressure formula.
 mat = material_options['Al-2219-T87']
-t_LH2 = t_hoop_stress(tank_options['LH2']['P_int'], tank_options['LH2']['P_ext'], D, mat['S_t'], spherical)
+t_LH2 = t_windenburg_trilling(1e5, D, L, mat['E'], mat['nu'], SF=2.0, t_min=1e-3)
 t_cCH2 = t_hoop_stress(tank_options['cCH2']['P_int'], tank_options['cCH2']['P_ext'], D, mat['S_t'], spherical)
 # sLH2 has lower internal pressure than external (external > internal),
 p_diff = tank_options['sLH2']['P_ext'] - tank_options['sLH2']['P_int']

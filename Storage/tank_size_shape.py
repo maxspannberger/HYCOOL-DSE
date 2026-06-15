@@ -118,7 +118,7 @@ if __name__ == "__main__":
     # 1. Define inputs and call geom_design
     m_H2 = 600 # kg, mass of hydrogen to be stored
     p_fill = 1. # bar, fill pressure
-    p_vent = 1.5 * p_fill # bar, venting pressure
+    p_vent = 1.75 * p_fill # bar, venting pressure
     geom_design = GeomDesign(p_vent=p_vent, p_fill=p_fill, y_max=0.97)
 
     # 2. Initial liquid fraction at fill so that y_l = y_max at venting
