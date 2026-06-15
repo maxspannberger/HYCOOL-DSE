@@ -39,7 +39,7 @@ from rich.columns import Columns
 from rich import box
 
 from Propulsion.TurbineSizing import GasTurbineCycle
-from plot_style import (
+from Propulsion.plot_style import (
     apply_style, save_figure, cyan_tones,
     CYAN_PALETTE, NEUTRAL_GREY, TEXT_GREY, GRID_GREY,
 )

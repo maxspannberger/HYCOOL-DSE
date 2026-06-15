@@ -30,6 +30,10 @@ config.output.{show_plots, print_report}.
 import csv
 from pathlib import Path
 import json
+import sys
+
+root = Path(__file__).resolve().parent.parent
+sys.path.append(str(root))
 
 from rocketcea.cea_obj_w_units import CEA_Obj
 
