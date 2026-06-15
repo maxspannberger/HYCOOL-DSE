@@ -712,6 +712,7 @@ class weightEstimation:
                     
                     if comp_key == "gt_hex": #or comp_key == "ac_dc" or comp_key == "hts_gen" or comp_key == "hts_pow" or comp_key == "dc_ac":
                         mass = P_req_primary / pd / efficiency["GT-MOT_eff"] *nacelle_factor*1.15
+                        
                         if comp_key == "gt_hex":
                             W_primary = mass        #gt_hex is in there twice but taken into account in W_primary
                             W_secondary = mass
@@ -732,7 +733,8 @@ class weightEstimation:
                     
                     # elif comp_key == "dc_ac":
                     #     mass = P_req_primary / pd /efficiency2["Dcac_eff"]
-                total_mass += mass
+                # total_mass += mass
+                # TODO: eliminate this mass from total, but check whether to include or not the nacelle factor
 
         eff = efficiency["Total_eff"]
         eff_cruise = efficiency["Cruise_average_eff"]
@@ -770,6 +772,8 @@ class weightEstimation:
 
         gt_results_dict = run_gt_sizing(P_opt=P_opt*1000, off_design_cases=P_per_flight_condition, T_pre_comp=H2_temps, P_pre_comp=H2_press)
         # print(gt_results_dict)
+        gt_mass = gt_results_dict["dim"].results["m_propulsion"]
+        # print(gt_mass)
         
         mass_flows = [gt_results_dict["od_cases"][P]["mdot_f"] for P in gt_results_dict["od_cases"]]
         # for P, m in zip(P_per_flight_condition, mass_flows):
@@ -787,9 +791,9 @@ class weightEstimation:
                                      All_temps=H2_results_nominal["temperatures"], HEX_areas=H2_results_nominal["areas"], prev_states=H2_results_nominal["final_states"],
                                      oei_phases=oei_phases, oei_m_dots=oei_m_dots)
         # print(H2_results_all)
-        TMS_mass = pipe_calculations(b=g.b, sweep_quarter_chord=g.sweep_half) # quarter chord approximated by half for now
-        total_mass += TMS_mass
-        # TODO: subtract previous piping mass estimate, idk where that is for now
+        TMS_mass, pipe_length = pipe_calculations(b=g.b, sweep_quarter_chord=g.sweep_half) # quarter chord approximated by half for now
+        total_mass += TMS_mass + 2 * gt_mass
+        # TODO: subtract previous piping and GT mass estimate, idk where that is for now
 
 
         return total_mass * g.mass_margin,fan_mass, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff,eff_climb, \

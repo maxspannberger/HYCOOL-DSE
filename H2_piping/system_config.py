@@ -56,11 +56,11 @@ class H2SystemConfig:
     pump_electric_efficiency: float = 0.9    # general efficiency of the pump's electric motor (for power calculations)
 
     operating_temp = {
-        "hts_gen": 50.0,
+        "hts_gen": 35.0,
         "ac_dc": 250.0,
         "bus": 250.0,
         "dc_ac": 250.0,
-        "hts_pow": 50.0,
+        "hts_pow": 35.0,
     }
 
     HEX_default_d = 0.009

@@ -120,7 +120,7 @@ def pipe_calculations(b=29.00, sweep_quarter_chord=10.56, show=False):
     if show:
         print(f"Total system weight: {total_system_weight:.2f} kg")
 
-    return total_system_weight
+    return total_system_weight, pipe_length
 
 
 if __name__ == "__main__":
