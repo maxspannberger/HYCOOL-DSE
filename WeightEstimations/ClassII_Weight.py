@@ -17,6 +17,7 @@ from Propulsion.electrical import perform_complete_electrical_sizing
 from Propulsion.main import run as run_gt_sizing
 from H2_piping.main import main_H2_nominal
 from H2_piping.main_OEI import main_H2_OEI
+from H2_piping.weight_calcs import pipe_calculations
 
 from rich.table import Table
 
@@ -762,8 +763,9 @@ class weightEstimation:
                                      All_temps=H2_results_nominal["temperatures"], HEX_areas=H2_results_nominal["areas"],
                                      oei_phases=oei_phases, oei_m_dots=oei_m_dots)
         # print(H2_results_all)
-        # TODO: piping
-
+        TMS_mass = pipe_calculations(b=g.b, sweep_quarter_chord=g.sweep_half) # quarter chord approximated by half for now
+        total_mass += TMS_mass
+        # TODO: subtract previous piping mass estimate, idk where that is for now
 
 
         return total_mass * g.mass_margin,fan_mass, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff,eff_climb, eff_cruise, bt_charging_ratio, P_opt, electrical_results["cooling"]
