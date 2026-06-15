@@ -70,8 +70,8 @@ class H2SystemConfig:
     k_Al = 240      # W/m K     # TODO: find better value
     h_TMI = 6828    # W/m^2 K   # TODO: find better value
     
-    HTS_default_d = 0.004
-    HTS_channels = 8
+    HTS_default_d = 0.008
+    HTS_channels = 1
 
     FPI_relaxation = 0.3    # relaxation for fixed point iteration to stabilize convergence
     
