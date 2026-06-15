@@ -78,7 +78,7 @@ def get_cable_region_powers(component, positions, previous, b=1.0):
     return comp_powers, maximum
 
 
-def get_powers_per_component(P_TO, P_climb, P_cruise, P_APP, P_OEI, P_AC_systems, positions, component_order, comp=comp_params, b=1.0):
+def get_powers_per_component(P_TO, P_climb, P_cruise, P_APP, P_OEI, P_AC_systems, positions, component_order, comp=comp_params, b=1.0, write=False):
     """
     Returns powers required at every component
     and cable segment powers.
@@ -125,9 +125,10 @@ def get_powers_per_component(P_TO, P_climb, P_cruise, P_APP, P_OEI, P_AC_systems
                         comp_powers[component][pos][condition] += 0.5 * P_AC_systems / comp[component].efficiency
             previous = comp_powers[component].copy()
 
-    filename = os.path.join(root, "Propulsion", "power_chain_results.json")
-    with open(filename, "w") as f:
-        json.dump(comp_powers, f, indent=4)
+    if write:
+        filename = os.path.join(root, "Propulsion", "power_chain_results.json")
+        with open(filename, "w") as f:
+            json.dump(comp_powers, f, indent=4)
 
     return comp_powers
 
@@ -149,7 +150,7 @@ def get_P_idle(T_J, R_th, T_H2):
     return P
 
 
-def size_converter(component, powers, comp=comp_params, show=False):    
+def size_converter(component, powers, comp=comp_params, show=False, write=False):    
     T_H2 = 20   # K
     T_J_design = 250    # K
     T_J_min = 77    # K
@@ -195,7 +196,7 @@ def size_converter(component, powers, comp=comp_params, show=False):
     return results
 
 
-def size_all_components(component_order, powers, HTS_dimensions, comp=comp_params, show=False):
+def size_all_components(component_order, powers, HTS_dimensions, comp=comp_params, show=False, write=False):
     component_sizing = {}
     P_heat_total = 0.0
     P_cool_total = 0.0
@@ -236,9 +237,10 @@ def size_all_components(component_order, powers, HTS_dimensions, comp=comp_param
         "mass": m_total
     }
 
-    filename = os.path.join(root, "Propulsion", "component_sizing_results.json")
-    with open(filename, "w") as f:
-        json.dump(component_sizing, f, indent=4)
+    if write:
+        filename = os.path.join(root, "Propulsion", "component_sizing_results.json")
+        with open(filename, "w") as f:
+            json.dump(component_sizing, f, indent=4)
 
     dimensions_only = {}
     for component in component_sizing:
@@ -247,9 +249,10 @@ def size_all_components(component_order, powers, HTS_dimensions, comp=comp_param
             for loc in component_sizing[component]:
                 dimensions_only[component][loc] = component_sizing[component][loc]["sizes"]
 
-    filename = os.path.join(root, "Propulsion", "only_sizing_results.json")
-    with open(filename, "w") as f:
-        json.dump(dimensions_only, f, indent=4)
+    if write:
+        filename = os.path.join(root, "Propulsion", "only_sizing_results.json")
+        with open(filename, "w") as f:
+            json.dump(dimensions_only, f, indent=4)
 
     cooling_requirements_only = {}
     for condition in list(list(powers.values())[0].values())[0].keys():
@@ -272,15 +275,16 @@ def size_all_components(component_order, powers, HTS_dimensions, comp=comp_param
 
         cooling_requirements_only[condition]["total"] = total
 
-    filename = os.path.join(root, "Propulsion", "only_cooling_results.json")
-    with open(filename, "w") as f:
-        json.dump(cooling_requirements_only, f, indent=4)
+    if write:
+        filename = os.path.join(root, "Propulsion", "only_cooling_results.json")
+        with open(filename, "w") as f:
+            json.dump(cooling_requirements_only, f, indent=4)
 
 
     return component_sizing, cooling_requirements_only, dimensions_only
 
 
-def get_maximum_powers(powers):
+def get_maximum_powers(powers, write=False):
     max_powers = {}
     length = 0.0
 
@@ -306,16 +310,17 @@ def get_maximum_powers(powers):
                     if powers[component][pos][condition] > max_powers[component][pos]:
                         max_powers[component][pos] = powers[component][pos][condition]
 
-    filename = os.path.join(root, "Propulsion", "max_power_results.json")
-    with open(filename, "w") as f:
-        json.dump(max_powers, f, indent=4)
+    if write:
+        filename = os.path.join(root, "Propulsion", "max_power_results.json")
+        with open(filename, "w") as f:
+            json.dump(max_powers, f, indent=4)
 
     length *= 2 # only counted cables connected to one bus so far
 
     return max_powers, length
 
 
-def size_cables(max_powers, length=200, N_cables=6, SF=1, show=False):
+def size_cables(max_powers, length=200, N_cables=6, SF=1, show=False, write=False):
     V = 3000 # V
     rho_c = 6380 # kg/m^3
     rho_i = 900 # kg/m^3
@@ -376,14 +381,15 @@ def size_cables(max_powers, length=200, N_cables=6, SF=1, show=False):
         "m": mass
     }
 
-    filename = os.path.join(root, "Propulsion", "cable_results.json")
-    with open(filename, "w") as f:
-        json.dump(results, f, indent=4)
+    if write:
+        filename = os.path.join(root, "Propulsion", "cable_results.json")
+        with open(filename, "w") as f:
+            json.dump(results, f, indent=4)
 
     return results
 
 
-def size_APU(P_transient, P_base, component, comp=comp_params, show=False):
+def size_APU(P_transient, P_base, component, comp=comp_params, show=False, write=False):
     if hasattr(comp[component], "energy_density"):
         P_total = (P_transient + P_base) / np.sqrt(comp[component].efficiency)
     else:
@@ -409,9 +415,10 @@ def size_APU(P_transient, P_base, component, comp=comp_params, show=False):
         "P_cool": P_cool
     }
 
-    filename = os.path.join(root, "Propulsion", "APU_results.json")
-    with open(filename, "w") as f:
-        json.dump(APU_results, f, indent=4)
+    if write:
+        filename = os.path.join(root, "Propulsion", "APU_results.json")
+        with open(filename, "w") as f:
+            json.dump(APU_results, f, indent=4)
 
     return APU_results
 
@@ -419,7 +426,7 @@ def size_APU(P_transient, P_base, component, comp=comp_params, show=False):
 
 
 
-def perform_complete_electrical_sizing(P_TO, P_climb, P_cruise, P_APP, P_OEI, b, show=False):
+def perform_complete_electrical_sizing(P_TO, P_climb, P_cruise, P_APP, P_OEI, b, show=False, write=False):
     P_AC_systems = 315.0  # kW
 
     # define electrical system architecture
@@ -448,11 +455,11 @@ def perform_complete_electrical_sizing(P_TO, P_climb, P_cruise, P_APP, P_OEI, b,
     N_cables = N_motors + N_turbines
 
     # perform sizing of electrical system
-    powers = get_powers_per_component(P_TO, P_climb, P_cruise, P_APP, P_OEI, P_AC_systems, positions, component_order, comp=comp_params, b=b)
-    converter_sizing, cooling_requirements_only, dimensions_only = size_all_components(component_order, powers, HTS_dimensions, comp=comp_params, show=show)
-    max_powers, length = get_maximum_powers(powers)
-    cable_results = size_cables(max_powers, length=length, N_cables=N_cables/2, SF=2, show=show)
-    APU_results = size_APU(converter_sizing["total"]["P_heat"], P_AC_systems, component=apu, comp=comp_params, show=False)
+    powers = get_powers_per_component(P_TO, P_climb, P_cruise, P_APP, P_OEI, P_AC_systems, positions, component_order, comp=comp_params, b=b, write=write)
+    converter_sizing, cooling_requirements_only, dimensions_only = size_all_components(component_order, powers, HTS_dimensions, comp=comp_params, show=show, write=write)
+    max_powers, length = get_maximum_powers(powers, write=write)
+    cable_results = size_cables(max_powers, length=length, N_cables=N_cables/2, SF=2, show=show, write=write)
+    APU_results = size_APU(converter_sizing["total"]["P_heat"], P_AC_systems, component=apu, comp=comp_params, show=show, write=write)
 
     if show:
         print("\nElectrical components sizing complete.")

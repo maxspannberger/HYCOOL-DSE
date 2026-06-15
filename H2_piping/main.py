@@ -338,13 +338,14 @@ def main_H2_nominal(comps=None, sizes=None, show=False, write=False, normal_phas
               if show:
                      plot_states(states, current_phase)
 
-       filename_areas = "HEX_areas.json"
-       with open(filename_areas, "w") as f:
-              json.dump(HEX_areas, f, indent=4)
+       if write:
+              filename_areas = "HEX_areas.json"
+              with open(filename_areas, "w") as f:
+                     json.dump(HEX_areas, f, indent=4)
 
-       filename_temps = "HEX_temps.json"
-       with open(filename_temps, "w") as f:
-              json.dump(All_temps, f, indent=4)
+              filename_temps = "HEX_temps.json"
+              with open(filename_temps, "w") as f:
+                     json.dump(All_temps, f, indent=4)
 
        all_H2_results = {
             "final_states": data_per_condition,
