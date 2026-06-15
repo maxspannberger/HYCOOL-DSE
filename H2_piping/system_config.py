@@ -74,4 +74,6 @@ class H2SystemConfig:
     HTS_channels = 1
 
     FPI_relaxation = 0.3    # relaxation for fixed point iteration to stabilize convergence
-    
+
+    # corner loss factor
+    corner_loss_factor: float = 1.4         # factor to overestimate pressure losses in corner instead of underestimating
