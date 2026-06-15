@@ -152,8 +152,9 @@ def run(P_opt=None, off_design_cases=None, input_conditions=None, cfg=None, show
         cfg.cycle.P_target = P_opt
     if off_design_cases is not None:
         cfg.offdesign.P_shaft_cases = off_design_cases
-    if input_conditions is not None:
-        cfg.cycle.P_pre_comp = input_conditions["p"]
+    # if input_conditions is not None:
+    #     cfg.cycle.P_pre_comp = input_conditions["p"]
+    # TODO: adapt for initial conditions per flight condition
 
     # --- 1. Design-point cycle ---
     engine = GasTurbineCycle.from_config(cfg).size(cea=cea)
