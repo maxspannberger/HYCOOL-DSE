@@ -27,6 +27,32 @@ Either edit the defaults below in place, or build a tweaked copy:
 
 All dataclasses are mutable on purpose so that downstream studies can
 override values without subclassing.
+
+
+POWERS:
+    - OEI:      3038    kW
+    - Cruise:   2179    kW
+    - Climb:    2747    kW
+    - Reserve:  
+    - Approach: 690     kW
+    - Takeoff:  2800    kW
+
+
+Off-Design Inputs
+-----------------
+Parameters that you do not want to define yourself can be left as 'None'
+Directly modifying parameters such as:
+    T_pre_comp
+    P_pre_comp
+    Q_regen_max
+    etc...
+allows you to set the pre-determined limits for a specific off-design scenario
+i.e.
+    Optimal design:
+        T_pre_comp  = 145   K
+    Off-design:
+        T_pre_comp  = 200   K
+
 """
 
 from dataclasses import dataclass, field
@@ -39,14 +65,14 @@ from typing import List, Optional
 @dataclass
 class CycleConfig:
     # Sizing target
-    P_target:       float = 2.0e6           # W, net shaft power target
+    P_target:       float = 2.179e6           # W, net shaft power target
 
     # Ambient / flight conditions
     P_ambient:      float = 0.38            # bar, ambient static pressure
     M0:             float = 0.7             # cruise Mach
 
     # Core cycle
-    TIT:            float = 1500.0          # K, turbine inlet temperature
+    TIT:            float = 1600.0          # K, turbine inlet temperature
     PR_HPC:         float = 7.0             # HPC pressure ratio
     eta_HPC:        float = 0.92
     eta_CC:         float = 0.995
@@ -55,21 +81,24 @@ class CycleConfig:
     eta_HEX:        float = 0.92
     eta_mech:       float = 0.99
     eta_diff:       float = 0.97
+    mdot_boiloff:   float = 0.02
 
     # Recuperator
     eta_regen:      float = 0.775
     eta_regen_p:    float = 0.95
     USE_REGEN:      bool  = True
     FULL_EXPANSION: bool  = True
-    REGEN_FIRST:    bool  = True
+    REGEN_FIRST:    bool  = False
     Regen_Fraction: float = 0.775
 
     # Hydrogen circuit
     P_pre_comp:     float = 25.0            # bar
-    T_pre_comp:     float = 91.0            # K
+    T_pre_comp:     float = 145.0           # K
     PH1:            float = 150.0           # bar
-    TH2:            float = 890.0           # K
-    eta_compressor: float = 0.7
+    TH2:            float = 800.0           # K (legacy seed; TH2 is now set
+                                            #    dynamically to the H2 HEX hot-
+                                            #    side inlet temperature)
+    eta_compressor: float = 0.85
     eta_H2T:        float = 0.92
     fluid:          str   = "ParaHydrogen"
     LHV_H2:         float = 120e6           # J/kg
@@ -91,9 +120,15 @@ class OffDesignConfig:
     # If None, defaults to the design-point recuperator duty.
     Q_regen_max: Optional[float] = None     # W
 
-    # Cases to evaluate. The first is the headline OEI / peak point;
-    # the sweep is over [P_min, P_max] with n_points samples.
-    P_shaft_cases: List[float] = field(default_factory=lambda: [3.08e6])
+    # H2 feed temperature at off-design (cryogenic feed to the H2 compressor).
+    # If None, falls back to the design-point T_pre_comp.
+    T_pre_comp:  Optional[float] = 180     # K
+
+    # H2 feed pressure at off-design (cryogenic feed to the H2 compressor).
+    # If None, falls back to the design-point P_pre_comp.
+    P_pre_comp:  Optional[float] = None    # bar
+
+    P_shaft_cases: List[float] = field(default_factory=lambda: [3.075e6])
     P_sweep_min:   float = 0.6e6
     P_sweep_max:   float = 3.0e6
     P_sweep_n:     int   = 30
@@ -116,8 +151,8 @@ class DimensionalConfig:
     # ---- HPT (axial, combustion products) ----
     HPT_Inlet_HTR:   float = 0.80
     HPT_Hub_Margin:  float = 0.90           # outlet-hub floor = HPC_inlet_hub * margin
-    HPT_U_tip:       float = 400.0          # m/s
-    HPT_Psi:         float = 1.5
+    HPT_U_tip:       float = 500.0          # m/s
+    HPT_Psi:         float = 1.75
     HPT_BladeChord:  float = 0.04           # m
     HPT_Spacing:     float = 0.3
     HPT_M_ax:        float = 0.3
@@ -131,7 +166,7 @@ class DimensionalConfig:
     # ---- Mass estimation anchors ----
     SP_turboshaft:   float = 10.0e3         # W/kg, GE T408 anchor
     SP_recup:        float = 14.0e3         # W/kg, Microfire recuperator
-    system_margin:   float = 0.50           # fraction of bare engine + recup
+    system_margin:   float = 0.23           # fraction of bare engine + recup
 
     # DLR V2500 hot-section mass fractions (Oestreicher et al. 2025)
     m_HPC_kg_ref:    float = 284.0
@@ -159,7 +194,10 @@ class ExpanderConfig:
 class OutputConfig:
     csv_path:     str  = "propulsion_results.csv"
     print_report: bool = True
-    show_plots:   bool = False              # set True to call .plot() methods
+    show_plots:   bool = False              # set True to display plots interactively
+    save_plots:   bool = True               # write report-ready PNGs to plots_dir
+    plots_dir:    str  = "plots"            # output directory for PNGs
+    plot_dpi:     int  = 200                # raster resolution for PNGs
 
 
 # =====================================================================

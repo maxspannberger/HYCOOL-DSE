@@ -18,7 +18,7 @@ h_out_real          = h_in - (h_in - h_out_Isentropic) * eta_Turboexp
 delta_h             = h_in - h_out_real
 
 
-sigma_max           = 900e6                 # Pa, maximum stress for material (IN718)
+sigma_max           = 1400e6                 # Pa, maximum stress for material (IN718)
 rho_material        = 8190                  # kg/m3
 shape_factor        = 0.30                  # between 0.3-0.6 according to clanker
 

@@ -39,6 +39,10 @@ from rich.columns import Columns
 from rich import box
 
 from TurbineSizing import GasTurbineCycle
+from plot_style import (
+    apply_style, save_figure, cyan_tones,
+    CYAN_PALETTE, NEUTRAL_GREY, TEXT_GREY, GRID_GREY,
+)
 
 
 # ----------------------------------------------------------------------
@@ -405,12 +409,20 @@ class DimensionalSizing:
     # ------------------------------------------------------------------
     # Cross-section diagram
     # ------------------------------------------------------------------
-    def plot(self):
+    def plot(self, save_dir=None, show=True):
+        """
+        Light-themed, report-ready cross-section.
+
+        Components are coloured by a single muted-cyan tonal scale, ordered
+        loosely by local gas temperature (pale = cool air at HPC inlet,
+        deep = hottest gas in the rich combustor zone).
+        """
         if self.results is None:
             raise RuntimeError("Call size() before plot().")
+
+        apply_style()
         r = self.results
 
-        # Geometry handles
         inlet_tip,  inlet_hub   = r["HPC_inlet_tip"],  r["HPC_inlet_hub"]
         outlet_tip, outlet_hub  = r["HPC_outlet_tip"], r["HPC_outlet_hub"]
         HPT_inlet_tip           = r["HPT_inlet_tip"]
@@ -423,59 +435,64 @@ class DimensionalSizing:
         CC_L                    = r["CC_L"]
         Stages_HPC, Stages_HPT  = r["HPC_Stages"], r["HPT_Stages"]
 
-        fig, ax = plt.subplots(figsize=(20, 10))
+        fig, ax = plt.subplots(figsize=(16, 7))
         ax.set_aspect('equal')
-        ax.set_facecolor('#0d1117')
-        fig.patch.set_facecolor('#0d1117')
 
-        COL_HPC, COL_HPT       = '#4a9eff', '#4aff8a'
-        COL_CC_RICH, COL_CC_QUENCH, COL_CC_LEAN = "#ff3535", "#ff9500", "#fff235"
-        COL_CASING             = '#cccccc'
-        COL_SHAFT_FILL, COL_SHAFT_EDGE = '#555555', '#999999'
-        COL_TEXT, COL_GRID, COL_DIM = '#ffffff', '#2a2a2a', '#aaaaaa'
+        # --- Cyan tonal assignments (pale -> deep == cool -> hot) ----------
+        # HPC inlet is the coolest gas; rich zone is the hottest.
+        COL_HPC        = CYAN_PALETTE[1]   # pale
+        COL_CC_LEAN    = CYAN_PALETTE[3]   # medium  (lean zone at TIT)
+        COL_CC_QUENCH  = CYAN_PALETTE[4]   # deep    (quench mixing)
+        COL_CC_RICH    = CYAN_PALETTE[5]   # shadow  (rich zone, hottest)
+        COL_HPT        = CYAN_PALETTE[3]   # medium  (post-combustion, expanding)
+        COL_CASING     = NEUTRAL_GREY
+        COL_SHAFT_FILL = "#d9d9d9"
+        COL_SHAFT_EDGE = NEUTRAL_GREY
+        COL_DIM        = NEUTRAL_GREY
+        COL_LBL        = "white"   # readable on any cyan tone in the palette
 
         r_shaft = min(inlet_hub, outlet_hub, HPT_inlet_hub, HPT_outlet_hub) * 0.85
 
-        def draw_annulus(x0, x1, rt0, rh0, rt1, rh1, color, alpha=0.72, label=None):
+        def draw_annulus(x0, x1, rt0, rh0, rt1, rh1, color, alpha=0.85, label=None):
             for s in (+1, -1):
                 ax.fill([x0, x1, x1, x0],
                         [s*rt0, s*rt1, s*rh1, s*rh0],
                         color=color, alpha=alpha, zorder=4)
-                ax.plot([x0, x1], [s*rt0, s*rt1], color=COL_CASING, lw=1.8, zorder=5)
-                ax.plot([x0, x1], [s*rh0, s*rh1], color=COL_CASING, lw=1.2, zorder=5)
-                ax.plot([x0, x0], [s*rh0, s*rt0], color=COL_CASING, lw=1.0, zorder=5)
-                ax.plot([x1, x1], [s*rh1, s*rt1], color=COL_CASING, lw=1.0, zorder=5)
+                ax.plot([x0, x1], [s*rt0, s*rt1], color=COL_CASING, lw=1.4, zorder=5)
+                ax.plot([x0, x1], [s*rh0, s*rh1], color=COL_CASING, lw=1.0, zorder=5)
+                ax.plot([x0, x0], [s*rh0, s*rt0], color=COL_CASING, lw=0.8, zorder=5)
+                ax.plot([x1, x1], [s*rh1, s*rt1], color=COL_CASING, lw=0.8, zorder=5)
             if label:
                 xm = 0.5*(x0 + x1)
                 ym = 0.5*(0.5*(rt0+rh0) + 0.5*(rt1+rh1))
-                ax.text(xm, ym, label, color=COL_TEXT, fontsize=9,
-                        ha='center', va='center', fontweight='bold', zorder=7)
+                ax.text(xm, ym, label, color=COL_LBL, fontsize=9.5,
+                        ha='center', va='center', fontweight='semibold', zorder=7)
 
-        def draw_combustor_zone(x0, x1, r0, r1, color, alpha=0.60, label=None):
+        def draw_combustor_zone(x0, x1, r0, r1, color, alpha=0.85, label=None):
             ax.fill([x0, x1, x1, x0], [r0, r1, -r1, -r0],
                     color=color, alpha=alpha, zorder=4)
-            ax.plot([x0, x1], [ r0,  r1], color=COL_CASING, lw=2.0, zorder=5)
-            ax.plot([x0, x1], [-r0, -r1], color=COL_CASING, lw=2.0, zorder=5)
-            ax.plot([x0, x0], [-r0,  r0], color=COL_CASING, lw=1.0, zorder=5)
-            ax.plot([x1, x1], [-r1,  r1], color=COL_CASING, lw=1.0, zorder=5)
+            ax.plot([x0, x1], [ r0,  r1], color=COL_CASING, lw=1.5, zorder=5)
+            ax.plot([x0, x1], [-r0, -r1], color=COL_CASING, lw=1.5, zorder=5)
+            ax.plot([x0, x0], [-r0,  r0], color=COL_CASING, lw=0.8, zorder=5)
+            ax.plot([x1, x1], [-r1,  r1], color=COL_CASING, lw=0.8, zorder=5)
             if label:
                 ax.text(0.5*(x0+x1), 0.25*(r0+r1), label,
-                        color=COL_TEXT, fontsize=9, ha='center', va='center',
-                        fontweight='bold', zorder=7)
+                        color=COL_LBL, fontsize=9.5,
+                        ha='center', va='center', fontweight='semibold', zorder=7)
 
         def draw_transition(x0, x1, rt0, rh0, rt1, rh1):
             for s in (+1, -1):
-                ax.plot([x0, x1], [s*rt0, s*rt1], color=COL_CASING, lw=1.5, zorder=5)
-                ax.plot([x0, x1], [s*rh0, s*rh1], color=COL_CASING, lw=1.0,
+                ax.plot([x0, x1], [s*rt0, s*rt1], color=COL_CASING, lw=1.0, zorder=5)
+                ax.plot([x0, x1], [s*rh0, s*rh1], color=COL_CASING, lw=0.8,
                         linestyle=':', zorder=5)
 
         def dim_arrow(x1, x2, y, label):
             ax.annotate('', xy=(x2, y), xytext=(x1, y),
-                        arrowprops=dict(arrowstyle='<->', color=COL_DIM, lw=1.2))
+                        arrowprops=dict(arrowstyle='<->', color=COL_DIM, lw=0.9))
             ax.text(0.5*(x1+x2), y + 0.005, label, color=COL_DIM,
-                    fontsize=7.5, ha='center', va='bottom', zorder=8)
+                    fontsize=8, ha='center', va='bottom', zorder=8)
 
-        # ---- Layout ----
+        # ---- Layout ----------------------------------------------------
         x_inlet = 0.02
         x       = x_inlet
         x_HPC_start, x_HPC_end = x, x + L_HPC
@@ -493,9 +510,9 @@ class DimensionalSizing:
         x_rich_end   = x + L_rich
         x_quench_end = x_rich_end + L_quench
         x_lean_end   = x_quench_end + L_lean
-        draw_combustor_zone(x,            x_rich_end,   D_rich/2,   D_rich/2,   COL_CC_RICH,   "Rich")
-        draw_combustor_zone(x_rich_end,   x_quench_end, D_rich/2,   D_quench/2, COL_CC_QUENCH, "Quench")
-        draw_combustor_zone(x_quench_end, x_lean_end,   D_quench/2, D_lean/2,   COL_CC_LEAN,   "Lean")
+        draw_combustor_zone(x,            x_rich_end,   D_rich/2,   D_rich/2,   COL_CC_RICH,   label="Rich")
+        draw_combustor_zone(x_rich_end,   x_quench_end, D_rich/2,   D_quench/2, COL_CC_QUENCH, label="Quench")
+        draw_combustor_zone(x_quench_end, x_lean_end,   D_quench/2, D_lean/2,   COL_CC_LEAN,   label="Lean")
         x = x_lean_end
         x_CC_end = x
 
@@ -511,12 +528,13 @@ class DimensionalSizing:
                      COL_HPT, label='HPT')
         x_end = x_HPT_end
 
+        # Shaft (neutral, restrained colour so cyan stays dominant)
         shaft_rect = Rectangle((x_inlet, -r_shaft), x_end - x_inlet, 2*r_shaft,
                                color=COL_SHAFT_FILL, zorder=3, linewidth=0)
         ax.add_patch(shaft_rect)
-        ax.plot([x_inlet, x_end], [ r_shaft,  r_shaft], color=COL_SHAFT_EDGE, lw=1.0, zorder=4)
-        ax.plot([x_inlet, x_end], [-r_shaft, -r_shaft], color=COL_SHAFT_EDGE, lw=1.0, zorder=4)
-        ax.axhline(0, color='#555555', lw=0.8, linestyle='--', zorder=1, alpha=0.7)
+        ax.plot([x_inlet, x_end], [ r_shaft,  r_shaft], color=COL_SHAFT_EDGE, lw=0.8, zorder=4)
+        ax.plot([x_inlet, x_end], [-r_shaft, -r_shaft], color=COL_SHAFT_EDGE, lw=0.8, zorder=4)
+        ax.axhline(0, color=NEUTRAL_GREY, lw=0.6, linestyle='--', zorder=1, alpha=0.6)
 
         y_top      = max(HPT_outlet_tip, D_lean/2)
         y_dim_base = y_top + 0.04
@@ -533,22 +551,23 @@ class DimensionalSizing:
             mpatches.Patch(color=COL_HPT,       label=f'HPT  ({L_HPT*100:.0f} cm, {int(Stages_HPT)} stages)'),
             mpatches.Patch(color=COL_SHAFT_FILL,label=f'Shaft  (r={r_shaft*100:.1f} cm)'),
         ]
-        ax.legend(handles=legend_items, loc='upper right', fontsize=8,
-                  facecolor='#1a1a2e', edgecolor='#555555', labelcolor=COL_TEXT)
+        ax.legend(handles=legend_items, loc='upper right', fontsize=8.5,
+                  frameon=False, labelcolor=TEXT_GREY)
 
-        ax.set_xlabel('Axial position [m]', color=COL_TEXT, fontsize=10)
-        ax.set_ylabel('Radius [m]',         color=COL_TEXT, fontsize=10)
-        ax.set_title('Gas Turbine Cross-Section',
-                     color=COL_TEXT, fontsize=12, fontweight='bold', pad=12)
-        ax.tick_params(colors=COL_TEXT, labelsize=8)
-        for spine in ax.spines.values():
-            spine.set_color(COL_GRID)
+        ax.set_xlabel('Axial position  [m]')
+        ax.set_ylabel('Radius  [m]')
+        ax.set_title('Gas-turbine cross-section', pad=10)
         ax.set_xlim(x_inlet - 0.02, x_end + 0.02)
         y_extent = max(HPT_outlet_tip, D_lean/2) + 0.14
         ax.set_ylim(-y_extent, y_extent)
-        ax.grid(True, color=COL_GRID, lw=0.5, alpha=0.6)
-        plt.tight_layout()
-        plt.show()
+        ax.grid(True, color=GRID_GREY, lw=0.5, alpha=0.6)
+        fig.tight_layout()
+
+        if save_dir is not None:
+            return save_figure(fig, "cross_section", save_dir)
+        if show:
+            plt.show()
+        return fig
 
 
 # ----------------------------------------------------------------------

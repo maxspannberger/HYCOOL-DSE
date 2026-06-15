@@ -37,6 +37,7 @@ from TurbineSizing  import GasTurbineCycle
 from OffDesign      import OffDesignEvaluator
 from DimSizing      import DimensionalSizing
 from ExpanderSizing import PistonExpander
+from plot_style     import apply_style
 
 
 # ----------------------------------------------------------------------
@@ -175,10 +176,42 @@ def run(cfg=None):
         dim.report()
         expander.report()
 
-    if cfg.output.show_plots:
-        engine.plot_ts()
-        engine.plot_ts_h2()
-        dim.plot()
+    # --- Plots (PNGs for reports + optional interactive display) -----
+    if cfg.output.save_plots or cfg.output.show_plots:
+        apply_style()
+
+        plots_dir = Path(cfg.output.plots_dir) if cfg.output.save_plots else None
+        save_arg = str(plots_dir) if plots_dir is not None else None
+
+        # Run a sweep for the off-design 4-panel plot (separate from headline
+        # P_shaft_cases). Sweep is only run if plots are being produced.
+        try:
+            sweep = od_eval.sweep(
+                P_min=cfg.offdesign.P_sweep_min,
+                P_max=cfg.offdesign.P_sweep_max,
+                n_points=cfg.offdesign.P_sweep_n,
+            )
+        except Exception as exc:                       # noqa: BLE001
+            print(f"[warn] OffDesign sweep failed: {exc}")
+            sweep = []
+
+        # Save first (figures get closed); then re-render for interactive show.
+        if cfg.output.save_plots:
+            engine.plot_ts(save_dir=save_arg)
+            engine.plot_ts_h2(save_dir=save_arg)
+            engine.plot_ts_overlay(save_dir=save_arg)
+            dim.plot(save_dir=save_arg)
+            if sweep:
+                od_eval.plot_sweep(sweep, save_dir=save_arg)
+            print(f"[ok] Plots written to: {plots_dir.resolve()}")
+
+        if cfg.output.show_plots:
+            engine.plot_ts()
+            engine.plot_ts_h2()
+            engine.plot_ts_overlay()
+            dim.plot()
+            if sweep:
+                od_eval.plot_sweep(sweep)
 
     # --- Build per-case parameter maps; CSV is written vertically with one
     #     column per case and one row per parameter.

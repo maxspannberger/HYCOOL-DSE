@@ -63,7 +63,7 @@ class PistonExpander:
 
         fluid   = e.fluid
         P_HC    = e.PH1
-        T_HC    = e.TH2
+        T_HC    = design["TH2"]   # TH2 is now dynamic (set in TurbineSizing)
         P_HD    = design["P3_H2"]
         mdot    = results["mdot_f"]
 

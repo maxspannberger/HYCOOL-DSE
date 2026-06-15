@@ -9,6 +9,10 @@ from rich.panel import Panel
 from rich import box
 from rich.rule import Rule
 from TurbineSizing import GasTurbineCycle
+from plot_style import (
+    apply_style, save_figure,
+    cyan_tones, NEUTRAL_GREY, TEXT_GREY, ACCENT_WARN,
+)
 
 
 
@@ -23,6 +27,8 @@ class OffDesignEvaluator:
             TIT_tol     = 1e-4,
             max_iter    = 100,
             Q_regen_max = None,
+            T_pre_comp  = None,
+            P_pre_comp  = None,
     ):
         self.engine     = engine
         self.TIT_limit  = TIT_limit
@@ -42,16 +48,43 @@ class OffDesignEvaluator:
         self.P2_design              = d["P2"]                          # fixed HPC exit pressure [bar]
         self.T1_design              = d["T1"]                          # fixed HPC inlet temperature [K]
         self.T2_design              = d["T2"]                          # fixed HPC exit temperature [K]
-        self.Cp_HPC_design          = d["Cp_HPC"] 
+        self.Cp_HPC_design          = d["Cp_HPC"]
         self.P_HPC_design           = results["P_HPC_W"]
 
         self.w_compressor_design    = d["w_compressor"]                 # Compressor specific work
         self.dh_h2_design           = d["dh_h2"]                        # HEX heat addition per kg fuel
         self.w_H2T_design           = d["w_H2T"]                        # Gh2 turbine specific power output
-        self.h2_compressorout       = d["h2_compressorout"]
         self.P3_H2_design           = d["P3_H2"]
         self.h3_actual_design       = d["h3_actual"]
         self.TH3_design             = d["TH3"]
+
+        # --- Off-design H2 feed condition ---
+        # Allow the cryogenic feed temperature and/or pressure into the H2 fuel
+        # compressor to differ at off-design. h2_compressorout (state at H2 HEX
+        # cold-side inlet) and w_compressor scale with these. If an override is
+        # None, the design point value is used.
+        self.T_pre_comp_od = (
+            T_pre_comp if T_pre_comp is not None else engine.T_pre_comp
+        )
+        self.P_pre_comp_od = (
+            P_pre_comp if P_pre_comp is not None else engine.P_pre_comp
+        )
+        feed_changed = (
+            self.T_pre_comp_od != engine.T_pre_comp or
+            self.P_pre_comp_od != engine.P_pre_comp
+        )
+        if feed_changed:
+            h1_od = PropsSI("H", "P", self.P_pre_comp_od*1e5,
+                            "T", self.T_pre_comp_od, engine.fluid)
+            s1_od = PropsSI("S", "P", self.P_pre_comp_od*1e5,
+                            "T", self.T_pre_comp_od, engine.fluid)
+            h2s_od = PropsSI("H", "P", engine.PH1*1e5, "S", s1_od, engine.fluid)
+            h2_od  = h1_od + (h2s_od - h1_od) / engine.eta_compressor
+            self.h2_compressorout = h2_od
+            self.w_compressor_od  = h2_od - h1_od
+        else:
+            self.h2_compressorout = d["h2_compressorout"]
+            self.w_compressor_od  = d["w_compressor"]
 
     # ------------------------------------------------------------------
     # Build from external config
@@ -70,6 +103,8 @@ class OffDesignEvaluator:
             TIT_tol     = o.TIT_tol,
             max_iter    = o.max_iter,
             Q_regen_max = o.Q_regen_max,
+            T_pre_comp  = o.T_pre_comp,
+            P_pre_comp  = o.P_pre_comp,
         )
 
     # ------------------------------------------------------------------
@@ -88,6 +123,7 @@ class OffDesignEvaluator:
             "P_shaft", "TIT_od", "mdot_f", "mdot_air", "mdot_aux",
             "aux_active", "aux_fraction",
             "OF", "T2p", "T5", "T_exh_final",
+            "TH2", "T_hex_hot_in", "P_H2T_W", "P_H2comp_W", "h2_net_W",
             "Q_regen_W", "Q_regen_W_max", "regen_capped",
             "eta_total", "SFC", "SFC_hr", "q_in_W",
             "tit_exceeded", "hex_feasible", "approach_min",
@@ -127,13 +163,6 @@ class OffDesignEvaluator:
 
         def OF_for(T_air_in):
             return (e.LHV_H2 * e.eta_CC / (e._air_h(Pc, TIT_od) - e._air_h(Pc, T_air_in)))
-        
-        dh_h2           = self.dh_h2_design
-        OF              = OF_for(T2)
-        T2p             = T2
-        T_hex_hot_in    = T5
-        T_exh_final     = T5
-        regen_capped    = False
 
         # Convert the duty cap into the maximum air-side temperature rise it can support.
         # Q_regen_W = mdot_air * cp_air_reg * (T2p - T2)  =>  dT_pre_max = Q_max / (mdot_air * cp_air_reg)
@@ -142,42 +171,58 @@ class OffDesignEvaluator:
         # being the actual (possibly augmented) flow rather than the design value.
         dT_pre_max = self.Q_regen_W_max / (mdot_air * cp_air_reg)
 
-        for _ in range(50):
-            if e.USE_REGEN:
+        # --- Determine the H2 HEX hot-side inlet temperature ---
+        # With REGEN_FIRST=True the air-side preheat dpre and resulting OF do not
+        # depend on dh_h2 (the recuperator sees T5 directly), so T_after_reg and
+        # hence T_hex_hot_in are fully determined before the O/F iteration. With
+        # REGEN_FIRST=False or no recuperator, T_hex_hot_in = T5 immediately.
+        if e.USE_REGEN and e.REGEN_FIRST:
+            dpre_ideal   = e.eta_regen * (T5 - T2)
+            dpre         = min(dpre_ideal, dT_pre_max)
+            regen_capped = dpre_ideal > dT_pre_max
+            T2p          = T2 + dpre
+            OF           = OF_for(T2p)
+            r_pre        = OF * cp_air_reg / ((OF + 1) * Cp_HPT)
+            T_hex_hot_in = T5 - dpre * r_pre
+        else:
+            T_hex_hot_in = T5
+            regen_capped = False
+            # OF/T2p resolved below for these cases.
+            OF  = OF_for(T2)
+            T2p = T2
 
-                r = OF * cp_air_reg / ((OF+1) * Cp_HPT)     # Heat capacity ratio between both recuperator sides
+        # --- Set TH2 to its maximum (= H2 HEX hot-side inlet) and derive
+        # downstream H2-side quantities per kg fuel ---
+        TH2_od      = T_hex_hot_in
+        h_hexout    = PropsSI("H", "P", e.PH1 * 1e5, "T", TH2_od, e.fluid)
+        dh_h2       = h_hexout - self.h2_compressorout
+        s2_in_h2    = PropsSI("S", "P", e.PH1 * 1e5, "T", TH2_od, e.fluid)
+        h3_ideal_h2 = PropsSI("H", "P", self.P3_H2_design * 1e5, "S", s2_in_h2, e.fluid)
+        w_H2T       = (h_hexout - h3_ideal_h2) * e.eta_H2T
 
-                if e.REGEN_FIRST:
-                    T_reg_in     = T5
-                    dpre_ideal   = e.eta_regen * (T_reg_in - T2)
-                    dpre         = min(dpre_ideal, dT_pre_max)
-                    regen_capped = dpre_ideal > dT_pre_max
-                    T2p          = T2 + dpre
-                    T_after_reg  = T_reg_in - dpre * r
-                    T_hex_hot_in = T_after_reg
-                    T_exh_final  = T_hex_hot_in - dh_h2 / ((OF + 1) * Cp_HPT)
-                else:
-                    T_hex_hot_in = T5
-                    T_after_hex  = T5 - dh_h2 / ((OF + 1) * Cp_HPT)
-                    T_reg_in     = T_after_hex
-                    dpre_ideal   = e.eta_regen * max(T_reg_in - T2, 0.0)
-                    dpre         = min(dpre_ideal, dT_pre_max)
-                    regen_capped = dpre_ideal > dT_pre_max
-                    T2p          = T2 + dpre
-                    T_exh_final  = T_reg_in - dpre * r
-            else:
-                T2p          = T2
-                T_hex_hot_in = T5
-                T_exh_final  = T5 - dh_h2 / (OF_for(T2) + 1)
-
-            OF_new  = OF_for(T2p)           # Hotter pre-heated air => Less fuel needed => new O/F ratio
-
-            if abs(OF_new - OF) < 1e-9:
+        # --- Finish exhaust/O-F solve ---
+        if e.USE_REGEN and e.REGEN_FIRST:
+            # OF, T2p, T_hex_hot_in already fixed; just compute final stack T.
+            T_exh_final = T_hex_hot_in - dh_h2 / ((OF + 1) * Cp_HPT)
+        elif e.USE_REGEN:
+            # REGEN_FIRST=False: T_after_hex couples T2p -> OF -> dpre -> T2p.
+            T_exh_final = T5
+            for _ in range(50):
+                r            = OF * cp_air_reg / ((OF + 1) * Cp_HPT)
+                T_after_hex  = T5 - dh_h2 / ((OF + 1) * Cp_HPT)
+                T_reg_in     = T_after_hex
+                dpre_ideal   = e.eta_regen * max(T_reg_in - T2, 0.0)
+                dpre         = min(dpre_ideal, dT_pre_max)
+                regen_capped = dpre_ideal > dT_pre_max
+                T2p          = T2 + dpre
+                T_exh_final  = T_reg_in - dpre * r
+                OF_new       = OF_for(T2p)
+                if abs(OF_new - OF) < 1e-9:
+                    OF = OF_new
+                    break
                 OF = OF_new
-                break
-            OF = OF_new
-
-        if not e.USE_REGEN:
+        else:
+            # No recuperator.
             T_exh_final = T5 - dh_h2 / ((OF + 1) * Cp_HPT)
 
         Q_regen_per_mf  = OF * cp_air_reg * (T2p - T2)
@@ -196,6 +241,9 @@ class OffDesignEvaluator:
         "Q_regen_per_mf": Q_regen_per_mf,
         "cp_air_reg":    cp_air_reg,
         "regen_capped":  regen_capped,
+        "TH2":           TH2_od,
+        "dh_h2":         dh_h2,
+        "w_H2T":         w_H2T,
     }
 
 
@@ -215,8 +263,8 @@ class OffDesignEvaluator:
 
         P_HPT  = od["Cp_HPT"] * mdot_tot * (od["T4"] - od["T5"])
         P_HPC  = self.P_HPC_design * (mdot_air / self.mdot_air_design)
-        P_H2T  = self.w_H2T_design       * mdot_f
-        P_comp = self.w_compressor_design * mdot_f
+        P_H2T  = od["w_H2T"]          * mdot_f
+        P_comp = self.w_compressor_od * mdot_f
 
         return (P_HPT + P_H2T - P_HPC - P_comp) * self.engine.eta_mech
         
@@ -306,7 +354,7 @@ class OffDesignEvaluator:
 
         # HEX pinch check
         C_hot     = mdot_tot * od["Cp_HPT"]
-        Q_hex     = self.dh_h2_design * mdot_f
+        Q_hex     = od["dh_h2"] * mdot_f
         T_hot_in  = od["T_hex_hot_in"]
         T_hot_out = T_hot_in - Q_hex / C_hot
 
@@ -315,6 +363,10 @@ class OffDesignEvaluator:
         T_cold   = np.array([PropsSI("T", "P", e.PH1*1e5, "H", h, e.fluid) for h in h_cold])
         T_hot_arr = T_hot_out + q_arr / C_hot
         approach_min = (T_hot_arr - T_cold).min()
+
+        # Afterburner heat addition
+
+        
 
         return {
             "P_shaft":        P_shaft,
@@ -325,6 +377,11 @@ class OffDesignEvaluator:
             "T2p":            od["T2p"],
             "T5":             od["T5"],
             "T_exh_final":    od["T_exh_final"],
+            "TH2":            od["TH2"],
+            "T_hex_hot_in":   od["T_hex_hot_in"],
+            "P_H2T_W":        od["w_H2T"]          * mdot_f,
+            "P_H2comp_W":     self.w_compressor_od * mdot_f,
+            "h2_net_W":       (od["w_H2T"] - self.w_compressor_od) * mdot_f,
             "Q_regen_W":      od["Q_regen_per_mf"] * mdot_f,
             "Q_regen_W_max":  self.Q_regen_W_max,
             "regen_capped":   od["regen_capped"],
@@ -426,6 +483,32 @@ class OffDesignEvaluator:
             f"{des['T_exh_final']:.1f}",
             "K",
         )
+        t.add_row(
+            "H2 HEX outlet T (TH2, dynamic)",
+            f"{r['TH2']:.1f}",
+            f"{des['TH2']:.1f}",
+            "K",
+        )
+        t.add_row(
+            "GH2 expander output",
+            f"{r['P_H2T_W']/1e3:.2f}",
+            f"{des['P_H2T_W']/1e3:.2f}",
+            "kW",
+        )
+        t.add_row(
+            "H2 compressor draw",
+            f"{r['P_H2comp_W']/1e3:.2f}",
+            f"{des['Power_compressor_W']/1e3:.2f}",
+            "kW",
+        )
+        h2_net_color    = "green" if r["h2_net_W"] >= 0 else "red"
+        h2_net_color_des = "green" if des["h2_net_W"] >= 0 else "red"
+        t.add_row(
+            "Net GH2 circuit",
+            f"[{h2_net_color}]{r['h2_net_W']/1e3:+.2f}[/{h2_net_color}]",
+            f"[{h2_net_color_des}]{des['h2_net_W']/1e3:+.2f}[/{h2_net_color_des}]",
+            "kW",
+        )
         regen_color = "yellow bold" if r["regen_capped"] else "yellow"
         regen_warn  = "  [yellow][!] CAPPED[/yellow]" if r["regen_capped"] else ""
         t.add_row(
@@ -520,75 +603,79 @@ class OffDesignEvaluator:
     # ------------------------------------------------------------------
     # Public: plot sweep results
     # ------------------------------------------------------------------
-    def plot_sweep(self, sweep_results):
+    def plot_sweep(self, sweep_results, save_dir=None, show=True):
+        """
+        Four-panel off-design sweep: TIT, thermal efficiency, SFC, O/F.
+
+        All curves share one muted-cyan tone (per-panel tone selected from
+        the palette) so the figure reads as one cohesive figure rather than
+        four candy-coloured plots.
+        """
         if not sweep_results:
             raise ValueError("sweep_results is empty -- nothing to plot.")
 
+        apply_style()
+
         des = self.engine.results
 
-        P_MW  = np.array([r["P_shaft"] / 1e6      for r in sweep_results])
-        TIT   = np.array([r["TIT_od"]             for r in sweep_results])
-        eta   = np.array([r["eta_total"] * 100    for r in sweep_results])
-        SFC   = np.array([r["SFC_hr"]             for r in sweep_results])
-        OF    = np.array([r["OF"]                 for r in sweep_results])
+        P_MW  = np.array([r["P_shaft"]   / 1e6 for r in sweep_results])
+        TIT   = np.array([r["TIT_od"]          for r in sweep_results])
+        eta   = np.array([r["eta_total"] * 100 for r in sweep_results])
+        SFC   = np.array([r["SFC_hr"]          for r in sweep_results])
+        OF    = np.array([r["OF"]              for r in sweep_results])
 
         P_design_MW = des["total_net_W"] / 1e6
 
-        fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+        # Four cyan tones, one per panel -- different enough to feel distinct
+        # when the four subplots sit side by side, all in the same family.
+        c_tit, c_eta, c_sfc, c_of = cyan_tones(4, lightest=2, darkest=6)
+
+        fig, axes = plt.subplots(2, 2, figsize=(11, 7.6))
         fig.suptitle(
-            "Off-Design Performance Sweep\n"
+            "Off-design performance sweep   "
             "(fixed air mass flow, variable TIT and fuel flow)",
-            fontsize=13,
+            fontsize=12.5, color=TEXT_GREY, y=0.995,
         )
 
-        # -- TIT vs power --
+        def _decorate(ax, ylabel, title, curve_colour, show_tit_limit=False):
+            ax.axvline(P_design_MW, color=NEUTRAL_GREY, linestyle=':', lw=1.0,
+                       label=f"Design point ({P_design_MW:.2f} MW)")
+            if show_tit_limit:
+                ax.axhline(self.TIT_limit, color=ACCENT_WARN, linestyle='--', lw=1.2,
+                           label=f"TIT limit ({self.TIT_limit:.0f} K)")
+            ax.set_xlabel("Net shaft power  [MW]")
+            ax.set_ylabel(ylabel)
+            ax.set_title(title)
+            ax.legend(loc="best", fontsize=8.5)
+
+        # TIT vs power
         ax = axes[0, 0]
-        ax.plot(P_MW, TIT, 'b-o', markersize=4, label="TIT")
-        ax.axhline(self.TIT_limit, color='red', linestyle='--', linewidth=1.5,
-                   label=f"TIT limit ({self.TIT_limit:.0f} K)")
-        ax.axvline(P_design_MW, color='gray', linestyle=':', linewidth=1.2,
-                   label=f"Design point ({P_design_MW:.2f} MW)")
-        ax.set_xlabel("Net shaft power [MW]")
-        ax.set_ylabel("TIT [K]")
-        ax.set_title("Turbine Inlet Temperature")
-        ax.legend(fontsize=8)
-        ax.grid(True, alpha=0.4)
+        ax.plot(P_MW, TIT, '-o', color=c_tit, lw=1.8, ms=4.2)
+        _decorate(ax, "TIT  [K]", "Turbine inlet temperature", c_tit,
+                  show_tit_limit=True)
 
-        # -- Thermal efficiency vs power --
+        # Thermal efficiency vs power
         ax = axes[0, 1]
-        ax.plot(P_MW, eta, 'g-o', markersize=4)
-        ax.axvline(P_design_MW, color='gray', linestyle=':', linewidth=1.2,
-                   label=f"Design point ({P_design_MW:.2f} MW)")
-        ax.set_xlabel("Net shaft power [MW]")
-        ax.set_ylabel("Thermal efficiency [%]")
-        ax.set_title("Thermal Efficiency")
-        ax.legend(fontsize=8)
-        ax.grid(True, alpha=0.4)
+        ax.plot(P_MW, eta, '-o', color=c_eta, lw=1.8, ms=4.2)
+        _decorate(ax, "Thermal efficiency  [%]", "Thermal efficiency", c_eta)
 
-        # -- SFC vs power --
+        # SFC vs power
         ax = axes[1, 0]
-        ax.plot(P_MW, SFC, 'r-o', markersize=4)
-        ax.axvline(P_design_MW, color='gray', linestyle=':', linewidth=1.2,
-                   label=f"Design point ({P_design_MW:.2f} MW)")
-        ax.set_xlabel("Net shaft power [MW]")
-        ax.set_ylabel("SFC [kg/kW/hr]")
-        ax.set_title("Specific Fuel Consumption")
-        ax.legend(fontsize=8)
-        ax.grid(True, alpha=0.4)
+        ax.plot(P_MW, SFC, '-o', color=c_sfc, lw=1.8, ms=4.2)
+        _decorate(ax, "SFC  [kg/kW/hr]", "Specific fuel consumption", c_sfc)
 
-        # -- O/F ratio vs power --
+        # O/F vs power
         ax = axes[1, 1]
-        ax.plot(P_MW, OF, 'm-o', markersize=4)
-        ax.axvline(P_design_MW, color='gray', linestyle=':', linewidth=1.2,
-                   label=f"Design point ({P_design_MW:.2f} MW)")
-        ax.set_xlabel("Net shaft power [MW]")
-        ax.set_ylabel("O/F ratio [-]")
-        ax.set_title("Oxidiser-to-Fuel Ratio")
-        ax.legend(fontsize=8)
-        ax.grid(True, alpha=0.4)
+        ax.plot(P_MW, OF, '-o', color=c_of, lw=1.8, ms=4.2)
+        _decorate(ax, "O/F  [–]", "Oxidiser-to-fuel ratio", c_of)
 
-        plt.tight_layout()
-        plt.show()
+        fig.tight_layout(rect=(0, 0, 1, 0.97))
+
+        if save_dir is not None:
+            return save_figure(fig, "offdesign_sweep", save_dir)
+        if show:
+            plt.show()
+        return fig
 
 if __name__ == "__main__":
     # Standalone smoke test: drive everything from config.py.
