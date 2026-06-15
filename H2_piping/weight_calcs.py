@@ -59,8 +59,8 @@ rho_MLI = 21  # kg/m^3, estimated value for MLI insulation
 vacuum_boundary_thickness = 0.002  # m
 n_fittings = 94
 tank_wing_line_length = 15
-centre_1_motor_line_lenght = 8.45
-motor_1_motor_2_line_lenght = 5.5
+centre_1_motor_line_lenght = 7.5
+motor_1_motor_2_line_lenght = 7.5
 sweep_quarter_chord = 10.56
 pipe_length = 49.64 + 12 - 0.0508 * n_fittings + 2 * tank_wing_line_length + 4 * centre_1_motor_line_lenght + 4 * motor_1_motor_2_line_lenght  # 12 m of tank piping, estimated
 
