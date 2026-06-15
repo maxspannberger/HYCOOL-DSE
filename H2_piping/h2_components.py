@@ -173,7 +173,7 @@ def heat_transfer_coefficient(T1, T2, T_comp, p1, p2, m_dot, d, fluid):
 # Iterates through the defined system components to calculate fluid states.
 # Updates mass flow rate when splits or merges occur.
 # =============================================================================
-def solve_system(system, m_dot, T_amb, input_states=None, initial_conditions=None):
+def solve_system(system, m_dot, T_amb, input_states=None, initial_conditions=None, show=False):
     
     if input_states == None:
         states = {'p'   : [],
@@ -199,7 +199,7 @@ def solve_system(system, m_dot, T_amb, input_states=None, initial_conditions=Non
             m_dot = m_dot * comp[1] / comp[-1]
         else:
             # Propagate the state through the specific component solver
-            component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=False, system=system, i=i, initial_conditions=initial_conditions)
+            component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=False, system=system, i=i, initial_conditions=initial_conditions, show=show)
             initial_conditions = None # just a quick patch, better fix later
             
             states['p'].append(component_result['p'])
@@ -240,7 +240,7 @@ class Tank:
     
     # Function that can be called to calculate the evolution of the state variables
     # in the component
-    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None, initial_conditions=None):
+    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None, initial_conditions=None, show=False):
         
         # Account for isentropic expansion as hydrogen exits the pipe
         u1 = config.tank_initial_u
@@ -280,7 +280,7 @@ class Pump:
 
     # Function that can be called to calculate the evolution of the state variables
     # in the component
-    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None, initial_conditions=None):
+    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None, initial_conditions=None, show=False):
         T1, p1, h1, rho1, u1 = get_input_states(states, system, i, m_dot, self.fluid)
         
         s1 = CP.PropsSI('S', 'P', p1, 'H', h1, self.fluid)
@@ -325,7 +325,8 @@ class Pump:
         
         
         power_W = m_dot * w_real / self.electric_efficiency
-        print(f"[{self.name}] Pumping to {p2/100000:.1f} bar. (Power per pump: {power_W/1000:.2f} kW)")
+        if show:
+            print(f"[{self.name}] Pumping to {p2/100000:.1f} bar. (Power per pump: {power_W/1000:.2f} kW)")
         
         results = {'T':    np.array([T2]), 
                    'p':    np.array([p2]),
@@ -372,7 +373,7 @@ class Pipe:
     
     # Function that can be called to calculate the evolution of the state variables
     # in the component
-    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None, initial_conditions=None):
+    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None, initial_conditions=None, show=False):
         
         if initial_conditions is None:
             T1, p1, h1, rho1, u1 = get_input_states(states, system, i, m_dot, self.fluid)
@@ -489,7 +490,7 @@ class Corner:
     
     # Function that can be called to calculate the evolution of the state variables
     # in the component
-    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None, initial_conditions=None):
+    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None, initial_conditions=None, show=False):
         
         T1, p1, h1, rho1, u1 = get_input_states(states, system, i, m_dot, self.fluid)
         
@@ -560,7 +561,7 @@ class COOL:
 
     # Function that can be called to calculate the evolution of the state variables
     # in the component
-    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None, initial_conditions=None):
+    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None, initial_conditions=None, show=False):
         T1, p1, h1, rho1, u1 = get_input_states(states, system, i, m_dot, self.fluid)
         
         # ---------------------------------------------------------
@@ -647,7 +648,8 @@ class COOL:
 
             self.L = self.area / (np.pi * self.d)
             self.L = config.FPI_relaxation * self.L + (1 - config.FPI_relaxation * L_old)
-            print(f"{1000*self.L:.2f}")
+            if show:
+                print(f"{1000*self.L:.2f}")
 
             if not self.L/self.d >= 10:
                 raise Warning("Formulas used are not valid for the required length/diameter ratio\n" +\
@@ -655,15 +657,15 @@ class COOL:
                         f"Used L/D: {self.L/self.d}"
                     )
 
-        
-        if self.area_calc_mode:
-            print(f"{self.name}:")
-            print(f"Contact area: {self.area}")
-            print(f"Pipe length: {self.L}")
-            print(f"Number of corners: {self.N_corners}\n")
-        else:
-            print(f"{self.name}:")
-            print(f"Temperature: {self.T}\n")
+        if show:
+            if self.area_calc_mode:
+                print(f"{self.name}:")
+                print(f"Contact area: {self.area}")
+                print(f"Pipe length: {self.L}")
+                print(f"Number of corners: {self.N_corners}\n")
+            else:
+                print(f"{self.name}:")
+                print(f"Temperature: {self.T}\n")
 
 
         results = {'T':   np.array([T2]), 
@@ -692,7 +694,7 @@ class Valve:
         self.d        = diameter
         self.A        = area(self.d)
 
-    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None, initial_conditions=None):
+    def solve_H2_state(self, states, T_amb, m_dot, system, PLOT=False, i=None, initial_conditions=None, show=False):
         
         T1, p1, h1, rho1, u1 = get_input_states(states, system, i, m_dot, self.fluid)
 
@@ -712,7 +714,8 @@ class Valve:
         if self.name == 'check':
             Cv = 22413 * self.d ** 2.0817
             dp = (S_g / ((Cv / Q) ** 2)) * 6895  # convert from psi to Pa
-            print(f"[{self.name} valve] Pressure drop: {dp:.2f} Pa")
+            if show:
+                print(f"[{self.name} valve] Pressure drop: {dp:.2f} Pa")
 
         elif self.name == 'shutoff':
             Cv = 1173.6 * self.d - 10.19
@@ -720,7 +723,8 @@ class Valve:
                 raise ValueError(f"[shutoff valve] Non-physical Cv={Cv:.4f} for diameter {self.d*1000:.1f} mm. "
                                   "Minimum valid diameter is ~8.7 mm.")
             dp = (S_g / ((Cv / Q) ** 2)) * 6895  # convert from psi to Pa
-            print(f"[{self.name} valve] Pressure drop: {dp:.2f} Pa")
+            if show:
+                print(f"[{self.name} valve] Pressure drop: {dp:.2f} Pa")
         else:
             raise TypeError('Invalid valve type')
         

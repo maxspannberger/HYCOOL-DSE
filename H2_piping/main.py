@@ -107,19 +107,21 @@ def plot_states(states, phase_name):
     plt.show()
 
 
-if __name__ == "__main__":
-       # Load the component cooling requirements from the propulsion json file
-       path = str(root / "Propulsion/only_cooling_results.json")
-       with open(path, 'r') as file:
-              comps = json.load(file)
+def main_H2_nominal(comps=None, show=False, write=False):
+       if comps is None:
+              # Load the component cooling requirements from the propulsion json file
+              path = str(root / "Propulsion/only_cooling_results.json")
+              with open(path, 'r') as file:
+                     comps = json.load(file)
 
        HEX_areas = None
        All_temps = {}
 
        for current_phase, current_mdot in zip(c.normal_phases, c.normal_m_dots):
-              print("\n" + "*"*60)
-              print(f" STARTING SIMULATION: {current_phase.upper()} ".center(60, "*"))
-              print("*"*60)
+              if show:
+                     print("\n" + "*"*60)
+                     print(f" STARTING SIMULATION: {current_phase.upper()} ".center(60, "*"))
+                     print("*"*60)
               component_position = {}
               for key, value in comps[current_phase].items(): 
                      if not isinstance(value, dict):
@@ -272,7 +274,7 @@ if __name__ == "__main__":
               ]
        
               # Execute simulation and display results
-              states, final_mdot, HEX_areas, Temps = solve_system(system, m_dot=current_mdot, T_amb=c.T_amb)
+              states, final_mdot, HEX_areas, Temps = solve_system(system, m_dot=current_mdot, T_amb=c.T_amb, show=show)
               All_temps[current_phase] = Temps
               # print_tree(states)
     
@@ -282,20 +284,23 @@ if __name__ == "__main__":
               final_rho = states['rho'][-1][-1]
               final_h   = states['h'][-1][-1]
 
-              print("\n" + "="*50)
-              print("FINAL FLUID STATE AT SYSTEM OUTLET".center(50))
-              print("="*50)
-              print(f"Temperature  :  {final_T:.2f} K")
-              print(f"Pressure     :  {final_p:.2f} Pa  ({final_p/100000:.2f} bar)")
-              print(f"Density      :  {final_rho:.2f} kg/m³")
-              print(f"Enthalpy     :  {final_h:.2f} J/kg")
-              print("="*50 + "\n")
+              if show:
+                     print("\n" + "="*50)
+                     print("FINAL FLUID STATE AT SYSTEM OUTLET".center(50))
+                     print("="*50)
+                     print(f"Temperature  :  {final_T:.2f} K")
+                     print(f"Pressure     :  {final_p:.2f} Pa  ({final_p/100000:.2f} bar)")
+                     print(f"Density      :  {final_rho:.2f} kg/m³")
+                     print(f"Enthalpy     :  {final_h:.2f} J/kg")
+                     print("="*50 + "\n")
               # -------------------------------------------------------
 
               # Save to JSON
-              save_results_to_json(current_phase, final_T, final_p, final_rho, final_h, final_mdot)
+              if write:
+                     save_results_to_json(current_phase, final_T, final_p, final_rho, final_h, final_mdot)
 
-              plot_states(states, current_phase)
+              if show:
+                     plot_states(states, current_phase)
 
        filename_areas = "HEX_areas.json"
        with open(filename_areas, "w") as f:
@@ -304,3 +309,10 @@ if __name__ == "__main__":
        filename_temps = "HEX_temps.json"
        with open(filename_temps, "w") as f:
               json.dump(All_temps, f, indent=4)
+
+
+
+if __name__ == "__main__":
+       main_H2_nominal(show=False, write=False)
+
+       
