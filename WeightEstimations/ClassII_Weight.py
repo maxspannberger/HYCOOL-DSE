@@ -741,6 +741,8 @@ class weightEstimation:
             P_opt = g.P_opt/1000
 
 
+        # TODO: tank
+
         # GT sizing and results
         P_per_flight_condition = [P * 1000 for P in list(electrical_results["powers"]["hts_gen"].values())[0].values()]
         gt_results_dict = run_gt_sizing(P_opt=P_opt*1000, off_design_cases=P_per_flight_condition, input_conditions=None, cfg=None, show=False, write=False)
@@ -760,6 +762,7 @@ class weightEstimation:
                                      All_temps=H2_results_nominal["temperatures"], HEX_areas=H2_results_nominal["areas"],
                                      oei_phases=oei_phases, oei_m_dots=oei_m_dots)
         # print(H2_results_all)
+        # TODO: piping
 
 
 
