@@ -95,8 +95,8 @@ def get_powers_per_component(P_TO, P_climb, P_cruise, P_APP, P_OEI, P_AC_systems
                 "climb": P_climb / 2 * frac,
                 "cruise": P_cruise / 2 * frac,
                 "APP": P_APP / 2 * frac,
-                "OEI_mot": P_OEI / (1 + min(positions["mot_frac"])) * frac,
                 "OEI_gt": P_OEI / 2 * frac,
+                "OEI_mot": P_OEI / (1 + min(positions["mot_frac"])) * frac,
                 "OEI_bus": P_OEI  * frac / 2
             }
 

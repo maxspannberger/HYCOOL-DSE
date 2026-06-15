@@ -661,7 +661,7 @@ class COOL:
             if show:
                 print(f"{1000*self.L:.2f}")
 
-            if not self.L/self.d >= 10:
+            if not self.L/self.d >= 8:
                 raise Warning("Formulas used are not valid for the required length/diameter ratio\n" +\
                         "Required L/D range: L/D >= 10\n" +\
                         f"Used L/D: {self.L/self.d}"

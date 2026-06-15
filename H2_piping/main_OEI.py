@@ -124,7 +124,7 @@ def plot_combined_states(states_W, states_F, phase_name):
     plt.show()
 
 
-def main_H2_OEI(comps=None, sizes=None, All_temps=None, HEX_areas=None, show=False, write=False, oei_phases=None, oei_m_dots=None):
+def main_H2_OEI(comps=None, sizes=None, All_temps=None, HEX_areas=None, prev_states=None, show=False, write=False, oei_phases=None, oei_m_dots=None):
     if comps is None:
         path = str(root / "Propulsion/only_cooling_results.json")
         with open(path, 'r') as file:
@@ -153,7 +153,11 @@ def main_H2_OEI(comps=None, sizes=None, All_temps=None, HEX_areas=None, show=Fal
             print("*"*60)
 
         component_position = {}
-        data_per_condition = {}
+        if prev_states is None:
+            data_per_condition = {}
+        else:
+            data_per_condition = prev_states
+
         for key, value in comps[current_phase].items(): 
             if key == "total": continue
             component_position[key] = sorted(value, key=float)

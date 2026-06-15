@@ -116,6 +116,8 @@ class ClassIIResult:
     distance_le_mac_to_turbine: float = 0.0
     distance_le_root_to_le_mac: float = 0.0
 
+    H2_results_all: dict = None
+
     def summary(self):
         status_color = "green" if self.converged else "red"
         main_info = (
@@ -281,6 +283,7 @@ def run_class_ii(
     it = 0
     iteration_log: list[dict] = []
     CL_approach=1.53            #initial guess for the approach CL
+    H2_results_all = None
 
     if config is None:
         config = 3
@@ -388,7 +391,9 @@ def run_class_ii(
             base_params=False,
             bt_charging_ratio = bt_charging_ratio,
             taper = taper,
-            sweep_LE = sweep_LE
+            sweep_LE = sweep_LE,
+            H2_results_all = H2_results_all,
+
         )
         # print("WEIGHT INPUT TAIL:")
         # print(f"S_v used in weight = {wt_inp.S_v:.3f} m²")
@@ -403,6 +408,7 @@ def run_class_ii(
         bt_charging_ratio = wt_bd.bt_charging_ratio
         delta    = abs(MTOW_new - MTOW)
         OEW_kg       = wt_bd.W_empty+W_fixed
+        H2_results_all = wt_bd.H2_results_all
 
         iteration_log.append(dict(
             iter         = it,
@@ -581,6 +587,7 @@ def run_class_ii(
         distance_le_mac_to_cg=distance_le_mac_to_cg,
         distance_le_mac_to_turbine=distance_le_mac_to_turbine,
         distance_le_root_to_le_mac=distance_le_root_to_le_mac,
+        H2_results_all=H2_results_all,
     )
 
 

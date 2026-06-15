@@ -53,7 +53,7 @@ from rich.panel import Panel
 from rich import box
 from rich.rule import Rule
 
-from plot_style import (
+from Propulsion.plot_style import (
     apply_style, save_figure,
     CYAN_PALETTE, cyan_tones,
     NEUTRAL_GREY, TEXT_GREY, ACCENT_WARN,
@@ -560,9 +560,9 @@ class GasTurbineCycle:
         Cp_exhaust          = self._air_cp(self.P_ambient, exhaust_hardcode_offdesign)
         delta_T_reheat      = Q_added_reheat / (mdot_tot * Cp_exhaust)
         T_exit              = delta_T_reheat + exhaust_hardcode_offdesign
-        print("DJAKLFADKFHKDJLF KDJHFKSJHFKSDJ FHSD FKJSD HFKSJD F")
-        print(f"reheat Exit temperature: {T_exit}")
-        print(f"The exit im taking: {exhaust_hardcode_offdesign}")
+        # print("DJAKLFADKFHKDJLF KDJHFKSJHFKSDJ FHSD FKJSD HFKSJD F")
+        # print(f"reheat Exit temperature: {T_exit}")
+        # print(f"The exit im taking: {exhaust_hardcode_offdesign}")
 
 
         return {

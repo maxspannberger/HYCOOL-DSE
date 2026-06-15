@@ -139,7 +139,7 @@ def _write_csv(path, cases):
 # ----------------------------------------------------------------------
 # Pipeline
 # ----------------------------------------------------------------------
-def run(P_opt=None, off_design_cases=None, input_conditions=None, cfg=None, show=False, write=False):
+def run(P_opt=None, off_design_cases=None, T_pre_comp=None, P_pre_comp=None, cfg=None, show=False, write=False):
     """
     Run the full sizing chain and write a CSV.
 
@@ -158,9 +158,16 @@ def run(P_opt=None, off_design_cases=None, input_conditions=None, cfg=None, show
         cfg.cycle.P_target = P_opt
     if off_design_cases is not None:
         cfg.offdesign.P_shaft_cases = off_design_cases
-    # if input_conditions is not None:
-    #     cfg.cycle.P_pre_comp = input_conditions["p"]
-    # TODO: adapt for initial conditions per flight condition
+    if T_pre_comp is not None:
+        cfg.offdesign.T_pre_comp = T_pre_comp
+    if P_pre_comp is not None:
+        cfg.offdesign.P_pre_comp = P_pre_comp
+
+    if not show:
+        cfg.output.print_report = False
+        cfg.output.show_plots = False
+    if not write:
+        cfg.output.save_plots = False
 
     # --- 1. Design-point cycle ---
     engine = GasTurbineCycle.from_config(cfg).size(cea=cea)
