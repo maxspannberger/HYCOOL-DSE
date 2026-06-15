@@ -6,12 +6,13 @@ class Component:
 
 class PowerComponent(Component):
     # class for power providing components
-    def __init__(self, name, power_density, efficiency, trl, power_density_std=0.0, efficiency_std=0.0):
+    def __init__(self, name, power_density, efficiency, trl, power_density_std=0.0, efficiency_std=0.0, volumetric_density=0.0):
         super().__init__(name, trl)
         self.power_density = power_density
         self.efficiency = efficiency / 100 if efficiency else None
         self.power_density_std = power_density_std
         self.efficiency_std = efficiency_std / 100
+        self.volumetric_density = volumetric_density
 
 class StorageComponent(Component):
     # class for energy storage components (batteries)
@@ -45,6 +46,12 @@ class HeatExchangeComponent(Component):
         self.mass_increase = mass_increase
         self.efficiency_increase = efficiency_increase
 
+class ThrustComponent(Component):
+    # class for power providing components
+    def __init__(self, name, thrust_density,trl):
+        super().__init__(name, trl)
+        self.thrust_density = thrust_density        # thrust per engine mass [kN/kg] estimation from propfan estimate and estimating a 20% decrease in mass for open fan
+
 # =============================================================================
 # Define a dictionary containing the data
 # =============================================================================
@@ -53,13 +60,14 @@ component_params = {
     # Power Components
     "gt": PowerComponent("Gas Turbine", 10, 35, 5, power_density_std=1, efficiency_std=9),
     "fc_with_hex": PowerComponent("Fuel Cell", 2.83, 51, 3, power_density_std=0.283, efficiency_std=7),
-    "hts_gen": PowerComponent("HTS Motor", 36, 99.9, 4, power_density_std=9),
-    "hts_pow": PowerComponent("HTS Motor", 36, 99.9, 4, power_density_std=9),
+    "hts_gen": PowerComponent("HTS Motor", 36, 99.9, 4, power_density_std=9, volumetric_density=80000),
+    "hts_pow": PowerComponent("HTS Motor", 36, 99.9, 4, power_density_std=9, volumetric_density=80000),
     "gt_hex": PowerComponent("Gas Turbine + HEX ", 9.62, 39.5, 3, power_density_std=0.962, efficiency_std=9),
     "dc_dc_1": PowerComponent("DC-DC Converter 1", 17, 99.47, 3),
     "dc_dc_2": PowerComponent("DC-DC Converter 2", 17, 99.47, 3),
-    "ac_dc": PowerComponent("AC-DC Rectifier", 35.1, 99.4, 3),
-    "dc_ac": PowerComponent("DC-AC Inverter", 35.1, 99.4, 3),
+    "ac_dc": PowerComponent("AC-DC Rectifier", 52.9, 98.9, 3, volumetric_density=70000),
+    "dc_ac": PowerComponent("DC-AC Inverter", 52.9, 98.9, 3, volumetric_density=70000),
+    "bus": PowerComponent("Electric Bus", 22.1, 99.66, 3, volumetric_density=70000),
 
     # Battery
     "bt": StorageComponent("Battery", 0.510, 1.53, 90, 3, energy_density_std=0.102, power_density_std=0.306, efficiency_std=1),
@@ -72,5 +80,9 @@ component_params = {
 
     # Heat Exchangers
     "hex_gt": HeatExchangeComponent("HEX for Gas Turbine", 4, 4.5, 3),
-    "hex_fc": HeatExchangeComponent("HEX for Fuel Cell", 35, 95, 4)
+    "hex_fc": HeatExchangeComponent("HEX for Fuel Cell", 35, 95, 4),
+
+    # Open Fan Estimation
+    # "open_fan": ThrustComponent("Open Fan Propellers",43.17, 6)
+    "open_fan": ThrustComponent("Open Fan Propellers",82.63, 6)
 }

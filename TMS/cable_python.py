@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 # Values to change
 bus_V = 3000
-P = 6500000
+P = 5215000
 cable_mm = 1.44 # kg/kA/m
 L = 32
 N_poles = 2

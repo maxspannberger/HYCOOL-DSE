@@ -1,6 +1,6 @@
 import numpy as np
 from numpy.random import normal as normal
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 import sys
 from pathlib import Path
@@ -13,6 +13,7 @@ import WeightEstimations.Tail_Interpolation as Tail_Interp
 from WeightEstimations.Aircraft_Config import AircraftConfig
 from General.component_parameters import component_params as comp_params
 from Propulsion.efficiency import GT_BAT_efficiency, GT_FC_efficiency, GT_GT_efficiency,FC_BAT_efficiency
+from Propulsion.electrical import perform_complete_electrical_sizing
 
 from rich.table import Table
 
@@ -23,14 +24,28 @@ class ClassII_Input:
     # Weights
     MTOW:       float = 0.0
     MZFW:       float = 0.0
+    W_fixed:    float = 0.0
     n_ult:      float = 3.75
 
     # Wing
     b:          float = 0.0
     S_w:        float = 0.0
     sweep_half: float = 0.0
+    sweep_LE:   float = 0.0
+    taper:      float = 0.0
     t_r:        float = 0.0
     k_w:        float = 6.67e-3
+    const_wing: float = 4.58e-3
+    b_ref:     float = 1.905
+    k_e:       float = 0.0
+    k_uc:      float = 1.0
+    k_st:     float = 0.0
+    const_k_st: float = 9.06e-4
+    k_b:      float = 1.0
+    const_HLD: float = 2.706
+    k_f1:      float = 1.15
+    k_f2:      float = 1.0
+    W_hld_LE: float = 20.0              #kg/m^2 according to figure on torenbeek page 454
 
     # Horizontal tail
     S_h:        float = 0.0
@@ -53,6 +68,8 @@ class ClassII_Input:
 
     # Speed
     V_dive:     float = 0.0
+    V_stall:    float = 0.0
+    t_c_flap:   float = 0.0
 
     # Landing gear
     high_wing:  bool = False
@@ -79,29 +96,42 @@ class ClassII_Input:
     P_TO_OEI_KW: float = 0.0
     P_climb_KW:  float = 0.0
     P_reserve_KW: float = 0.0
+    P_takeoff_KW: float = 0.0
+    P_approach_KW: float = 0.0
+    max_Thrust_prop_inner: float = 0.0
+    max_Thrust_prop_outer: float = 0.0
     W_fuel:      float = 0.0
     grav_density:float = 0.64
     configuration: int = 1
     cable_lentgh: float = 0.0
     pipe_length:  float = 0.0
     N_engines: float = 0.0
+    N_propellers: int = 1
 
     #flight phase times
     t_cruise: float = 0.0
     t_climb: float = 0.0
     t_reserve: float = 0.0
     bt_charging_ratio: float = 0.0
-    mass_margin: float = 1.1
+    P_opt: float = 0.0
+    mass_margin: float = 1.05
+    aero_parameters: dict = field(default_factory=dict)
 
+    #TMS masses
+    TMS_mass_N2: float = 0,
+    TMS_mass_N4: float = 0,
 
+    frn_tank_support: float = 0,
 
     @classmethod
     def from_config(
         cls,
         cfg: AircraftConfig,
         comp: dict,
+        aero_parameters: Optional[dict] = None,
         MTOW: Optional[float] = None,
         MZFW: Optional[float] = None,
+        W_fixed: Optional[float] = None,
         S_ref: Optional[float] = None,
         b:    Optional[float] = None,
         S_h:  Optional[float] = None,
@@ -115,13 +145,21 @@ class ClassII_Input:
         P_climb_KW: float = 0.0,
         P_reserve_KW: float = 0.0,
         P_TO_OEI_KW: float = 0.0,
+        P_takeoff_KW: float = 0.0,
+        P_approach_KW: float = 0.0,
+        max_Thrust_prop_inner: float = 0.0,
+        max_Thrust_prop_outer: float = 0.0,
         t_cruise: float = 0.0,
         t_climb: float = 0.0,
         t_reserve: float = 0.0,
         N_engines: float = 0.0,
+        N_propellers: int = 1,
         base_params: bool = False,
         bt_charging_ratio: float = 0.0,
-        mass_margin: float = 1.1
+        P_opt: float = 0.0,
+        mass_margin: float = 1.1,
+        taper: float = 0.0,
+        sweep_LE: float = 0.0,
     ) -> "ClassII_Input":
         """
         Build the weight-estimator input from a shared AircraftConfig.
@@ -135,11 +173,14 @@ class ClassII_Input:
         return cls(
             MTOW          = MTOW if MTOW is not None else cfg.MTOW_initial,
             MZFW          = MZFW if MZFW is not None else cfg.MTOW_initial * 0.95,
+            W_fixed       = W_fixed, 
             n_ult         = cfg.n_ult,
 
             b             = b     if b     is not None else cfg.b,
             S_w           = S_ref if S_ref is not None else cfg.S_ref,
             sweep_half    = cfg.sweep_half,
+            taper=taper,
+            sweep_LE=sweep_LE,
             t_r           = cfg.t_root_abs,
 
             S_h           = S_h if S_h is not None else cfg.S_h_initial,
@@ -157,6 +198,8 @@ class ClassII_Input:
             l_t           = cfg.l_t,
 
             V_dive        = cfg.V_dive,
+            V_stall       = cfg.V_stall,
+            t_c_flap      = cfg.t_c_flap,
 
             high_wing     = cfg.high_wing,
             has_flap_slat = cfg.has_flap_slat,
@@ -178,28 +221,44 @@ class ClassII_Input:
             P_max_KW      = P_max_KW,
             W_fuel        = W_fuel,
             configuration = configuration,
+            max_Thrust_prop_inner    = max_Thrust_prop_inner,
+            max_Thrust_prop_outer    = max_Thrust_prop_outer,
 
             P_cruise_KW  = P_cruise_KW,
             P_climb_KW   = P_climb_KW,
             P_reserve_KW = P_reserve_KW,
             P_TO_OEI_KW  = P_TO_OEI_KW,
+            P_takeoff_KW = P_takeoff_KW,
+            P_approach_KW = P_approach_KW,
 
             t_cruise  = t_cruise,
             t_climb   = t_climb,
             t_reserve = t_reserve,
             N_engines = N_engines,
             bt_charging_ratio = bt_charging_ratio,
+            P_opt = P_opt,
             mass_margin = mass_margin,
+            N_propellers = cfg.N_propellers,
+            aero_parameters = aero_parameters if aero_parameters is not None else {},
+            TMS_mass_N2 = cfg.TMS_mass_N2,
+            TMS_mass_N4 = cfg.TMS_mass_N4,
+            frn_tank_support = cfg.frn_tank_support,
         )
 
 
 @dataclass
 class WeightBreakdown:
-    W_wing:   float = 0.0
+    #cooling: dict
+    W_wing_initial:   float = 0.0
+    W_wing_accurate:  float = 0.0
+    W_wing_hld:          float = 0.0
+    W_wing_basic:        float = 0.0
     W_htail:  float = 0.0
     W_vtail:  float = 0.0
     W_fus:    float = 0.0
     W_lg:     float = 0.0
+    W_lg_nose:  float = 0.0
+    W_lg_main: float = 0.0
     W_sc:     float = 0.0
     W_engine: float = 0.0
     W_total_prop: float = 0.0
@@ -236,28 +295,35 @@ class WeightBreakdown:
     P_reserve_KW: float = 0.0
     P_primary_KW: float = 0.0
     P_secondary_KW: float = 0.0
+    max_Thrust_prop_inner: float = 0.0
+    max_Thrust_prop_outer: float = 0.0
     W_fuel:      float = 0.0
     W_primary:   float = 0.0
     W_secondary: float = 0.0
+    W_fan: float = 0.0
     grav_density:float = 0.64
     configuration: int = 1
-    total_prop_efficiency: float = 0.0
+    total_prop_efficiency: float = 1.0
+    climb_eff: float = 1.0
+    cruise_eff: float = 1.0
     climb_efficiency: float = 0.0
     cruise_efficiency: float = 0.0
     t_cruise: float = 0.0,
     t_climb  : float = 0.0,
     t_reserve: float = 0.0,
-    bt_charging_ratio: float = 0.0
+    bt_charging_ratio: float = 0.0,
+    P_opt: float = 0.0
+    N_propellers: int=1
 
 
     @property
     def W_structure(self) -> float:
-        return (self.W_wing + self.W_htail + self.W_vtail
+        return (self.W_wing_accurate + self.W_htail + self.W_vtail
                 + self.W_fus + self.W_lg + self.W_sc)
 
     @property
     def W_empty(self) -> float:
-        return self.W_structure + self.W_engine
+        return self.W_structure + self.W_total_prop
 
     def summary(self):
         table = Table(title="Class II Weight Breakdown", show_header=True)
@@ -266,11 +332,16 @@ class WeightBreakdown:
         table.add_column("Factor / Density", justify="right")
 
         struct_items = [
-            ("Wing",           self.W_wing),
+            ("Wing_initial",           self.W_wing_initial),
+            ("Wing_accurate",     self.W_wing_accurate),
+            ("Wing_hld",     self.W_wing_hld),
+            ("Wing_basic",     self.W_wing_basic),
             ("Fuselage",       self.W_fus),
             ("Vertical Tail",  self.W_vtail),
             ("Horizontal Tail",self.W_htail),
             ("Landing Gear",   self.W_lg),
+            ("Main Landing Gear",   self.W_lg_main),
+            ("Nose Landing Gear",   self.W_lg_nose),
             ("Surface Controls", self.W_sc),
         ]
 
@@ -306,6 +377,7 @@ class WeightBreakdown:
             f"[bold]{self.W_secondary:.1f}[/bold]",
             "",
         )
+        table.add_row("Open Fan Mass", f"[bold]{self.W_fan:.1f}[/bold]", "",)
         table.add_row(
             "Propulsion System without tank",
             f"[bold]{self.W_engine:.1f}[/bold]",
@@ -369,7 +441,7 @@ class WeightBreakdown:
 
         table.add_section()
         table.add_row(
-            "[bold green]OEW (Empty Weight)[/bold green]",
+            "[bold green]Empty Weight (excl W_fixed)[/bold green]",
             f"[bold green]{self.W_empty:.1f}[/bold green]",
             "",
         )
@@ -402,14 +474,68 @@ class weightEstimation:
         if g.MZFW > g.MTOW:
             raise ValueError("Why is your MZFW bigger than MTOW?")
 
-    def _wing_weight(self) -> float:
+    def _wing_weight_initial(self) -> float:
         g   = self.g
         b_s = g.b * np.cos(g.sweep_half)
-        return (g.MZFW * g.k_w * b_s**0.75
+        if g.N_propellers>2:
+            #change factor for 4 engines on the wing
+            return (g.MZFW * g.k_w * b_s**0.75
                 * (1 + np.sqrt(self.b_ref / b_s))
                 * g.n_ult**0.55
                 * ((b_s / g.t_r) / (g.MZFW / g.S_w))**0.3
-                * 1.02) *g.mass_margin
+                * 1.02) *g.mass_margin*0.9
+        else:
+            #change factor for 2 engines on the wing
+            return (g.MZFW * g.k_w * b_s**0.75
+                * (1 + np.sqrt(self.b_ref / b_s))
+                * g.n_ult**0.55
+                * ((b_s / g.t_r) / (g.MZFW / g.S_w))**0.3
+                * 1.02) *g.mass_margin*0.95
+        
+    def _wing_weight_accurate(self) -> float:
+        g   = self.g
+        aero = g.aero_parameters or {}
+        b_s = g.b * np.cos(g.sweep_half)
+        k_no=1+np.sqrt(g.b_ref/b_s)
+        k_lam=(1+g.taper)**0.4
+        W_des=g.MTOW
+        W_W_init=self._wing_weight_initial()
+
+        if g.N_propellers>2:
+            g.k_e=0.9
+            g.k_st=1+g.const_k_st*((g.b*np.cos(g.sweep_LE))**3)/W_des*((g.V_dive/100)/g.t_r)**2*np.cos(g.sweep_half)
+            W_basic=(g.const_wing*k_no*k_lam*g.k_e*g.k_uc*g.k_st*\
+        ((g.k_b*g.n_ult*(W_des-0.8*W_W_init))**0.55)*\
+            (g.b**1.675)*(g.t_r**(-0.45))*np.cos(g.sweep_half)**(-1.325))*1.2
+        elif g.N_propellers<=2:
+            g.k_e=0.95
+            g.k_st=1
+            W_basic=g.const_wing*k_no*k_lam*g.k_e*g.k_uc*g.k_st*\
+        ((g.k_b*g.n_ult*(W_des-0.8*W_W_init))**0.55)*\
+            (g.b**1.675)*(g.t_r**(-0.45))*np.cos(g.sweep_half)**(-1.325)
+
+
+        
+        k_f=g.k_f1*g.k_f2
+        required_aero = ["S_f", "b_fs", "delta_defl", "hinge_sweep", "S_LE"]
+        missing_aero = [name for name in required_aero if name not in aero]
+        if missing_aero:
+            raise ValueError(f"Missing aero_parameters entries: {missing_aero}")
+
+        W_hld_TE = (
+            g.const_HLD
+            * k_f
+            * (aero["S_f"] * aero["b_fs"]) ** (3 / 16)
+            * ((g.V_stall / 100) ** 2 * (np.sin(aero["delta_defl"]) * np.cos(aero["hinge_sweep"])) / g.t_c_flap) ** (3 / 4)
+            * aero["S_f"]
+        )
+        W_hld_LE = g.W_hld_LE * aero["S_LE"]
+        W_hld=W_hld_LE+W_hld_TE
+
+
+        W_wing_init=W_basic+1.2*(W_hld)
+        W_Wing=W_wing_init+0.02*W_wing_init           #adjust for the spoiler and speed brake weights
+        return W_Wing,W_hld,W_basic
 
     def _htail_weight(self) -> float:
         g     = self.g
@@ -436,12 +562,13 @@ class weightEstimation:
         g       = self.g
         d_eq    = (g.b_f + g.h_f) / 2.0
         sigma   = g.l_f / d_eq
+        fact_pres = 1.08                    #torenbeek p.282: add 8% for pressurized
         S_f_wet = (np.pi * g.b_f * g.l_f
                    * (1.0 - 2.0 / sigma)**(2.0 / 3.0)
                    * (1.0 + 1.0 / sigma**2))
         return (g.k_wf
                 * np.sqrt(g.V_dive * g.l_t / (g.b_f + g.h_f))
-                * S_f_wet ** 1.2) * g.mass_margin
+                * S_f_wet ** 1.2) * fact_pres * g.mass_margin
 
     def _LDG_weight(self) -> float:
         g    = self.g
@@ -453,7 +580,7 @@ class weightEstimation:
                     + c["C"] * g.MTOW
                     + c["D"] * g.MTOW**1.5) * g.mass_margin
 
-        return k_LG * (_leg(self._LG_main) + _leg(self._LG_nose))
+        return k_LG * _leg(self._LG_main), k_LG * _leg(self._LG_nose)
 
     def _surface_control_weight(self) -> float:
         g    = self.g
@@ -480,43 +607,33 @@ class weightEstimation:
         comp = self.comp
         config = g.configuration
 
-        component_lists = {
-            1: {
-                "components": [
-                    "gt_hex", "bt", "hts_gen", "ac_dc", "dc_dc_2", "dc_ac",
-                    "hts_pow", "hts_pow", "cable", "pipe",
-                ],
-                "lengths": {"pipe": 82.0, "cable": 36.5},
-            },
-            2: {
-                "components": [
-                    "fc_with_hex", "bt", "dc_dc_1", "dc_dc_2", "dc_ac",
-                    "hts_pow", "hts_pow", "cable", "pipe",
-                ],
-                "lengths": {"pipe": 34.0, "cable": 19.0},
-            },
+
+        if g.N_propellers>2:
+            # component_lists = {
+            # 3: {
+            #     "components": [
+            #         "gt_hex", "gt_hex", "hts_gen", "hts_gen", "ac_dc", "ac_dc",
+            #         "dc_ac", "dc_ac","dc_ac","dc_ac", "hts_pow", "hts_pow","hts_pow","hts_pow","open_fan","open_fan","open_fan","open_fan", "cable", "pipe+valves+pumps",
+            #     ],
+            #     "lengths": {"pipe": 142.0, "cable": 20.0},   #change cable length to 30 meters after iteration to account for more cables needed for DC Bus
+            # },
+            component_lists = {
             3: {
                 "components": [
-                    "gt_hex", "gt_hex", "hts_gen", "hts_gen", "ac_dc", "ac_dc",
-                    "dc_ac", "dc_ac", "hts_pow", "hts_pow", "cable", "pipe",
+                    "gt_hex", "gt_hex", "electrical_sys","open_fan","open_fan","open_fan","open_fan", "pipe+valves+pumps",
                 ],
-                "lengths": {"pipe": 34.0, "cable": 5.0},
-            },
-            4: {
-                "components": [
-                    "gt_hex", "gt_hex", "hts_gen", "hts_gen", "fc_with_hex", "ac_dc",
-                    "ac_dc", "dc_dc_2", "dc_ac", "dc_ac", "hts_pow", "hts_pow", "cable", "pipe",
-                ],
-                "lengths": {"pipe": 48.0, "cable": 19.0},
-            },
-            5: {
-                "components": [
-                    "gt_hex", "bt", "hts_gen", "ac_dc", "dc_dc_2", "dc_ac",
-                    "hts_pow", "hts_pow", "cable", "pipe",
-                ],
-                "lengths": {"pipe": 34.0, "cable": 19.0},
+                "lengths": {"pipe": 142.0, "cable": 20.0},   #change cable length to 30 meters after iteration to account for more cables needed for DC Bus
             },
         }
+            
+        else:
+            component_lists = { 3: {
+                "components": [
+                    "gt_hex", "gt_hex", "electrical_sys","open_fan","open_fan", "pipe+valves+pumps",
+                ],
+                "lengths": {"pipe": 102.0, "cable": 5.0},   #change cable length to 30 meters after iteration to account for more cables needed for DC Bus
+            },
+            }
 
         if config not in component_lists:
             raise ValueError(f"Unknown configuration: {config}")
@@ -526,235 +643,85 @@ class weightEstimation:
         pipe_len = cfg_data["lengths"]["pipe"]
         cable_len = cfg_data["lengths"]["cable"]
         total_mass = 0.0
+        fan_mass = 0.0
         nacelle_factor = 1/0.75 # to account for additional mass of nacelle and integration, estimated as 25% of component mass#
+        motor_count=0
+        propeller_count=0
 
         for comp_key in component_list:
-            if comp_key not in comp:
-                raise ValueError(f"Component '{comp_key}' not found in component dict")
-            elif config == 1:
-
-
-                if comp_key == "cable":
-                    mass = cable_len * comp[comp_key].mass_per_length
-                elif comp_key == "pipe":
-                    mass = pipe_len * comp[comp_key].mass_per_length   
-                elif comp_key != "cable" and comp_key != "pipe":
-                    pd = comp[comp_key].power_density
-
-                    # maximum power that flows to the motors (most likely takeoff)
-                    P_req_tot = max((g.P_cruise_KW*(1+g.bt_charging_ratio)), 
-                                    g.P_climb_KW, 
-                                    g.P_reserve_KW, 
-                                    g.P_TO_KW)
-
-                    # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
-                    P_req_primary = max(g.P_cruise_KW*(1+g.bt_charging_ratio), 
-                                        g.P_TO_OEI_KW)
-                    
-                    # secondary power source requirement is to sustain TO 
-                    P_req_secondary = max((g.P_TO_KW - P_req_primary), g.P_TO_OEI_KW)
-
-                    efficiency=GT_BAT_efficiency(comp=comp,t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
-
-                    if comp_key == "gt_hex":
-                        mass = P_req_primary/efficiency["GT-MOT_eff"] / pd *nacelle_factor
-                        W_primary = mass
-                    elif comp_key == "hts_gen":
-                        mass = P_req_primary/efficiency["GEN_eff"] / pd
-                    elif comp_key == "ac_dc":
-                        mass = P_req_primary/efficiency["ACDC_eff"] / pd
-                    elif comp_key == "bt":
-                        energy_required_kWh = P_req_secondary/efficiency["BAT-MOT_eff"] * (g.t_climb / 3600)  # Convert seconds to hours
-                        ed = comp[comp_key].energy_density
-                        mass = max(energy_required_kWh / ed, P_req_secondary/efficiency["BAT-MOT_eff"] / pd)
-                        W_secondary = mass
-                    elif comp_key == "dc_dc_2":
-                        mass = P_req_secondary/efficiency["Dcdc_eff"] / pd
-                    elif comp_key == "dc_ac": 
-                        max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
-                        mass = max_P_per_string /efficiency["Dcac_eff"] / pd 
-                    elif comp_key == "hts_pow":
-                        max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
-                        mass = max_P_per_string / pd      
-                total_mass += mass
-
-            elif config == 2:
-                # Similar logic for config 2 but with fuel cell instead of gas turbine
-                if comp_key == "cable":
-                    mass = cable_len * comp[comp_key].mass_per_length
-                elif comp_key == "pipe":
-                    mass = pipe_len * comp[comp_key].mass_per_length   
-                elif comp_key != "cable" and comp_key != "pipe":
-                    pd = comp[comp_key].power_density
-
-                    # maximum power that flows to the motors (most likely takeoff)
-                    P_req_tot = max((g.P_cruise_KW*(1+g.bt_charging_ratio)), 
-                                    g.P_climb_KW, 
-                                    g.P_reserve_KW, 
-                                    g.P_TO_KW)
-
-                    # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
-                    P_req_primary = max(g.P_cruise_KW*(1+g.bt_charging_ratio), 
-                                        g.P_TO_OEI_KW)
-
-                    # secondary power source requirement is to sustain TO 
-                    P_req_secondary = max((g.P_TO_KW - P_req_primary), 
-                                          (g.P_TO_OEI_KW-(1/2)*P_req_primary))
-                    
-                    efficiency=FC_BAT_efficiency(comp=comp,t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
-                    efficiency1=GT_BAT_efficiency(comp=comp,t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
-
-                    if comp_key == "fc_with_hex": #or comp_key == "dc_dc_1":
-                        mass = P_req_primary / efficiency["FC-MOT_eff"] / pd
-                        W_primary = mass
-                    elif comp_key == "dc_dc_1":
-                        mass = P_req_primary / efficiency["DC-DC1_eff"] / pd
-                    elif comp_key == "bt":
-                        energy_required_kWh = P_req_secondary * (g.t_climb / 3600)  # Convert seconds to hours
-                        ed = comp[comp_key].energy_density
-                        mass = max(energy_required_kWh / efficiency1["BAT-MOT_eff"] / ed, P_req_secondary / efficiency1["BAT-MOT_eff"] / pd)
-                        W_secondary = mass
-                    elif comp_key == "dc_dc_2":
-                        mass = P_req_secondary / efficiency1["Dcdc_eff"] / pd
-                    elif comp_key == "dc_ac": #or comp_key == "hts_pow":
-                        max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
-                        mass = max_P_per_string / efficiency1["Dcac_eff"] / pd
-                    elif comp_key == "hts_pow":
-                        max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
-                        mass = max_P_per_string / pd
-                total_mass += mass
+            #if comp_key not in comp:
+                #raise ValueError(f"Component '{comp_key}' not found in component dict")
             
-            elif config == 3:
+            if config == 3:
                 efficiency = GT_GT_efficiency(comp=comp,t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
                 efficiency2 = GT_BAT_efficiency(comp=comp,t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
                 # Similar logic for config 3 but with different component assignments
-                if comp_key == "cable":
-                    mass = cable_len * comp[comp_key].mass_per_length
-                elif comp_key == "pipe":
-                    mass = pipe_len * comp[comp_key].mass_per_length   
-                elif comp_key != "cable" and comp_key != "pipe":
-                    pd = comp[comp_key].power_density
-                    # maximum power that flows to the motors (most likely takeoff)
-                    P_req_tot = max((g.P_cruise_KW), 
+                # maximum power that flows to the motors (most likely takeoff)
+                P_req_tot = max((g.P_cruise_KW), 
                                     g.P_climb_KW, 
                                     g.P_reserve_KW, 
                                     g.P_TO_KW)
 
                     # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
-                    P_req_primary = max(g.P_cruise_KW/2, 
+                P_req_primary = max(g.P_cruise_KW/2, 
                                         g.P_TO_OEI_KW,
                                         P_req_tot/2)
 
                     # secondary power source requirement is to sustain TO 
-                    P_req_secondary = max((g.P_TO_KW - P_req_primary), 
+                P_req_secondary = max((g.P_TO_KW - P_req_primary), 
                                           g.P_TO_OEI_KW)
+                # if comp_key == "cable":
+                #     mass = cable_len * comp[comp_key].mass_per_length
+                if comp_key == "electrical_sys":
+                    mass_elec,cool=perform_complete_electrical_sizing(g.P_takeoff_KW,g.P_climb_KW,g.P_cruise_KW,g.P_approach_KW,
+                                                                 g.P_TO_OEI_KW, g.b)
+                    if g.N_propellers>2:
+
+                        mass = mass_elec
+                    else:
+                        mass = mass_elec*0.9 #estimate that electrical system is 25% lighter for 2 engines since less complex power distribution system and less components needed
+                elif comp_key == "pipe+valves+pumps":
+                    if g.N_propellers>2:
+                        #mass = pipe_len * comp[comp_key].mass_per_length
+                        mass = g.TMS_mass_N4
+                    else:
+                        #mass = pipe_len * comp[comp_key].mass_per_length * 2 #double the mass for 4 engines since more complex piping system with more valves and pumps needed
+                        mass = g.TMS_mass_N2                     #big estimate
+                elif comp_key == "open_fan" and propeller_count<2 and g.N_propellers>2:
+                        mass = g.max_Thrust_prop_inner / comp[comp_key].thrust_density *1.1
+                        propeller_count+=1
+                        fan_mass+=mass
+                elif comp_key == "open_fan" and propeller_count>=2 and g.N_propellers>2:
+                        mass = g.max_Thrust_prop_outer / comp[comp_key].thrust_density*1.1
+                        fan_mass+=mass
+                elif comp_key == "open_fan" and g.N_propellers<=2:
+                        mass = g.max_Thrust_prop_inner / comp[comp_key].thrust_density 
+                        fan_mass+=mass
+                elif comp_key != "electrical_sys" and comp_key != "pipe" and comp_key != "open_fan":
+                    pd = comp[comp_key].power_density
                     
                     if comp_key == "gt_hex": #or comp_key == "ac_dc" or comp_key == "hts_gen" or comp_key == "hts_pow" or comp_key == "dc_ac":
-                        mass = P_req_primary / pd / efficiency["GT-MOT_eff"] *nacelle_factor
+                        mass = P_req_primary / pd / efficiency["GT-MOT_eff"] *nacelle_factor*1.15
                         if comp_key == "gt_hex":
                             W_primary = mass        #gt_hex is in there twice but taken into account in W_primary
                             W_secondary = mass
-                    elif comp_key == "ac_dc":
-                        mass = P_req_primary / pd / efficiency2["ACDC_eff"]
-                    elif comp_key == "hts_gen":
-                        mass = P_req_primary / pd / efficiency2["GEN_eff"]
-                    elif comp_key == "hts_pow":
-                        mass = P_req_primary / pd
-                    elif comp_key == "dc_ac":
-                        mass = P_req_primary / pd /efficiency2["Dcac_eff"]
-                total_mass += mass
-
-            elif config == 4:
-
-                # Similar logic for config 4 but with different component assignments 
-                if comp_key == "cable":
-                    mass = cable_len * comp[comp_key].mass_per_length
-                elif comp_key == "pipe":
-                    mass = pipe_len * comp[comp_key].mass_per_length   
-                elif comp_key != "cable" and comp_key != "pipe":
-                    pd = comp[comp_key].power_density
-                    # maximum power that flows to the motors (most likely takeoff)
-                    P_req_tot = max(g.P_cruise_KW, 
-                                    g.P_climb_KW, 
-                                    g.P_reserve_KW, 
-                                    g.P_TO_KW)
+                    # elif comp_key == "ac_dc":
+                    #     mass = P_req_primary / pd / efficiency2["ACDC_eff"]
+                    # elif comp_key == "hts_gen":
+                    #     mass = P_req_primary / pd / efficiency2["GEN_eff"]
+                    # elif comp_key == "hts_pow" and motor_count<2 and g.N_propellers>2:
+                    #     mass = P_req_primary / pd *0.8
+                    #     motor_count+=1
+                    #     fan_mass+=mass
+                    # elif comp_key == "hts_pow" and motor_count>=2 and g.N_propellers>2:
+                    #     mass = P_req_primary / pd *0.5
+                    #     motor_count+=1
+                    #     fan_mass+=mass
+                    # elif comp_key == "hts_pow" and g.N_propellers<=2:
+                    #     mass = P_req_primary / pd
                     
-                    # primary power source requirement is cruise power or OEI scenario, GT's together must suffice in both situations
-                    P_req_secondary = g.P_TO_OEI_KW
-                    P_req_primary = max(g.P_cruise_KW-P_req_secondary, 
-                                        g.P_TO_OEI_KW,P_req_tot - P_req_secondary)
-                    
-                    efficiency=GT_FC_efficiency(comp=comp,P_OEI_out=P_req_secondary*1000,t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
-                    efficiency2=GT_BAT_efficiency(comp=comp,t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
-                    
-                    # secondary power source requirement is to sustain TO 
-                    #P_req_secondary = max((P_req_tot - P_req_primary), (g.P_TO_OEI_KW-(1/2)*P_req_primary))
-                    if comp_key == "gt_hex": #or comp_key == "hts_gen" or comp_key == "ac_dc":
-                        mass = (P_req_primary/2) / pd / efficiency["GT-MOT_eff"] *nacelle_factor
-                        if comp_key == "gt_hex":
-                            W_primary = mass*2
-                    elif comp_key == "hts_gen":
-                        mass = (P_req_primary/2) / pd / efficiency2["GEN_eff"]
-                    elif comp_key == "ac_dc":
-                        mass = (P_req_primary/2) / pd / efficiency2["ACDC_eff"]
-                    elif comp_key == "fc_with_hex": #or comp_key == "dc_dc_2":
-                        mass = P_req_secondary / pd / efficiency["FC-MOT_eff"]
-                        if comp_key == "fc_with_hex":
-                            W_secondary = mass
-                    elif comp_key == "dc_dc_2":
-                        mass = P_req_secondary / pd / efficiency2["Dcdc_eff"]
-                    elif comp_key == "dc_ac": #or comp_key == "hts_pow":
-                        max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
-                        mass = max_P_per_string / pd / efficiency2["Dcac_eff"]
-                    elif comp_key == "hts_pow":
-                        max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
-                        mass = max_P_per_string / pd 
-                total_mass += mass
-        
-            elif config == 5:
-                if comp_key == "cable":
-                    mass = cable_len * comp[comp_key].mass_per_length
-                elif comp_key == "pipe":
-                    mass = pipe_len * comp[comp_key].mass_per_length   
-                elif comp_key != "cable" and comp_key != "pipe":
-                    pd = comp[comp_key].power_density
-
-                    # maximum power that flows to the motors (most likely takeoff)
-                    P_req_tot = max((g.P_cruise_KW*(1+g.bt_charging_ratio)), 
-                                    g.P_climb_KW, 
-                                    g.P_reserve_KW, 
-                                    g.P_TO_KW)
-
-                    # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
-                    P_req_primary = max(g.P_cruise_KW*(1+g.bt_charging_ratio), 
-                                        g.P_TO_OEI_KW)
-                    
-                    # secondary power source requirement is to sustain TO 
-                    P_req_secondary = max((g.P_TO_KW - P_req_primary),
-                                          (g.P_TO_OEI_KW-(1/2)*P_req_primary))
-
-                    efficiency=GT_BAT_efficiency(comp=comp,t_climb=g.t_climb, t_cruise=g.t_cruise, P_climb=g.P_climb_KW*1000, P_cruise=g.P_cruise_KW*1000)
-
-                    if comp_key == "gt_hex":
-                        mass = P_req_primary/efficiency["GT-MOT_eff"] / pd *nacelle_factor
-                        W_primary = mass
-                    elif comp_key == "hts_gen":
-                        mass = P_req_primary/efficiency["GEN_eff"] / pd
-                    elif comp_key == "ac_dc":
-                        mass = P_req_primary/efficiency["ACDC_eff"] / pd
-                    elif comp_key == "bt":
-                        energy_required_kWh = P_req_secondary/efficiency["BAT-MOT_eff"] * (g.t_climb / 3600)  # Convert seconds to hours
-                        ed = comp[comp_key].energy_density
-                        mass = max(energy_required_kWh / ed, P_req_secondary/efficiency["BAT-MOT_eff"] / pd)
-                        W_secondary = mass
-                    elif comp_key == "dc_dc_2":
-                        mass = P_req_secondary/efficiency["Dcdc_eff"] / pd
-                    elif comp_key == "dc_ac": 
-                        max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
-                        mass = max_P_per_string /efficiency["Dcac_eff"] / pd 
-                    elif comp_key == "hts_pow":
-                        max_P_per_string = max(P_req_tot/2, g.P_TO_OEI_KW)
-                        mass = max_P_per_string / pd      
+                    # elif comp_key == "dc_ac":
+                    #     mass = P_req_primary / pd /efficiency2["Dcac_eff"]
                 total_mass += mass
 
         eff = efficiency["Total_eff"]
@@ -765,30 +732,45 @@ class weightEstimation:
         else:
             bt_charging_ratio = g.bt_charging_ratio
 
-        return total_mass * g.mass_margin, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff,eff_climb, eff_cruise, bt_charging_ratio
+        if "GT_P_opt" in efficiency:
+            P_opt = efficiency["GT_P_opt"]/1000
+        else:
+            P_opt = g.P_opt/1000
+
+        return total_mass * g.mass_margin,fan_mass, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff,eff_climb, eff_cruise, bt_charging_ratio, P_opt,cool
     
     def _h2_tank_weight(self) -> float:
-        return self.g.W_fuel * (1 / self.g.grav_density - 1)* self.g.mass_margin
+        return (self.g.W_fuel * (1 / self.g.grav_density - 1)*(1+self.g.frn_tank_support))* self.g.mass_margin
 
     def compute(self) -> WeightBreakdown:
         self._validate()
         g = self.g
 
         h2_tank_weight   = self._h2_tank_weight()
-        W_engine_total, P_req_primary, P_req_secondary, P_req_tot, W_primary, W_secondary,\
-            total_prop_efficiency, climb_eff,cruise_eff, bt_charging_ratio = self._propulsion_weight()
+        W_engine_total, fan_mass, P_req_primary, P_req_secondary, P_req_tot, W_primary, W_secondary,\
+            total_prop_efficiency, climb_eff,cruise_eff, bt_charging_ratio, P_opt, cool = self._propulsion_weight()
+        W_wing_accurate, W_hld, W_basic = self._wing_weight_accurate()
+        
+        W_lg_main, W_lg_nose = self._LDG_weight()
+        W_lg = W_lg_main + W_lg_nose
 
         return WeightBreakdown(
-            W_wing   = self._wing_weight(),
+            W_wing_initial   = self._wing_weight_initial(),
+            W_wing_accurate=W_wing_accurate,
+            W_wing_hld = W_hld,
+            W_wing_basic = W_basic,
             W_htail  = self._htail_weight(),
             W_vtail  = self._vtail_weight(),
             W_fus    = self._fuselage_weight(),
-            W_lg     = self._LDG_weight(),
+            W_lg     = W_lg,
+            W_lg_main = W_lg_main,
+            W_lg_nose = W_lg_nose,
             W_sc     = self._surface_control_weight(),
             W_primary= W_primary,
             W_secondary = W_secondary,
             W_engine = W_engine_total,
             W_total_prop = W_engine_total + h2_tank_weight,
+            W_fan = fan_mass,
 
             # Propulsion detail
             W_h2_tank   = h2_tank_weight,
@@ -799,15 +781,20 @@ class weightEstimation:
             W_fuel       = g.W_fuel,
 
             #power values for display
-            P_cruise_KW  = g.P_cruise_KW,
+            P_cruise_KW = g.P_cruise_KW,
+            P_climb_KW = g.P_climb_KW,
             P_TO_OEI_KW  = g.P_TO_OEI_KW,
             P_primary_KW = P_req_primary,
             P_secondary_KW = P_req_secondary,
             P_max_KW=  P_req_tot,
             total_prop_efficiency = total_prop_efficiency,
+            climb_eff = climb_eff,
+            cruise_eff = cruise_eff,
             climb_efficiency=climb_eff,
             cruise_efficiency=cruise_eff,
-            bt_charging_ratio=bt_charging_ratio
+            bt_charging_ratio=bt_charging_ratio,
+            P_opt=P_opt,
+            #cooling=cool,
         )
 
 

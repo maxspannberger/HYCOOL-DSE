@@ -32,6 +32,7 @@ from typing import Optional
 from WeightEstimations.ISA import isa
 from WeightEstimations.Aircraft_Config   import AircraftConfig
 from WeightEstimations.ClassII_Drag   import DragBreakdown
+from Propulsion.efficiency import GT_GT_efficiency
 
 from rich.table import Table
 
@@ -49,6 +50,7 @@ class MissionFuelBreakdown:
     P_reserve_shaft:  float = 0.0
     P_climb_shaft:    float = 0.0
     P_TO_shaft:       float = 0.0       # reference only
+    P_app_shaft:      float = 0.0      
 
     # Fuel mass flows [kg/s]
     mdot_cruise:      float = 0.0
@@ -75,6 +77,8 @@ class MissionFuelBreakdown:
     LD_climb:         float = 0.0
     V_reserve_TAS:    float = 0.0
     V_climb_TAS:      float = 0.0
+
+    T_cruise:        float = 0.0
 
     @property
     def m_LH2_total(self) -> float:
@@ -121,14 +125,18 @@ class MissionPower:
         cfg:        AircraftConfig,
         drag_bd:    DragBreakdown,
         MTOW:       float,
+        comp:       dict,
         S_ref:      Optional[float] = None,
-        config:     int = 1
+        config:     int = 1,
+        CL_approach: float = None,
     ):
         self.cfg     = cfg
         self.drag    = drag_bd
         self.MTOW    = MTOW
+        self.comp    = comp
         self.config   = config
-       
+        self.CL_approach = CL_approach
+
         # S_ref is updated each MTOW iteration via S_ref = MTOW*g/Loading
         self.S_ref   = S_ref if S_ref is not None else cfg.S_ref
 
@@ -140,7 +148,11 @@ class MissionPower:
 
     def _polar_CD(self, CL: float) -> float:
         """Quadratic drag polar at the cached CD0 and e."""
-        return self.CD0 + CL**2 / (np.pi * self.cfg.AR * self.e)
+        if self.cfg.N_propellers > 2:
+            cd_polar=(self.CD0 + CL**2 / (np.pi * self.cfg.AR * self.e))*0.91
+        else:
+            cd_polar=self.CD0 + CL**2 / (np.pi * self.cfg.AR * self.e)
+        return cd_polar
 
     def _eas_to_tas(self, V_eas: float, rho: float) -> float:
         return V_eas * np.sqrt(RHO_SL / rho)
@@ -172,6 +184,19 @@ class MissionPower:
         P  = (D * V + W * ROC) / self.cfg.eta_prop
         LD = CL / CD
         return P, CL, LD
+    
+    def _shaft_power_approach(
+        self, W: float, V: float, rho: float, ROD: float,
+    ) -> tuple[float, float, float]:
+        """
+        Steady-approach shaft power.  P_prop * eta_prop = D*V + W*ROD.
+        Returns (P_shaft, CL, L/D).
+        """
+        q  = 0.5 * rho * V**2
+        CD = self._polar_CD(self.CL_approach)
+        D  = q * self.S_ref * CD
+        P  = (D * V + W * ROD) / self.cfg.eta_prop
+        return P
 
     def _mdot(self, P_shaft: float) -> float:
         """Convert shaft power to fuel mass flow."""
@@ -189,19 +214,9 @@ class MissionPower:
         P, CL, LD = self._shaft_power_level(W_cruise, V, rho)
         mdot      = self._mdot(P)
         t         = cfg.range_m / V
-        
-       
-        
-
-        config=self.config
-        if config==1:
-            m = mdot * t *1/0.4         #needs to be adjusted according to proper calculation
-        elif config==2:            m = mdot * t * 1/0.52
-        elif config==3:            m = mdot * t * 1/0.37
-        elif config==4:            m = mdot * t * 1/0.47
-        elif config==5:            m = mdot * t * 1/0.41
-
-        return P, mdot, t, m, CL, LD
+        m         = mdot * t
+        T_total=P*cfg.eta_prop/V
+        return P, mdot, t, m, CL, LD,T_total
 
     def _reserve(self) -> tuple[float, float, float, float, float, float, float]:
         cfg       = self.cfg
@@ -239,6 +254,8 @@ class MissionPower:
         t         = cfg.altitude_cruise / ROC
         m         = mdot * t
         return P, mdot, t, m, CL, LD, V_tas
+    
+    
 
     def _takeoff_reference(self) -> float:
         """Climb-out shaft power for reference (not added to fuel)."""
@@ -251,18 +268,40 @@ class MissionPower:
 
     def compute(self) -> MissionFuelBreakdown:
 
-        P_c, md_c, t_c, m_c, CL_c, LD_c                       = self._cruise()
+        P_c, md_c, t_c, m_c, CL_c, LD_c, T_c                      = self._cruise()
         P_r, md_r, t_r, m_r, CL_r, LD_r, V_r                  = self._reserve()
         P_cl, md_cl, t_cl, m_cl, CL_cl, LD_cl, V_cl           = self._climb()
         P_TO                                                  = self._takeoff_reference()
 
+        # Restore mission coupling through the GT efficiency model without
+        # reintroducing mutual recursion between cruise and climb.
+        efficiency = GT_GT_efficiency(
+            comp=self.comp,
+            t_climb=t_cl,
+            t_cruise=t_c,
+            P_climb=P_cl,
+            P_cruise=P_c,
+        )
+        cruise_eff = efficiency["Cruise_average_eff"]
+        climb_eff  = efficiency["Climb_eff"]
+
+        m_c  = md_c * t_c / cruise_eff
+        m_cl = md_cl * t_cl / climb_eff
+
         m_TO_taxi = self.cfg.TO_taxi_frac * (m_c + m_cl)
+
+        # Evaluate at midpoint altitude
+        h_mid     = 0.5 * self.cfg.altitude_cruise
+        T, _, rho = isa(h_mid)
+
+        P_app =self._shaft_power_approach(W=self.MTOW-m_TO_taxi-m_c-m_cl,V=self.cfg.V_stall*1.3,rho=rho,ROD=self.cfg.ROD_avg)
 
         return MissionFuelBreakdown(
             P_cruise_shaft  = P_c,
             P_reserve_shaft = P_r,
             P_climb_shaft   = P_cl,
             P_TO_shaft      = P_TO,
+            P_app_shaft     = P_app,
             mdot_cruise     = md_c,
             mdot_reserve    = md_r,
             mdot_climb      = md_cl,
@@ -281,4 +320,5 @@ class MissionPower:
             LD_climb        = LD_cl,
             V_reserve_TAS   = V_r,
             V_climb_TAS     = V_cl,
+            T_cruise         = T_c,
         )

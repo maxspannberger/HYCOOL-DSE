@@ -2,9 +2,14 @@ import numpy as np
 from math import cos
 from dataclasses import dataclass, field
 from typing import Optional
+import sys
+from pathlib import Path
+# Allow running both from inside WeightEstimations and from the project root.
+root = Path(__file__).resolve().parent.parent
+if str(root) not in sys.path:
+    sys.path.append(str(root))
 from WeightEstimations.ISA import isa
 from WeightEstimations.Aircraft_Config import AircraftConfig
-
 from rich.table import Table
 
 
@@ -62,6 +67,8 @@ class ClassII_Drag_Input:
         MAC:     Optional[float] = None,
         S_h:     Optional[float] = None,
         S_v:     Optional[float] = None,
+        Sweep_quarter: Optional[float] = None,
+        Sweep_half: Optional[float] = None,
         K_A:     float = 0.935,
         e_theo:  float = 0.93,
     ) -> "ClassII_Drag_Input":
@@ -89,8 +96,8 @@ class ClassII_Drag_Input:
         return cls(
             S_ref        = S_ref_use,
             tc           = cfg.tc_mean,
-            lambda_half  = cfg.sweep_half,
-            lambda_tc    = cfg.sweep_tc,
+            lambda_half  = Sweep_half,
+            lambda_tc    = Sweep_quarter,
             MAC          = MAC_use,
             AR           = cfg.AR,
             S_wet_w      = S_wet_w,
@@ -125,6 +132,7 @@ class DragBreakdown:
     CD0_htail:  float = 0.0
     CD0_vtail:  float = 0.0
     CD0_fus:    float = 0.0
+    CD0_total:  float = 0.0
     CD_misc:    float = 0.0
 
     CD_i:       float = 0.0
@@ -133,6 +141,11 @@ class DragBreakdown:
 
     e:          float = 0.0
     CL_cruise:  float = 0.0   # exposed for Breguet / L/D
+    CL_cruise_Dmin: float = 0.0   # for minimum drag, if different from CL_cruise
+    CD_cruise_Dmin: float = 0.0   # for minimum drag, if different from CD_total
+
+    v_dmin: float = 0.0 # speed at minimum drag
+    v_mach: float = 0.0 # cruise speed in Mach
 
     @property
     def CD0(self) -> float:
@@ -168,6 +181,11 @@ class DragBreakdown:
         table.add_section()
         table.add_row("[bold green]Total CD[/bold green]", f"[bold green]{self.CD_total*1e4:.1f}[/bold green]")
         table.add_row("Cruise L/D", f"[bold yellow]{self.L_over_D:.2f}[/bold yellow]")
+        table.add_row("Cruise CL", f"[bold yellow]{self.CL_cruise:.2f}[/bold yellow]")
+        table.add_row("Cruise CL_Dmin", f"[bold yellow]{self.CL_cruise_Dmin:.2f}[/bold yellow]")
+        table.add_row("Cruise CD_Dmin", f"[bold yellow]{self.CD_cruise_Dmin:.5f}[/bold yellow]")
+        table.add_row("Cruise v_Dmin", f"[bold yellow]{self.v_dmin:.5f}[/bold yellow]")
+        table.add_row("Cruise v_Mach", f"[bold yellow]{self.v_mach:.5f}[/bold yellow]")
         return table
 
 
@@ -203,7 +221,7 @@ class DragEstimation:
         q           = 0.5 * rho * V**2
         Re_per_m    = rho * V / mu
         CL          = d.W_cruise / (q * d.S_ref)
-        return q, Re_per_m, CL
+        return q, Re_per_m, CL,rho,V
 
     def _CF(self, Re: float, lam_frac: float = 0.15) -> float:
         M       = self.i.M_cruise
@@ -212,7 +230,15 @@ class DragEstimation:
         return lam_frac * CF_lam + (1 - lam_frac) * CF_turb
 
     def _FF_lifting_surf(self, tc: float, lambda_tc: float) -> float:
-        return 1 + 2.7 * tc * np.cos(lambda_tc)**2 + 100 * tc**4
+        option=1
+        if option==1:
+            return 1 + 2.7 * tc * np.cos(lambda_tc)**2 + 100 * tc**4
+        # elif option==2:
+        #     term1 = 1 + (0.6 / 0.25) * tc + 100 * tc**4
+        #     term2 = 1.34 * cfg.M_cruise**0.18 * np.cos(lambda_tc)**0.28
+        #     return term1 * term2
+
+        #return 1 + 2.7 * tc * np.cos(lambda_tc)**2 + 100 * tc**4
 
     def _FF_fuselage(self) -> float:
         sigma = self.i.l_f / self.i.d_f
@@ -253,7 +279,7 @@ class DragEstimation:
     def compute(self) -> DragBreakdown:
         self._validate()
         d = self.i
-        q, Re_per_m, CL = self._flight_conditions()
+        q, Re_per_m, CL,rho,V = self._flight_conditions()
 
         CD0_w = self._cd0_component(
             Re_per_m, d.MAC,
@@ -276,19 +302,35 @@ class DragEstimation:
             self.IF_fuselage, d.S_wet_f,
         )
 
+
+        CD0_total = (CD0_w + CD0_h + CD0_v + CD0_f)*d.CD_misc
+
         e = self._oswald(CD0_w)
+
+        CL_opt = np.sqrt(1/3*np.pi * d.AR *e *CD0_total)
+
+        Cd_wave_opt= self._CD_wave(CL_opt)
+
+        Cd_induced_opt = self._CD_induced(CL_opt, e)
+
+        CD_Dmin = Cd_wave_opt + Cd_induced_opt + CD0_total
 
         return DragBreakdown(
             CD0_wing  = CD0_w,
             CD0_htail = CD0_h,
             CD0_vtail = CD0_v,
             CD0_fus   = CD0_f,
+            CD0_total = CD0_total,
             CD_misc   = d.CD_misc,
             CD_i      = self._CD_induced(CL, e),
             CD_wL     = self._CD_wave_lift(CL),
             CD_wave   = self._CD_wave(CL),
             e         = e,
             CL_cruise = CL,
+            CL_cruise_Dmin = CL_opt,
+            CD_cruise_Dmin=CD_Dmin,
+            v_dmin = np.sqrt(2 * d.W_cruise / (d.S_ref * rho * CL_opt)),
+            v_mach=V
         )
 
 
@@ -297,5 +339,9 @@ if __name__ == "__main__":
 
     cfg = default_q400_hycool()
     inp = ClassII_Drag_Input.from_config(cfg)
-    est = DragEstimation(inp)
-    print(est.compute().summary())
+    est = DragEstimation._FF_lifting_surf(inp,cfg.tc_mean,cfg.sweep_tc)
+    print(est)
+    # print(est.compute().summary())
+
+
+    

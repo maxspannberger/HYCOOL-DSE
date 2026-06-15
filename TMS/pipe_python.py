@@ -5,11 +5,7 @@ def mass_per_meter(rho_material, r_inner, r_outer):
     return rho_material * pi * (r_outer ** 2 - r_inner ** 2)
 
 
-def run_pipe_analysis(
-    m_dot,
-    length,
-    bends,
-):
+def run_pipe_analysis(m_dot, length, bends):
     # Assumed values (fixed).
     rho = 71
     f = 0.013
@@ -20,8 +16,9 @@ def run_pipe_analysis(
     h_lat = 446000
 
     # Fixed geometry for current design stage.
-    selected_diameter = 0.00752
-    selected_insulation = 0.0831
+    # selected_diameter = 0.00752
+    selected_diameter = 0.025
+    selected_insulation = 0.02
 
     # Material properties and layer thicknesses.
     t_ss = 0.0005
@@ -80,3 +77,11 @@ def run_pipe_analysis(
         "r_o_foam": r_o_foam,
         "r_o_al": r_o_al,
     }
+
+results = run_pipe_analysis(m_dot=1, length=50, bends=20)
+print(f"Selected Diameter: {results['diameter_mm']:.2f} mm")
+print(f"Pressure Drop: {results['pressure_drop_kpa']:.2f} kPa")
+print(f"Total Heat Input: {results['total_heat_input_w']:.2f} W")
+print(f"Insulation Thickness: {results['insulation_m']:.3f} m")
+print(f"Outer Diameter of Pipe: {2 * results['r_o_al']:.4f} m")
+print(f"Mass per Meter: {results['m_total']:.2f} kg/m")
