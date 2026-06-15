@@ -38,6 +38,7 @@ from Propulsion.TurbineSizing  import GasTurbineCycle
 from Propulsion.OffDesign      import OffDesignEvaluator
 from Propulsion.DimSizing      import DimensionalSizing
 from Propulsion.ExpanderSizing import PistonExpander
+from Propulsion.plot_style     import apply_style
 
 
 # ----------------------------------------------------------------------
@@ -161,14 +162,25 @@ def run(P_opt=None, off_design_cases=None, input_conditions=None, cfg=None, show
     engine = GasTurbineCycle.from_config(cfg).size(cea=cea)
 
     # --- 2. Off-design sweep + headline cases ---
+    # Each off-design case pairs a shaft power with an H2 feed condition
+    # (T_pre_comp / P_pre_comp). Lists of length 1 are broadcast across all
+    # power cases; see OffDesignEvaluator.resolve_cases.
     od_eval = OffDesignEvaluator.from_config(engine, cfg)
     od_cases = {}
-    for P in cfg.offdesign.P_shaft_cases:
+    for P, T_pre, P_pre in OffDesignEvaluator.cases_from_config(cfg):
+        # Distinct label per case so cases sharing a power but differing in
+        # feed condition don't collide. Feed suffix is added only when this
+        # case overrides the design-point feed.
+        base_label = f"{P/1e6:.3f}MW"
         try:
-            od_cases[P] = od_eval.evaluate(P)
+            res   = od_eval.evaluate(P, T_pre_comp=T_pre, P_pre_comp=P_pre)
+            label = base_label
+            if T_pre is not None or P_pre is not None:
+                label += f"_{res['T_pre_comp']:.0f}K_{res['P_pre_comp']:.0f}bar"
+            od_cases[label] = res
         except ValueError as exc:
             print(f"[warn] OffDesign at {P/1e6:.3f} MW failed: {exc}")
-            od_cases[P] = None
+            od_cases[base_label] = None
 
     # --- 3. Dimensional sizing ---
     dim = DimensionalSizing.from_config(engine, cfg, cea=cea).size()
@@ -177,19 +189,50 @@ def run(P_opt=None, off_design_cases=None, input_conditions=None, cfg=None, show
     expander = PistonExpander.from_config(engine, cfg).size()
 
     # --- Reports ---
-    if show:
-        if cfg.output.print_report:
-            engine.report()
-            for P, res in od_cases.items():
-                if res is not None:
-                    od_eval.report(res)
-            dim.report()
-            expander.report()
+    if cfg.output.print_report:
+        engine.report()
+        for label, res in od_cases.items():
+            if res is not None:
+                od_eval.report(res)
+        dim.report()
+        expander.report()
+
+    # --- Plots (PNGs for reports + optional interactive display) -----
+    if cfg.output.save_plots or cfg.output.show_plots:
+        apply_style()
+
+        plots_dir = Path(cfg.output.plots_dir) if cfg.output.save_plots else None
+        save_arg = str(plots_dir) if plots_dir is not None else None
+
+        # Run a sweep for the off-design 4-panel plot (separate from headline
+        # P_shaft_cases). Sweep is only run if plots are being produced.
+        try:
+            sweep = od_eval.sweep(
+                P_min=cfg.offdesign.P_sweep_min,
+                P_max=cfg.offdesign.P_sweep_max,
+                n_points=cfg.offdesign.P_sweep_n,
+            )
+        except Exception as exc:                       # noqa: BLE001
+            print(f"[warn] OffDesign sweep failed: {exc}")
+            sweep = []
+
+        # Save first (figures get closed); then re-render for interactive show.
+        if cfg.output.save_plots:
+            engine.plot_ts(save_dir=save_arg)
+            engine.plot_ts_h2(save_dir=save_arg)
+            engine.plot_ts_overlay(save_dir=save_arg)
+            dim.plot(save_dir=save_arg)
+            if sweep:
+                od_eval.plot_sweep(sweep, save_dir=save_arg)
+            print(f"[ok] Plots written to: {plots_dir.resolve()}")
 
         if cfg.output.show_plots:
             engine.plot_ts()
             engine.plot_ts_h2()
+            engine.plot_ts_overlay()
             dim.plot()
+            if sweep:
+                od_eval.plot_sweep(sweep)
 
     # --- Build per-case parameter maps; CSV is written vertically with one
     #     column per case and one row per parameter.
@@ -203,10 +246,10 @@ def run(P_opt=None, off_design_cases=None, input_conditions=None, cfg=None, show
     shared.update(expander.to_csv_row())
 
     cases = {"design": dict(shared)}
-    for P, res in od_cases.items():
+    for label, res in od_cases.items():
         if res is None:
             continue
-        col_name = f"offdesign_{P/1e6:.3f}MW"
+        col_name = f"offdesign_{label}"
         case_data = dict(shared)
         case_data.update(OffDesignEvaluator.to_csv_row(res, prefix="offdesign"))
         cases[col_name] = case_data

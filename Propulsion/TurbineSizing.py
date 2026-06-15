@@ -53,6 +53,12 @@ from rich.panel import Panel
 from rich import box
 from rich.rule import Rule
 
+from plot_style import (
+    apply_style, save_figure,
+    CYAN_PALETTE, cyan_tones,
+    NEUTRAL_GREY, TEXT_GREY, ACCENT_WARN,
+)
+
 
 class GasTurbineCycle:
     """
@@ -109,7 +115,10 @@ class GasTurbineCycle:
     PH1 : float
         H2 pressure after the fuel compressor / through the HEX [bar].
     TH2 : float
-        Target H2 temperature at HEX outlet / turbine inlet [K].
+        Legacy fixed H2 HEX outlet temperature [K]. No longer used: TH2 is
+        computed dynamically as the H2 HEX hot-side inlet temperature, i.e.
+        the maximum thermodynamically attainable value. Kept for config
+        backwards-compatibility.
     eta_compressor : float
         Isentropic efficiency of the H2 fuel compressor.
     eta_H2T : float
@@ -142,6 +151,7 @@ class GasTurbineCycle:
         eta_HEX     = 0.92,
         eta_mech    = 0.99,
         eta_diff    = 0.97,
+        mdot_boiloff= 0.01,
         # Recuperator
         eta_regen   = 0.775,
         eta_regen_p = 0.95,
@@ -174,6 +184,7 @@ class GasTurbineCycle:
         self.eta_HEX        = eta_HEX
         self.eta_mech       = eta_mech
         self.eta_diff       = eta_diff
+        self.mdot_boiloff   = mdot_boiloff
         self.eta_regen      = eta_regen
         self.eta_regen_p    = eta_regen_p
         self.USE_REGEN      = USE_REGEN
@@ -220,6 +231,7 @@ class GasTurbineCycle:
             eta_HEX        = c.eta_HEX,
             eta_mech       = c.eta_mech,
             eta_diff       = c.eta_diff,
+            mdot_boiloff   = c.mdot_boiloff,
             eta_regen      = c.eta_regen,
             eta_regen_p    = c.eta_regen_p,
             USE_REGEN      = c.USE_REGEN,
@@ -260,7 +272,7 @@ class GasTurbineCycle:
             "Q_tot_W", "T_hex_hot_in", "T_hot_out", "T_exh_final",
             "approach_min", "approach_loc", "hex_feasible",
             "Q_regen_W", "q_in_W", "eta_total", "eta_gaspath",
-            "P3_H2", "TH3",
+            "P3_H2", "TH2", "TH3",
         ]
         return {f"cycle__{k}": r[k] for k in scalar_keys if k in r}
 
@@ -323,7 +335,7 @@ class GasTurbineCycle:
         """
         # --- Inlet / ram conditions ---
         # Stagnation temperature and pressure at HPC face after ram diffuser.
-        T0 = 239.0   # static ambient temperature [K] at 25,000 ft
+        T0 = 238.0   # static ambient temperature [K] at 20,000 ft
         P0 = self.P_ambient
 
         g_0 = self._air_gamma(P0, T0)
@@ -369,8 +381,6 @@ class GasTurbineCycle:
         h2s = PropsSI("H", "P", self.PH1*1e5, "S", s1, self.fluid)
         h2  = h1 + (h2s - h1) / self.eta_compressor         # actual compressor outlet enthalpy
         w_compressor = h2 - h1                              # compressor specific work [J/kg_fuel]
-        h_hexout     = PropsSI("H", "P", self.PH1*1e5, "T", self.TH2, self.fluid)
-        dh_h2        = h_hexout - h2                        # HEX heat addition [J/kg_fuel]
 
         # Mean air Cp across the recuperator (used in the fixed-point iteration below)
         cp_air_reg = self._air_cp(P2, 0.5*(T2 + T5))
@@ -386,9 +396,20 @@ class GasTurbineCycle:
                 self._air_h(Pc, self.TIT) - self._air_h(Pc, T_air_in)
             )
 
+        if self.USE_REGEN and self.REGEN_FIRST:
+            T2p_seed     = T2 + self.eta_regen * (T5 - T2)
+            OF_seed      = OF_for(T2p_seed)
+            r_seed       = OF_seed * cp_air_reg / ((OF_seed + 1) * Cp_HPT)
+            T_hex_hot_in = T5 - self.eta_regen * (T5 - T2) * r_seed
+        else:
+            T_hex_hot_in = T5
+
+        TH2          = T_hex_hot_in
+        h_hexout     = PropsSI("H", "P", self.PH1*1e5, "T", TH2, self.fluid)
+        dh_h2        = h_hexout - h2                        # HEX heat addition [J/kg_fuel]
+
         OF            = OF_for(T2)
         T2p           = T2
-        T_hex_hot_in  = T5
         T_exh_final   = T5
 
         for _ in range(50):
@@ -400,12 +421,9 @@ class GasTurbineCycle:
                     # Exhaust -> recuperator -> H2 HEX
                     T_reg_in    = T5
                     T2p         = T2 + self.eta_regen * (T_reg_in - T2)
-                    T_after_reg = T_reg_in - self.eta_regen * (T_reg_in - T2) * r
-                    T_hex_hot_in = T_after_reg
-                    T_exh_final  = T_hex_hot_in - dh_h2 / ((OF + 1) * Cp_HPT)
+                    T_exh_final = T_hex_hot_in - dh_h2 / ((OF + 1) * Cp_HPT)
                 else:
                     # Exhaust -> H2 HEX -> recuperator (default)
-                    T_hex_hot_in = T5
                     T_after_hex  = T5 - dh_h2 / ((OF + 1) * Cp_HPT)
                     T_reg_in     = T_after_hex
                     dpre         = self.eta_regen * max(T_reg_in - T2, 0.0)
@@ -414,7 +432,6 @@ class GasTurbineCycle:
             else:
                 # No recuperator: air enters combustor at T2, exhaust cools only via H2 HEX
                 T2p          = T2
-                T_hex_hot_in = T5
                 T_exh_final  = T5 - dh_h2 / (OF_for(T2) + 1)
 
             OF_new = OF_for(T2p)
@@ -434,14 +451,17 @@ class GasTurbineCycle:
         # The fuel is expanded from PH1 (post-HEX) down to slightly above Pc
         # (10% margin for injector pressure drop) before entering the combustor.
         P3_H2  = 8
-        h2_in  = PropsSI('H', 'P', self.PH1*1e5, 'T', self.TH2, self.fluid)
-        s2_in  = PropsSI('S', 'P', self.PH1*1e5, 'T', self.TH2, self.fluid)
+        h2_in  = PropsSI('H', 'P', self.PH1*1e5, 'T', TH2, self.fluid)
+        s2_in  = PropsSI('S', 'P', self.PH1*1e5, 'T', TH2, self.fluid)
         h3_ideal = PropsSI('H', 'P', P3_H2*1e5, 'S', s2_in, self.fluid)
         w_H2T    = (h2_in - h3_ideal) * self.eta_H2T   # specific work [J/kg_fuel]
         h3_actual = h2_in - w_H2T                       # actual turbine exit enthalpy
         TH3      = PropsSI('T', 'P', P3_H2*1e5, 'H', h3_actual, self.fluid)
-        Cp_H2T   = (h2_in - h3_actual) / (self.TH2 - TH3) if self.TH2 != TH3 else 0.0
+        Cp_H2T   = (h2_in - h3_actual) / (TH2 - TH3) if TH2 != TH3 else 0.0
 
+
+
+      
         # --- CEA combustion products: specific gas constant (reporting only) ---
         Rs = None
         if cea is not None:
@@ -469,6 +489,7 @@ class GasTurbineCycle:
             "w_compressor": w_compressor,
             "dh_h2": dh_h2,
             "w_H2T": w_H2T,
+            "TH2": TH2,                 # dynamic: TH2 = T_hex_hot_in (max possible)
             "TH3": TH3, "Cp_H2T": Cp_H2T,
             "P3_H2": P3_H2, "h3_actual": h3_actual,
         }
@@ -532,6 +553,18 @@ class GasTurbineCycle:
         eta_total   = total_net   / q_in
         eta_gaspath = gaspath_net / q_in
 
+
+          # ---Boiloff afterburner ---
+        Q_added_reheat      = self.mdot_boiloff * self.LHV_H2
+        exhaust_hardcode_offdesign = 770
+        Cp_exhaust          = self._air_cp(self.P_ambient, exhaust_hardcode_offdesign)
+        delta_T_reheat      = Q_added_reheat / (mdot_tot * Cp_exhaust)
+        T_exit              = delta_T_reheat + exhaust_hardcode_offdesign
+        print("DJAKLFADKFHKDJLF KDJHFKSJHFKSDJ FHSD FKJSD HFKSJD F")
+        print(f"reheat Exit temperature: {T_exit}")
+        print(f"The exit im taking: {exhaust_hardcode_offdesign}")
+
+
         return {
             # Mass flows
             "mdot_f": mdot_f, "mdot_tot": mdot_tot,
@@ -565,6 +598,7 @@ class GasTurbineCycle:
             "q_in_W": q_in, "eta_total": eta_total, "eta_gaspath": eta_gaspath,
             # Hydrogen state data (for T-S plotting)
             "h2_compressorout": d["h2_compressorout"],
+            "TH2": d["TH2"],
             "P3_H2": d["P3_H2"], "h3_actual": d["h3_actual"], "TH3": d["TH3"],
         }
 
@@ -774,7 +808,7 @@ class GasTurbineCycle:
         TB  = PropsSI('T', 'P', PB*1e5, 'H', hB, self.fluid)
         sB  = PropsSI('S', 'P', PB*1e5, 'H', hB, self.fluid)
 
-        PC, TC = self.PH1, self.TH2
+        PC, TC = self.PH1, res['TH2']
         sC  = PropsSI('S', 'P', PC*1e5, 'T', TC, self.fluid)
 
         PD  = res['P3_H2']
@@ -792,48 +826,55 @@ class GasTurbineCycle:
         Compression (HA->HB) and turbine expansion (HC->HD) are drawn as
         straight tie-lines since the exact entropy path is process-dependent.
         HEX heating (HB->HC) is drawn as a real isobar.
+
+        Tonal scheme: lightest cyan for compression, deepest for HEX (the
+        dominant heat-addition step), mid for the turbine.
         """
         (nA, PA, TA, sA), (nB, PB, TB, sB), (nC, PC, TC, sC), (nD, PD, TD, sD) = states
 
+        col_h2_comp, col_h2_hex, col_h2_turb = cyan_tones(3, lightest=2, darkest=6)
+
         # HA -> HB: compression (tie-line)
-        ax.plot([sA, sB], [TA, TB], '-', color='steelblue', linewidth=2,
+        ax.plot([sA, sB], [TA, TB], '-', color=col_h2_comp, linewidth=2.0,
                 label=f"{label_prefix}H2 compression")
 
         # HB -> HC: isobaric HEX heating (real fluid curve)
         S_hex, T_hex = self._isobar(PB, TB, TC, self.fluid)
         if S_hex.size:
-            ax.plot(S_hex, T_hex, '-', color='crimson', linewidth=2.5,
+            ax.plot(S_hex, T_hex, '-', color=col_h2_hex, linewidth=2.6,
                     label=f"{label_prefix}H2 HEX heating")
 
         # HC -> HD: expander turbine (tie-line)
-        ax.plot([sC, sD], [TC, TD], '-', color='seagreen', linewidth=2,
+        ax.plot([sC, sD], [TC, TD], '-', color=col_h2_turb, linewidth=2.0,
                 label=f"{label_prefix}H2 turbine")
 
         for name, P, T, s in states:
-            ax.plot(s, T, 'ko', markersize=5, zorder=5)
-            ax.annotate(f" H{name}", (s, T), fontsize=10,
+            ax.plot(s, T, 'o', color=TEXT_GREY, markersize=4.5, zorder=5)
+            ax.annotate(f" H{name}", (s, T), fontsize=9.5, color=TEXT_GREY,
                         xytext=(5, 2), textcoords="offset points")
 
         # Label the open-path exit
-        ax.annotate("to combustor", (sD, TD), fontsize=8, color='seagreen',
+        ax.annotate("to combustor", (sD, TD), fontsize=8.5, color=col_h2_turb,
                     xytext=(8, -12), textcoords="offset points")
 
     # ------------------------------------------------------------------
     # Plotting methods (public)
     # ------------------------------------------------------------------
-    def plot_ts(self):
+    def plot_ts(self, save_dir=None, show=True):
         """
         Plot the air-path T-S diagram for the main gas cycle.
 
-        Process lines are drawn as real-fluid isobars where applicable.
-        The recuperator heat transfer arrow shows the coupling between the
-        exhaust cooling and the air preheating streams.
+        save_dir : Path or str, optional
+            If given, the figure is written as PNG and not shown.
+        show : bool
+            If True (and save_dir is None), call plt.show().
         """
         if self.results is None:
             raise RuntimeError("Call size() before plot_ts().")
 
+        apply_style()
         res = self.results
-        plt.figure(figsize=(9, 7))
+        fig, ax = plt.subplots(figsize=(9, 6.5))
 
         P1, T1           = res['P1'], res['T1']
         P2, T2, T2p      = res['P2'], res['T2'], res['T2p']
@@ -848,33 +889,32 @@ class GasTurbineCycle:
         s5   = PropsSI('S', 'P', P5*1e5, 'T', T5,   'Air')
         s_exh = PropsSI('S', 'P', P5*1e5, 'T', T_exh, 'Air')
 
+        # Five cyan tones, ordered light -> dark by "importance" of process.
+        c_comp, c_regen, c_comb, c_hpt, c_exh = cyan_tones(5, lightest=1, darkest=6)
+
         # 1 -> 2: HPC compression (tie-line)
-        plt.plot([s1, s2], [T1, T2], 'k-', linewidth=1.5,
-                 label='Compression / Expansion')
+        ax.plot([s1, s2], [T1, T2], '-', color=c_comp, lw=2.0,
+                label='HPC compression')
 
         # 2 -> 2': Recuperator air heating (real isobar)
         Sr, Tr = self._isobar(P2, T2, T2p, 'Air')
         if Sr.size:
-            plt.plot(Sr, Tr, color='orange', linewidth=3,
-                     label="Recuperator (Air Heating)")
+            ax.plot(Sr, Tr, color=c_regen, lw=2.6, label="Recuperator (air heating)")
 
         # 2' -> 4: Combustor heat addition (real isobar)
         Sc, Tc = self._isobar(P4, T2p, T4, 'Air')
-        plt.plot(Sc, Tc, color='red', linewidth=2, label="Combustor (Heat Addition)")
+        ax.plot(Sc, Tc, color=c_comb, lw=2.6, label="Combustor (heat addition)")
 
         # 4 -> 5: HPT expansion (tie-line)
-        plt.plot([s4, s5], [T4, T5], 'k-', linewidth=1.5)
+        ax.plot([s4, s5], [T4, T5], '-', color=c_hpt, lw=2.0, label="HPT expansion")
 
-        # 5 -> T_exh: Exhaust cooling through recuperator + H2 HEX (real isobar)
+        # 5 -> T_exh: exhaust cooling through recuperator + H2 HEX (real isobar)
         Se, Te = self._isobar(P5, T5, T_exh, 'Air')
-        plt.plot(Se, Te, color='purple', linewidth=3,
-                 label="Exhaust (Regen + HEX Sink)")
+        ax.plot(Se, Te, color=c_exh, lw=2.0, label="Exhaust (regen + HEX sink)")
 
-        # T_exh -> 1: Atmospheric rejection (tie-line closes the loop)
-        # Direct tie-line handles the pressure drop from P5 to P1 without
-        # attempting a physically ambiguous isobaric closure.
-        plt.plot([s_exh, s1], [T_exh, T1], color='gray', linestyle='--',
-                 linewidth=1.5, label="Atmospheric Rejection")
+        # T_exh -> 1: atmospheric rejection (tie-line, dashed grey)
+        ax.plot([s_exh, s1], [T_exh, T1], color=NEUTRAL_GREY, linestyle='--',
+                lw=1.2, label="Atmospheric rejection")
 
         # Recuperator heat-transfer arrow (visual coupling, not to scale)
         if T2p > T2:
@@ -882,14 +922,14 @@ class GasTurbineCycle:
             s_cold_mid = PropsSI('S', 'P', P2*1e5, 'T', T_cold_mid, 'Air')
             T_hot_mid  = T5 - (T2p - T2) / 2
             s_hot_mid  = PropsSI('S', 'P', P5*1e5, 'T', T_hot_mid, 'Air')
-            plt.annotate('', xy=(s_cold_mid, T_cold_mid),
-                         xytext=(s_hot_mid, T_hot_mid),
-                         arrowprops=dict(arrowstyle='->', color='orange', lw=2))
-            plt.text((s_cold_mid + s_hot_mid)/2,
-                     (T_cold_mid + T_hot_mid)/2 + 25,
-                     'Regen Heat Transfer',
-                     color='orange', ha='center', fontsize=9, fontweight='bold',
-                     bbox=dict(facecolor='white', edgecolor='none', alpha=0.7))
+            ax.annotate('', xy=(s_cold_mid, T_cold_mid),
+                        xytext=(s_hot_mid, T_hot_mid),
+                        arrowprops=dict(arrowstyle='->', color=c_regen, lw=1.4))
+            ax.text((s_cold_mid + s_hot_mid)/2,
+                    (T_cold_mid + T_hot_mid)/2 + 25,
+                    'Regen heat transfer',
+                    color=c_regen, ha='center', fontsize=8.5, fontweight='semibold',
+                    bbox=dict(facecolor='white', edgecolor='none', alpha=0.75))
 
         # Station markers
         stations = {
@@ -899,55 +939,57 @@ class GasTurbineCycle:
         for name, (s, t) in stations.items():
             if name == "2'" and T2p == T2:
                 continue
-            plt.plot(s, t, 'ko', markersize=5, zorder=5)
-            plt.annotate(f" {name}", (s, t), fontsize=10,
-                         xytext=(5, 2), textcoords="offset points")
+            ax.plot(s, t, 'o', color=TEXT_GREY, markersize=4.5, zorder=5)
+            ax.annotate(f" {name}", (s, t), fontsize=9.5, color=TEXT_GREY,
+                        xytext=(5, 2), textcoords="offset points")
 
-        plt.title("Gas-Path T-S Diagram")
-        plt.xlabel("Specific Entropy, s [J/kg·K]")
-        plt.ylabel("Temperature, T [K]")
-        plt.grid(True, alpha=0.5)
-        plt.legend(loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0.)
-        plt.tight_layout()
-        plt.show()
+        ax.set_title("Gas-path T–S diagram")
+        ax.set_xlabel("Specific entropy, s  [J/(kg·K)]")
+        ax.set_ylabel("Temperature, T  [K]")
+        ax.legend(loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0.)
+        fig.tight_layout()
 
-    def plot_ts_h2(self):
+        if save_dir is not None:
+            return save_figure(fig, "ts_gaspath", save_dir)
+        if show:
+            plt.show()
+        return fig
+
+    def plot_ts_h2(self, save_dir=None, show=True):
         """
         Plot the hydrogen fuel circuit T-S diagram (ParaHydrogen working fluid).
-
-        The entropy scale here belongs to hydrogen and is NOT comparable to the
-        air-side diagram. The path is open: HA->HB->HC->HD, then fuel enters
-        the combustor.
         """
         if self.results is None:
             raise RuntimeError("Call size() before plot_ts_h2().")
 
+        apply_style()
         states = self._h2_state_points(self.results)
-        plt.figure(figsize=(9, 7))
-        self._draw_h2_path(plt.gca(), states)
-        plt.title("Hydrogen-Circuit T-S Diagram (ParaHydrogen)")
-        plt.xlabel("Specific Entropy, s [J/kg·K]  (hydrogen reference)")
-        plt.ylabel("Temperature, T [K]")
-        plt.grid(True, alpha=0.5)
-        plt.legend(loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0.)
-        plt.tight_layout()
-        plt.show()
+        fig, ax = plt.subplots(figsize=(9, 6.5))
+        self._draw_h2_path(ax, states)
+        ax.set_title("Hydrogen-circuit T–S diagram (ParaHydrogen)")
+        ax.set_xlabel("Specific entropy, s  [J/(kg·K)]   (hydrogen reference)")
+        ax.set_ylabel("Temperature, T  [K]")
+        ax.legend(loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0.)
+        fig.tight_layout()
 
-    def plot_ts_overlay(self):
+        if save_dir is not None:
+            return save_figure(fig, "ts_h2", save_dir)
+        if show:
+            plt.show()
+        return fig
+
+    def plot_ts_overlay(self, save_dir=None, show=True):
         """
-        Overlay the air gas path and hydrogen circuit on a shared temperature axis.
-
-        The two working fluids have incompatible entropy reference states and
-        live on very different numerical scales (air ~4-5 kJ/kg/K, H2 ~24-56
-        kJ/kg/K). Plotting both on a single s-axis would be physically meaningless,
-        so the hydrogen circuit uses an independent top x-axis via twiny().
-        Only the temperature (y) axis is shared and physically comparable.
+        Overlay the air gas path and hydrogen circuit on a shared T-axis.
+        The H2 circuit uses an independent top x-axis (twiny) because the two
+        fluids have incompatible entropy references.
         """
         if self.results is None:
             raise RuntimeError("Call size() before plot_ts_overlay().")
 
+        apply_style()
         res = self.results
-        fig, ax_air = plt.subplots(figsize=(11, 7))
+        fig, ax_air = plt.subplots(figsize=(11, 6.8))
 
         # --- Air gas path (bottom x-axis) ---
         P1, T1           = res['P1'], res['T1']
@@ -963,19 +1005,22 @@ class GasTurbineCycle:
         s5    = PropsSI('S', 'P', P5*1e5, 'T', T5,    'Air')
         s_exh = PropsSI('S', 'P', P5*1e5, 'T', T_exh, 'Air')
 
-        ax_air.plot([s1, s2], [T1, T2], 'k-', lw=1.5,
-                    label="Air compression / expansion")
+        c_comp, c_regen, c_comb, c_hpt, c_exh = cyan_tones(5, lightest=1, darkest=6)
+
+        ax_air.plot([s1, s2], [T1, T2], '-', color=c_comp, lw=2.0,
+                    label="Air HPC compression")
         Sr, Tr = self._isobar(P2, T2, T2p, 'Air')
         if Sr.size:
-            ax_air.plot(Sr, Tr, color='orange', lw=3,
+            ax_air.plot(Sr, Tr, color=c_regen, lw=2.6,
                         label="Air recuperator heating")
         Sc, Tc = self._isobar(P4, T2p, T4, 'Air')
-        ax_air.plot(Sc, Tc, color='red', lw=2, label="Air combustor")
-        ax_air.plot([s4, s5], [T4, T5], 'k-', lw=1.5)
+        ax_air.plot(Sc, Tc, color=c_comb, lw=2.6, label="Air combustor")
+        ax_air.plot([s4, s5], [T4, T5], '-', color=c_hpt, lw=2.0,
+                    label="Air HPT expansion")
         Se, Te = self._isobar(P5, T5, T_exh, 'Air')
-        ax_air.plot(Se, Te, color='purple', lw=3,
+        ax_air.plot(Se, Te, color=c_exh, lw=2.0,
                     label="Air exhaust (regen + HEX)")
-        ax_air.plot([s_exh, s1], [T_exh, T1], color='gray', ls='--', lw=1.5,
+        ax_air.plot([s_exh, s1], [T_exh, T1], color=NEUTRAL_GREY, ls='--', lw=1.2,
                     label="Atmospheric rejection")
 
         for name, s, t in [("1",  s1,   T1),   ("2",  s2,  T2),
@@ -983,36 +1028,41 @@ class GasTurbineCycle:
                             ("5",  s5,   T5),   ("Exh", s_exh, T_exh)]:
             if name == "2'" and T2p == T2:
                 continue
-            ax_air.plot(s, t, 'ko', ms=5, zorder=5)
-            ax_air.annotate(f" {name}", (s, t), fontsize=9,
+            ax_air.plot(s, t, 'o', color=TEXT_GREY, ms=4.5, zorder=5)
+            ax_air.annotate(f" {name}", (s, t), fontsize=9, color=TEXT_GREY,
                             xytext=(4, 2), textcoords="offset points")
 
-        ax_air.set_xlabel("Air specific entropy, s [J/kg·K]  (air reference)")
-        ax_air.set_ylabel("Temperature, T [K]")
-        ax_air.grid(True, alpha=0.4)
+        ax_air.set_xlabel("Air specific entropy, s  [J/(kg·K)]   (air reference)")
+        ax_air.set_ylabel("Temperature, T  [K]")
 
         # --- Hydrogen circuit (top x-axis, independent entropy scale) ---
         ax_h2 = ax_air.twiny()
         states = self._h2_state_points(res)
         self._draw_h2_path(ax_h2, states)
         ax_h2.set_xlabel(
-            "Hydrogen specific entropy, s [J/kg·K]  "
-            "(hydrogen reference -- NOT comparable to air scale)",
-            color='dimgray',
+            "Hydrogen specific entropy, s  [J/(kg·K)]   "
+            "(H2 reference — independent axis)",
+            color=NEUTRAL_GREY,
         )
+        ax_h2.tick_params(axis='x', colors=NEUTRAL_GREY)
+        ax_h2.spines['top'].set_visible(True)
+        ax_h2.spines['top'].set_color(NEUTRAL_GREY)
 
         ax_air.set_title(
-            "Overlay: Air Gas Path + Hydrogen Circuit\n"
-            "(shared temperature axis; entropy axes are independent)"
+            "Air gas path + hydrogen circuit  (shared T-axis, independent s-axes)"
         )
 
-        # Merge legends from both axes
         h1, l1 = ax_air.get_legend_handles_labels()
         h2, l2 = ax_h2.get_legend_handles_labels()
         ax_air.legend(h1 + h2, l1 + l2,
                       loc='upper left', bbox_to_anchor=(1.04, 1), borderaxespad=0.)
         fig.tight_layout()
-        plt.show()
+
+        if save_dir is not None:
+            return save_figure(fig, "ts_overlay", save_dir)
+        if show:
+            plt.show()
+        return fig
 
 
 # ------------------------------------------------------------------
