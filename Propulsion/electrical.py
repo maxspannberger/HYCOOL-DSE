@@ -461,7 +461,14 @@ def perform_complete_electrical_sizing(P_TO, P_climb, P_cruise, P_APP, P_OEI, b,
 
     total_mass = converter_sizing["total"]["mass"] + cable_results["m"]
 
-    return total_mass, cooling_requirements_only, powers, dimensions_only
+    electrical_results = {
+        "mass": total_mass,
+        "cooling": cooling_requirements_only,
+        "powers": powers,
+        "sizes": dimensions_only
+    }
+
+    return electrical_results
 
 
 if __name__ == "__main__":

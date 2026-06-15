@@ -676,13 +676,13 @@ class weightEstimation:
                 # if comp_key == "cable":
                 #     mass = cable_len * comp[comp_key].mass_per_length
                 if comp_key == "electrical_sys":
-                    mass_elec, cool, all_powers, electrical_dimensions = perform_complete_electrical_sizing(g.P_takeoff_KW,g.P_climb_KW,g.P_cruise_KW,g.P_approach_KW,
+                    electrical_results = perform_complete_electrical_sizing(g.P_takeoff_KW,g.P_climb_KW,g.P_cruise_KW,g.P_approach_KW,
                                                                  g.P_TO_OEI_KW, g.b)
                     if g.N_propellers>2:
 
-                        mass = mass_elec
+                        mass = electrical_results["mass"]
                     else:
-                        mass = mass_elec*0.9 #estimate that electrical system is 25% lighter for 2 engines since less complex power distribution system and less components needed
+                        mass = electrical_results["mass"]*0.9 #estimate that electrical system is 25% lighter for 2 engines since less complex power distribution system and less components needed
                 elif comp_key == "pipe+valves+pumps":
                     if g.N_propellers>2:
                         #mass = pipe_len * comp[comp_key].mass_per_length
@@ -742,19 +742,19 @@ class weightEstimation:
 
 
         # GT sizing and results
-        P_per_flight_condition = list(list(all_powers["hts_gen"].values())[0].values())
+        P_per_flight_condition = list(list(electrical_results["powers"]["hts_gen"].values())[0].values())
         gt_results_dict = run_gt_sizing(P_opt=P_opt, off_design_cases=P_per_flight_condition, input_conditions=None, cfg=None, show=False, write=False)
         mass_flows = [gt_results_dict["od_cases"][P]["mdot_f"] for P in P_per_flight_condition]
         # for P, m in zip(P_per_flight_condition, mass_flows):
         #     print(f"{P}: {m}")
 
         # print(cool)
-        H2_results_nominal = main_H2_nominal(comps=cool, sizes=electrical_dimensions)
-        print(H2_results_nominal)
+        H2_results_nominal = main_H2_nominal(comps=electrical_results["cooling"], sizes=electrical_results["sizes"])
+        # print(H2_results_nominal)
 
 
 
-        return total_mass * g.mass_margin,fan_mass, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff,eff_climb, eff_cruise, bt_charging_ratio, P_opt,cool
+        return total_mass * g.mass_margin,fan_mass, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff,eff_climb, eff_cruise, bt_charging_ratio, P_opt, electrical_results["cooling"]
     
     def _h2_tank_weight(self) -> float:
         return (self.g.W_fuel * (1 / self.g.grav_density - 1)*(1+self.g.frn_tank_support))* self.g.mass_margin
