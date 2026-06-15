@@ -14,6 +14,7 @@ from WeightEstimations.Aircraft_Config import AircraftConfig
 from General.component_parameters import component_params as comp_params
 from Propulsion.efficiency import GT_BAT_efficiency, GT_FC_efficiency, GT_GT_efficiency,FC_BAT_efficiency
 from Propulsion.electrical import perform_complete_electrical_sizing
+from Propulsion.main import run as run_gt_sizing
 
 from rich.table import Table
 
@@ -662,7 +663,7 @@ class weightEstimation:
                                     g.P_reserve_KW, 
                                     g.P_TO_KW)
 
-                    # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
+                # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
                 P_req_primary = max(g.P_cruise_KW/2, 
                                         g.P_TO_OEI_KW,
                                         P_req_tot/2)
@@ -736,6 +737,13 @@ class weightEstimation:
             P_opt = efficiency["GT_P_opt"]/1000
         else:
             P_opt = g.P_opt/1000
+
+
+        # TODO: add masses from the rest of the code
+        P_per_flight_condition = [1, 2, 3, 4, 5, 6, 7]
+        gt_results_dict = run_gt_sizing(P_opt=P_opt, off_design_cases=P_per_flight_condition, input_conditions=None, cfg=None, show=False, write=False)
+        mass_flows = [gt_results_dict.od_cases[P]["mdot_f"] for P in P_per_flight_condition]
+
 
         return total_mass * g.mass_margin,fan_mass, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff,eff_climb, eff_cruise, bt_charging_ratio, P_opt,cool
     

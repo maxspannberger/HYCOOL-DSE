@@ -29,6 +29,7 @@ config.output.{show_plots, print_report}.
 
 import csv
 from pathlib import Path
+import json
 
 from rocketcea.cea_obj_w_units import CEA_Obj
 
@@ -223,4 +224,5 @@ def run(P_opt=None, off_design_cases=None, input_conditions=None, cfg=None, show
 # CLI entry point
 # ----------------------------------------------------------------------
 if __name__ == "__main__":
-    run(show=False, write=False)
+    gt_results_dict = run(show=False, write=False)
+    print(gt_results_dict)
