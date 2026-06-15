@@ -748,9 +748,10 @@ class weightEstimation:
         # for P, m in zip(P_per_flight_condition, mass_flows):
         #     print(f"{P}: {m}")
 
-        # print(cool)
         H2_results_nominal = main_H2_nominal(comps=electrical_results["cooling"], sizes=electrical_results["sizes"])
-        # print(H2_results_nominal)
+        H2_results_all = main_H2_OEI(comps=electrical_results["cooling"], sizes=electrical_results["sizes"],
+                                     All_temps=H2_results_nominal["temperatures"], HEX_areas=H2_results_nominal["areas"])
+        print(H2_results_all)
 
 
 

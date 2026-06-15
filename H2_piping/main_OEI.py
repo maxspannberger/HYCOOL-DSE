@@ -46,7 +46,7 @@ def save_results_to_json(phase_name, T, p, rho, h, m_dot_final):
 # =============================================================================
 # Solver & Visualization
 # =============================================================================
-def solve_OEI_system(system, m_dot, T_amb, branch_name=""):
+def solve_OEI_system(system, m_dot, T_amb, branch_name="", show=False):
     # Add 'u': [] to the initialization
     states = {'p': [], 'T': [], 'rho': [], 'h': [], 'frac': [], 'u': []}
     
@@ -57,7 +57,8 @@ def solve_OEI_system(system, m_dot, T_amb, branch_name=""):
             m_dot = m_dot * comp[1] / comp[-1]
         else:
             if hasattr(comp, 'name') and comp.name in ['hts_gen', 'hts_pow']:
-                print(f"[{branch_name}] Mass flow entering {comp.name.upper()} ({comp.location}): {m_dot:.5f} kg/s")
+                if show:
+                    print(f"[{branch_name}] Mass flow entering {comp.name.upper()} ({comp.location}): {m_dot:.5f} kg/s")
 
             component_result = comp.solve_H2_state(states, T_amb, m_dot, PLOT=False, system=system, i=i)
             states['p'].append(component_result['p'])
@@ -72,9 +73,11 @@ def solve_OEI_system(system, m_dot, T_amb, branch_name=""):
                      Temps[comp.name] = {}
                  Temps[comp.name][comp.location] = component_result['temperature']
 
-            
-    print(f"[{branch_name}] Ending Branch mass flow: {m_dot:.5f} kg/s")
+    if show:    
+        print(f"[{branch_name}] Ending Branch mass flow: {m_dot:.5f} kg/s")
+
     return states, m_dot, None, Temps
+
 
 def plot_combined_states(states_W, states_F, phase_name):
     flat_W = {}
@@ -120,32 +123,32 @@ def plot_combined_states(states_W, states_F, phase_name):
     plt.show()
 
 
-def main_H2_OEI():
-    pass
-
-# =============================================================================
-# MAIN RUNTIME ENVIRONMENT
-# =============================================================================
-if __name__ == "__main__":
-
-    path = str(root / "Propulsion/only_cooling_results.json")
-    with open(path, 'r') as file:
-        comps = json.load(file)
-
-    filename = "HEX_temps.json"
-    with open(filename, 'r') as f:
-        All_temps = json.load(f)
-
-    filename = "HEX_areas.json"
-    with open(filename, 'r') as f:
-        HEX_areas = json.load(f)
+def main_H2_OEI(comps=None, sizes=None, All_temps=None, HEX_areas=None, show=False, write=False):
+    if comps is None:
+        path = str(root / "Propulsion/only_cooling_results.json")
+        with open(path, 'r') as file:
+            comps = json.load(file)
+    if sizes is None:
+            path = root / "Propulsion" / "only_sizing_results.json"
+            with open(path, 'r') as file:
+                    sizes = json.load(file)
+    if All_temps is None:
+        filename = "HEX_temps.json"
+        with open(filename, 'r') as f:
+            All_temps = json.load(f)
+    if HEX_areas is None:
+        filename = "HEX_areas.json"
+        with open(filename, 'r') as f:
+            HEX_areas = json.load(f)
 
     for current_phase, current_mdot in zip(c.oei_phases, c.oei_m_dots):
-        print("\n" + "*"*60)
-        print(f" STARTING SIMULATION: {current_phase.upper()} ".center(60, "*"))
-        print("*"*60)
+        if show:
+            print("\n" + "*"*60)
+            print(f" STARTING SIMULATION: {current_phase.upper()} ".center(60, "*"))
+            print("*"*60)
 
         component_position = {}
+        data_per_condition = {}
         for key, value in comps[current_phase].items(): 
             if key == "total": continue
             component_position[key] = sorted(value, key=float)
@@ -171,19 +174,19 @@ if __name__ == "__main__":
                 Pipe(length=0.71), Valve(name='shutoff'), Corner(N_bend=1, curv=2.5), Valve(name='shutoff'),
                 Pipe(length=0.5), Pump(target_p=28*100000, diameter=0.012), Pipe(length=12.62), Valve(name='shutoff'),
                 Corner(N_bend=1, curv=2.5), Valve(name='shutoff'), Pipe(length=8.45), Corner(N_bend=1, curv=2.5), Pipe(length=0.5), 
-                COOL(name='hts_gen', location=component_position['hts_gen'][0], phase=current_phase, areas = HEX_areas),
+                COOL(name='hts_gen', location=component_position['hts_gen'][0], phase=current_phase, areas=HEX_areas, comps=comps, sizes=sizes),
                 Corner(N_bend=1, curv=2.5), Corner(N_bend=1, curv=2.5), Pipe(length=1.0), 
-                COOL(name='hts_pow', location=component_position['hts_pow'][0], phase=current_phase, areas = HEX_areas),
+                COOL(name='hts_pow', location=component_position['hts_pow'][0], phase=current_phase, areas=HEX_areas, comps=comps, sizes=sizes),
                 Corner(N_bend=1, curv=2.5), Corner(N_bend=1, curv=2.5), Pipe(length=0.5), Corner(N_bend=1, curv=2.5), Pipe(length=5.5), Corner(N_bend=1, curv=2.5), Pipe(length=0.5),
-                COOL(name='hts_pow', location=component_position['hts_pow'][1], phase=current_phase, areas = HEX_areas),
+                COOL(name='hts_pow', location=component_position['hts_pow'][1], phase=current_phase, areas=HEX_areas, comps=comps, sizes=sizes),
                 Corner(N_bend=1, curv=2.5), Corner(N_bend=1, curv=2.5),
-                COOL(name='dc_ac', location=component_position['dc_ac'][1], phase=current_phase, areas = HEX_areas),
+                COOL(name='dc_ac', location=component_position['dc_ac'][1], phase=current_phase, areas=HEX_areas, comps=comps, sizes=sizes),
                 Pipe(length=0.5), Corner(N_bend=1, curv=2.5), Pipe(length=5.5), Corner(N_bend=1, curv=2.5), Pipe(length=0.5),
-                COOL(name='dc_ac', location=component_position['dc_ac'][0], phase=current_phase, areas = HEX_areas),
+                COOL(name='dc_ac', location=component_position['dc_ac'][0], phase=current_phase, areas=HEX_areas, comps=comps, sizes=sizes),
                 Corner(N_bend=1, curv=2.5), Corner(N_bend=1, curv=2.5), Pipe(length=1.0),
-                COOL(name='ac_dc', location=component_position['ac_dc'][0], phase=current_phase, areas = HEX_areas),
+                COOL(name='ac_dc', location=component_position['ac_dc'][0], phase=current_phase, areas=HEX_areas, comps=comps, sizes=sizes),
                 Corner(N_bend=1, curv=2.5), Pipe(length=1.0),
-                COOL(name='bus', location=component_position['bus'][0], phase=current_phase, areas = HEX_areas),
+                COOL(name='bus', location=component_position['bus'][0], phase=current_phase, areas=HEX_areas, comps=comps, sizes=sizes),
                 Corner(N_bend=1, curv=2.5), Corner(N_bend=1, curv=2.5), Pipe(length=1.0)
             ]
 
@@ -201,13 +204,12 @@ if __name__ == "__main__":
                     if comp_F.name == 'bus': comp_F.Q_dot = 0.0
 
         # 4. Execute Simulation
-        states_W, final_mdot_W, _, Temps_W = solve_OEI_system(system_W, m_dot=current_mdot, T_amb=c.T_amb, branch_name="Working Wing")
-        states_F, final_mdot_F, _, Temps_F = solve_OEI_system(system_F, m_dot=current_mdot, T_amb=c.T_amb, branch_name="Failed Wing")
+        states_W, final_mdot_W, _, Temps_W = solve_OEI_system(system_W, m_dot=current_mdot, T_amb=c.T_amb, branch_name="Working Wing", show=show)
+        states_F, final_mdot_F, _, Temps_F = solve_OEI_system(system_F, m_dot=current_mdot, T_amb=c.T_amb, branch_name="Failed Wing", show=show)
         
         All_temps[current_phase] = {}
         All_temps[current_phase]["W"] = Temps_W
         All_temps[current_phase]["F"] = Temps_F
-
 
         # 5. Output and JSON Export
         T_W, p_W, rho_W, h_W = states_W['T'][-1][-1], states_W['p'][-1][-1], states_W['rho'][-1][-1], states_W['h'][-1][-1]
@@ -220,17 +222,59 @@ if __name__ == "__main__":
             T_mix = CP.PropsSI('T', 'P', p_mix, 'H', h_mix, c.fluid)
             rho_mix = CP.PropsSI('D', 'P', p_mix, 'H', h_mix, c.fluid)
             
-            print(f"\nFinal Engine Inlet Temp (Merged): {T_mix:.2f} K")
-            save_results_to_json(current_phase, T_mix, p_mix, rho_mix, h_mix, m_dot_mix)
+            if show:
+                print(f"\nFinal Engine Inlet Temp (Merged): {T_mix:.2f} K")
+
+            data_per_condition[current_phase] = {
+                "Temperature_K": round(float(T_mix), 2),
+                "Pressure_Pa": round(float(p_mix), 2),
+                "Density_kg_m3": round(float(rho_mix), 2),
+                "Enthalpy_J_kg": round(float(h_mix), 2),
+                "Final_MassFlow_kg_s": round(float(m_dot_mix), 5)
+            }
         else:
-            print(f"\nWorking Wing Inlet Temp: {T_W:.2f} K")
-            print(f"Failed Wing Inlet Temp: {T_F:.2f} K")
-            
-            save_results_to_json(f"{current_phase}_Working", T_W, p_W, rho_W, h_W, final_mdot_W)
-            save_results_to_json(f"{current_phase}_Failed", T_F, p_F, rho_F, h_F, final_mdot_F)
+            if show:
+                print(f"\nWorking Wing Inlet Temp: {T_W:.2f} K")
+                print(f"Failed Wing Inlet Temp: {T_F:.2f} K")
 
-        plot_combined_states(states_W, states_F, current_phase)
+            data_per_condition[f"{current_phase}_Working"] = {
+                "Temperature_K": round(float(T_mix), 2),
+                "Pressure_Pa": round(float(p_mix), 2),
+                "Density_kg_m3": round(float(rho_mix), 2),
+                "Enthalpy_J_kg": round(float(h_mix), 2),
+                "Final_MassFlow_kg_s": round(float(m_dot_mix), 5)
+            }
+            data_per_condition[f"{current_phase}_Failed"] = {
+                "Temperature_K": round(float(T_mix), 2),
+                "Pressure_Pa": round(float(p_mix), 2),
+                "Density_kg_m3": round(float(rho_mix), 2),
+                "Enthalpy_J_kg": round(float(h_mix), 2),
+                "Final_MassFlow_kg_s": round(float(m_dot_mix), 5)
+            }
+        if write:
+            results_file = root / "Propulsion" / "final_states.json"
+            with open(results_file, 'w') as f:
+                json.dump(data_per_condition, f, indent=4)
 
-    filename_temps = "HEX_temps.json"
-    with open(filename_temps, "w") as f:
-            json.dump(All_temps, f, indent=4)
+        if show:
+            plot_combined_states(states_W, states_F, current_phase)
+
+    if write:
+        filename_temps = "HEX_temps.json"
+        with open(filename_temps, "w") as f:
+                json.dump(All_temps, f, indent=4)
+
+    all_H2_results = {
+        "final_states": data_per_condition,
+        "areas": HEX_areas,
+        "temperatures": All_temps
+    }
+
+    return all_H2_results
+
+# =============================================================================
+# MAIN RUNTIME ENVIRONMENT
+# =============================================================================
+if __name__ == "__main__":
+    all_H2_results = main_H2_OEI(show=False, write=False)
+    print(all_H2_results)
