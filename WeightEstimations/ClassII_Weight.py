@@ -742,15 +742,23 @@ class weightEstimation:
 
 
         # GT sizing and results
-        P_per_flight_condition = list(list(electrical_results["powers"]["hts_gen"].values())[0].values())
-        gt_results_dict = run_gt_sizing(P_opt=P_opt, off_design_cases=P_per_flight_condition, input_conditions=None, cfg=None, show=False, write=False)
+        P_per_flight_condition = [P * 1000 for P in list(electrical_results["powers"]["hts_gen"].values())[0].values()]
+        gt_results_dict = run_gt_sizing(P_opt=P_opt*1000, off_design_cases=P_per_flight_condition, input_conditions=None, cfg=None, show=False, write=False)
         mass_flows = [gt_results_dict["od_cases"][P]["mdot_f"] for P in P_per_flight_condition]
-        # for P, m in zip(P_per_flight_condition, mass_flows):
-        #     print(f"{P}: {m}")
+        for P, m in zip(P_per_flight_condition, mass_flows):
+            print(f"{P}: {m}")
 
-        H2_results_nominal = main_H2_nominal(comps=electrical_results["cooling"], sizes=electrical_results["sizes"])
+        normal_phases = ['TO', 'climb', 'cruise', 'APP']
+        normal_m_dots = [m*2 for m in mass_flows[:4]]
+        
+        oei_phases = ['OEI_gt', 'OEI_mot', 'OEI_bus']
+        oei_m_dots = [mass_flows[4], mass_flows[5]*2, mass_flows[6]*2]
+
+        H2_results_nominal = main_H2_nominal(comps=electrical_results["cooling"], sizes=electrical_results["sizes"],
+                                             normal_phases=normal_phases, normal_m_dots=normal_m_dots)
         H2_results_all = main_H2_OEI(comps=electrical_results["cooling"], sizes=electrical_results["sizes"],
-                                     All_temps=H2_results_nominal["temperatures"], HEX_areas=H2_results_nominal["areas"])
+                                     All_temps=H2_results_nominal["temperatures"], HEX_areas=H2_results_nominal["areas"],
+                                     oei_phases=oei_phases, oei_m_dots=oei_m_dots)
         print(H2_results_all)
 
 

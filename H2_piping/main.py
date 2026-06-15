@@ -110,7 +110,7 @@ def plot_states(states, phase_name):
     plt.show()
 
 
-def main_H2_nominal(comps=None, sizes=None, show=False, write=False):
+def main_H2_nominal(comps=None, sizes=None, show=False, write=False, normal_phases=None, normal_m_dots=None):
        if comps is None:
               # Load the component cooling requirements from the propulsion json file
               path = str(root / "Propulsion/only_cooling_results.json")
@@ -120,12 +120,16 @@ def main_H2_nominal(comps=None, sizes=None, show=False, write=False):
               path = root / "Propulsion" / "only_sizing_results.json"
               with open(path, 'r') as file:
                      sizes = json.load(file)
+       if normal_phases is None:
+             normal_phases = c.normal_phases
+       if normal_m_dots is None:
+             normal_m_dots = c.normal_m_dots
 
        HEX_areas = None
        All_temps = {}
        data_per_condition = {}
 
-       for current_phase, current_mdot in zip(c.normal_phases, c.normal_m_dots):
+       for current_phase, current_mdot in zip(normal_phases, normal_m_dots):
               if show:
                      print("\n" + "*"*60)
                      print(f" STARTING SIMULATION: {current_phase.upper()} ".center(60, "*"))

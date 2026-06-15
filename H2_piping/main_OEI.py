@@ -123,7 +123,7 @@ def plot_combined_states(states_W, states_F, phase_name):
     plt.show()
 
 
-def main_H2_OEI(comps=None, sizes=None, All_temps=None, HEX_areas=None, show=False, write=False):
+def main_H2_OEI(comps=None, sizes=None, All_temps=None, HEX_areas=None, show=False, write=False, oei_phases=None, oei_m_dots=None):
     if comps is None:
         path = str(root / "Propulsion/only_cooling_results.json")
         with open(path, 'r') as file:
@@ -140,8 +140,12 @@ def main_H2_OEI(comps=None, sizes=None, All_temps=None, HEX_areas=None, show=Fal
         filename = "HEX_areas.json"
         with open(filename, 'r') as f:
             HEX_areas = json.load(f)
+    if oei_phases is None:
+        oei_phases = c.oei_phases
+    if oei_m_dots is None:
+        oei_m_dots = c.oei_m_dots
 
-    for current_phase, current_mdot in zip(c.oei_phases, c.oei_m_dots):
+    for current_phase, current_mdot in zip(oei_phases, oei_m_dots):
         if show:
             print("\n" + "*"*60)
             print(f" STARTING SIMULATION: {current_phase.upper()} ".center(60, "*"))
