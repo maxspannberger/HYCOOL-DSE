@@ -13,8 +13,8 @@ sys.path.append(str(folder))
 root = Path(__file__).resolve().parent.parent
 sys.path.append(str(root))
 
-from h2_components import Tank, Pipe, Pump, Corner, COOL, Valve, calc_frac
-from system_config import H2SystemConfig
+from H2_piping.h2_components import Tank, Pipe, Pump, Corner, COOL, Valve, calc_frac
+from H2_piping.system_config import H2SystemConfig
 c = H2SystemConfig() 
 
 # =============================================================================
@@ -118,6 +118,10 @@ def plot_combined_states(states_W, states_F, phase_name):
     fig.suptitle(f'Hydrogen State Profile Comparison (Phase: {phase_name.upper()})', fontsize=16, fontweight='bold')
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.show()
+
+
+def main_H2_OEI():
+    pass
 
 # =============================================================================
 # MAIN RUNTIME ENVIRONMENT

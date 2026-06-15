@@ -15,6 +15,8 @@ from General.component_parameters import component_params as comp_params
 from Propulsion.efficiency import GT_BAT_efficiency, GT_FC_efficiency, GT_GT_efficiency,FC_BAT_efficiency
 from Propulsion.electrical import perform_complete_electrical_sizing
 from Propulsion.main import run as run_gt_sizing
+from H2_piping.main import main_H2_nominal
+from H2_piping.main_OEI import main_H2_OEI
 
 from rich.table import Table
 
@@ -674,7 +676,7 @@ class weightEstimation:
                 # if comp_key == "cable":
                 #     mass = cable_len * comp[comp_key].mass_per_length
                 if comp_key == "electrical_sys":
-                    mass_elec, cool, all_powers = perform_complete_electrical_sizing(g.P_takeoff_KW,g.P_climb_KW,g.P_cruise_KW,g.P_approach_KW,
+                    mass_elec, cool, all_powers, electrical_dimensions = perform_complete_electrical_sizing(g.P_takeoff_KW,g.P_climb_KW,g.P_cruise_KW,g.P_approach_KW,
                                                                  g.P_TO_OEI_KW, g.b)
                     if g.N_propellers>2:
 
@@ -739,12 +741,17 @@ class weightEstimation:
             P_opt = g.P_opt/1000
 
 
-        # TODO: add masses from the rest of the code
+        # GT sizing and results
         P_per_flight_condition = list(list(all_powers["hts_gen"].values())[0].values())
         gt_results_dict = run_gt_sizing(P_opt=P_opt, off_design_cases=P_per_flight_condition, input_conditions=None, cfg=None, show=False, write=False)
         mass_flows = [gt_results_dict["od_cases"][P]["mdot_f"] for P in P_per_flight_condition]
-        for P, m in zip(P_per_flight_condition, mass_flows):
-            print(f"{P}: {m}")
+        # for P, m in zip(P_per_flight_condition, mass_flows):
+        #     print(f"{P}: {m}")
+
+        # print(cool)
+        H2_results_nominal = main_H2_nominal(comps=cool, sizes=electrical_dimensions)
+        print(H2_results_nominal)
+
 
 
         return total_mass * g.mass_margin,fan_mass, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff,eff_climb, eff_cruise, bt_charging_ratio, P_opt,cool

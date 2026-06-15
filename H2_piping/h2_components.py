@@ -14,16 +14,16 @@ from system_config import H2SystemConfig
 config = H2SystemConfig()
 tol = config.max_error
 
-path = root / "Propulsion" / "only_cooling_results.json"
-with open(path, 'r') as file:
-    comps = json.load(file)
+# path = root / "Propulsion" / "only_cooling_results.json"
+# with open(path, 'r') as file:
+#     comps = json.load(file)
     
 def area(d):
     return np.pi * d**2 / 4
 
-path = root / "Propulsion" / "only_sizing_results.json"
-with open(path, 'r') as file:
-    sizes = json.load(file)
+# path = root / "Propulsion" / "only_sizing_results.json"
+# with open(path, 'r') as file:
+#     sizes = json.load(file)
 
 # =============================================================================
 # Calculate the fraction of gas. Get rid of supercriticals by forcing to o or 1
@@ -523,8 +523,10 @@ class COOL:
     def __init__(self, name:        str, 
                        location:    str,
                        phase:       str,
-                       diameter:    float =  config.HEX_default_d,
-                       areas:       dict  = None
+                       diameter:    float = config.HEX_default_d,
+                       areas:       dict  = None,
+                       comps:       dict  = None,
+                       sizes:       dict  = None
                        ):   
         
         if "hts" in name:

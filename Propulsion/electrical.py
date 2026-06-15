@@ -277,7 +277,7 @@ def size_all_components(component_order, powers, HTS_dimensions, comp=comp_param
         json.dump(cooling_requirements_only, f, indent=4)
 
 
-    return component_sizing, cooling_requirements_only
+    return component_sizing, cooling_requirements_only, dimensions_only
 
 
 def get_maximum_powers(powers):
@@ -449,7 +449,7 @@ def perform_complete_electrical_sizing(P_TO, P_climb, P_cruise, P_APP, P_OEI, b,
 
     # perform sizing of electrical system
     powers = get_powers_per_component(P_TO, P_climb, P_cruise, P_APP, P_OEI, P_AC_systems, positions, component_order, comp=comp_params, b=b)
-    converter_sizing, cooling_requirements_only = size_all_components(component_order, powers, HTS_dimensions, comp=comp_params, show=show)
+    converter_sizing, cooling_requirements_only, dimensions_only = size_all_components(component_order, powers, HTS_dimensions, comp=comp_params, show=show)
     max_powers, length = get_maximum_powers(powers)
     cable_results = size_cables(max_powers, length=length, N_cables=N_cables/2, SF=2, show=show)
     APU_results = size_APU(converter_sizing["total"]["P_heat"], P_AC_systems, component=apu, comp=comp_params, show=False)
@@ -461,7 +461,7 @@ def perform_complete_electrical_sizing(P_TO, P_climb, P_cruise, P_APP, P_OEI, b,
 
     total_mass = converter_sizing["total"]["mass"] + cable_results["m"]
 
-    return total_mass, cooling_requirements_only, powers
+    return total_mass, cooling_requirements_only, powers, dimensions_only
 
 
 if __name__ == "__main__":

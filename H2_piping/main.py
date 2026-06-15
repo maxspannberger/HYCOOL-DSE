@@ -9,14 +9,14 @@ root = Path(__file__).resolve().parent.parent
 sys.path.append(str(root))
 
 # Import your components from h2_components and configuration from system_config
-from h2_components import Tank, Pipe, Pump, Corner, COOL, Valve, solve_system
+from H2_piping.h2_components import Tank, Pipe, Pump, Corner, COOL, Valve, solve_system
 
 from rich import print as rich_printv
 from rich.tree import Tree
 import matplotlib.pyplot as plt
 import numpy as np
 import json
-from system_config import H2SystemConfig
+from H2_piping.system_config import H2SystemConfig
 c = H2SystemConfig()  
 
 # =============================================================================
@@ -110,12 +110,16 @@ def plot_states(states, phase_name):
     plt.show()
 
 
-def main_H2_nominal(comps=None, show=False, write=False):
+def main_H2_nominal(comps=None, sizes=None, show=False, write=False):
        if comps is None:
               # Load the component cooling requirements from the propulsion json file
               path = str(root / "Propulsion/only_cooling_results.json")
               with open(path, 'r') as file:
                      comps = json.load(file)
+       if sizes is None:
+              path = root / "Propulsion" / "only_sizing_results.json"
+              with open(path, 'r') as file:
+                     sizes = json.load(file)
 
        HEX_areas = None
        All_temps = {}
@@ -132,7 +136,7 @@ def main_H2_nominal(comps=None, show=False, write=False):
                             continue
                      # Sort cooling locations by float
                      sorted_keys = sorted(value, key=float)
-                     component_position[key] = sorted_keys
+                     component_position[key] = sorted_keys\
               # Define system topology as a sequential list of objects
               system = [
               Tank(),
@@ -179,7 +183,9 @@ def main_H2_nominal(comps=None, show=False, write=False):
               COOL(name       = 'hts_gen', 
               location   = component_position['hts_gen'][0],
               phase = current_phase,
-              areas = HEX_areas),
+              areas = HEX_areas,
+              comps=comps,
+              sizes=sizes),
 
               Corner(N_bend   =  1, 
                      curv     =  2.5),
@@ -192,7 +198,9 @@ def main_H2_nominal(comps=None, show=False, write=False):
               COOL(name       = 'hts_pow', 
               location   = component_position['hts_pow'][0],
               phase = current_phase,
-              areas = HEX_areas),
+              areas = HEX_areas,
+              comps=comps,
+              sizes=sizes),
 
               Corner(N_bend   =  1,  
                      curv     =  2.5),
@@ -215,7 +223,9 @@ def main_H2_nominal(comps=None, show=False, write=False):
               COOL(name       = 'hts_pow', 
               location   = component_position['hts_pow'][1],
               phase = current_phase,
-              areas = HEX_areas),
+              areas = HEX_areas,
+              comps=comps,
+              sizes=sizes),
 
               Corner(N_bend   =  1,  
                      curv     =  2.5),
@@ -226,7 +236,9 @@ def main_H2_nominal(comps=None, show=False, write=False):
               COOL(name       = 'dc_ac', 
               location   = component_position['dc_ac'][1],
               phase = current_phase,
-              areas = HEX_areas),
+              areas = HEX_areas,
+              comps=comps,
+              sizes=sizes),
 
               Pipe(length     =  0.5),
 
@@ -243,7 +255,9 @@ def main_H2_nominal(comps=None, show=False, write=False):
               COOL(name       = 'dc_ac', 
               location   = component_position['dc_ac'][0],
               phase = current_phase,
-              areas = HEX_areas),
+              areas = HEX_areas,
+              comps=comps,
+              sizes=sizes),
 
               Corner(N_bend   =  1,  
                      curv     =  2.5),
@@ -256,7 +270,9 @@ def main_H2_nominal(comps=None, show=False, write=False):
               COOL(name       = 'ac_dc', 
               location   = component_position['ac_dc'][0],
               phase = current_phase,
-              areas = HEX_areas),
+              areas = HEX_areas,
+              comps=comps,
+              sizes=sizes),
 
               Corner(N_bend   =  1,  
                      curv     =  2.5),
@@ -266,7 +282,9 @@ def main_H2_nominal(comps=None, show=False, write=False):
               COOL(name       = 'bus', 
               location   = component_position['bus'][0],
               phase = current_phase,
-              areas = HEX_areas),
+              areas = HEX_areas,
+              comps=comps,
+              sizes=sizes),
 
               Corner(N_bend   =  1, 
                      curv     =  2.5),
