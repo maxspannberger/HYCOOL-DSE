@@ -59,7 +59,7 @@ def get_input_states(states, system, i, m_dot, fluid):
        
     A_current_component = system[i].A
     # Perform isentropic expansion if there is an area change
-    if A_current_component != A_previous_comp:
+    if A_previous_comp and A_current_component and abs(A_current_component - A_previous_comp) > 1e-8:
         T, p, h, rho, u, _ = isentropic_expansion(p, h, u, m_dot, A_current_component, fluid)
     
     return T, p, h, rho, u
