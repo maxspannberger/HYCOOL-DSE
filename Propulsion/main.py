@@ -133,7 +133,7 @@ def _write_csv(path, cases):
 # ----------------------------------------------------------------------
 # Pipeline
 # ----------------------------------------------------------------------
-def run(cfg=None):
+def run(P_opt=None, off_design_cases=None, input_conditions=None, cfg=None, show=False, write=False):
     """
     Run the full sizing chain and write a CSV.
 
@@ -146,6 +146,14 @@ def run(cfg=None):
         oxName="AIR", fuelName="GH2",
         pressure_units="bar", temperature_units="K", isp_units="sec",
     )
+
+    # Adjust cfg for new inputs
+    if P_opt is not None:
+        cfg.cycle.P_target = P_opt
+    if off_design_cases is not None:
+        cfg.offdesign.P_shaft_cases = off_design_cases
+    if input_conditions is not None:
+        cfg.cycle.P_pre_comp = input_conditions["p"]
 
     # --- 1. Design-point cycle ---
     engine = GasTurbineCycle.from_config(cfg).size(cea=cea)
@@ -167,18 +175,19 @@ def run(cfg=None):
     expander = PistonExpander.from_config(engine, cfg).size()
 
     # --- Reports ---
-    if cfg.output.print_report:
-        engine.report()
-        for P, res in od_cases.items():
-            if res is not None:
-                od_eval.report(res)
-        dim.report()
-        expander.report()
+    if show:
+        if cfg.output.print_report:
+            engine.report()
+            for P, res in od_cases.items():
+                if res is not None:
+                    od_eval.report(res)
+            dim.report()
+            expander.report()
 
-    if cfg.output.show_plots:
-        engine.plot_ts()
-        engine.plot_ts_h2()
-        dim.plot()
+        if cfg.output.show_plots:
+            engine.plot_ts()
+            engine.plot_ts_h2()
+            dim.plot()
 
     # --- Build per-case parameter maps; CSV is written vertically with one
     #     column per case and one row per parameter.
@@ -200,9 +209,10 @@ def run(cfg=None):
         case_data.update(OffDesignEvaluator.to_csv_row(res, prefix="offdesign"))
         cases[col_name] = case_data
 
-    _write_csv(cfg.output.csv_path, cases)
-    print(f"\n[ok] CSV written: {cfg.output.csv_path}  "
-          f"({len(cases)} column(s): {', '.join(cases.keys())})")
+    if write:
+        _write_csv(cfg.output.csv_path, cases)
+        print(f"\n[ok] CSV written: {cfg.output.csv_path}  "
+            f"({len(cases)} column(s): {', '.join(cases.keys())})")
 
     return dict(engine=engine, od_eval=od_eval, od_cases=od_cases,
                 dim=dim, expander=expander, cases=cases)
@@ -212,4 +222,4 @@ def run(cfg=None):
 # CLI entry point
 # ----------------------------------------------------------------------
 if __name__ == "__main__":
-    run()
+    run(show=False, write=False)
