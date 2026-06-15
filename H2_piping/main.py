@@ -22,7 +22,7 @@ c = H2SystemConfig()
 # =============================================================================
 # Save final states to JSON
 # =============================================================================
-def save_results_to_json(phase_name, T, p, rho, h, m_dot_final):
+def save_results_to_json(phase_name, T, p, rho, h, m_dot_final, write=False):
     results_file = root / "Propulsion" / "final_states.json"
     
     if results_file.exists():
@@ -42,8 +42,11 @@ def save_results_to_json(phase_name, T, p, rho, h, m_dot_final):
         "Final_MassFlow_kg_s": round(float(m_dot_final), 5)
     }
     
-    with open(results_file, 'w') as f:
-        json.dump(data, f, indent=4)
+    if write:
+       with open(results_file, 'w') as f:
+              json.dump(data, f, indent=4)
+
+    return data
 
 # =============================================================================
 # Displays the computed states in a clean, hierarchical CLI tree format.
@@ -116,6 +119,7 @@ def main_H2_nominal(comps=None, show=False, write=False):
 
        HEX_areas = None
        All_temps = {}
+       data_per_condition = {}
 
        for current_phase, current_mdot in zip(c.normal_phases, c.normal_m_dots):
               if show:
@@ -296,8 +300,18 @@ def main_H2_nominal(comps=None, show=False, write=False):
               # -------------------------------------------------------
 
               # Save to JSON
+              data_per_condition[current_phase] = {
+                     "Temperature_K": round(float(final_T), 2),
+                     "Pressure_Pa": round(float(final_p), 2),
+                     "Density_kg_m3": round(float(final_rho), 2),
+                     "Enthalpy_J_kg": round(float(final_h), 2),
+                     "Final_MassFlow_kg_s": round(float(final_mdot), 5)
+              }
               if write:
-                     save_results_to_json(current_phase, final_T, final_p, final_rho, final_h, final_mdot)
+                     results_file = root / "Propulsion" / "final_states.json"
+                     with open(results_file, 'w') as f:
+                            json.dump(data_per_condition, f, indent=4)
+              # save_results_to_json(current_phase, final_T, final_p, final_rho, final_h, final_mdot, write=write)
 
               if show:
                      plot_states(states, current_phase)
@@ -310,9 +324,18 @@ def main_H2_nominal(comps=None, show=False, write=False):
        with open(filename_temps, "w") as f:
               json.dump(All_temps, f, indent=4)
 
+       all_H2_results = {
+            "final_states": data_per_condition,
+            "areas": HEX_areas,
+            "temperatures": All_temps
+       }
+
+       return all_H2_results
+
 
 
 if __name__ == "__main__":
-       main_H2_nominal(show=False, write=False)
+       all_H2_results = main_H2_nominal(show=True, write=True)
+       print(all_H2_results)
 
        
