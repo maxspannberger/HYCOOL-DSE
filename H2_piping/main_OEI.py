@@ -43,8 +43,9 @@ def save_results_to_json(phase_name, T, p, rho, h, m_dot_final):
     with open(results_file, 'w') as f:
         json.dump(data, f, indent=4)
 
+
 # =============================================================================
-# Solver & Visualization
+# Visualization
 # =============================================================================
 def solve_OEI_system(system, m_dot, T_amb, branch_name="", show=False):
     # Add 'u': [] to the initialization
