@@ -780,10 +780,10 @@ class weightEstimation:
         oei_m_dots = [mass_flows[4], mass_flows[5]*2, mass_flows[6]*2]
 
         H2_results_nominal = main_H2_nominal(comps=electrical_results["cooling"], sizes=electrical_results["sizes"],
-                                             normal_phases=normal_phases, normal_m_dots=normal_m_dots, show=True)
+                                             normal_phases=normal_phases, normal_m_dots=normal_m_dots)
         H2_results_all = main_H2_OEI(comps=electrical_results["cooling"], sizes=electrical_results["sizes"],
                                      All_temps=H2_results_nominal["temperatures"], HEX_areas=H2_results_nominal["areas"], prev_states=H2_results_nominal["final_states"],
-                                     oei_phases=oei_phases, oei_m_dots=oei_m_dots, show=True)
+                                     oei_phases=oei_phases, oei_m_dots=oei_m_dots)
         # print(H2_results_all)
         TMS_mass, pipe_length = pipe_calculations(b=g.b, sweep_quarter_chord=g.sweep_half) # quarter chord approximated by half for now
         total_mass += TMS_mass + 2 * gt_mass

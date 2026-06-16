@@ -8,7 +8,7 @@ from typing import List
 class H2SystemConfig:
     # Global simulation configurations
     fluid: str = 'Hydrogen'                  # FLUID used for simulation
-    max_error: float = 1e-8                    # SOLVER convergence treshhold
+    max_error: float = 10                    # SOLVER convergence treshhold
     tank_p: float = 200000                   # TANK pressure [Pa]
     tank_T: float = 20.3                     # TANK temperature [T]
     tank_d: float = 0.012                    # TANK outlet diameter [m]
@@ -45,7 +45,7 @@ class H2SystemConfig:
 
     # Default baseline geometric parameters for pipe segments
     pipe_default_d: float = 0.012            # default baseline inner pipeline diameter [m]
-    pipe_segment_length: float = 0.01        # default baseline segment length [m]
+    pipe_segment_length: float = 0.1        # default baseline segment length [m]
     pipe_default_N: int = 10                 # default baseline number of MLI layers applied
     pipe_default_N_bar: float = 5.5          # default baseline insulation layer density [layers/cm]
     pipe_default_P_mli: float = 10**(-4)     # default baseline residual gas pressure value [Torr]
