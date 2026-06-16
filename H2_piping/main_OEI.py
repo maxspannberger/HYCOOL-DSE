@@ -6,6 +6,7 @@ import CoolProp.CoolProp as CP
 from rich import print as rich_print
 from rich.tree import Tree
 import matplotlib.pyplot as plt
+import os
 
 # Set up paths to ensure we can import local modules
 folder = Path(__file__).resolve().parent
@@ -268,9 +269,9 @@ def main_H2_OEI(comps=None, sizes=None, All_temps=None, HEX_areas=None, prev_sta
             plot_combined_states(states_W, states_F, current_phase)
 
     if write:
-        filename_temps = "HEX_temps.json"
+        filename_temps = os.path.join(root, "H2_piping", "HEX_temps.json")
         with open(filename_temps, "w") as f:
-                json.dump(All_temps, f, indent=4)
+            json.dump(All_temps, f, indent=4)
 
     all_H2_results = {
         "final_states": data_per_condition,
