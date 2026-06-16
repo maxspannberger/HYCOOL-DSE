@@ -37,6 +37,7 @@ class ClassII_Input:
     S_w:        float = 0.0
     sweep_half: float = 0.0
     sweep_LE:   float = 0.0
+    sweep_tc:   float = 0.0
     taper:      float = 0.0
     t_r:        float = 0.0
     k_w:        float = 6.67e-3
@@ -187,6 +188,7 @@ class ClassII_Input:
             b             = b     if b     is not None else cfg.b,
             S_w           = S_ref if S_ref is not None else cfg.S_ref,
             sweep_half    = cfg.sweep_half,
+            sweep_tc      = cfg.sweep_tc,
             taper=taper,
             sweep_LE=sweep_LE,
             t_r           = cfg.t_root_abs,
@@ -307,7 +309,7 @@ class WeightBreakdown:
     max_Thrust_prop_inner: float = 0.0
     max_Thrust_prop_outer: float = 0.0
     W_fuel:      float = 0.0
-    mass_breakdown: float = 0.0
+    mass_breakdown: dict = None
     grav_density:float = 0.64
     configuration: int = 1
     total_prop_efficiency: float = 1.0
@@ -377,7 +379,7 @@ class WeightBreakdown:
             table.add_row(name, f"{weight:.1f}", note)
 
         table.add_section()
-        table.add_row("Open Fan Mass", f"[bold]{self.mass_breakdown["fan"]:.1f}[/bold]", "",)
+        table.add_row("Open Fan Mass", f"[bold]{self.mass_breakdown['fan']:.1f}[/bold]", "",)
         table.add_row(
             "Propulsion System without tank",
             f"[bold]{self.W_engine:.1f}[/bold]",
@@ -686,7 +688,9 @@ class weightEstimation:
                         mass = 0
                     else:
                         #mass = pipe_len * comp[comp_key].mass_per_length * 2 #double the mass for 4 engines since more complex piping system with more valves and pumps needed
-                        mass = g.TMS_mass_N2                     #big estimate
+                        mass=g.TMS_mass_N2
+                        TMS_mass = g.TMS_mass_N2                     #big estimate
+                        pipe_length=pipe_len
                 elif comp_key == "open_fan" and propeller_count<2 and g.N_propellers>2:
                         mass = g.max_Thrust_prop_inner / comp[comp_key].thrust_density *1.1
                         propeller_count+=1
@@ -773,8 +777,11 @@ class weightEstimation:
                                      All_temps=H2_results_nominal["temperatures"], HEX_areas=H2_results_nominal["areas"], prev_states=H2_results_nominal["final_states"],
                                      oei_phases=oei_phases, oei_m_dots=oei_m_dots)
         # print(H2_results_all)
-        TMS_mass, pipe_length = pipe_calculations(b=g.b, sweep_quarter_chord=g.sweep_half) # quarter chord approximated by half for now
-        total_mass += TMS_mass + 2 * gt_mass
+        if g.N_propellers>2:
+            TMS_mass, pipe_length = pipe_calculations(b=g.b, sweep_quarter_chord=g.sweep_tc) # quarter chord approximated by half for now
+            total_mass += TMS_mass + 2 * gt_mass
+        else:            
+            total_mass+=2 * gt_mass
 
         mass_breakdown = {
             "gt": gt_mass,

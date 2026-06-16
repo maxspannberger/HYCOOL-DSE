@@ -73,6 +73,7 @@ class ClassIIResult:
     W_payload:   float
     W_fixed:     float
     W_prop:      float
+    W_wing:      float
     L_over_D:    float
     CL_cruise:   float
     iterations:  int
@@ -559,6 +560,7 @@ def run_class_ii(
         W_payload  = cfg.W_payload,
         W_fixed    = W_fixed,
         W_prop     = wt_bd.W_total_prop,
+        W_wing      = wt_bd.W_wing_accurate,
         L_over_D   = drag_bd.L_over_D,
         CL_cruise  = drag_bd.CL_cruise,
         iterations = it,
@@ -862,6 +864,10 @@ if __name__ == "__main__":
     propmass_diff_kg = result1.W_prop - result2.W_prop
     propmass_pct = (propmass_diff_kg / result2.W_prop * 100.0) if result2.W_prop != 0 else 0.0
 
+    # Propulsion system mass change (4-prop - 2-prop)
+    wingmass_diff_kg = result1.W_wing - result2.W_wing
+    wingmass_pct = (wingmass_diff_kg / result2.W_wing * 100.0) if result2.W_wing != 0 else 0.0
+
     # Highlight fuel, cost savings and MTOW impact in a panel to make them stand out
     savings_text = (
         f"[bold white]Switching to 4 propellers saves[/bold white]\n"
@@ -870,7 +876,9 @@ if __name__ == "__main__":
         f"[bold white]MTOW change (4 prop - 2 prop):[/bold white] [bold]{mtow_diff_kg:+.1f} kg[/bold] "
         f"[bold white]({mtow_word}, {mtow_pct:+.2f}% vs 2-prop)[/bold white]\n"
         f"[bold white]Propulsion mass change (4 prop - 2 prop):[/bold white] [bold]{propmass_diff_kg:+.1f} kg[/bold] "
-        f"[bold white]({propmass_pct:+.2f}% vs 2-prop)[/bold white]"
+        f"[bold white]({propmass_pct:+.2f}% vs 2-prop)[/bold white]\n"
+        f"[bold white]Wing mass change (4 prop - 2 prop):[/bold white] [bold]{wingmass_diff_kg:+.1f} kg[/bold] "
+        f"[bold white]({wingmass_pct:+.2f}% vs 2-prop)[/bold white]"
     )
     print(Panel(savings_text, title="[bold cyan]Fuel, Cost & MTOW Impact[/bold cyan]", border_style="cyan", expand=False))
 
@@ -892,3 +900,5 @@ if __name__ == "__main__":
     print(f"Area of wing covered by fuselage: {area_wing_covered_by_fuselage/result1.Wing_Area*100:.2f} %")
 
     print(f"Cruise Thrust total: {result1.mission.T_cruise:.2f} N")
+
+    print(f"Takeoff CL needed: {result1.aeroparameters['CL_max_TO_with_new_area']:.2f}")
