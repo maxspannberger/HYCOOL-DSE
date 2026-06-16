@@ -111,7 +111,7 @@ def single_sensitivity_run(
             raise ValueError("Invalid sensitivity configuration")
 
         for config in designs_to_consider:
-            class_II_results = run_class_ii(config=config, comp=comp, verbose=False, cfg=cfg, max_iter=1)
+            class_II_results = run_class_ii(config=config, comp=comp, verbose=False, cfg=cfg)
 
             if more_than_tradeoff:
                 max_temps = {}
@@ -172,6 +172,14 @@ def single_sensitivity_run(
                     "m_flow_OEI_mot": class_II_results.weight.mass_breakdown["mass_flows"][5],
                     "m_flow_OEI_bus": class_II_results.weight.mass_breakdown["mass_flows"][6],
 
+                    "exp_pow_TO": class_II_results.weight.mass_breakdown["expander_powers"][0],
+                    "exp_pow_climb": class_II_results.weight.mass_breakdown["expander_powers"][1],
+                    "exp_pow_cruise": class_II_results.weight.mass_breakdown["expander_powers"][2],
+                    "exp_pow_APP": class_II_results.weight.mass_breakdown["expander_powers"][3],
+                    "exp_pow_OEI_gt": class_II_results.weight.mass_breakdown["expander_powers"][4],
+                    "exp_pow_OEI_mot": class_II_results.weight.mass_breakdown["expander_powers"][5],
+                    "exp_pow_OEI_bus": class_II_results.weight.mass_breakdown["expander_powers"][6],
+
                     "eff_TO": class_II_results.weight.mass_breakdown["efficiencies"][0],
                     "eff_climb": class_II_results.weight.mass_breakdown["efficiencies"][1],
                     "eff_cruise": class_II_results.weight.mass_breakdown["efficiencies"][2],
@@ -224,7 +232,6 @@ def single_sensitivity_run(
                     "P_in_gt_OEI_bus_AVG": 0.5 * (class_II_results.weight.H2_results_all["final_states"]["OEI_bus_Working"]["Pressure_Pa"] +
                                                   class_II_results.weight.H2_results_all["final_states"]["OEI_bus_Failed"]["Pressure_Pa"]),
                 }
-                print(results)
 
             else:
                 # TMS already has built-in scores
@@ -676,7 +683,7 @@ def save_tradeoff(cfg, designs_to_consider=[1,2,3,4,5]):
 
 if __name__ == "__main__":
     cfg = default_q400_hycool()
-    n_repeats = 5
+    n_repeats = 100
     designs_to_consider = [1, 2, 3, 4, 5]
     weights={
         "mass": 0.25,

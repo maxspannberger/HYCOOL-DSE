@@ -747,17 +747,18 @@ class weightEstimation:
             H2_press = []
             for condition in ["TO", "climb", "cruise", "APP", "OEI_gt"]:
                 H2_temps.append(g.H2_results_all["final_states"][condition]["Temperature_K"])
-                H2_press.append(g.H2_results_all["final_states"][condition]["Pressure_Pa"] / 10e6)
+                H2_press.append(g.H2_results_all["final_states"][condition]["Pressure_Pa"] / 1e5)
             for condition in ["OEI_mot", "OEI_bus"]:
                 H2_temps.append(0.5 * (g.H2_results_all["final_states"][condition+"_Working"]["Temperature_K"] + g.H2_results_all["final_states"][condition+"_Failed"]["Temperature_K"]))
-                H2_press.append(0.5 * (g.H2_results_all["final_states"][condition+"_Working"]["Pressure_Pa"] + g.H2_results_all["final_states"][condition+"_Failed"]["Pressure_Pa"]) / 10e6)
+                H2_press.append(0.5 * (g.H2_results_all["final_states"][condition+"_Working"]["Pressure_Pa"] + g.H2_results_all["final_states"][condition+"_Failed"]["Pressure_Pa"]) / 1e5)
 
         gt_results_dict = run_gt_sizing(P_opt=P_opt*1000, off_design_cases=P_per_flight_condition, T_pre_comp=H2_temps, P_pre_comp=H2_press)
         gt_mass = gt_results_dict["dim"].results["m_propulsion"]
         
         mass_flows = [gt_results_dict["od_cases"][P]["mdot_f"] for P in gt_results_dict["od_cases"]]
         gt_effs = [gt_results_dict["od_cases"][P]["eta_total"] for P in gt_results_dict["od_cases"]]
-        # for P, m in zip(P_per_flight_condition, mass_flows):
+        expander_powers_KW = [gt_results_dict["od_cases"][P]["h2_net_W"]/1000 for P in gt_results_dict["od_cases"]]
+        # for P, m in zip(P_per_flight_condition, expander_powers_KW):
         #     print(f"{P}: {m}")
 
         normal_phases = ['TO', 'climb', 'cruise', 'APP']
@@ -778,6 +779,7 @@ class weightEstimation:
         mass_breakdown = {
             "gt": gt_mass,
             "mass_flows": mass_flows,
+            "expander_powers": expander_powers_KW,
             "efficiencies": gt_effs,
             "TMS": TMS_mass,
             "pipe_length": pipe_length,
