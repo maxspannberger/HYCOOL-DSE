@@ -111,7 +111,7 @@ def single_sensitivity_run(
             raise ValueError("Invalid sensitivity configuration")
 
         for config in designs_to_consider:
-            class_II_results = run_class_ii(config=config, comp=comp, verbose=False, cfg=cfg, write=False)
+            class_II_results = run_class_ii(config=config, comp=comp, verbose=False, cfg=cfg)#, write=False)
 
             if more_than_tradeoff:
                 max_temps = {}

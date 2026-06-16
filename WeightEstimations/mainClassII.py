@@ -261,6 +261,7 @@ def run_class_ii(
     max_iter:   int     = 100,
     verbose:    bool    = True,
     config:     int     = None, 
+    write:      bool    = True
 ) -> ClassIIResult:
 
     # -----------------------------------------------------------------
