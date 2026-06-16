@@ -1,4 +1,4 @@
-from math import pi, cbrt
+from math import cos, pi, cbrt
 
 N_check_valves = 3
 N_ball_valves = 18
@@ -44,7 +44,7 @@ if t_inner < 0.00051:
 else:
     t_inner = t_inner
 
-t_outer = cbrt(1 / (3 * 418000)) * (pipe_diameter + 2 * vacuum_thickness)
+t_outer = cbrt(1 / (3 * 418000)) * (pipe_diameter + 2 * vacuum_thickness + 2 * t_inner)
 
 if t_outer < 0.00051:
     t_outer = 0.00051
@@ -58,12 +58,12 @@ rho_stainless_steel = 8000  # kg/m^3
 rho_MLI = 21  # kg/m^3, estimated value for MLI insulation
 vacuum_boundary_thickness = 0.002  # m
 n_fittings = 94
-tank_wing_line_length = 15
-centre_1_motor_line_lenght = 7.5
-motor_1_motor_2_line_lenght = 7.5
+tank_wing_line_length = 14.5
+centre_1_motor_line_lenght = 7.16
+motor_1_motor_2_line_lenght = 7.16
 sweep_quarter_chord = 10.56
-pipe_length = 49.64 + 12 - 0.0508 * n_fittings + 2 * tank_wing_line_length + 4 * centre_1_motor_line_lenght + 4 * motor_1_motor_2_line_lenght  # 12 m of tank piping, estimated
-
+pipe_length = 10 + 6 + 12 - 0.0508 * n_fittings + 2 * tank_wing_line_length + 4 * centre_1_motor_line_lenght + (8 * motor_1_motor_2_line_lenght) / cos(sweep_quarter_chord / 180 * pi)  # 10m of small piping, 6m of vertical piping, 12 m of tank piping, estimated
+print (f"Total pipe length: {pipe_length:.2f} m")
 
 
 

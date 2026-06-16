@@ -140,8 +140,6 @@ if __name__ == "__main__":
               Corner(N_bend   =  1,  
                      curv     =  2.5),
 
-              Pipe(length     =  0.71),
-
               Valve(name      =  'shutoff'),
 
               Corner(N_bend   =  1,  
@@ -163,7 +161,7 @@ if __name__ == "__main__":
 
               Valve(name      =  'shutoff'),
               
-              Pipe(length     =  8.45),
+              Pipe(length     =  7.5),
 
               Corner(N_bend   =  1,  
                      curv     =  2.5),
@@ -199,12 +197,7 @@ if __name__ == "__main__":
               Corner(N_bend   =  1,  
                      curv     =  2.5),
 
-              Pipe(length     =  5.5),
-
-              Corner(N_bend   =  1,  
-                     curv     =  2.5),
-
-              Pipe(length     =  0.5),
+              Pipe(length     =  7.5),
 
               COOL(name       = 'hts_pow', 
               location   = component_position['hts_pow'][1],
@@ -214,25 +207,17 @@ if __name__ == "__main__":
               Corner(N_bend   =  1,  
                      curv     =  2.5),
 
-              Corner(N_bend   =  1, 
-                     curv     =  2.5),
+              Pipe(length     =  0.5),
 
               COOL(name       = 'dc_ac', 
               location   = component_position['dc_ac'][1],
               phase = current_phase,
               areas = HEX_areas),
 
-              Pipe(length     =  0.5),
-
               Corner(N_bend   =  1,  
                      curv     =  2.5),
 
-              Pipe(length     =  5.5),
-
-              Corner(N_bend   =  1,  
-                     curv     =  2.5),
-
-              Pipe(length     =  0.5),
+              Pipe(length     =  7.5),
 
               COOL(name       = 'dc_ac', 
               location   = component_position['dc_ac'][0],
@@ -240,9 +225,6 @@ if __name__ == "__main__":
               areas = HEX_areas),
 
               Corner(N_bend   =  1,  
-                     curv     =  2.5),
-
-              Corner(N_bend   =  1, 
                      curv     =  2.5),
 
               Pipe(length     =  1.0),
