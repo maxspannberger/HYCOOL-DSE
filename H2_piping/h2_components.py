@@ -157,7 +157,7 @@ def heat_transfer_coefficient(T1, T2, Tw, p1, p2, m_dot, d, fluid):
     nu_w = CP.PropsSI('V', 'P', pf, 'T', Tw, fluid) / CP.PropsSI('D', 'P', pf, 'T', Tw, fluid)
     nu_b = CP.PropsSI('V', 'P', pf, 'T', Tb, fluid) / CP.PropsSI('D', 'P', pf, 'T', Tb, fluid)
 
-    h = 0.021 * Ref**0.8 * Prf**0.4 * kf / d * (1 + 0.01457 * nu_w / nu_b)
+    h = 0.0176 * Ref**0.8 * Prf**0.4 * kf / d * (1 + 0.01457 * nu_w / nu_b)
 
     if not Ref >= 10000:
         raise Warning("Formulas used are not valid for the required Reynolds number\n" +\
