@@ -2,6 +2,8 @@ import numpy as np
 import sys
 from pathlib import Path
 import json
+import pandas as pd
+from pprint import pprint
 
 # Add parent directory to path so General module can be imported
 root = Path(__file__).resolve().parent.parent
@@ -468,14 +470,35 @@ if __name__ == "__main__":
     # get class II power results
     print("Performing Class II estimations...")
     cfg = default_q400_hycool()
-    class_II_results = run_class_ii(config=3, comp=comp_params, verbose=False, cfg=cfg)
+    # class_II_results = run_class_ii(config=3, comp=comp_params, verbose=False, cfg=cfg)
     print("Class II estimations finished.")
+    
+    def get_val(df, section, parameter):
+        
+        row = df[(df['Section'] == section) & (df['Parameter'] == parameter)]
+        
+        if row.empty:
+            raise ValueError(f"Could not find Section='{section}' and Parameter='{parameter}'")
+            
+        val = row['Value'].iloc[0]
+        
+        # Attempt to convert to float (handles strings like '15.1062' or '4.107280e+05')
+        try:
+            return float(val)
+        except (ValueError, TypeError):
+            # If it's a non-numeric string (like 'scissor plot'), return as is
+            return val
 
-    P_TO = class_II_results.P_takeoff_KW
-    P_climb = class_II_results.mission.P_climb_shaft/1000.0
-    P_cruise = class_II_results.mission.P_cruise_shaft/1000.0
-    P_APP = class_II_results.P_approach_KW
-    P_OEI = class_II_results.weight.P_TO_OEI_KW
-    b = class_II_results.Wing_span
-
+    # Load the data
+    df = pd.read_csv(root / 'WeightEstimations/outputs/class_ii_results.csv')
+    
+    # Extraction - Note the section names and parameter names matching your CSV
+    P_TO = get_val(df, 'Power & Thrust Sizing', 'P_takeoff') / 1000 # class 2
+    P_climb = get_val(df, 'Mission Power & Fuel', 'P_climb_shaft') / 1000 # mission
+    P_cruise = get_val(df, 'Mission Power & Fuel', 'P_cruise_shaft') / 1000 # mission
+    P_APP = get_val(df, 'Mission Power & Fuel', 'P_app_shaft') / 1000 # mission
+    P_OEI = get_val(df, 'Weight Breakdown', 'P_TO_OEI_KW')  # weight
+    pprint([P_TO, P_climb, P_cruise, P_APP, P_OEI])
+    
+    b = 29
     mass, cooling_requirements = perform_complete_electrical_sizing(P_TO, P_climb, P_cruise, P_APP, P_OEI, b, show=True)
