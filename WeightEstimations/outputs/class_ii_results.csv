@@ -1,98 +1,98 @@
 Section,Parameter,Value
-Summary,MTOW [kg],28991.6
-Summary,MZFW [kg],28437.9
-Summary,W_empty (OEW) [kg],13995.8
-Summary,W_fuel (LH2) [kg],553.679
+Summary,MTOW [kg],32804.1
+Summary,MZFW [kg],32191.4
+Summary,W_empty (OEW) [kg],17749.2
+Summary,W_fuel (LH2) [kg],612.69
 Summary,W_payload [kg],10000
 Summary,W_fixed [kg],4442.19
-Summary,Cruise L/D [-],14.6435
+Summary,Cruise L/D [-],15.0419
 Summary,CL_cruise [-],0.280647
 Summary,iterations [-],8
 Summary,converged [-],True
-Tail Sizing (initial),S_h,18.6559
-Tail Sizing (initial),S_v,30.049
-Tail Sizing (initial),b_h,9.1625
-Tail Sizing (initial),b_v,7.14726
-Tail Sizing (initial),S_h_stability,10.5289
-Tail Sizing (initial),S_h_control,1.72744
+Tail Sizing (initial),S_h,21.1082
+Tail Sizing (initial),S_v,35.9605
+Tail Sizing (initial),b_h,9.74613
+Tail Sizing (initial),b_v,7.81875
+Tail Sizing (initial),S_h_stability,12.6801
+Tail Sizing (initial),S_h_control,2.08126
 Tail Sizing (initial),S_h_driver,scissor plot
-Tail Sizing (initial),S_v_stability,10.3478
-Tail Sizing (initial),S_v_control,30.049
+Tail Sizing (initial),S_v_stability,13.1198
+Tail Sizing (initial),S_v_control,35.9605
 Tail Sizing (initial),S_v_driver,control (OEI rudder)
-Tail Sizing (initial),V_h,1.68328
-Tail Sizing (initial),V_v,0.290391
+Tail Sizing (initial),V_h,1.58144
+Tail Sizing (initial),V_v,0.274094
 Tail Sizing (initial),V_h_ok,True
 Tail Sizing (initial),V_v_ok,True
-Tail Sizing (initial),S_elevator,5.78332
+Tail Sizing (initial),S_elevator,6.54355
 Tail Sizing (initial),Se_Sh,0.31
-Tail Sizing (initial),S_rudder,7.62731
-Tail Sizing (initial),Sr_Sv,0.253829
-Tail Sizing (initial),M_engine,3.560720e+05
-Tail Sizing (initial),M_rudder,3.560720e+05
+Tail Sizing (initial),S_rudder,9.28051
+Tail Sizing (initial),Sr_Sv,0.258076
+Tail Sizing (initial),M_engine,4.112576e+05
+Tail Sizing (initial),M_rudder,4.112576e+05
 Tail Sizing (initial),OEI_ok,True
-Tail Sizing (initial),S_aileron,2.01483
+Tail Sizing (initial),S_aileron,2.27969
 Tail Sizing (initial),Sa_Sref,0.027
-Tail Sizing (initial),p_achieved,0.185735
+Tail Sizing (initial),p_achieved,0.174612
 Tail Sizing (initial),p_required,0.0747998
 Tail Sizing (initial),roll_ok,True
-Tail Sizing (rechecked w/ T_TO),S_h,18.6556
-Tail Sizing (rechecked w/ T_TO),S_v,30.0485
-Tail Sizing (rechecked w/ T_TO),b_h,9.16242
-Tail Sizing (rechecked w/ T_TO),b_v,7.1472
-Tail Sizing (rechecked w/ T_TO),S_h_stability,10.5286
-Tail Sizing (rechecked w/ T_TO),S_h_control,1.7274
+Tail Sizing (rechecked w/ T_TO),S_h,21.1088
+Tail Sizing (rechecked w/ T_TO),S_v,35.9615
+Tail Sizing (rechecked w/ T_TO),b_h,9.74626
+Tail Sizing (rechecked w/ T_TO),b_v,7.81886
+Tail Sizing (rechecked w/ T_TO),S_h_stability,12.6806
+Tail Sizing (rechecked w/ T_TO),S_h_control,2.08134
 Tail Sizing (rechecked w/ T_TO),S_h_driver,scissor plot
-Tail Sizing (rechecked w/ T_TO),S_v_stability,10.3475
-Tail Sizing (rechecked w/ T_TO),S_v_control,30.0485
+Tail Sizing (rechecked w/ T_TO),S_v_stability,13.1203
+Tail Sizing (rechecked w/ T_TO),S_v_control,35.9615
 Tail Sizing (rechecked w/ T_TO),S_v_driver,control (OEI rudder)
-Tail Sizing (rechecked w/ T_TO),V_h,1.6833
-Tail Sizing (rechecked w/ T_TO),V_v,0.290393
+Tail Sizing (rechecked w/ T_TO),V_h,1.58142
+Tail Sizing (rechecked w/ T_TO),V_v,0.27409
 Tail Sizing (rechecked w/ T_TO),V_h_ok,True
 Tail Sizing (rechecked w/ T_TO),V_v_ok,True
-Tail Sizing (rechecked w/ T_TO),S_elevator,5.78322
+Tail Sizing (rechecked w/ T_TO),S_elevator,6.54373
 Tail Sizing (rechecked w/ T_TO),Se_Sh,0.31
-Tail Sizing (rechecked w/ T_TO),S_rudder,7.62716
-Tail Sizing (rechecked w/ T_TO),Sr_Sv,0.253828
-Tail Sizing (rechecked w/ T_TO),M_engine,3.560651e+05
-Tail Sizing (rechecked w/ T_TO),M_rudder,3.560651e+05
+Tail Sizing (rechecked w/ T_TO),S_rudder,9.28081
+Tail Sizing (rechecked w/ T_TO),Sr_Sv,0.258076
+Tail Sizing (rechecked w/ T_TO),M_engine,4.112706e+05
+Tail Sizing (rechecked w/ T_TO),M_rudder,4.112706e+05
 Tail Sizing (rechecked w/ T_TO),OEI_ok,True
-Tail Sizing (rechecked w/ T_TO),S_aileron,2.0148
+Tail Sizing (rechecked w/ T_TO),S_aileron,2.27975
 Tail Sizing (rechecked w/ T_TO),Sa_Sref,0.027
-Tail Sizing (rechecked w/ T_TO),p_achieved,0.185736
+Tail Sizing (rechecked w/ T_TO),p_achieved,0.17461
 Tail Sizing (rechecked w/ T_TO),p_required,0.0747998
 Tail Sizing (rechecked w/ T_TO),roll_ok,True
-Drag Breakdown (cruise),CD0_wing,0.00531831
-Drag Breakdown (cruise),CD0_htail,0.00134126
-Drag Breakdown (cruise),CD0_vtail,0.00206387
-Drag Breakdown (cruise),CD0_fus,0.0064186
-Drag Breakdown (cruise),CD0_total,0.0160506
+Drag Breakdown (cruise),CD0_wing,0.00529344
+Drag Breakdown (cruise),CD0_htail,0.00137146
+Drag Breakdown (cruise),CD0_vtail,0.00221573
+Drag Breakdown (cruise),CD0_fus,0.00578446
+Drag Breakdown (cruise),CD0_total,0.015545
 Drag Breakdown (cruise),CD_misc,1.06
-Drag Breakdown (cruise),CD_i,0.00311469
+Drag Breakdown (cruise),CD_i,0.00311273
 Drag Breakdown (cruise),CD_wL,0
 Drag Breakdown (cruise),CD_wave,0
-Drag Breakdown (cruise),e,0.804927
+Drag Breakdown (cruise),e,0.805434
 Drag Breakdown (cruise),CL_cruise,0.280647
-Drag Breakdown (cruise),CL_cruise_Dmin,0.367822
-Drag Breakdown (cruise),CD_cruise_Dmin,0.0214007
-Drag Breakdown (cruise),v_dmin,189.346
+Drag Breakdown (cruise),CL_cruise_Dmin,0.362097
+Drag Breakdown (cruise),CD_cruise_Dmin,0.0207266
+Drag Breakdown (cruise),v_dmin,190.837
 Drag Breakdown (cruise),v_mach,216.768
-Drag Breakdown (cruise),"CD0 (total, with misc factor) [-]",0.0160506
-Drag Breakdown (cruise),CD_lift_dep [-],0.00311469
-Drag Breakdown (cruise),CD_total [-],0.0191652
-Drag Breakdown (cruise),L_over_D [-],14.6435
-Weight Breakdown,W_wing_initial,3459.22
-Weight Breakdown,W_wing_accurate,3211.45
-Weight Breakdown,W_wing_hld,1303.78
-Weight Breakdown,W_wing_basic,1583.95
-Weight Breakdown,W_htail,362.373
-Weight Breakdown,W_vtail,687.202
-Weight Breakdown,W_fus,5950.07
-Weight Breakdown,W_lg,1293.65
-Weight Breakdown,W_lg_nose,226.546
-Weight Breakdown,W_lg_main,1067.1
-Weight Breakdown,W_sc,706.334
-Weight Breakdown,W_engine,1407.83
-Weight Breakdown,W_total_prop,1784.67
+Drag Breakdown (cruise),"CD0 (total, with misc factor) [-]",0.015545
+Drag Breakdown (cruise),CD_lift_dep [-],0.00311273
+Drag Breakdown (cruise),CD_total [-],0.0186577
+Drag Breakdown (cruise),L_over_D [-],15.0419
+Weight Breakdown,W_wing_initial,4074.35
+Weight Breakdown,W_wing_accurate,3674.07
+Weight Breakdown,W_wing_hld,1492.26
+Weight Breakdown,W_wing_basic,1811.32
+Weight Breakdown,W_htail,421.897
+Weight Breakdown,W_vtail,854.287
+Weight Breakdown,W_fus,6480.82
+Weight Breakdown,W_lg,1451.75
+Weight Breakdown,W_lg_nose,249.279
+Weight Breakdown,W_lg_main,1202.47
+Weight Breakdown,W_sc,766.951
+Weight Breakdown,W_engine,3806.75
+Weight Breakdown,W_total_prop,4099.43
 Weight Breakdown,W_turbine,0
 Weight Breakdown,W_battery,0
 Weight Breakdown,W_fc,0
@@ -103,7 +103,7 @@ Weight Breakdown,W_generator,0
 Weight Breakdown,W_motor,0
 Weight Breakdown,W_cable,0
 Weight Breakdown,W_pipe,0
-Weight Breakdown,W_h2_tank,376.848
+Weight Breakdown,W_h2_tank,292.685
 Weight Breakdown,rho_turb,0
 Weight Breakdown,rho_bat,0
 Weight Breakdown,rho_fc,0
@@ -114,79 +114,77 @@ Weight Breakdown,rho_dc_dc,0
 Weight Breakdown,rho_dc_ac,0
 Weight Breakdown,rho_cable,0
 Weight Breakdown,rho_pipe,0
-Weight Breakdown,P_TO_KW,5443.83
-Weight Breakdown,P_max_KW,5443.83
-Weight Breakdown,P_cruise_KW,4043.68
-Weight Breakdown,P_TO_OEI_KW,2721.91
-Weight Breakdown,P_climb_KW,5001.71
+Weight Breakdown,P_TO_KW,6159.43
+Weight Breakdown,P_max_KW,6159.43
+Weight Breakdown,P_cruise_KW,4454.06
+Weight Breakdown,P_TO_OEI_KW,3079.72
+Weight Breakdown,P_climb_KW,5588.42
 Weight Breakdown,P_reserve_KW,0
-Weight Breakdown,P_primary_KW,2721.91
-Weight Breakdown,P_secondary_KW,2721.91
+Weight Breakdown,P_primary_KW,3079.72
+Weight Breakdown,P_secondary_KW,3079.72
 Weight Breakdown,max_Thrust_prop_inner,0
 Weight Breakdown,max_Thrust_prop_outer,0
-Weight Breakdown,W_fuel,553.679
-Weight Breakdown,W_primary,444.439
-Weight Breakdown,W_secondary,444.439
-Weight Breakdown,W_fan,1301.42
+Weight Breakdown,W_fuel,612.69
+Weight Breakdown,W_fan,1413.1
 Weight Breakdown,grav_density,0.64
 Weight Breakdown,configuration,1
-Weight Breakdown,total_prop_efficiency,0.383974
-Weight Breakdown,climb_eff,0.379168
-Weight Breakdown,cruise_eff,0.385284
-Weight Breakdown,climb_efficiency,0.379168
-Weight Breakdown,cruise_efficiency,0.385284
+Weight Breakdown,total_prop_efficiency,0.383749
+Weight Breakdown,climb_eff,0.378348
+Weight Breakdown,cruise_eff,0.385245
+Weight Breakdown,climb_efficiency,0.378348
+Weight Breakdown,cruise_efficiency,0.385245
 Weight Breakdown,t_cruise,"(0.0,)"
 Weight Breakdown,t_climb,"(0.0,)"
 Weight Breakdown,t_reserve,"(0.0,)"
 Weight Breakdown,bt_charging_ratio,0
-Weight Breakdown,P_opt,2144.38
+Weight Breakdown,P_opt,2367.01
 Weight Breakdown,N_propellers,1
-Weight Breakdown,H2_results_all,"{'final_states': {'TO': {'Temperature_K': 119.71, 'Pressure_Pa': 2182079.57, 'Density_kg_m3': 4.39, 'Enthalpy_J_kg': 1512270.93, 'Final_MassFlow_kg_s': 0.04676}, 'climb': {'Temperature_K': 118.89, 'Pressure_Pa': 2148078.65, 'Density_kg_m3': 4.35, 'Enthalpy_J_kg': 1502468.74, 'Final_MassFlow_kg_s': 0.04804}, 'cruise': {'Temperature_K': 125.4, 'Pressure_Pa': 2409665.34, 'Density_kg_m3': 4.61, 'Enthalpy_J_kg': 1580441.43, 'Final_MassFlow_kg_s': 0.03695}, 'APP': {'Temperature_K': 70.03, 'Pressure_Pa': 2779801.27, 'Density_kg_m3': 10.22, 'Enthalpy_J_kg': 902333.15, 'Final_MassFlow_kg_s': 0.01048}, 'OEI_gt': {'Temperature_K': 129.22, 'Pressure_Pa': 2414070.78, 'Density_kg_m3': 4.48, 'Enthalpy_J_kg': 1627839.31, 'Final_MassFlow_kg_s': 0.05432}, 'OEI_mot_Working': {'Temperature_K': 129.22, 'Pressure_Pa': 2414070.78, 'Density_kg_m3': 4.48, 'Enthalpy_J_kg': 1627839.31, 'Final_MassFlow_kg_s': 0.05432}, 'OEI_mot_Failed': {'Temperature_K': 129.22, 'Pressure_Pa': 2414070.78, 'Density_kg_m3': 4.48, 'Enthalpy_J_kg': 1627839.31, 'Final_MassFlow_kg_s': 0.05432}, 'OEI_bus_Working': {'Temperature_K': 129.22, 'Pressure_Pa': 2414070.78, 'Density_kg_m3': 4.48, 'Enthalpy_J_kg': 1627839.31, 'Final_MassFlow_kg_s': 0.05432}, 'OEI_bus_Failed': {'Temperature_K': 129.22, 'Pressure_Pa': 2414070.78, 'Density_kg_m3': 4.48, 'Enthalpy_J_kg': 1627839.31, 'Final_MassFlow_kg_s': 0.05432}}, 'areas': {'hts_gen': {0.5: {'area': np.float64(0.03180163645510825), 'pipe_length': np.float64(1.1246735894190325), 'N_corners': 2}}, 'hts_pow': {0.5: {'area': np.float64(0.03818422798587601), 'pipe_length': np.float64(1.3504042295094743), 'N_corners': 3}, 1.0: {'area': np.float64(0.013513162482625556), 'pipe_length': np.float64(0.4778985172638544), 'N_corners': 1}}, 'dc_ac': {1.0: {'area': np.float64(0.011249349558901955), 'pipe_length': np.float64(0.3978443456368361), 'N_corners': 1}, 0.5: {'area': np.float64(0.03654164804161394), 'pipe_length': np.float64(1.292457627239964), 'N_corners': 2}}, 'ac_dc': {0.5: {'area': np.float64(0.04959565351879223), 'pipe_length': np.float64(1.7542072117954326), 'N_corners': 3}}, 'bus': {0.5: {'area': np.float64(0.029769611135621075), 'pipe_length': np.float64(1.0528392425640702), 'N_corners': 1}}}, 'temperatures': {'TO': {'hts_gen': {0.5: 35.0}, 'hts_pow': {0.5: 35.0, 1.0: 35.0}, 'dc_ac': {1.0: 250.0, 0.5: 250.0}, 'ac_dc': {0.5: 250.0}, 'bus': {0.5: 250.0}}, 'climb': {'hts_gen': {0.5: np.float64(34.983899681264454)}, 'hts_pow': {0.5: np.float64(34.96834469074603), 1.0: np.float64(34.95974319596405)}, 'dc_ac': {1.0: np.float64(249.80259287354033), 0.5: np.float64(249.7369193642404)}, 'ac_dc': {0.5: np.float64(249.5053968793253)}, 'bus': {0.5: np.float64(249.26863163696598)}}, 'cruise': {'hts_gen': {0.5: np.float64(35.033247751895345)}, 'hts_pow': {0.5: np.float64(35.17632393065879), 1.0: np.float64(35.25306453018396)}, 'dc_ac': {1.0: np.float64(249.49742172596564), 0.5: np.float64(250.2185831900873)}, 'ac_dc': {0.5: np.float64(252.06933799396634)}, 'bus': {0.5: np.float64(253.72845050362903)}}, 'APP': {'hts_gen': {0.5: np.float64(29.149006413808678)}, 'hts_pow': {0.5: np.float64(29.963222931255657), 1.0: np.float64(30.51671751631561)}, 'dc_ac': {1.0: np.float64(134.99951272959507), 0.5: np.float64(136.63431319432712)}, 'ac_dc': {0.5: np.float64(136.60198078634522)}, 'bus': {0.5: np.float64(136.05828094083392)}}, 'OEI_gt': {'W': {'hts_gen': {0.5: np.float64(37.834341330818695)}, 'hts_pow': {0.5: np.float64(34.03464901123274), 1.0: np.float64(34.089897812042466)}, 'dc_ac': {1.0: np.float64(187.8359489739376), 0.5: np.float64(187.15426279574302)}, 'ac_dc': {0.5: np.float64(291.6377978665598)}, 'bus': {0.5: np.float64(292.72930201421696)}}, 'F': {'hts_gen': {0.5: np.float64(22.90141857690539)}, 'hts_pow': {0.5: np.float64(34.09417904271588), 1.0: np.float64(34.784850576363155)}, 'dc_ac': {1.0: np.float64(295.6635474125738), 0.5: np.float64(302.19122661246263)}, 'ac_dc': {0.5: np.float64(82.949307493837)}, 'bus': {0.5: np.float64(422.2716758592926)}}}, 'OEI_mot': {'W': {'hts_gen': {0.5: np.float64(34.57652371076366)}, 'hts_pow': {0.5: np.float64(38.454038281867675), 1.0: np.float64(38.60091507010091)}, 'dc_ac': {1.0: np.float64(341.0491018314824), 0.5: np.float64(350.03818264676966)}, 'ac_dc': {0.5: np.float64(271.5870894336693)}, 'bus': {0.5: np.float64(277.3631088035115)}}, 'F': {'hts_gen': {0.5: np.float64(34.57652371076366)}, 'hts_pow': {0.5: np.float64(28.07879739779761), 1.0: np.float64(35.25154484326394)}, 'dc_ac': {1.0: np.float64(339.16454140163154), 0.5: np.float64(38.86529915814833)}, 'ac_dc': {0.5: np.float64(224.27164978530564)}, 'bus': {0.5: np.float64(220.308884495652)}}}, 'OEI_bus': {'W': {'hts_gen': {0.5: np.float64(34.964081649138755)}, 'hts_pow': {0.5: np.float64(34.69341780877504), 1.0: np.float64(34.89010092370688)}, 'dc_ac': {1.0: np.float64(228.75009587683428), 0.5: np.float64(229.66698137129345)}, 'ac_dc': {0.5: np.float64(248.47244016314423)}, 'bus': {0.5: np.float64(370.8125246975157)}}, 'F': {'hts_gen': {0.5: np.float64(34.964081649138755)}, 'hts_pow': {0.5: np.float64(34.69341780877504), 1.0: np.float64(34.89010092370688)}, 'dc_ac': {1.0: np.float64(228.75009587683428), 0.5: np.float64(229.66698137129345)}, 'ac_dc': {0.5: np.float64(248.47244016314423)}, 'bus': {0.5: np.float64(109.81100084941315)}}}}}"
-Weight Breakdown,W_structure [kg],12211.1
-Weight Breakdown,W_empty (OEW) [kg],13995.8
-Mission Power & Fuel,P_cruise_shaft,4.043678e+06
-Mission Power & Fuel,P_reserve_shaft,1.335467e+06
-Mission Power & Fuel,P_climb_shaft,5.001709e+06
+Weight Breakdown,H2_results_all,"{'final_states': {'TO': {'Temperature_K': 117.65, 'Pressure_Pa': 1942512.28, 'Density_kg_m3': 3.98, 'Enthalpy_J_kg': 1489296.7, 'Final_MassFlow_kg_s': 0.05363}, 'climb': {'Temperature_K': 117.29, 'Pressure_Pa': 1922609.26, 'Density_kg_m3': 3.95, 'Enthalpy_J_kg': 1485108.37, 'Final_MassFlow_kg_s': 0.05421}, 'cruise': {'Temperature_K': 124.98, 'Pressure_Pa': 2308555.32, 'Density_kg_m3': 4.43, 'Enthalpy_J_kg': 1576006.49, 'Final_MassFlow_kg_s': 0.04078}, 'APP': {'Temperature_K': 70.14, 'Pressure_Pa': 2774558.94, 'Density_kg_m3': 10.18, 'Enthalpy_J_kg': 903875.68, 'Final_MassFlow_kg_s': 0.01173}, 'OEI_gt': {'Temperature_K': 128.57, 'Pressure_Pa': 2443746.47, 'Density_kg_m3': 4.56, 'Enthalpy_J_kg': 1619516.88, 'Final_MassFlow_kg_s': 0.06174}, 'OEI_mot_Working': {'Temperature_K': 128.57, 'Pressure_Pa': 2443746.47, 'Density_kg_m3': 4.56, 'Enthalpy_J_kg': 1619516.88, 'Final_MassFlow_kg_s': 0.06174}, 'OEI_mot_Failed': {'Temperature_K': 128.57, 'Pressure_Pa': 2443746.47, 'Density_kg_m3': 4.56, 'Enthalpy_J_kg': 1619516.88, 'Final_MassFlow_kg_s': 0.06174}, 'OEI_bus_Working': {'Temperature_K': 128.57, 'Pressure_Pa': 2443746.47, 'Density_kg_m3': 4.56, 'Enthalpy_J_kg': 1619516.88, 'Final_MassFlow_kg_s': 0.06174}, 'OEI_bus_Failed': {'Temperature_K': 128.57, 'Pressure_Pa': 2443746.47, 'Density_kg_m3': 4.56, 'Enthalpy_J_kg': 1619516.88, 'Final_MassFlow_kg_s': 0.06174}}, 'areas': {'hts_gen': {0.5: {'area': np.float64(0.032170343227057745), 'pipe_length': np.float64(1.1377121946366897), 'N_corners': 2}}, 'hts_pow': {0.5: {'area': np.float64(0.038232586229008346), 'pipe_length': np.float64(1.3521145022572667), 'N_corners': 3}, 1.0: {'area': np.float64(0.013351391982114482), 'pipe_length': np.float64(0.4721778418520648), 'N_corners': 1}}, 'dc_ac': {1.0: {'area': np.float64(0.01180303281465817), 'pipe_length': np.float64(0.4174256136923773), 'N_corners': 1}, 0.5: {'area': np.float64(0.038312158986627015), 'pipe_length': np.float64(1.3550835521575069), 'N_corners': 2}}, 'ac_dc': {0.5: {'area': np.float64(0.051880748403168746), 'pipe_length': np.float64(1.835033639703161), 'N_corners': 3}}, 'bus': {0.5: {'area': np.float64(0.031041762104552027), 'pipe_length': np.float64(1.0978308016601632), 'N_corners': 1}}}, 'temperatures': {'TO': {'hts_gen': {0.5: 35.0}, 'hts_pow': {0.5: 35.0, 1.0: 35.0}, 'dc_ac': {1.0: 250.0, 0.5: 250.0}, 'ac_dc': {0.5: 250.0}, 'bus': {0.5: 250.0}}, 'climb': {'hts_gen': {0.5: np.float64(34.99032052506742)}, 'hts_pow': {0.5: np.float64(34.986283360682684), 1.0: np.float64(34.982876909274324)}, 'dc_ac': {1.0: np.float64(249.8904220209232), 0.5: np.float64(249.87346787899781)}, 'ac_dc': {0.5: np.float64(249.77860890994137)}, 'bus': {0.5: np.float64(249.66093681593338)}}, 'cruise': {'hts_gen': {0.5: np.float64(35.08061236789906)}, 'hts_pow': {0.5: np.float64(35.241844614542465), 1.0: np.float64(35.329682878663846)}, 'dc_ac': {1.0: np.float64(250.17693128339846), 0.5: np.float64(251.04960859550943)}, 'ac_dc': {0.5: np.float64(253.30628430361742)}, 'bus': {0.5: np.float64(255.4154383042483)}}, 'APP': {'hts_gen': {0.5: np.float64(29.20516534372893)}, 'hts_pow': {0.5: np.float64(30.00627437476326), 1.0: np.float64(30.543061197063384)}, 'dc_ac': {1.0: np.float64(136.31509349782692), 0.5: np.float64(138.0218494888524)}, 'ac_dc': {0.5: np.float64(138.1911945735582)}, 'bus': {0.5: np.float64(137.86489139268775)}}, 'OEI_gt': {'W': {'hts_gen': {0.5: np.float64(40.9882866628201)}, 'hts_pow': {0.5: np.float64(36.79293127557786), 1.0: np.float64(36.84034094170394)}, 'dc_ac': {1.0: np.float64(227.52240361716701), 0.5: np.float64(228.583104190479)}, 'ac_dc': {0.5: np.float64(366.78578605351254)}, 'bus': {0.5: np.float64(377.64784151753213)}}, 'F': {'hts_gen': {0.5: np.float64(22.855139942712245)}, 'hts_pow': {0.5: np.float64(30.909126974591384), 1.0: np.float64(31.277490270442634)}, 'dc_ac': {1.0: np.float64(224.48796467351593), 0.5: np.float64(225.28663353319783)}, 'ac_dc': {0.5: np.float64(52.19371307438435)}, 'bus': {0.5: np.float64(304.6100861576956)}}}, 'OEI_mot': {'W': {'hts_gen': {0.5: np.float64(34.72872256478762)}, 'hts_pow': {0.5: np.float64(38.65508532227733), 1.0: np.float64(38.79999044406234)}, 'dc_ac': {1.0: np.float64(345.15152351690153), 0.5: np.float64(354.5693553795023)}, 'ac_dc': {0.5: np.float64(275.2392410568351)}, 'bus': {0.5: np.float64(281.4692045302342)}}, 'F': {'hts_gen': {0.5: np.float64(34.72872256478762)}, 'hts_pow': {0.5: np.float64(28.094729285301888), 1.0: np.float64(35.49121149485289)}, 'dc_ac': {1.0: np.float64(343.2521831129771), 0.5: np.float64(38.874613108290646)}, 'ac_dc': {0.5: np.float64(227.6039215872317)}, 'bus': {0.5: np.float64(224.15477260264475)}}}, 'OEI_bus': {'W': {'hts_gen': {0.5: np.float64(35.07335173730429)}, 'hts_pow': {0.5: np.float64(34.87379990342555), 1.0: np.float64(35.0737962087961)}, 'dc_ac': {1.0: np.float64(232.47458547899876), 0.5: np.float64(233.62604848666598)}, 'ac_dc': {0.5: np.float64(251.4945161441732)}, 'bus': {0.5: np.float64(376.8347466322899)}}, 'F': {'hts_gen': {0.5: np.float64(35.07335173730429)}, 'hts_pow': {0.5: np.float64(34.87379990342555), 1.0: np.float64(35.0737962087961)}, 'dc_ac': {1.0: np.float64(232.47458547899876), 0.5: np.float64(233.62604848666598)}, 'ac_dc': {0.5: np.float64(251.4945161441732)}, 'bus': {0.5: np.float64(110.67172275392568)}}}}}"
+Weight Breakdown,W_structure [kg],13649.8
+Weight Breakdown,W_empty (OEW) [kg],17749.2
+Mission Power & Fuel,P_cruise_shaft,4.454064e+06
+Mission Power & Fuel,P_reserve_shaft,1.503388e+06
+Mission Power & Fuel,P_climb_shaft,5.588421e+06
 Mission Power & Fuel,P_TO_shaft,2.592000e+06
-Mission Power & Fuel,P_app_shaft,6.227326e+05
-Mission Power & Fuel,mdot_cruise,0.0336973
-Mission Power & Fuel,mdot_reserve,0.0111289
-Mission Power & Fuel,mdot_climb,0.0416809
+Mission Power & Fuel,P_app_shaft,7.003164e+05
+Mission Power & Fuel,mdot_cruise,0.0371172
+Mission Power & Fuel,mdot_reserve,0.0125282
+Mission Power & Fuel,mdot_climb,0.0465702
 Mission Power & Fuel,t_cruise,4612.76
 Mission Power & Fuel,t_reserve,2700
 Mission Power & Fuel,t_climb,1000
-Mission Power & Fuel,m_LH2_cruise,403.437
-Mission Power & Fuel,m_LH2_reserve,30.048
-Mission Power & Fuel,m_LH2_climb,109.927
-Mission Power & Fuel,m_LH2_TO_taxi,10.2673
+Mission Power & Fuel,m_LH2_cruise,444.425
+Mission Power & Fuel,m_LH2_reserve,33.8262
+Mission Power & Fuel,m_LH2_climb,123.088
+Mission Power & Fuel,m_LH2_TO_taxi,11.3503
 Mission Power & Fuel,CL_cruise,0.280589
 Mission Power & Fuel,CL_reserve,1.55833
 Mission Power & Fuel,CL_climb,0.364391
-Mission Power & Fuel,LD_cruise,16.0896
-Mission Power & Fuel,LD_reserve,15.2786
-Mission Power & Fuel,LD_climb,18.7983
+Mission Power & Fuel,LD_cruise,16.5273
+Mission Power & Fuel,LD_reserve,15.3561
+Mission Power & Fuel,LD_climb,19.2583
 Mission Power & Fuel,V_reserve_TAS,64.5889
 Mission Power & Fuel,V_climb_TAS,157.395
-Mission Power & Fuel,T_cruise,16787.3
-Mission Power & Fuel,m_LH2_total [kg],553.679
-Mission Power & Fuel,"P_max (shaft, across phases) [W]",5.001709e+06
-Power & Thrust Sizing,P_TO_total,5.443735e+06
-Power & Thrust Sizing,P_takeoff,4.899362e+06
-Power & Thrust Sizing,P_TO_per_engine,2.721868e+06
-Power & Thrust Sizing,P_from_climb,5.001709e+06
-Power & Thrust Sizing,P_from_CS25_121,5.443735e+06
+Mission Power & Fuel,T_cruise,18491
+Mission Power & Fuel,m_LH2_total [kg],612.69
+Mission Power & Fuel,"P_max (shaft, across phases) [W]",5.588421e+06
+Power & Thrust Sizing,P_TO_total,6.159602e+06
+Power & Thrust Sizing,P_takeoff,5.543641e+06
+Power & Thrust Sizing,P_TO_per_engine,3.079801e+06
+Power & Thrust Sizing,P_from_climb,5.588421e+06
+Power & Thrust Sizing,P_from_CS25_121,6.159602e+06
 Power & Thrust Sizing,driving_case,CS-25.121 second segment
-Power & Thrust Sizing,T_per_engine_V2,32669.9
-Power & Thrust Sizing,T_per_prop_V2,11458.6
+Power & Thrust Sizing,T_per_engine_V2,36966.1
+Power & Thrust Sizing,T_per_prop_V2,12965.4
 Power & Thrust Sizing,V_2,58.32
-Power & Thrust Sizing,CL_max_TO,1.82884
+Power & Thrust Sizing,CL_max_TO,1.82892
 Power & Thrust Sizing,LD_takeoff,11
 Power & Thrust Sizing,gamma_min_engine,0.024
 Power & Thrust Sizing,gamma_min_prop,0.03
-Power & Thrust Sizing,P_total_OEI,2.721868e+06
-Power & Thrust Sizing,P_total_OEI_propeller,2.004793e+06
+Power & Thrust Sizing,P_total_OEI,3.079801e+06
+Power & Thrust Sizing,P_total_OEI_propeller,2.268429e+06
 Power & Thrust Sizing,driving_case_2,2
-Power & Thrust Sizing,T_static_total,97759
-Power & Thrust Sizing,T_static_per_engine,48879.5
-Power & Thrust Sizing,T_static_per_prop_inner,39103.6
-Power & Thrust Sizing,T_static_per_prop_outer,9775.9
+Power & Thrust Sizing,T_static_total,1.061517e+05
+Power & Thrust Sizing,T_static_per_engine,53075.9
+Power & Thrust Sizing,T_static_per_prop_inner,42460.7
+Power & Thrust Sizing,T_static_per_prop_outer,10615.2

@@ -307,8 +307,6 @@ class WeightBreakdown:
     max_Thrust_prop_inner: float = 0.0
     max_Thrust_prop_outer: float = 0.0
     W_fuel:      float = 0.0
-    W_primary:   float = 0.0
-    W_secondary: float = 0.0
     W_fan: float = 0.0
     grav_density:float = 0.64
     configuration: int = 1
@@ -378,16 +376,6 @@ class WeightBreakdown:
             table.add_row(name, f"{weight:.1f}", note)
 
         table.add_section()
-        table.add_row(
-            "Mass Primary Power Unit",
-            f"[bold]{self.W_primary:.1f}[/bold]",
-            "",
-        )
-        table.add_row(
-            "Mass Secondary Power Unit",
-            f"[bold]{self.W_secondary:.1f}[/bold]",
-            "",
-        )
         table.add_row("Open Fan Mass", f"[bold]{self.W_fan:.1f}[/bold]", "",)
         table.add_row(
             "Propulsion System without tank",
@@ -694,7 +682,7 @@ class weightEstimation:
                 elif comp_key == "pipe+valves+pumps":
                     if g.N_propellers>2:
                         #mass = pipe_len * comp[comp_key].mass_per_length
-                        mass = g.TMS_mass_N4
+                        mass = 0
                     else:
                         #mass = pipe_len * comp[comp_key].mass_per_length * 2 #double the mass for 4 engines since more complex piping system with more valves and pumps needed
                         mass = g.TMS_mass_N2                     #big estimate
@@ -712,11 +700,9 @@ class weightEstimation:
                     pd = comp[comp_key].power_density
                     
                     if comp_key == "gt_hex": #or comp_key == "ac_dc" or comp_key == "hts_gen" or comp_key == "hts_pow" or comp_key == "dc_ac":
-                        mass = P_req_primary / pd / efficiency["GT-MOT_eff"] *nacelle_factor*1.15
-                        
-                        if comp_key == "gt_hex":
-                            W_primary = mass        #gt_hex is in there twice but taken into account in W_primary
-                            W_secondary = mass
+                        # mass = P_req_primary / pd / efficiency["GT-MOT_eff"] *nacelle_factor*1.15
+                        mass = 0
+
                     # elif comp_key == "ac_dc":
                     #     mass = P_req_primary / pd / efficiency2["ACDC_eff"]
                     # elif comp_key == "hts_gen":
@@ -734,7 +720,7 @@ class weightEstimation:
                     
                     # elif comp_key == "dc_ac":
                     #     mass = P_req_primary / pd /efficiency2["Dcac_eff"]
-                # total_mass += mass
+                total_mass += mass
                 # TODO: eliminate this mass from total, but check whether to include or not the nacelle factor
 
         eff = efficiency["Total_eff"]
@@ -790,7 +776,7 @@ class weightEstimation:
         # TODO: subtract previous piping and GT mass estimate, idk where that is for now
 
 
-        return total_mass * g.mass_margin,fan_mass, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff,eff_climb, \
+        return total_mass * g.mass_margin,fan_mass, P_req_primary, P_req_secondary, P_req_tot,eff,eff_climb, \
             eff_cruise, bt_charging_ratio, P_opt, electrical_results["cooling"], H2_results_all
     
     def _h2_tank_weight(self) -> float:
@@ -804,7 +790,7 @@ class weightEstimation:
         g = self.g
 
         h2_tank_weight   = self._h2_tank_weight()
-        W_engine_total, fan_mass, P_req_primary, P_req_secondary, P_req_tot, W_primary, W_secondary,\
+        W_engine_total, fan_mass, P_req_primary, P_req_secondary, P_req_tot,\
             total_prop_efficiency, climb_eff,cruise_eff, bt_charging_ratio, P_opt, cool, H2_results_all = self._propulsion_weight()
         W_wing_accurate, W_hld, W_basic = self._wing_weight_accurate()
         
@@ -823,8 +809,6 @@ class weightEstimation:
             W_lg_main = W_lg_main,
             W_lg_nose = W_lg_nose,
             W_sc     = self._surface_control_weight(),
-            W_primary= W_primary,
-            W_secondary = W_secondary,
             W_engine = W_engine_total,
             W_total_prop = W_engine_total + h2_tank_weight,
             W_fan = fan_mass,
