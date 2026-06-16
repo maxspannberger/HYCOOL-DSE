@@ -527,7 +527,8 @@ class ScissorPlotEstimator:
 if __name__ == "__main__":
     cfg = default_q400_hycool()
     result = run_class_ii(cfg, comp=comp_params, tol=1.0, max_iter=100, verbose=True)
-    with open("WeightEstimations/outputs/optimal_cl_mach_cache.json", "r") as file:
+    optimal_cl_path = root / "WeightEstimations" / "outputs" / "optimal_cl_mach_cache.json"
+    with open(optimal_cl_path, "r") as file:
         best_row = json.load(file)
     aero_dict = result.aeroparameters
 

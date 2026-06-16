@@ -3,6 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 from dataclasses import dataclass
+from pprint import pprint
+import copy
+from dataclasses import replace
 
 import numpy as np
 from rich.console import Console
@@ -20,6 +23,74 @@ from General.component_parameters import component_params as comp_params
 from Cg_Calculations import CgCalculationInput, CgCalculator
 from ClassII_Loading_Diagram import LoadingDiagramInput, LoadingDiagramEstimator
 from ClassII_Scissor_Plot import ScissorPlotInput, ScissorPlotEstimator
+
+# Code required for verification
+# =============================================================================
+VALIDATION = False
+PARAM  = 'L_over_D'
+
+def adjust_param(obj, param_name=PARAM, factor=1.1):
+    """
+    Manually adjusts a parameter by factor, handling nesting.
+    """
+    # Define which sub-object contains which parameter
+    # Add new mappings here as you add more parameters
+    mapping = {
+        # --- Root Level ---
+        'MTOW': ('root', 'MTOW'),
+        'MZFW': ('root', 'MZFW'),
+        'W_empty': ('root', 'W_empty'),
+        'OEW': ('root', 'OEW'),
+        'W_fuel': ('root', 'W_fuel'),
+        'W_payload': ('root', 'W_payload'),
+        'W_fixed': ('root', 'W_fixed'),
+        'L_over_D': ('root', 'L_over_D'),
+        
+        # --- Tail Sizing ---
+        'S_h': ('tail', 'S_h'),
+        'S_v': ('tail', 'S_v'),
+        'V_h': ('tail', 'V_h'),
+        'S_elevator': ('tail', 'S_elevator'),
+        'S_rudder': ('tail', 'S_rudder'),
+        
+        # --- Drag Breakdown ---
+        'CD0_wing': ('drag', 'CD0_wing'),
+        'CD0_total': ('drag', 'CD0_total'),
+        'e': ('drag', 'e'),
+        
+        # --- Weight Breakdown ---
+        'W_wing_accurate': ('weight', 'W_wing_accurate'),
+        'W_h2_tank': ('weight', 'W_h2_tank'),
+        'P_TO_KW': ('weight', 'P_TO_KW'),
+        
+        # --- Mission ---
+        't_cruise': ('mission', 't_cruise'),
+        'm_LH2_cruise': ('mission', 'm_LH2_cruise'),
+        
+        # --- Power ---
+        'P_TO_total': ('power', 'P_TO_total'),
+        'P_takeoff': ('power', 'P_takeoff'),
+        
+        # --- Aero Parameters (Special: Dictionary) ---
+        'CD_Dmin': ('aeroparameters', 'CD_Dmin'),
+        'CL_opt': ('aeroparameters', 'CL_opt')
+    }
+
+    if param_name not in mapping:
+        raise ValueError(f"Parameter '{param_name}' not in ClassIIresults")
+
+    group, field = mapping[param_name]
+
+    if group == 'root':
+        new_val = getattr(obj, param_name) * factor
+        return replace(obj, **{param_name: new_val})
+    else:
+        nested_obj = getattr(obj, group)
+        new_val = getattr(nested_obj, field) * factor
+        updated_nested = replace(nested_obj, **{field: new_val})
+        return replace(obj, **{group: updated_nested})
+
+# =============================================================================
 
 
 @dataclass
@@ -109,7 +180,6 @@ def run_full_stability_sequence(
     """
 
     cfg = default_q400_hycool()
-
     # ------------------------------------------------------------
     # Step 1: input OEW/MAC fraction guess
     # ------------------------------------------------------------
@@ -126,6 +196,13 @@ def run_full_stability_sequence(
         verbose=False,
         config=config,
     )
+    if VALIDATION:
+        result = adjust_param(result)
+        
+    pprint(result)
+    
+    
+    
 
     # ------------------------------------------------------------
     # Step 3: run CG calculations
