@@ -49,7 +49,7 @@ from WeightEstimations.Export_Geometry import (
     print_final_geometry,
     export_final_geometry,
 )
-
+#from Storage.mainStorage import main_storage
 
 from rich import print
 from rich.console import Console
@@ -188,7 +188,10 @@ def compute_fuselage_geometry(W_fuel: float, cfg: AircraftConfig,hump_back: bool
     r_tank = (cfg.diameter_margin * cfg.b_f_i - 2*cfg.wall_thickness)/2
     d_tank = 2*r_tank
     l_cyl_tank = (V_tank-(4/3)*np.pi*(r_tank**3))/(np.pi*(r_tank**2))
-    L_tank = 2*r_tank + l_cyl_tank
+    L_tank = 2*r_tank + l_cyl_tank+2*cfg.wall_thickness
+
+    #_, L_tank, r_tank = main_storage(W_fuel)
+    #d_tank = 2 * r_tank
 
     # ---------- calculation for cylindrical tank with hemispherical endcaps --------------
 
