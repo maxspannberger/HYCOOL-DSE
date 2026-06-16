@@ -27,9 +27,9 @@ from ClassII_Scissor_Plot import ScissorPlotInput, ScissorPlotEstimator
 # Code required for verification
 # =============================================================================
 VALIDATION = False
-PARAM  = 'L_over_D'
+PARAM  = 'W_fuel'
 
-def adjust_param(obj, param_name=PARAM, factor=1.1):
+def adjust_param(obj, param_name=PARAM, factor=1e-10):
     """
     Manually adjusts a parameter by factor, handling nesting.
     """
