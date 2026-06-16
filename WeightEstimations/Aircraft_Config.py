@@ -278,7 +278,7 @@ def default_q400_hycool() -> AircraftConfig:
         hump_back        = True,               # Design Decision
         rho_LH2_eff      = 70.85,               # kg/m^3, LH2 at boiling point
 
-        wall_thickness   = 0.01,                #m
+        wall_thickness   = 0.08534,                #m
         divider_thickness = 0.02,               #m
         diameter_margin  = 0.8,
 
