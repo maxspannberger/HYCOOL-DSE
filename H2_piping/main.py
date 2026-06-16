@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+import os
 
 # Set up paths to ensure we can import local modules
 folder = Path(__file__).resolve().parent
@@ -321,11 +322,11 @@ def main_H2_nominal(comps=None, sizes=None, show=False, write=False, normal_phas
                      plot_states(states, current_phase)
 
        if write:
-              filename_areas = "HEX_areas.json"
+              filename_areas = os.path.join(root, "H2_piping", "HEX_areas.json")
               with open(filename_areas, "w") as f:
                      json.dump(HEX_areas, f, indent=4)
 
-              filename_temps = "HEX_temps.json"
+              filename_temps = os.path.join(root, "H2_piping", "HEX_temps.json")
               with open(filename_temps, "w") as f:
                      json.dump(All_temps, f, indent=4)
 

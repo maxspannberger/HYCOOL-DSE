@@ -456,9 +456,10 @@ class weightEstimation:
     _LG_main = dict(A=18.1, B=0.131, C=0.019, D=2.23e-5)
     _LG_nose = dict(A=9.1,  B=0.082, C=0.0,   D=2.97e-6)
 
-    def __init__(self, geometry: ClassII_Input, comp: dict):
+    def __init__(self, geometry: ClassII_Input, comp: dict, write: bool = True):
         self.g = geometry
         self.comp = comp
+        self.write = write
 
     def _validate(self):
         g = self.g
@@ -674,7 +675,7 @@ class weightEstimation:
                 #     mass = cable_len * comp[comp_key].mass_per_length
                 if comp_key == "electrical_sys":
                     electrical_results = perform_complete_electrical_sizing(g.P_takeoff_KW,g.P_climb_KW,g.P_cruise_KW,g.P_approach_KW,
-                                                                 g.P_TO_OEI_KW, g.b)
+                                                                            g.P_TO_OEI_KW, g.b, write=self.write)
                     if g.N_propellers>2:
 
                         mass = electrical_results["mass"]
@@ -768,10 +769,10 @@ class weightEstimation:
         oei_m_dots = [mass_flows[4], mass_flows[5]*2, mass_flows[6]*2]
 
         H2_results_nominal = main_H2_nominal(comps=electrical_results["cooling"], sizes=electrical_results["sizes"],
-                                             normal_phases=normal_phases, normal_m_dots=normal_m_dots)
+                                             normal_phases=normal_phases, normal_m_dots=normal_m_dots, write=self.write)
         H2_results_all = main_H2_OEI(comps=electrical_results["cooling"], sizes=electrical_results["sizes"],
                                      All_temps=H2_results_nominal["temperatures"], HEX_areas=H2_results_nominal["areas"], prev_states=H2_results_nominal["final_states"],
-                                     oei_phases=oei_phases, oei_m_dots=oei_m_dots)
+                                     oei_phases=oei_phases, oei_m_dots=oei_m_dots, write=self.write)
         # print(H2_results_all)
         TMS_mass, pipe_length = pipe_calculations(b=g.b, sweep_quarter_chord=g.sweep_half) # quarter chord approximated by half for now
         total_mass += TMS_mass + 2 * gt_mass
