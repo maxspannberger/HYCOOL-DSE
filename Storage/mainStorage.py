@@ -75,11 +75,13 @@ insulationData = ins.size(Qleak=Qleak, Atank=dimensions.A_in, Rtank=dimensions.R
 insulationData.print_summary()
 
 # 4. Outer CFRP wall
+m_partial = dimensions.m_in + baffleData.mBaffle + insulationData.mMLI
 outerData = outerSizing(E_ITS50, nu_ITS50, G_ITS50, rhoCFRP_ITS50, angles).size(
     Rin=dimensions.Rin,
     tMLI=insulationData.tMLI,
     twall=dimensions.t_in,
     ls=dimensions.ls,
+    m_empty=m_partial,
 )
 outerData.print_summary()
 

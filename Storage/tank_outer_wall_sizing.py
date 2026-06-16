@@ -5,26 +5,34 @@ Sizes the outer CFRP wall of the LH2 tank.
 import numpy as np
 from dataclasses import dataclass
 
+g = 9.81   # [m/s^2]
+
 
 @dataclass(frozen=True)
 class outerWall:
-    Ex:    float   # longitudinal Young's modulus [GPa]
-    Ey:    float   # transverse Young's modulus [GPa]
-    nuxy:  float   # in-plane Poisson's ratio [-]
-    Gxy:   float   # in-plane shear modulus [GPa]
-    mCFRP: float   # CFRP wall mass [kg]
-    Rout:  float   # outer radius [m]
-    tout:  float   # total wall thickness [m]
+    Ex:       float   # longitudinal Young's modulus [GPa]
+    Ey:       float   # transverse Young's modulus [GPa]
+    nuxy:     float   # in-plane Poisson's ratio [-]
+    Gxy:      float   # in-plane shear modulus [GPa]
+    mCFRP:    float   # CFRP wall mass [kg]
+    Rout:     float   # outer radius [m]
+    tout:     float   # total wall thickness [m]
+    sigma_x:  float   # applied axial compressive stress (9g load case) [GPa]
+    sigma_cr: float   # imperfection-corrected critical buckling stress [GPa]
+    Gamma:    float   # imperfection factor [-]
 
     def print_summary(self):
         fields = [
-            ("Rout",  "Outer radius",           self.Rout,  "m"  ),
-            ("tout",  "Wall thickness",          self.tout,  "m"  ),
-            ("Ex",    "Long. modulus",           self.Ex,    "GPa"),
-            ("Ey",    "Trans. modulus",          self.Ey,    "GPa"),
-            ("nuxy",  "Poisson's ratio",         self.nuxy,  "-"  ),
-            ("Gxy",   "Shear modulus",           self.Gxy,   "GPa"),
-            ("mCFRP", "CFRP mass",               self.mCFRP, "kg" ),
+            ("Rout",     "Outer radius",          self.Rout,     "m"  ),
+            ("tout",     "Wall thickness",         self.tout,     "m"  ),
+            ("Ex",       "Long. modulus",          self.Ex,       "GPa"),
+            ("Ey",       "Trans. modulus",         self.Ey,       "GPa"),
+            ("nuxy",     "Poisson's ratio",        self.nuxy,     "-"  ),
+            ("Gxy",      "Shear modulus",          self.Gxy,      "GPa"),
+            ("mCFRP",    "CFRP mass",              self.mCFRP,    "kg" ),
+            ("sigma_x",  "Applied Axial Stress",   self.sigma_x,  "GPa"),
+            ("sigma_cr", "Critical Stress", self.sigma_cr, "GPa"),
+            ("Gamma",    "Knockdown Factor",    self.Gamma,    "-"  ),
         ]
 
         RESET  = '\033[0m'
@@ -98,7 +106,7 @@ class outerSizing:
 
         return A, D, tout
 
-    def size(self, Rin, tMLI, twall, ls):
+    def size(self, Rin, tMLI, twall, ls, m_empty):
         A, _, tout = self._ABD()
         a    = np.linalg.inv(A)
 
@@ -111,8 +119,15 @@ class outerSizing:
         Aout  = 4 * np.pi * Rout**2 + 2 * np.pi * Rout * ls
         mCFRP = tout * self.rhoBulk * Aout
 
+        # Cylinder buckling check (NASA imperfection approach, 9g load case)
+        delta    = Rout / 1200
+        Gamma    = np.sqrt(1 - nuxy**2) * (delta / tout)
+        sigma_x  = ((9 * g * m_empty) / (2 * np.pi * Rout * tout)) / 1e9
+        sigma_cr = Ex / np.sqrt(3 * (1 - nuxy**2)) * (tout / Rout) * Gamma
+
         return outerWall(Ex=Ex, Ey=Ey, nuxy=nuxy, Gxy=Gxy,
-                         mCFRP=mCFRP, Rout=Rout, tout=tout)
+                         mCFRP=mCFRP, Rout=Rout, tout=tout,
+                         sigma_x=sigma_x, sigma_cr=sigma_cr, Gamma=Gamma)
 
 
 if __name__ == "__main__":
@@ -129,6 +144,7 @@ if __name__ == "__main__":
     twall = 0.002    # [m]
     tMLI  = 0.008218 # [m]
     ls    = 2.1789   # [m]
+    
 
     sizing = outerSizing(E_ITS50, nu_ITS50, G_ITS50, rhoCFRP_ITS50, angles)
     result = sizing.size(Rin=Rin, tMLI=tMLI, twall=twall, ls=ls)
