@@ -588,7 +588,7 @@ class COOL:
 
         L_old = np.inf
         j = 0
-        while abs((self.L - L_old)/self.L) > 1e-4 and j < 100:
+        while abs((self.L - L_old)/self.L) > 1e-3 and j < 100:
             L_old = self.L
             j += 1
 
@@ -610,10 +610,10 @@ class COOL:
 
                 if cumulative_length >= self.L:
                     remaining_length = self.length - (cumulative_length - self.L)
-                    internal_system.extend([Pipe(length=remaining_length, diameter=self.d, q_set=q_L*remaining_length)])
+                    internal_system.extend([Pipe(length=remaining_length, diameter=self.d, q_set=q_L*remaining_length, segments=10)])
                 else:
                     internal_system.extend([
-                        Pipe(length=self.length, diameter=self.d, q_set=q_L*self.length),
+                        Pipe(length=self.length, diameter=self.d, q_set=q_L*self.length, segments=10),
                         Corner(curv=curvature, diameter=self.d),
                         Corner(curv=curvature, diameter=self.d)
                     ])

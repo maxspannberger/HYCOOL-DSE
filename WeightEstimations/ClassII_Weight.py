@@ -736,6 +736,7 @@ class weightEstimation:
         else:
             P_opt = g.P_opt/1000
 
+        print(P_opt)
         # GT sizing and results
         P_per_flight_condition = [P * 1000 for P in list(electrical_results["powers"]["hts_gen"].values())[0].values()]
 
@@ -757,8 +758,9 @@ class weightEstimation:
         
         mass_flows = [gt_results_dict["od_cases"][P]["mdot_f"] for P in gt_results_dict["od_cases"]]
         gt_effs = [gt_results_dict["od_cases"][P]["eta_total"] for P in gt_results_dict["od_cases"]]
-        # for P, m in zip(P_per_flight_condition, mass_flows):
-        #     print(f"{P}: {m}")
+        expander_powers_KW = [gt_results_dict["od_cases"][P]["h2_net_W"]/1000 for P in gt_results_dict["od_cases"]]
+        for P, m in zip(P_per_flight_condition, expander_powers_KW):
+            print(f"{P}: {m}")
 
         normal_phases = ['TO', 'climb', 'cruise', 'APP']
         normal_m_dots = [m*2 for m in mass_flows[:4]]
@@ -778,6 +780,7 @@ class weightEstimation:
         mass_breakdown = {
             "gt": gt_mass,
             "mass_flows": mass_flows,
+            "expander_powers": expander_powers_KW,
             "efficiencies": gt_effs,
             "TMS": TMS_mass,
             "pipe_length": pipe_length,
