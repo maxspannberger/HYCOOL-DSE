@@ -5,7 +5,7 @@ Sizes the tank and calculates the dimensions of the tank.
 from CoolProp.CoolProp import PropsSI
 import numpy as np
 from dataclasses import dataclass, field, replace
-import properties as props
+import Storage.properties as props
 
 FLUID = "parahydrogen"   
 
@@ -82,7 +82,7 @@ class dimensionSizing:
         """Calculate the liquid mass fraction at a given pressure based on the initial liquid mass fraction and the pressure ratio."""
         yl_0 = (self.rhol - (1/self.vg_0)) / (1/self.vl_0 - 1/self.vg_0) 
         ullage_factor = 1.0 - yl_0
-        print(ullage_factor)
+        # print(ullage_factor)
         return yl_0, ullage_factor
 
     # Calculated the required tank volume based on the mass of hydrogen, initial liquid mass fraction, and density.
@@ -100,7 +100,7 @@ class dimensionSizing:
         t_in = (D * (pint - pext)) / (2 * S)
         
         if t_in < 0.002:
-            print(f"The thickness of the inner liner, {t_in * 1e3} [mm], is too thin. It will be rounded up to 2.0 [mm].")
+            # print(f"The thickness of the inner liner, {t_in * 1e3} [mm], is too thin. It will be rounded up to 2.0 [mm].")
             t_in = 0.002
 
         Rin = R + t_in

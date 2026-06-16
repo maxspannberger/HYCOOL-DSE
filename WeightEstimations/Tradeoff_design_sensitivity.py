@@ -110,42 +110,139 @@ def single_sensitivity_run(
         else:
             raise ValueError("Invalid sensitivity configuration")
 
-        climate_results = get_climate_results(comp=comp)
-        design_names = list(climate_results.keys())
         for config in designs_to_consider:
             class_II_results = run_class_ii(config=config, comp=comp, verbose=False, cfg=cfg)
 
-            # TMS already has built-in scores
-            TMS_results = design_phase_table(config=config, comp=comp, class_II_results=class_II_results)
-            TMS_ratio = design_score_table(TMS_results)["FinalRatio"].iloc[0]
-
-            TRL_year = TRL_per_design(TRL, config=config)
-
             if more_than_tradeoff:
-                results[design_names[config-1]] = {
+                max_temps = {}
+                min_temps = {}
+                for condition in class_II_results.weight.H2_results_all["temperatures"]:
+                    for comp in class_II_results.weight.H2_results_all["temperatures"][condition]:
+                        if comp not in max_temps:
+                            max_temps[comp] = {}
+                            min_temps[comp] = {}
+                        for loc in class_II_results.weight.H2_results_all["temperatures"][condition][comp]:
+                            if loc not in max_temps[comp]:
+                                max_temps[comp][loc] = 0.0
+                                min_temps[comp][loc] = np.inf
+                            if class_II_results.weight.H2_results_all["temperatures"][condition][comp][loc] > max_temps[comp][loc]:
+                                max_temps[comp][loc] = class_II_results.weight.H2_results_all["temperatures"][condition][comp][loc]
+                            if class_II_results.weight.H2_results_all["temperatures"][condition][comp][loc] < min_temps[comp][loc]:
+                                min_temps[comp][loc] = class_II_results.weight.H2_results_all["temperatures"][condition][comp][loc]
+
+                results["Final design"] = {
+                    "CL_cruise": class_II_results.CL_cruise,
+                    "CD_0": class_II_results.drag.CD0,
+                    "CD_cruise": class_II_results.drag.CD_total,
+                    "L/D_cruise": class_II_results.L_over_D,
+
+                    "S": class_II_results.Wing_Area,
+                    "b": class_II_results.Wing_span,
+                    "L_fus": class_II_results.l_f_m,
+                    "pipe_length": class_II_results.weight.mass_breakdown["pipe_length"],
+                    "L_tank_m": class_II_results.L_tank_m,
+                    "d_tank_m": class_II_results.d_tank_m,
+
                     "MTOW": class_II_results.MTOW,
                     "OEW": class_II_results.W_empty,
                     "M_fuel": class_II_results.W_fuel,
                     "M_tank": class_II_results.weight.W_h2_tank,
                     "M_power": class_II_results.W_prop,
-                    "P_peak": class_II_results.P_max_KW,
-                    "CL_cruise": class_II_results.CL_cruise,
-                    "CD_0": class_II_results.drag.CD0,
-                    "CD_cruise": class_II_results.drag.CD_total,
-                    "S": class_II_results.Wing_Area,
-                    "b": class_II_results.Wing_span,
-                    "L_fus": class_II_results.l_f_m,
-                    "Eff_tot": class_II_results.total_prop_efficiency,
-                    "Eff_climb": class_II_results.climb_eff,
-                    "Eff_cruise": class_II_results.cruise_eff,
-                    "L/D_cruise": class_II_results.L_over_D,
+
+                    "m_GT": class_II_results.weight.mass_breakdown["gt"],
+                    "m_electrical": class_II_results.weight.mass_breakdown["electrical"],
+                    "m_tank": class_II_results.weight.W_h2_tank,
+                    "m_TMS": class_II_results.weight.mass_breakdown["TMS"],
+                    "m_fan": class_II_results.weight.mass_breakdown["fan"],
+
                     "T_static": class_II_results.power.T_static_total,
-                    "P_opt": class_II_results.weight.P_opt,
-                    "P_cruise_KW": class_II_results.mission.P_cruise_shaft/1000.0,
+                    "P_opt_KW": class_II_results.weight.P_opt,
+                    "P_TO_KW": class_II_results.P_takeoff_KW,
                     "P_climb_KW": class_II_results.mission.P_climb_shaft/1000.0,
-                    "P_OEI_KW": class_II_results.weight.P_TO_OEI_KW
+                    "P_cruise_KW": class_II_results.mission.P_cruise_shaft/1000.0,
+                    "P_APP_KW": class_II_results.P_approach_KW,
+                    "P_OEI_KW": class_II_results.weight.P_TO_OEI_KW,
+                    "P_peak": class_II_results.P_max_KW,
+
+                    "m_flow_TO": class_II_results.weight.mass_breakdown["mass_flows"][0],
+                    "m_flow_climb": class_II_results.weight.mass_breakdown["mass_flows"][1],
+                    "m_flow_cruise": class_II_results.weight.mass_breakdown["mass_flows"][2],
+                    "m_flow_APP": class_II_results.weight.mass_breakdown["mass_flows"][3],
+                    "m_flow_OEI_gt": class_II_results.weight.mass_breakdown["mass_flows"][4],
+                    "m_flow_OEI_mot": class_II_results.weight.mass_breakdown["mass_flows"][5],
+                    "m_flow_OEI_bus": class_II_results.weight.mass_breakdown["mass_flows"][6],
+
+                    "exp_pow_TO": class_II_results.weight.mass_breakdown["expander_powers"][0],
+                    "exp_pow_climb": class_II_results.weight.mass_breakdown["expander_powers"][1],
+                    "exp_pow_cruise": class_II_results.weight.mass_breakdown["expander_powers"][2],
+                    "exp_pow_APP": class_II_results.weight.mass_breakdown["expander_powers"][3],
+                    "exp_pow_OEI_gt": class_II_results.weight.mass_breakdown["expander_powers"][4],
+                    "exp_pow_OEI_mot": class_II_results.weight.mass_breakdown["expander_powers"][5],
+                    "exp_pow_OEI_bus": class_II_results.weight.mass_breakdown["expander_powers"][6],
+
+                    "eff_TO": class_II_results.weight.mass_breakdown["efficiencies"][0],
+                    "eff_climb": class_II_results.weight.mass_breakdown["efficiencies"][1],
+                    "eff_cruise": class_II_results.weight.mass_breakdown["efficiencies"][2],
+                    "eff_APP": class_II_results.weight.mass_breakdown["efficiencies"][3],
+                    "eff_OEI_gt": class_II_results.weight.mass_breakdown["efficiencies"][4],
+                    "eff_OEI_mot": class_II_results.weight.mass_breakdown["efficiencies"][5],
+                    "eff_OEI_bus": class_II_results.weight.mass_breakdown["efficiencies"][6],
+
+                    "A_hex_hts_gen": class_II_results.weight.H2_results_all["areas"]["hts_gen"][0.5]["area"],
+                    "A_hex_hts_pow_1": class_II_results.weight.H2_results_all["areas"]["hts_pow"][0.5]["area"],
+                    "A_hex_hts_pow_2": class_II_results.weight.H2_results_all["areas"]["hts_pow"][1.0]["area"],
+                    "A_hex_ac_dc": class_II_results.weight.H2_results_all["areas"]["ac_dc"][0.5]["area"],
+                    "A_hex_dc_ac_1": class_II_results.weight.H2_results_all["areas"]["dc_ac"][0.5]["area"],
+                    "A_hex_dc_ac_2": class_II_results.weight.H2_results_all["areas"]["dc_ac"][1.0]["area"],
+                    "A_hex_bus": class_II_results.weight.H2_results_all["areas"]["bus"][0.5]["area"],
+
+                    "TMAX_hts_gen": max_temps["hts_gen"][0.5],
+                    "TMAX_hts_pow_1": max_temps["hts_pow"][0.5],
+                    "TMAX_hts_pow_2": max_temps["hts_pow"][1.0],
+                    "TMAX_ac_dc": max_temps["ac_dc"][0.5],
+                    "TMAX_dc_ac_1": max_temps["dc_ac"][0.5],
+                    "TMAX_dc_ac_2": max_temps["dc_ac"][1.0],
+                    "TMAX_bus": max_temps["bus"][0.5],
+
+                    "TMIN_hts_gen": min_temps["hts_gen"][0.5],
+                    "TMIN_hts_pow_1": min_temps["hts_pow"][0.5],
+                    "TMIN_hts_pow_2": min_temps["hts_pow"][1.0],
+                    "TMIN_ac_dc": min_temps["ac_dc"][0.5],
+                    "TMIN_dc_ac_1": min_temps["dc_ac"][0.5],
+                    "TMIN_dc_ac_2": min_temps["dc_ac"][1.0],
+                    "TMIN_bus": min_temps["bus"][0.5],
+
+                    "T_in_gt_TO": class_II_results.weight.H2_results_all["final_states"]["TO"]["Temperature_K"],
+                    "T_in_gt_cruise": class_II_results.weight.H2_results_all["final_states"]["cruise"]["Temperature_K"],
+                    "T_in_gt_climb": class_II_results.weight.H2_results_all["final_states"]["climb"]["Temperature_K"],
+                    "T_in_gt_APP": class_II_results.weight.H2_results_all["final_states"]["APP"]["Temperature_K"],
+                    "T_in_gt_OEI_gt": class_II_results.weight.H2_results_all["final_states"]["OEI_gt"]["Temperature_K"],
+                    "T_in_gt_OEI_mot_AVG": 0.5 * (class_II_results.weight.H2_results_all["final_states"]["OEI_mot_Working"]["Temperature_K"] +
+                                                  class_II_results.weight.H2_results_all["final_states"]["OEI_mot_Failed"]["Temperature_K"]),
+                    "T_in_gt_OEI_bus_AVG": 0.5 * (class_II_results.weight.H2_results_all["final_states"]["OEI_bus_Working"]["Temperature_K"] +
+                                                  class_II_results.weight.H2_results_all["final_states"]["OEI_bus_Failed"]["Temperature_K"]),
+
+                    "P_in_gt_TO": class_II_results.weight.H2_results_all["final_states"]["TO"]["Pressure_Pa"],
+                    "P_in_gt_cruise": class_II_results.weight.H2_results_all["final_states"]["cruise"]["Pressure_Pa"],
+                    "P_in_gt_climb": class_II_results.weight.H2_results_all["final_states"]["climb"]["Pressure_Pa"],
+                    "P_in_gt_APP": class_II_results.weight.H2_results_all["final_states"]["APP"]["Pressure_Pa"],
+                    "P_in_gt_OEI_gt": class_II_results.weight.H2_results_all["final_states"]["OEI_gt"]["Pressure_Pa"],
+                    "P_in_gt_OEI_mot_AVG": 0.5 * (class_II_results.weight.H2_results_all["final_states"]["OEI_mot_Working"]["Pressure_Pa"] +
+                                                  class_II_results.weight.H2_results_all["final_states"]["OEI_mot_Failed"]["Pressure_Pa"]),
+                    "P_in_gt_OEI_bus_AVG": 0.5 * (class_II_results.weight.H2_results_all["final_states"]["OEI_bus_Working"]["Pressure_Pa"] +
+                                                  class_II_results.weight.H2_results_all["final_states"]["OEI_bus_Failed"]["Pressure_Pa"]),
                 }
+
             else:
+                # TMS already has built-in scores
+                TMS_results = design_phase_table(config=config, comp=comp, class_II_results=class_II_results)
+                TMS_ratio = design_score_table(TMS_results)["FinalRatio"].iloc[0]
+
+                TRL_year = TRL_per_design(TRL, config=config)
+
+                climate_results = get_climate_results(comp=comp)
+                design_names = list(climate_results.keys())
+                
                 results[design_names[config-1]] = {
                     # "OEW": class_II_results.W_empty,
                     "prop_frac": class_II_results.W_prop / class_II_results.W_empty,
@@ -586,7 +683,7 @@ def save_tradeoff(cfg, designs_to_consider=[1,2,3,4,5]):
 
 if __name__ == "__main__":
     cfg = default_q400_hycool()
-    n_repeats = 10
+    n_repeats = 100
     designs_to_consider = [1, 2, 3, 4, 5]
     weights={
         "mass": 0.25,

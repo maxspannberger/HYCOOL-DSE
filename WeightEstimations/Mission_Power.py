@@ -129,6 +129,7 @@ class MissionPower:
         S_ref:      Optional[float] = None,
         config:     int = 1,
         CL_approach: float = None,
+        m_flow=None
     ):
         self.cfg     = cfg
         self.drag    = drag_bd
@@ -143,6 +144,7 @@ class MissionPower:
         # Cache drag-polar coefficients from cruise drag breakdown
         self.CD0  = drag_bd.CD0 + drag_bd.CD_wave   # zero-lift incl. wave
         self.e    = drag_bd.e
+        self.m_flow = m_flow
 
     # ---------- helpers --------------------------------------------------
 
@@ -275,18 +277,22 @@ class MissionPower:
 
         # Restore mission coupling through the GT efficiency model without
         # reintroducing mutual recursion between cruise and climb.
-        efficiency = GT_GT_efficiency(
-            comp=self.comp,
-            t_climb=t_cl,
-            t_cruise=t_c,
-            P_climb=P_cl,
-            P_cruise=P_c,
-        )
-        cruise_eff = efficiency["Cruise_average_eff"]
-        climb_eff  = efficiency["Climb_eff"]
+        if self.m_flow is None:
+            efficiency = GT_GT_efficiency(
+                comp=self.comp,
+                t_climb=t_cl,
+                t_cruise=t_c,
+                P_climb=P_cl,
+                P_cruise=P_c,
+            )
+            cruise_eff = efficiency["Cruise_average_eff"]
+            climb_eff  = efficiency["Climb_eff"]
 
-        m_c  = md_c * t_c / cruise_eff
-        m_cl = md_cl * t_cl / climb_eff
+            m_c  = md_c * t_c / cruise_eff
+            m_cl = md_cl * t_cl / climb_eff
+        else:
+            m_c = self.m_flow[2] * t_c
+            m_cl = self.m_flow[1] * t_cl
 
         m_TO_taxi = self.cfg.TO_taxi_frac * (m_c + m_cl)
 

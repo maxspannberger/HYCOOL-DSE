@@ -14,6 +14,11 @@ from WeightEstimations.Aircraft_Config import AircraftConfig
 from General.component_parameters import component_params as comp_params
 from Propulsion.efficiency import GT_BAT_efficiency, GT_FC_efficiency, GT_GT_efficiency,FC_BAT_efficiency
 from Propulsion.electrical import perform_complete_electrical_sizing
+from Propulsion.main import run as run_gt_sizing
+from H2_piping.main import main_H2_nominal
+from H2_piping.main_OEI import main_H2_OEI
+from H2_piping.weight_calcs import pipe_calculations
+from Storage.mainStorage import main_storage
 
 from rich.table import Table
 
@@ -123,6 +128,8 @@ class ClassII_Input:
 
     frn_tank_support: float = 0,
 
+    H2_results_all: dict = None
+
     @classmethod
     def from_config(
         cls,
@@ -160,6 +167,7 @@ class ClassII_Input:
         mass_margin: float = 1.1,
         taper: float = 0.0,
         sweep_LE: float = 0.0,
+        H2_results_all: dict = None
     ) -> "ClassII_Input":
         """
         Build the weight-estimator input from a shared AircraftConfig.
@@ -243,6 +251,7 @@ class ClassII_Input:
             TMS_mass_N2 = cfg.TMS_mass_N2,
             TMS_mass_N4 = cfg.TMS_mass_N4,
             frn_tank_support = cfg.frn_tank_support,
+            H2_results_all = H2_results_all
         )
 
 
@@ -298,9 +307,7 @@ class WeightBreakdown:
     max_Thrust_prop_inner: float = 0.0
     max_Thrust_prop_outer: float = 0.0
     W_fuel:      float = 0.0
-    W_primary:   float = 0.0
-    W_secondary: float = 0.0
-    W_fan: float = 0.0
+    mass_breakdown: float = 0.0
     grav_density:float = 0.64
     configuration: int = 1
     total_prop_efficiency: float = 1.0
@@ -314,6 +321,9 @@ class WeightBreakdown:
     bt_charging_ratio: float = 0.0,
     P_opt: float = 0.0
     N_propellers: int=1
+
+    H2_results_all: dict = None
+    electrical_results: dict = None
 
 
     @property
@@ -367,17 +377,7 @@ class WeightBreakdown:
             table.add_row(name, f"{weight:.1f}", note)
 
         table.add_section()
-        table.add_row(
-            "Mass Primary Power Unit",
-            f"[bold]{self.W_primary:.1f}[/bold]",
-            "",
-        )
-        table.add_row(
-            "Mass Secondary Power Unit",
-            f"[bold]{self.W_secondary:.1f}[/bold]",
-            "",
-        )
-        table.add_row("Open Fan Mass", f"[bold]{self.W_fan:.1f}[/bold]", "",)
+        table.add_row("Open Fan Mass", f"[bold]{self.mass_breakdown["fan"]:.1f}[/bold]", "",)
         table.add_row(
             "Propulsion System without tank",
             f"[bold]{self.W_engine:.1f}[/bold]",
@@ -662,7 +662,7 @@ class weightEstimation:
                                     g.P_reserve_KW, 
                                     g.P_TO_KW)
 
-                    # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
+                # primary power source requirement is cruise power plus some margin for battery charging or OEI scenario
                 P_req_primary = max(g.P_cruise_KW/2, 
                                         g.P_TO_OEI_KW,
                                         P_req_tot/2)
@@ -673,17 +673,17 @@ class weightEstimation:
                 # if comp_key == "cable":
                 #     mass = cable_len * comp[comp_key].mass_per_length
                 if comp_key == "electrical_sys":
-                    mass_elec,cool=perform_complete_electrical_sizing(g.P_takeoff_KW,g.P_climb_KW,g.P_cruise_KW,g.P_approach_KW,
+                    electrical_results = perform_complete_electrical_sizing(g.P_takeoff_KW,g.P_climb_KW,g.P_cruise_KW,g.P_approach_KW,
                                                                  g.P_TO_OEI_KW, g.b)
                     if g.N_propellers>2:
 
-                        mass = mass_elec
+                        mass = electrical_results["mass"]
                     else:
-                        mass = mass_elec*0.9 #estimate that electrical system is 25% lighter for 2 engines since less complex power distribution system and less components needed
+                        mass = electrical_results["mass"]*0.9 #estimate that electrical system is 25% lighter for 2 engines since less complex power distribution system and less components needed
                 elif comp_key == "pipe+valves+pumps":
                     if g.N_propellers>2:
                         #mass = pipe_len * comp[comp_key].mass_per_length
-                        mass = g.TMS_mass_N4
+                        mass = 0
                     else:
                         #mass = pipe_len * comp[comp_key].mass_per_length * 2 #double the mass for 4 engines since more complex piping system with more valves and pumps needed
                         mass = g.TMS_mass_N2                     #big estimate
@@ -701,10 +701,9 @@ class weightEstimation:
                     pd = comp[comp_key].power_density
                     
                     if comp_key == "gt_hex": #or comp_key == "ac_dc" or comp_key == "hts_gen" or comp_key == "hts_pow" or comp_key == "dc_ac":
-                        mass = P_req_primary / pd / efficiency["GT-MOT_eff"] *nacelle_factor*1.15
-                        if comp_key == "gt_hex":
-                            W_primary = mass        #gt_hex is in there twice but taken into account in W_primary
-                            W_secondary = mass
+                        # mass = P_req_primary / pd / efficiency["GT-MOT_eff"] *nacelle_factor*1.15
+                        mass = 0
+
                     # elif comp_key == "ac_dc":
                     #     mass = P_req_primary / pd / efficiency2["ACDC_eff"]
                     # elif comp_key == "hts_gen":
@@ -737,18 +736,73 @@ class weightEstimation:
         else:
             P_opt = g.P_opt/1000
 
-        return total_mass * g.mass_margin,fan_mass, P_req_primary, P_req_secondary, P_req_tot,W_primary, W_secondary,eff,eff_climb, eff_cruise, bt_charging_ratio, P_opt,cool
+        # GT sizing and results
+        P_per_flight_condition = [P * 1000 for P in list(electrical_results["powers"]["hts_gen"].values())[0].values()]
+
+        if g.H2_results_all is None:
+            H2_temps = [180] * len(P_per_flight_condition)
+            H2_press = [25] * len(P_per_flight_condition)
+        else:
+            H2_temps = []
+            H2_press = []
+            for condition in ["TO", "climb", "cruise", "APP", "OEI_gt"]:
+                H2_temps.append(g.H2_results_all["final_states"][condition]["Temperature_K"])
+                H2_press.append(g.H2_results_all["final_states"][condition]["Pressure_Pa"] / 1e5)
+            for condition in ["OEI_mot", "OEI_bus"]:
+                H2_temps.append(0.5 * (g.H2_results_all["final_states"][condition+"_Working"]["Temperature_K"] + g.H2_results_all["final_states"][condition+"_Failed"]["Temperature_K"]))
+                H2_press.append(0.5 * (g.H2_results_all["final_states"][condition+"_Working"]["Pressure_Pa"] + g.H2_results_all["final_states"][condition+"_Failed"]["Pressure_Pa"]) / 1e5)
+
+        gt_results_dict = run_gt_sizing(P_opt=P_opt*1000, off_design_cases=P_per_flight_condition, T_pre_comp=H2_temps, P_pre_comp=H2_press)
+        gt_mass = gt_results_dict["dim"].results["m_propulsion"]
+        
+        mass_flows = [gt_results_dict["od_cases"][P]["mdot_f"] for P in gt_results_dict["od_cases"]]
+        gt_effs = [gt_results_dict["od_cases"][P]["eta_total"] for P in gt_results_dict["od_cases"]]
+        expander_powers_KW = [gt_results_dict["od_cases"][P]["h2_net_W"]/1000 for P in gt_results_dict["od_cases"]]
+        # for P, m in zip(P_per_flight_condition, expander_powers_KW):
+        #     print(f"{P}: {m}")
+
+        normal_phases = ['TO', 'climb', 'cruise', 'APP']
+        normal_m_dots = [m*2 for m in mass_flows[:4]]
+        
+        oei_phases = ['OEI_gt', 'OEI_mot', 'OEI_bus']
+        oei_m_dots = [mass_flows[4], mass_flows[5]*2, mass_flows[6]*2]
+
+        H2_results_nominal = main_H2_nominal(comps=electrical_results["cooling"], sizes=electrical_results["sizes"],
+                                             normal_phases=normal_phases, normal_m_dots=normal_m_dots)
+        H2_results_all = main_H2_OEI(comps=electrical_results["cooling"], sizes=electrical_results["sizes"],
+                                     All_temps=H2_results_nominal["temperatures"], HEX_areas=H2_results_nominal["areas"], prev_states=H2_results_nominal["final_states"],
+                                     oei_phases=oei_phases, oei_m_dots=oei_m_dots)
+        # print(H2_results_all)
+        TMS_mass, pipe_length = pipe_calculations(b=g.b, sweep_quarter_chord=g.sweep_half) # quarter chord approximated by half for now
+        total_mass += TMS_mass + 2 * gt_mass
+
+        mass_breakdown = {
+            "gt": gt_mass,
+            "mass_flows": mass_flows,
+            "expander_powers": expander_powers_KW,
+            "efficiencies": gt_effs,
+            "TMS": TMS_mass,
+            "pipe_length": pipe_length,
+            "electrical": electrical_results["mass"],
+            "fan": fan_mass,
+        }
+
+        return total_mass * g.mass_margin, mass_breakdown, P_req_primary, P_req_secondary, P_req_tot,eff,eff_climb, \
+            eff_cruise, bt_charging_ratio, P_opt, electrical_results, H2_results_all
     
     def _h2_tank_weight(self) -> float:
-        return (self.g.W_fuel * (1 / self.g.grav_density - 1)*(1+self.g.frn_tank_support))* self.g.mass_margin
+        # return (self.g.W_fuel * (1 / self.g.grav_density - 1)*(1+self.g.frn_tank_support))* self.g.mass_margin
+        m_tank, _, _ = main_storage(self.g.W_fuel)
+        # print(m_tank)
+        return m_tank
 
     def compute(self) -> WeightBreakdown:
         self._validate()
         g = self.g
 
         h2_tank_weight   = self._h2_tank_weight()
-        W_engine_total, fan_mass, P_req_primary, P_req_secondary, P_req_tot, W_primary, W_secondary,\
-            total_prop_efficiency, climb_eff,cruise_eff, bt_charging_ratio, P_opt, cool = self._propulsion_weight()
+        W_engine_total, mass_breakdown, P_req_primary, P_req_secondary, P_req_tot,\
+            total_prop_efficiency, climb_eff,cruise_eff, bt_charging_ratio, P_opt, electrical_results, H2_results_all = self._propulsion_weight()
         W_wing_accurate, W_hld, W_basic = self._wing_weight_accurate()
         
         W_lg_main, W_lg_nose = self._LDG_weight()
@@ -766,11 +820,9 @@ class weightEstimation:
             W_lg_main = W_lg_main,
             W_lg_nose = W_lg_nose,
             W_sc     = self._surface_control_weight(),
-            W_primary= W_primary,
-            W_secondary = W_secondary,
             W_engine = W_engine_total,
             W_total_prop = W_engine_total + h2_tank_weight,
-            W_fan = fan_mass,
+            mass_breakdown = mass_breakdown,
 
             # Propulsion detail
             W_h2_tank   = h2_tank_weight,
@@ -794,7 +846,9 @@ class weightEstimation:
             cruise_efficiency=cruise_eff,
             bt_charging_ratio=bt_charging_ratio,
             P_opt=P_opt,
-            #cooling=cool,
+            electrical_results=electrical_results,
+
+            H2_results_all=H2_results_all
         )
 
 

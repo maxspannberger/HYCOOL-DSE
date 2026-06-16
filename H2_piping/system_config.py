@@ -8,7 +8,7 @@ from typing import List
 class H2SystemConfig:
     # Global simulation configurations
     fluid: str = 'Hydrogen'                  # FLUID used for simulation
-    max_error: float = 1e-8                    # SOLVER convergence treshhold
+    max_error: float = 100                    # SOLVER convergence treshhold
     tank_p: float = 200000                   # TANK pressure [Pa]
     tank_T: float = 20.3                     # TANK temperature [T]
     tank_d: float = 0.012                    # TANK outlet diameter [m]
@@ -45,7 +45,7 @@ class H2SystemConfig:
 
     # Default baseline geometric parameters for pipe segments
     pipe_default_d: float = 0.012            # default baseline inner pipeline diameter [m]
-    pipe_segment_length: float = 0.01        # default baseline segment length [m]
+    pipe_segment_length: float = 0.1        # default baseline segment length [m]
     pipe_default_N: int = 10                 # default baseline number of MLI layers applied
     pipe_default_N_bar: float = 5.5          # default baseline insulation layer density [layers/cm]
     pipe_default_P_mli: float = 10**(-4)     # default baseline residual gas pressure value [Torr]
@@ -57,22 +57,26 @@ class H2SystemConfig:
     pump_electric_efficiency: float = 0.9    # general efficiency of the pump's electric motor (for power calculations)
 
     operating_temp = {
-        "hts_gen": 50.0,
+        "hts_gen": 35.0,
         "ac_dc": 250.0,
         "bus": 250.0,
         "dc_ac": 250.0,
-        "hts_pow": 50.0,
+        "hts_pow": 35.0,
     }
 
-    HEX_default_d = 0.008
-    HEX_effectiveness = 1.0
+    HEX_default_d = 0.009
+    HEX_effectiveness = 0.6
     HEX_extra_thickness = 0.005
 
-    k_Al = 240      # W/m K     # TODO: find better value
-    h_TMI = 6828    # W/m^2 K   # TODO: find better value
+    k_Al = 167      # W/m K
+    k_TMI_293 = 0.194    # W/m K
+    k_TMI_4 = 0.095 # W/m K
+    t_TMI = 0.0001 # m
     
-    HTS_default_d = 0.008
+    HTS_default_d = 0.009
     HTS_channels = 1
 
-    FPI_relaxation = 0.3    # relaxation for fixed point iteration to stabilize convergence
-    
+    FPI_relaxation = 0.5    # relaxation for fixed point iteration to stabilize convergence
+
+    # corner loss factor
+    corner_loss_factor: float = 1.4         # factor to overestimate pressure losses in corner instead of underestimating

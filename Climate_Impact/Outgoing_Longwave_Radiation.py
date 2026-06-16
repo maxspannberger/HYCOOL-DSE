@@ -20,4 +20,4 @@ olr = ds['avg_tnlwrf'].sel(
     method='nearest'
 ).mean().values
 
-print(f"Annual mean OLR at 51N, 10E: {olr:.2f} W/m2")
+# print(f"Annual mean OLR at 51N, 10E: {olr:.2f} W/m2")

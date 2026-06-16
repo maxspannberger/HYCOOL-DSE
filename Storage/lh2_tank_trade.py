@@ -1,7 +1,7 @@
 from scipy.optimize import brentq
 from pathlib import Path
 import numpy as np
-import properties
+# import Storage.properties
 from CoolProp.CoolProp import PropsSI
 
 try:
@@ -12,7 +12,7 @@ except ImportError:
     plt = None
 
 #import calculated tank dimensions
-from tank_size_shape import GeomDesign
+# from Storage.tank_size_shape import GeomDesign
 #gd = GeomDesign(p_vent=2.0, p_fill=1.2, y_max=0.97)
 #geom = gd.calculateTankGeometry(V_tank=12.3, phi=1.0, psi=1.0, Lambda=0.5)
 

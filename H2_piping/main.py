@@ -9,20 +9,20 @@ root = Path(__file__).resolve().parent.parent
 sys.path.append(str(root))
 
 # Import your components from h2_components and configuration from system_config
-from h2_components import Tank, Pipe, Pump, Corner, COOL, Valve, solve_system
+from H2_piping.h2_components import Tank, Pipe, Pump, Corner, COOL, Valve, solve_system
 
 from rich import print as rich_printv
 from rich.tree import Tree
 import matplotlib.pyplot as plt
 import numpy as np
 import json
-from system_config import H2SystemConfig
+from H2_piping.system_config import H2SystemConfig
 c = H2SystemConfig()  
 
 # =============================================================================
 # Save final states to JSON
 # =============================================================================
-def save_results_to_json(phase_name, T, p, rho, h, m_dot_final):
+def save_results_to_json(phase_name, T, p, rho, h, m_dot_final, write=False):
     results_file = root / "Propulsion" / "final_states.json"
     
     if results_file.exists():
@@ -42,8 +42,11 @@ def save_results_to_json(phase_name, T, p, rho, h, m_dot_final):
         "Final_MassFlow_kg_s": round(float(m_dot_final), 5)
     }
     
-    with open(results_file, 'w') as f:
-        json.dump(data, f, indent=4)
+    if write:
+       with open(results_file, 'w') as f:
+              json.dump(data, f, indent=4)
+
+    return data
 
 # =============================================================================
 # Displays the computed states in a clean, hierarchical CLI tree format.
@@ -107,26 +110,37 @@ def plot_states(states, phase_name):
     plt.show()
 
 
-if __name__ == "__main__":
-       # Load the component cooling requirements from the propulsion json file
-       path = str(root / "Propulsion/only_cooling_results.json")
-       with open(path, 'r') as file:
-              comps = json.load(file)
+def main_H2_nominal(comps=None, sizes=None, show=False, write=False, normal_phases=None, normal_m_dots=None):
+       if comps is None:
+              # Load the component cooling requirements from the propulsion json file
+              path = str(root / "Propulsion/only_cooling_results.json")
+              with open(path, 'r') as file:
+                     comps = json.load(file)
+       if sizes is None:
+              path = root / "Propulsion" / "only_sizing_results.json"
+              with open(path, 'r') as file:
+                     sizes = json.load(file)
+       if normal_phases is None:
+             normal_phases = c.normal_phases
+       if normal_m_dots is None:
+             normal_m_dots = c.normal_m_dots
 
        HEX_areas = None
        All_temps = {}
+       data_per_condition = {}
 
-       for current_phase, current_mdot in zip(c.normal_phases, c.normal_m_dots):
-              print("\n" + "*"*60)
-              print(f" STARTING SIMULATION: {current_phase.upper()} ".center(60, "*"))
-              print("*"*60)
+       for current_phase, current_mdot in zip(normal_phases, normal_m_dots):
+              if show:
+                     print("\n" + "*"*60)
+                     print(f" STARTING SIMULATION: {current_phase.upper()} ".center(60, "*"))
+                     print("*"*60)
               component_position = {}
               for key, value in comps[current_phase].items(): 
                      if not isinstance(value, dict):
                             continue
                      # Sort cooling locations by float
                      sorted_keys = sorted(value, key=float)
-                     component_position[key] = sorted_keys
+                     component_position[key] = sorted_keys\
               # Define system topology as a sequential list of objects
               system = [
               Tank(),
@@ -173,7 +187,9 @@ if __name__ == "__main__":
               COOL(name       = 'hts_gen', 
               location   = component_position['hts_gen'][0],
               phase = current_phase,
-              areas = HEX_areas),
+              areas = HEX_areas,
+              comps=comps,
+              sizes=sizes),
 
               Corner(N_bend   =  1, 
                      curv     =  2.5),
@@ -186,7 +202,9 @@ if __name__ == "__main__":
               COOL(name       = 'hts_pow', 
               location   = component_position['hts_pow'][0],
               phase = current_phase,
-              areas = HEX_areas),
+              areas = HEX_areas,
+              comps=comps,
+              sizes=sizes),
 
               Corner(N_bend   =  1,  
                      curv     =  2.5),
@@ -209,7 +227,9 @@ if __name__ == "__main__":
               COOL(name       = 'hts_pow', 
               location   = component_position['hts_pow'][1],
               phase = current_phase,
-              areas = HEX_areas),
+              areas = HEX_areas,
+              comps=comps,
+              sizes=sizes),
 
               Corner(N_bend   =  1,  
                      curv     =  2.5),
@@ -220,7 +240,9 @@ if __name__ == "__main__":
               COOL(name       = 'dc_ac', 
               location   = component_position['dc_ac'][1],
               phase = current_phase,
-              areas = HEX_areas),
+              areas = HEX_areas,
+              comps=comps,
+              sizes=sizes),
 
               Pipe(length     =  0.5),
 
@@ -237,7 +259,9 @@ if __name__ == "__main__":
               COOL(name       = 'dc_ac', 
               location   = component_position['dc_ac'][0],
               phase = current_phase,
-              areas = HEX_areas),
+              areas = HEX_areas,
+              comps=comps,
+              sizes=sizes),
 
               Corner(N_bend   =  1,  
                      curv     =  2.5),
@@ -250,7 +274,9 @@ if __name__ == "__main__":
               COOL(name       = 'ac_dc', 
               location   = component_position['ac_dc'][0],
               phase = current_phase,
-              areas = HEX_areas),
+              areas = HEX_areas,
+              comps=comps,
+              sizes=sizes),
 
               Corner(N_bend   =  1,  
                      curv     =  2.5),
@@ -260,7 +286,9 @@ if __name__ == "__main__":
               COOL(name       = 'bus', 
               location   = component_position['bus'][0],
               phase = current_phase,
-              areas = HEX_areas),
+              areas = HEX_areas,
+              comps=comps,
+              sizes=sizes),
 
               Corner(N_bend   =  1, 
                      curv     =  2.5),
@@ -272,7 +300,7 @@ if __name__ == "__main__":
               ]
        
               # Execute simulation and display results
-              states, final_mdot, HEX_areas, Temps = solve_system(system, m_dot=current_mdot, T_amb=c.T_amb)
+              states, final_mdot, HEX_areas, Temps = solve_system(system, m_dot=current_mdot, T_amb=c.T_amb, show=show)
               All_temps[current_phase] = Temps
               # print_tree(states)
     
@@ -282,25 +310,55 @@ if __name__ == "__main__":
               final_rho = states['rho'][-1][-1]
               final_h   = states['h'][-1][-1]
 
-              print("\n" + "="*50)
-              print("FINAL FLUID STATE AT SYSTEM OUTLET".center(50))
-              print("="*50)
-              print(f"Temperature  :  {final_T:.2f} K")
-              print(f"Pressure     :  {final_p:.2f} Pa  ({final_p/100000:.2f} bar)")
-              print(f"Density      :  {final_rho:.2f} kg/m³")
-              print(f"Enthalpy     :  {final_h:.2f} J/kg")
-              print("="*50 + "\n")
+              if show:
+                     print("\n" + "="*50)
+                     print("FINAL FLUID STATE AT SYSTEM OUTLET".center(50))
+                     print("="*50)
+                     print(f"Temperature  :  {final_T:.2f} K")
+                     print(f"Pressure     :  {final_p:.2f} Pa  ({final_p/100000:.2f} bar)")
+                     print(f"Density      :  {final_rho:.2f} kg/m³")
+                     print(f"Enthalpy     :  {final_h:.2f} J/kg")
+                     print("="*50 + "\n")
               # -------------------------------------------------------
 
               # Save to JSON
-              save_results_to_json(current_phase, final_T, final_p, final_rho, final_h, final_mdot)
+              data_per_condition[current_phase] = {
+                     "Temperature_K": round(float(final_T), 2),
+                     "Pressure_Pa": round(float(final_p), 2),
+                     "Density_kg_m3": round(float(final_rho), 2),
+                     "Enthalpy_J_kg": round(float(final_h), 2),
+                     "Final_MassFlow_kg_s": round(float(final_mdot), 5)
+              }
+              if write:
+                     results_file = root / "Propulsion" / "final_states.json"
+                     with open(results_file, 'w') as f:
+                            json.dump(data_per_condition, f, indent=4)
+              # save_results_to_json(current_phase, final_T, final_p, final_rho, final_h, final_mdot, write=write)
 
-              plot_states(states, current_phase)
+              if show:
+                     plot_states(states, current_phase)
 
-       filename_areas = "HEX_areas.json"
-       with open(filename_areas, "w") as f:
-              json.dump(HEX_areas, f, indent=4)
+       if write:
+              filename_areas = "HEX_areas.json"
+              with open(filename_areas, "w") as f:
+                     json.dump(HEX_areas, f, indent=4)
 
-       filename_temps = "HEX_temps.json"
-       with open(filename_temps, "w") as f:
-              json.dump(All_temps, f, indent=4)
+              filename_temps = "HEX_temps.json"
+              with open(filename_temps, "w") as f:
+                     json.dump(All_temps, f, indent=4)
+
+       all_H2_results = {
+            "final_states": data_per_condition,
+            "areas": HEX_areas,
+            "temperatures": All_temps
+       }
+
+       return all_H2_results
+
+
+
+if __name__ == "__main__":
+       all_H2_results = main_H2_nominal(show=True, write=True)
+       print(all_H2_results)
+
+       

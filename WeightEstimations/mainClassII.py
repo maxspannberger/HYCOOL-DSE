@@ -49,7 +49,8 @@ from WeightEstimations.Export_Geometry import (
     print_final_geometry,
     export_final_geometry,
 )
-#from Storage.mainStorage import main_storage
+from Storage.mainStorage import main_storage
+
 
 from rich import print
 from rich.console import Console
@@ -116,6 +117,10 @@ class ClassIIResult:
     distance_le_mac_to_turbine: float = 0.0
     distance_le_root_to_le_mac: float = 0.0
 
+    H2_results_all: dict = None
+    L_tank_m: float = 0.0,
+    d_tank_m: float = 0.0,
+
     def summary(self):
         status_color = "green" if self.converged else "red"
         main_info = (
@@ -177,7 +182,7 @@ def compute_fuselage_geometry(W_fuel: float, cfg: AircraftConfig,hump_back: bool
     """
     from dataclasses import replace as _replace
 
-    V_tank = max(W_fuel, 0.0) / cfg.rho_LH2_eff
+    # V_tank = max(W_fuel, 0.0) / cfg.rho_LH2_eff
     #r_tank = (3.0 * V_tank / (10.0 * np.pi)) ** (1 / 3) if V_tank > 0 else 0.0
     # L_tank = 4.0 * r_tank
     # d_tank = 2.0 * r_tank
@@ -185,13 +190,13 @@ def compute_fuselage_geometry(W_fuel: float, cfg: AircraftConfig,hump_back: bool
     # d_tank = 2.0 * r_tank
     # L_tank = d_tank
 
-    r_tank = (cfg.diameter_margin * cfg.b_f_i - 2*cfg.wall_thickness)/2
-    d_tank = 2*r_tank
-    l_cyl_tank = (V_tank-(4/3)*np.pi*(r_tank**3))/(np.pi*(r_tank**2))
-    L_tank = 2*r_tank + l_cyl_tank+2*cfg.wall_thickness
+    # r_tank = (cfg.diameter_margin * cfg.b_f_i - 2*cfg.wall_thickness)/2
+    # d_tank = 2*r_tank
+    # l_cyl_tank = (V_tank-(4/3)*np.pi*(r_tank**3))/(np.pi*(r_tank**2))
+    # L_tank = 2*r_tank + l_cyl_tank
 
-    #_, L_tank, r_tank = main_storage(W_fuel)
-    #d_tank = 2 * r_tank
+    _, L_tank, r_tank = main_storage(W_fuel)
+    d_tank = 2 * r_tank
 
     # ---------- calculation for cylindrical tank with hemispherical endcaps --------------
 
@@ -284,6 +289,7 @@ def run_class_ii(
     it = 0
     iteration_log: list[dict] = []
     CL_approach=1.53            #initial guess for the approach CL
+    H2_results_all = None
 
     if config is None:
         config = 3
@@ -293,6 +299,7 @@ def run_class_ii(
     else:
         hump_tank = False
 
+    m_flow = None
     for it in range(1, max_iter + 1):
 
         # Recompute wing planform at the start of each iteration: under
@@ -321,7 +328,7 @@ def run_class_ii(
         drag_bd = DragEstimation(drag_inp).compute()
 
         # Mission power -> LH2 fuel mass
-        mis_bd = MissionPower(cfg_iter, drag_bd, config=config,comp=comp, MTOW=MTOW, S_ref=S_ref,CL_approach=CL_approach).compute()
+        mis_bd = MissionPower(cfg_iter, drag_bd, config=config,comp=comp, MTOW=MTOW, S_ref=S_ref,CL_approach=CL_approach, m_flow=m_flow).compute()
         M_landing = MTOW - (
             mis_bd.m_LH2_cruise
             + mis_bd.m_LH2_climb
@@ -391,7 +398,9 @@ def run_class_ii(
             base_params=False,
             bt_charging_ratio = bt_charging_ratio,
             taper = taper,
-            sweep_LE = sweep_LE
+            sweep_LE = sweep_LE,
+            H2_results_all = H2_results_all,
+
         )
         # print("WEIGHT INPUT TAIL:")
         # print(f"S_v used in weight = {wt_inp.S_v:.3f} m²")
@@ -406,6 +415,8 @@ def run_class_ii(
         bt_charging_ratio = wt_bd.bt_charging_ratio
         delta    = abs(MTOW_new - MTOW)
         OEW_kg       = wt_bd.W_empty+W_fixed
+        H2_results_all = wt_bd.H2_results_all
+        m_flow = wt_bd.mass_breakdown["mass_flows"]
 
         iteration_log.append(dict(
             iter         = it,
@@ -469,7 +480,7 @@ def run_class_ii(
 
 
     aero_parameters=compute_additional_aerodynamic_parameters(cfg_iter, drag_bd, mis_bd, pwr_bd,sweep_half,MAC,MTOW,\
-                                                                  S_ref,b,taper,c_root,sweep_quarter,sweep_LE,verbose=True)
+                                                                  S_ref,b,taper,c_root,sweep_quarter,sweep_LE,verbose=False)
     
     M_landing = aero_parameters["W_landing"]
 
@@ -498,8 +509,8 @@ def run_class_ii(
         print("Tail sizing rechecked with computed T_TO:")
         print(tail_bd_recheck.summary())
 
-    print(pwr_bd.gamma_min_prop)
-    print(pwr_bd.gamma_min_engine)
+        print(pwr_bd.gamma_min_prop)
+        print(pwr_bd.gamma_min_engine)
 
     cgwingpos = b / 2 * 0.35
     turbinewingpos = cfg_updated.b / 2 *0.5       #inner engine position chosen at half of half span
@@ -515,10 +526,11 @@ def run_class_ii(
         if abs(taper_slope) > 1e-9
         else 0.0
     )
-    print(f"MAC chord: {MAC:.3f} m, corresponding spanwise position: {machspanpos:.3f} m")
-    print(f"CG chord position: {chordatcgpos:.3f} m, corresponding spanwise position: {cgwingpos:.3f} m")
-    print(f"Turbine chord position: {turbinechord:.3f} m, corresponding spanwise position: {turbinewingpos:.3f} m")
-    print(f"Length from the tank to the quarter chord of the root: {cfg_updated.FUEL_cg-L_tank/2-cfg_updated.lfn-0.25*c_root:.3f} m")
+    if verbose:
+        print(f"MAC chord: {MAC:.3f} m, corresponding spanwise position: {machspanpos:.3f} m")
+        print(f"CG chord position: {chordatcgpos:.3f} m, corresponding spanwise position: {cgwingpos:.3f} m")
+        print(f"Turbine chord position: {turbinechord:.3f} m, corresponding spanwise position: {turbinewingpos:.3f} m")
+        print(f"Length from the tank to the quarter chord of the root: {cfg_updated.FUEL_cg-L_tank/2-cfg_updated.lfn-0.25*c_root:.3f} m")
 
 
 
@@ -528,7 +540,8 @@ def run_class_ii(
 
     #distance from Root chord leading edge to MAC leading edge
     distance_le_root_to_le_mac = np.tan(sweep_LE)*(cfg_updated.d_f/2-machspanpos)
-    print(f"Distance from Root Chord LE to MAC LE: {distance_le_root_to_le_mac:.3f} m")
+    if verbose:
+        print(f"Distance from Root Chord LE to MAC LE: {distance_le_root_to_le_mac:.3f} m")
 
 
     # Distance from MAC leading edge (front edge) CG location
@@ -584,6 +597,9 @@ def run_class_ii(
         distance_le_mac_to_cg=distance_le_mac_to_cg,
         distance_le_mac_to_turbine=distance_le_mac_to_turbine,
         distance_le_root_to_le_mac=distance_le_root_to_le_mac,
+        H2_results_all=H2_results_all,
+        L_tank_m     = L_tank,
+        d_tank_m     = d_tank,
     )
 
 
