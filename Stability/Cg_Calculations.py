@@ -200,6 +200,7 @@ class CgBreakdown:
     x_cg_TMS: float
     cg_location_engines: float
     l_v:    float
+    OEW_cg_check: float
 
 
     def summary(self) -> Table:
@@ -331,6 +332,10 @@ class CgBreakdown:
         table.add_row(
             "[bold]x_cg_TMS[/bold]",
             f"[bold]{self.x_cg_TMS:.1f}[/bold]",
+        )
+        table.add_row(
+            "[bold]x_cg_OEW_check[/bold]",
+            f"[bold]{self.OEW_cg_check:.1f}[/bold]",
         )
 
         return table
@@ -524,6 +529,7 @@ class CgCalculator:
         OEW_check = W_fus_group + W_wing_group
         OEW_excl_fixed = OEW_check - W_fixed
         x_cg_OEW = ((W_fus_group*x_cg_fus_group + W_wing_group*x_cg_wing_group)/(W_fus_group + W_wing_group))
+        OEW_cg_check = (x_cg_OEW-x_LEMAC)/MAC
 
         l_h = l_f - (x_LEMAC - 1/4 * MAC) - 0.02*l_f - 3/4 * MAC_h      #TODO here I assumed a 2% of fus length for little cone behind tail considered l_h distance 1/4c wing to 1/4 horizontal tail. 
         l_v = l_f - (x_LEMAC - 1/4 * MAC) - 0.02*l_f - 3/4 * MAC_v
@@ -560,6 +566,7 @@ class CgCalculator:
             x_cg_TMS = x_cg_TMS,
             cg_location_engines = cg_location_engines,
             l_v = l_v,
+            OEW_cg_check = OEW_cg_check
         )
 
 
