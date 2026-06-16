@@ -23,10 +23,9 @@ pext_FL250 =  37600  # [Pa]  ambient pressure at FL250
 beta   = 0.55         # [-]   crashed diameter coefficient [Castro et al.]
 
 # Tank geometry
-Lambda = 0.60         # [-]   cylinder-to-total-length ratio
+Lambda = 0.46         # [-]   cylinder-to-total-length ratio
 
 # LH2 thermodynamic state
-rho_LH2 = 70          # [kg/m^3]  saturated LH2 density at fill pressure
 T_fill  = 15          # [K]       LH2 temperature at fill
 T_vent  = 20.3        # [K]       LH2 temperature at vent
 tau_H   = 24          # [h]       hold time
@@ -64,12 +63,12 @@ dimensions = d.calculateTankGeometry(Al2219T87, pfill, pext_FL250, V_tank, ullag
 dimensions.print_summary()
 
 # 2. Baffles
-baffleData = baffleSizing(Al2219T87, mLH2).size(R=dimensions.R, ls=dimensions.ls, s=s_baffle, rho_LH2=rho_LH2)
+baffleData = baffleSizing(Al2219T87, mLH2).size(R=dimensions.R, ls=dimensions.ls, s=s_baffle, rho_LH2=rho_H2_vent)
 baffleData.print_summary()
 
 # 3. MLI insulation
-Ef    = PropsSI('U', 'P', pfill, 'D', rho_LH2, 'parahydrogen')
-Ei    = PropsSI('U', 'P', pvent, 'D', rho_LH2, 'parahydrogen')
+Ef    = PropsSI('U', 'P', pfill, 'D', rho_H2_fill, 'parahydrogen')
+Ei    = PropsSI('U', 'P', pvent, 'D', rho_H2_fill, 'parahydrogen')
 Qleak = mLH2 * (Ei - Ef) / (tau_H * 3600)
 ins   = insulationSizing(Ts=Ts, Tc=Tc, P=Pvac, rhoMLI=rhoMLI)
 insulationData = ins.size(Qleak=Qleak, Atank=dimensions.A_in, Rtank=dimensions.Rin, ls=dimensions.ls)
