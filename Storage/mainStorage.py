@@ -15,7 +15,7 @@ from CoolProp.CoolProp import PropsSI
 
 # Mission / loading
 BAR    = 1e5          # [Pa]  bar-to-Pascal conversion
-mLH2   = 600          # [kg]  mass of LH2
+mLH2   = 610          # [kg]  mass of LH2
 pfill  = 1.0  * BAR  # [Pa]  fill pressure
 pvent  = 1.75 * BAR  # [Pa]  venting pressure
 pext_SLS   = 101325  # [Pa]  ambient pressure at SLS
@@ -23,7 +23,7 @@ pext_FL250 =  37600  # [Pa]  ambient pressure at FL250
 beta   = 0.55         # [-]   crashed diameter coefficient [Castro et al.]
 
 # Tank geometry
-Lambda = 0.46         # [-]   cylinder-to-total-length ratio
+Lambda = 0.467         # [-]   cylinder-to-total-length ratio
 
 # LH2 thermodynamic state
 T_fill  = 15          # [K]       LH2 temperature at fill
@@ -86,8 +86,10 @@ outerData.print_summary()
 # =============================================================================
 # FINAL TANK MASSES
 # =============================================================================
-mtank_empty = dimensions.m_in + baffleData.mBaffle + insulationData.mMLI + outerData.mCFRP
-mtank_full  = mtank_empty + mLH2
+mtank_empty      = dimensions.m_in + baffleData.mBaffle + insulationData.mMLI + outerData.mCFRP
+mtank_full       = mtank_empty + mLH2
+t_total          = dimensions.t_in + insulationData.tMLI + outerData.tout
+gravimetric_index = mLH2 / mtank_full
 
 RESET  = '\033[0m'
 CYAN   = '\033[96m'
@@ -103,4 +105,6 @@ print(f"{BOLD}|{CYAN}{title:^{width-2}}{RESET}{BOLD}|{RESET}")
 print(f"{BOLD}{border}{RESET}")
 print(f"{BOLD}|{RESET}  {'Empty tank mass':<20}{ORANGE}{mtank_empty:>10.2f} kg{RESET}  {BOLD}|{RESET}")
 print(f"{BOLD}|{RESET}  {'Full tank mass':<20}{ORANGE}{mtank_full:>10.2f} kg{RESET}  {BOLD}|{RESET}")
+print(f"{BOLD}|{RESET}  {'Total wall thickness':<20}{ORANGE}{t_total*1e3:>10.2f} mm{RESET}  {BOLD}|{RESET}")
+print(f"{BOLD}|{RESET}  {'Gravimetric index':<20}{ORANGE}{gravimetric_index:>10.4f} -{RESET}  {BOLD}|{RESET}")
 print(f"{BOLD}{border}{RESET}")
