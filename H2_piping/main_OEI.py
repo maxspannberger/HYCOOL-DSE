@@ -163,18 +163,17 @@ def main_H2_OEI(comps=None, sizes=None, All_temps=None, HEX_areas=None, prev_sta
             component_position[key] = sorted(value, key=float)
 
         # 1. Mass Flow Split Configuration
-        if current_phase == 'OEI_gt':
-            cool_data = comps[current_phase]
-            Q_working = sum(cool_data.get('hts_pow', {}).values()) + sum(cool_data.get('dc_ac', {}).values()) + \
-                        sum(cool_data.get('hts_gen', {}).values()) + sum(cool_data.get('ac_dc', {}).values()) + \
-                        sum(cool_data.get('bus', {}).values()) 
-            Q_failed  = sum(cool_data.get('hts_pow', {}).values()) + sum(cool_data.get('dc_ac', {}).values()) + \
-                        sum(cool_data.get('bus', {}).values())
-            frac_W = Q_working / (Q_working + Q_failed)
-            frac_F = Q_failed / (Q_working + Q_failed)
-        else:
-            frac_W = 0.50
-            frac_F = 0.50
+        # if current_phase == 'OEI_gt':
+        #     cool_data = comps[current_phase]
+        #     Q_working = sum(cool_data.get('hts_pow', {}).values()) + sum(cool_data.get('dc_ac', {}).values()) + \
+        #                 sum(cool_data.get('hts_gen', {}).values()) + sum(cool_data.get('ac_dc', {}).values()) + \
+        #                 sum(cool_data.get('bus', {}).values()) 
+        #     Q_failed  = sum(cool_data.get('hts_pow', {}).values()) + sum(cool_data.get('dc_ac', {}).values()) + \
+        #                 sum(cool_data.get('bus', {}).values())
+        #     frac_W = Q_working / (Q_working + Q_failed)
+        #     frac_F = Q_failed / (Q_working + Q_failed)
+        frac_W = 0.50
+        frac_F = 0.50
 
         # 2. Build Branches (Instantiated with current phase)
         def create_oei_branch(frac):
