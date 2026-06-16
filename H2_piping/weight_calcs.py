@@ -49,7 +49,7 @@ def pipe_calculations(b=29.00, sweep_quarter_chord=10.56, show=False):
     else:
         t_inner = t_inner
 
-t_outer = cbrt(1 / (3 * 418000)) * (pipe_diameter + 2 * vacuum_thickness + 2 * t_inner)
+    t_outer = cbrt(1 / (3 * 418000)) * (pipe_diameter + 2 * vacuum_thickness + 2 * t_inner)
 
     if t_outer < 0.00051:
         t_outer = 0.00051
@@ -64,10 +64,10 @@ t_outer = cbrt(1 / (3 * 418000)) * (pipe_diameter + 2 * vacuum_thickness + 2 * t
     vacuum_boundary_thickness = 0.002  # m
     n_fittings = 94
     tank_wing_line_length = 15
-    centre_1_motor_line_lenght = b/2 * loc_mot_1 / np.cos(np.radians(sweep_quarter_chord))
+    centre_1_motor_line_lenght = b/2 * loc_mot_1
     motor_1_motor_2_line_lenght = b/2 * (loc_mot_2 - loc_mot_1) / np.cos(np.radians(sweep_quarter_chord))
     # print(centre_1_motor_line_lenght, motor_1_motor_2_line_lenght)
-    pipe_length = 49.64 + 12 - 0.0508 * n_fittings + 2 * tank_wing_line_length + 4 * centre_1_motor_line_lenght + 4 * motor_1_motor_2_line_lenght  # 12 m of tank piping, estimated
+    pipe_length = 10 + 6 + 12 - 0.0508 * n_fittings + 2 * tank_wing_line_length + 4 * centre_1_motor_line_lenght + 8 * motor_1_motor_2_line_lenght  # 12 m of tank piping, estimated
 
 
 
