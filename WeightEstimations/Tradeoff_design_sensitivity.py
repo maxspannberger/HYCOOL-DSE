@@ -122,28 +122,116 @@ def single_sensitivity_run(
             TRL_year = TRL_per_design(TRL, config=config)
 
             if more_than_tradeoff:
+                max_temps = {}
+                min_temps = {}
+                for condition in class_II_results.weight.H2_results_all["temperatures"]:
+                    for comp in class_II_results.weight.H2_results_all["temperatures"][condition]:
+                        if comp not in max_temps:
+                            max_temps[comp] = {}
+                            min_temps[comp] = {}
+                        for loc in class_II_results.weight.H2_results_all["temperatures"][condition][comp]:
+                            if loc not in max_temps:
+                                max_temps[comp][loc] = 0.0
+                                min_temps[comp][loc] = np.inf
+                            if class_II_results.weight.H2_results_all["temperatures"][condition][comp][loc] > max_temps[comp][loc]:
+                                max_temps[comp][loc] = class_II_results.weight.H2_results_all["temperatures"][condition][comp][loc]
+                            if class_II_results.weight.H2_results_all["temperatures"][condition][comp][loc] < min_temps[comp][loc]:
+                                min_temps[comp][loc] = class_II_results.weight.H2_results_all["temperatures"][condition][comp][loc]
+
                 results[design_names[config-1]] = {
+                    "CL_cruise": class_II_results.CL_cruise,
+                    "CD_0": class_II_results.drag.CD0,
+                    "CD_cruise": class_II_results.drag.CD_total,
+                    "L/D_cruise": class_II_results.L_over_D,
+
+                    "S": class_II_results.Wing_Area,
+                    "b": class_II_results.Wing_span,
+                    "L_fus": class_II_results.l_f_m,
+                    "pipe_length": class_II_results.weight.mass_breakdown["pipe_length"],
+                    "L_tank_m": class_II_results.L_tank_m,
+                    "d_tank_m": class_II_results.d_tank_m,
+
                     "MTOW": class_II_results.MTOW,
                     "OEW": class_II_results.W_empty,
                     "M_fuel": class_II_results.W_fuel,
                     "M_tank": class_II_results.weight.W_h2_tank,
                     "M_power": class_II_results.W_prop,
-                    "P_peak": class_II_results.P_max_KW,
-                    "CL_cruise": class_II_results.CL_cruise,
-                    "CD_0": class_II_results.drag.CD0,
-                    "CD_cruise": class_II_results.drag.CD_total,
-                    "S": class_II_results.Wing_Area,
-                    "b": class_II_results.Wing_span,
-                    "L_fus": class_II_results.l_f_m,
-                    "Eff_tot": class_II_results.total_prop_efficiency,
-                    "Eff_climb": class_II_results.climb_eff,
-                    "Eff_cruise": class_II_results.cruise_eff,
-                    "L/D_cruise": class_II_results.L_over_D,
+
+                    "m_GT": class_II_results.weight.mass_breakdown["gt"],
+                    "m_fan": class_II_results.weight.mass_breakdown["fan"],
+                    "m_TMS": class_II_results.weight.mass_breakdown["TMS"],
+                    "m_electrical": class_II_results.weight.mass_breakdown["electrical"],
+
                     "T_static": class_II_results.power.T_static_total,
-                    "P_opt": class_II_results.weight.P_opt,
-                    "P_cruise_KW": class_II_results.mission.P_cruise_shaft/1000.0,
+                    "P_opt_KW": class_II_results.weight.P_opt,
+                    "P_TO_KW": class_II_results.P_takeoff_KW,
                     "P_climb_KW": class_II_results.mission.P_climb_shaft/1000.0,
-                    "P_OEI_KW": class_II_results.weight.P_TO_OEI_KW
+                    "P_cruise_KW": class_II_results.mission.P_cruise_shaft/1000.0,
+                    "P_APP_KW": class_II_results.P_approach_KW,
+                    "P_OEI_KW": class_II_results.weight.P_TO_OEI_KW,
+                    "P_peak": class_II_results.P_max_KW,
+
+                    "m_flow_TO": class_II_results.weight.mass_breakdown["mass_flows"][0],
+                    "m_flow_climb": class_II_results.weight.mass_breakdown["mass_flows"][1],
+                    "m_flow_cruise": class_II_results.weight.mass_breakdown["mass_flows"][2],
+                    "m_flow_APP": class_II_results.weight.mass_breakdown["mass_flows"][3],
+                    "m_flow_OEI_gt": class_II_results.weight.mass_breakdown["mass_flows"][4],
+                    "m_flow_OEI_mot": class_II_results.weight.mass_breakdown["mass_flows"][5],
+                    "m_flow_OEI_bus": class_II_results.weight.mass_breakdown["mass_flows"][6],
+
+                    "eff_TO": class_II_results.weight.mass_breakdown["efficienciess"][0],
+                    "eff_climb": class_II_results.weight.mass_breakdown["efficienciess"][1],
+                    "eff_cruise": class_II_results.weight.mass_breakdown["efficienciess"][2],
+                    "eff_APP": class_II_results.weight.mass_breakdown["efficienciess"][3],
+                    "eff_OEI_gt": class_II_results.weight.mass_breakdown["efficienciess"][4],
+                    "eff_OEI_mot": class_II_results.weight.mass_breakdown["efficienciess"][5],
+                    "eff_OEI_bus": class_II_results.weight.mass_breakdown["efficienciess"][6],
+
+                    "A_hex_hts_gen": class_II_results.weight.H2_results_all["areas"]["hts_gen"][0.5],
+                    "A_hex_hts_pow_1": class_II_results.weight.H2_results_all["areas"]["hts_pow"][0.5],
+                    "A_hex_hts_pow_2": class_II_results.weight.H2_results_all["areas"]["hts_pow"][1.0],
+                    "A_hex_ac_dc": class_II_results.weight.H2_results_all["areas"]["ac_dc"][0.5],
+                    "A_hex_dc_ac_1": class_II_results.weight.H2_results_all["areas"]["dc_ac"][0.5],
+                    "A_hex_dc_ac_2": class_II_results.weight.H2_results_all["areas"]["dc_ac"][1.0],
+                    "A_hex_bus": class_II_results.weight.H2_results_all["areas"]["bus"][0.5],
+
+                    "TMAX_hts_gen": max_temps["hts_gen"][0.5],
+                    "TMAX_hts_pow_1": max_temps["hts_pow"][0.5],
+                    "TMAX_hts_pow_2": max_temps["hts_pow"][1.0],
+                    "TMAX_ac_dc": max_temps["ac_dc"][0.5],
+                    "TMAX_dc_ac_1": max_temps["dc_ac"][0.5],
+                    "TMAX_dc_ac_2": max_temps["dc_ac"][1.0],
+                    "TMAX_bus": max_temps["bus"][0.5],
+
+                    "TMIN_hts_gen": min_temps["hts_gen"][0.5],
+                    "TMIN_hts_pow_1": min_temps["hts_pow"][0.5],
+                    "TMIN_hts_pow_2": min_temps["hts_pow"][1.0],
+                    "TMIN_ac_dc": min_temps["ac_dc"][0.5],
+                    "TMIN_dc_ac_1": min_temps["dc_ac"][0.5],
+                    "TMIN_dc_ac_2": min_temps["dc_ac"][1.0],
+                    "TMIN_bus": min_temps["bus"][0.5],
+
+                    "T_in_gt_TO": class_II_results.weight.H2_results_all["final_states"]["TO"]["Temperature_K"],
+                    "T_in_gt_cruise": class_II_results.weight.H2_results_all["final_states"]["cruise"]["Temperature_K"],
+                    "T_in_gt_climb": class_II_results.weight.H2_results_all["final_states"]["climb"]["Temperature_K"],
+                    "T_in_gt_APP": class_II_results.weight.H2_results_all["final_states"]["APP"]["Temperature_K"],
+                    "T_in_gt_OEI_gt_AVG": 0.5 * (class_II_results.weight.H2_results_all["final_states"]["OEI_gt_Working"]["Temperature_K"] +
+                                                 class_II_results.weight.H2_results_all["final_states"]["OEI_gt_Failed"]["Temperature_K"]),
+                    "T_in_gt_OEI_mot_AVG": 0.5 * (class_II_results.weight.H2_results_all["final_states"]["OEI_mot_Working"]["Temperature_K"] +
+                                                  class_II_results.weight.H2_results_all["final_states"]["OEI_mot_Failed"]["Temperature_K"]),
+                    "T_in_gt_OEI_bus_AVG": 0.5 * (class_II_results.weight.H2_results_all["final_states"]["OEI_bus_Working"]["Temperature_K"] +
+                                                  class_II_results.weight.H2_results_all["final_states"]["OEI_bus_Failed"]["Temperature_K"]),
+
+                    "P_in_gt_TO": class_II_results.weight.H2_results_all["final_states"]["TO"]["Pressure_Pa"],
+                    "P_in_gt_cruise": class_II_results.weight.H2_results_all["final_states"]["cruise"]["Pressure_Pa"],
+                    "P_in_gt_climb": class_II_results.weight.H2_results_all["final_states"]["climb"]["Pressure_Pa"],
+                    "P_in_gt_APP": class_II_results.weight.H2_results_all["final_states"]["APP"]["Pressure_Pa"],
+                    "P_in_gt_OEI_gP_AVG": 0.5 * (class_II_results.weight.H2_results_all["final_states"]["OEI_gP_Working"]["Pressure_Pa"] +
+                                                 class_II_results.weight.H2_results_all["final_states"]["OEI_gP_Failed"]["Pressure_Pa"]),
+                    "P_in_gt_OEI_moP_AVG": 0.5 * (class_II_results.weight.H2_results_all["final_states"]["OEI_moP_Working"]["Pressure_Pa"] +
+                                                  class_II_results.weight.H2_results_all["final_states"]["OEI_moP_Failed"]["Pressure_Pa"]),
+                    "P_in_gt_OEI_bus_AVG": 0.5 * (class_II_results.weight.H2_results_all["final_states"]["OEI_bus_Working"]["Pressure_Pa"] +
+                                                  class_II_results.weight.H2_results_all["final_states"]["OEI_bus_Failed"]["Pressure_Pa"]),
                 }
             else:
                 results[design_names[config-1]] = {

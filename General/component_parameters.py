@@ -55,7 +55,6 @@ class ThrustComponent(Component):
 # =============================================================================
 # Define a dictionary containing the data
 # =============================================================================
-# TODO: adjust standard deviations
 component_params = {
     # Power Components
     "gt": PowerComponent("Gas Turbine", 10, 35, 5, power_density_std=1, efficiency_std=9),
@@ -65,9 +64,10 @@ component_params = {
     "gt_hex": PowerComponent("Gas Turbine + HEX ", 9.62, 39.5, 3, power_density_std=0.962, efficiency_std=9),
     "dc_dc_1": PowerComponent("DC-DC Converter 1", 17, 99.47, 3),
     "dc_dc_2": PowerComponent("DC-DC Converter 2", 17, 99.47, 3),
-    "ac_dc": PowerComponent("AC-DC Rectifier", 52.9, 98.9, 3, volumetric_density=70000),
-    "dc_ac": PowerComponent("DC-AC Inverter", 52.9, 98.9, 3, volumetric_density=70000),
-    "bus": PowerComponent("Electric Bus", 22.1, 99.66, 3, volumetric_density=70000),
+    "ac_dc": PowerComponent("AC-DC Rectifier", 52.9, 98.9, 3, power_density_std=10, efficiency_std=0.5, volumetric_density=70000),
+    "dc_ac": PowerComponent("DC-AC Inverter", 52.9, 98.9, 3, power_density_std=10, efficiency_std=0.5, volumetric_density=70000),
+    "bus": PowerComponent("Electric Bus", 22.1, 99.66, 3, power_density_std=5, efficiency_std=0.5, volumetric_density=70000),
+    # TODO: adjust converter and bus standard deviations
 
     # Battery
     "bt": StorageComponent("Battery", 0.510, 1.53, 90, 3, energy_density_std=0.102, power_density_std=0.306, efficiency_std=1),

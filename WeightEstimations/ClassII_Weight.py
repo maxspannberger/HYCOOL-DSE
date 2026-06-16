@@ -307,7 +307,7 @@ class WeightBreakdown:
     max_Thrust_prop_inner: float = 0.0
     max_Thrust_prop_outer: float = 0.0
     W_fuel:      float = 0.0
-    W_fan: float = 0.0
+    mass_breakdown: float = 0.0
     grav_density:float = 0.64
     configuration: int = 1
     total_prop_efficiency: float = 1.0
@@ -323,6 +323,7 @@ class WeightBreakdown:
     N_propellers: int=1
 
     H2_results_all: dict = None
+    electrical_results: dict = None
 
 
     @property
@@ -376,7 +377,7 @@ class WeightBreakdown:
             table.add_row(name, f"{weight:.1f}", note)
 
         table.add_section()
-        table.add_row("Open Fan Mass", f"[bold]{self.W_fan:.1f}[/bold]", "",)
+        table.add_row("Open Fan Mass", f"[bold]{self.mass_breakdown["fan"]:.1f}[/bold]", "",)
         table.add_row(
             "Propulsion System without tank",
             f"[bold]{self.W_engine:.1f}[/bold]",
@@ -721,7 +722,6 @@ class weightEstimation:
                     # elif comp_key == "dc_ac":
                     #     mass = P_req_primary / pd /efficiency2["Dcac_eff"]
                 total_mass += mass
-                # TODO: eliminate this mass from total, but check whether to include or not the nacelle factor
 
         eff = efficiency["Total_eff"]
         eff_cruise = efficiency["Cruise_average_eff"]
@@ -756,6 +756,7 @@ class weightEstimation:
         gt_mass = gt_results_dict["dim"].results["m_propulsion"]
         
         mass_flows = [gt_results_dict["od_cases"][P]["mdot_f"] for P in gt_results_dict["od_cases"]]
+        gt_effs = [gt_results_dict["od_cases"][P]["eta_total"] for P in gt_results_dict["od_cases"]]
         # for P, m in zip(P_per_flight_condition, mass_flows):
         #     print(f"{P}: {m}")
 
@@ -773,11 +774,19 @@ class weightEstimation:
         # print(H2_results_all)
         TMS_mass, pipe_length = pipe_calculations(b=g.b, sweep_quarter_chord=g.sweep_half) # quarter chord approximated by half for now
         total_mass += TMS_mass + 2 * gt_mass
-        # TODO: subtract previous piping and GT mass estimate, idk where that is for now
 
+        mass_breakdown = {
+            "gt": gt_mass,
+            "mass_flows": mass_flows,
+            "efficiencies": gt_effs,
+            "TMS": TMS_mass,
+            "pipe_length": pipe_length,
+            "electrical": electrical_results["mass"],
+            "fan": fan_mass,
+        }
 
-        return total_mass * g.mass_margin,fan_mass, P_req_primary, P_req_secondary, P_req_tot,eff,eff_climb, \
-            eff_cruise, bt_charging_ratio, P_opt, electrical_results["cooling"], H2_results_all
+        return total_mass * g.mass_margin, mass_breakdown, P_req_primary, P_req_secondary, P_req_tot,eff,eff_climb, \
+            eff_cruise, bt_charging_ratio, P_opt, electrical_results, H2_results_all
     
     def _h2_tank_weight(self) -> float:
         # return (self.g.W_fuel * (1 / self.g.grav_density - 1)*(1+self.g.frn_tank_support))* self.g.mass_margin
@@ -790,8 +799,8 @@ class weightEstimation:
         g = self.g
 
         h2_tank_weight   = self._h2_tank_weight()
-        W_engine_total, fan_mass, P_req_primary, P_req_secondary, P_req_tot,\
-            total_prop_efficiency, climb_eff,cruise_eff, bt_charging_ratio, P_opt, cool, H2_results_all = self._propulsion_weight()
+        W_engine_total, mass_breakdown, P_req_primary, P_req_secondary, P_req_tot,\
+            total_prop_efficiency, climb_eff,cruise_eff, bt_charging_ratio, P_opt, electrical_results, H2_results_all = self._propulsion_weight()
         W_wing_accurate, W_hld, W_basic = self._wing_weight_accurate()
         
         W_lg_main, W_lg_nose = self._LDG_weight()
@@ -811,7 +820,7 @@ class weightEstimation:
             W_sc     = self._surface_control_weight(),
             W_engine = W_engine_total,
             W_total_prop = W_engine_total + h2_tank_weight,
-            W_fan = fan_mass,
+            mass_breakdown = mass_breakdown,
 
             # Propulsion detail
             W_h2_tank   = h2_tank_weight,
@@ -835,7 +844,7 @@ class weightEstimation:
             cruise_efficiency=cruise_eff,
             bt_charging_ratio=bt_charging_ratio,
             P_opt=P_opt,
-            #cooling=cool,
+            electrical_results=electrical_results,
 
             H2_results_all=H2_results_all
         )

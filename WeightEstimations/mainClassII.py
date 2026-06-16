@@ -118,6 +118,8 @@ class ClassIIResult:
     distance_le_root_to_le_mac: float = 0.0
 
     H2_results_all: dict = None
+    L_tank_m: float = 0.0,
+    d_tank_m: float = 0.0,
 
     def summary(self):
         status_color = "green" if self.converged else "red"
@@ -592,6 +594,8 @@ def run_class_ii(
         distance_le_mac_to_turbine=distance_le_mac_to_turbine,
         distance_le_root_to_le_mac=distance_le_root_to_le_mac,
         H2_results_all=H2_results_all,
+        L_tank_m     = L_tank,
+        d_tank_m     = d_tank,
     )
 
 
