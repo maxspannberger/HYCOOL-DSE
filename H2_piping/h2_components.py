@@ -669,15 +669,17 @@ class COOL:
             w_c = self.width * self.length / self.L # + t/2 # the t/2 is added only if the wing tip contributes
             t_f = self.d + 2 * config.HEX_extra_thickness
             R_f = w_c / (6 * config.k_Al * t_f * self.length)
-            print(R_f)
+            # TODO: check this with a source or derivation
+            # print(R_f)
             Tb = 0.5 * (T1 + T2)
 
+            # TODO: double check the following code
             if self.area_calc_mode:
                 R_tot = (self.T - Tb) / self.Q_dot
                 print(R_tot)
                 if "hts" not in self.name:
-                    k_TMI = config.k_TMI_4 + (config.k_TMI_293 - config.k_TMI_4)/289 * Tb
-                    R_TMI = config.t_TMI / (k_TMI * self.length * self.width)
+                    k_TMI = config.k_TMI_4 + (config.k_TMI_293 - config.k_TMI_4)/289 * (Tb - 4)
+                    R_TMI = 2 * config.t_TMI / (k_TMI * self.length * self.width)
                     print(R_TMI)
                     R_tot -= R_TMI
                 
@@ -688,7 +690,7 @@ class COOL:
                 #     self.L = self.area / (self.N_channels * np.pi * self.d)
                 # else:
                 #     self.L = 1 / R_tot * (R_f * self.L + 1 / (np.pi * self.d * h_H2))
-                self.L = (1 / (6 * config.k_Al * t_f) + 1 / (np.pi * self.d * h_H2)) / R_tot
+                self.L = (1 / (6 * config.k_Al * t_f) + 2 / (np.pi * self.d * h_H2)) / R_tot
                 self.L = config.FPI_relaxation * self.L + (1.0 - config.FPI_relaxation) * L_old
                 self.area = np.pi * self.d * self.L
 
@@ -709,7 +711,7 @@ class COOL:
                     Tw = self.T - self.Q_dot * R_f
                     h_H2 = heat_transfer_coefficient(T1, T2, Tw, p1, p2, m_dot, self.d, self.fluid)
                     R_tot = R_f + 1 / (self.area * h_H2)
-                    self.T = self.Q_dot * R + Tb
+                    self.T = self.Q_dot * R_tot + Tb
 
         if show:
             if self.area_calc_mode:
