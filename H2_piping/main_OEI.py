@@ -284,5 +284,5 @@ def main_H2_OEI(comps=None, sizes=None, All_temps=None, HEX_areas=None, prev_sta
 # MAIN RUNTIME ENVIRONMENT
 # =============================================================================
 if __name__ == "__main__":
-    all_H2_results = main_H2_OEI(show=False, write=False)
+    all_H2_results = main_H2_OEI(show=True, write=True)
     print(all_H2_results)

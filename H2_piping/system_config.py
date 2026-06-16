@@ -68,8 +68,10 @@ class H2SystemConfig:
     HEX_effectiveness = 0.6
     HEX_extra_thickness = 0.005
 
-    k_Al = 167      # W/m K     # TODO: find better value
-    h_TMI = 6828    # W/m^2 K   # TODO: find better value
+    k_Al = 167      # W/m K
+    k_TMI_293 = 0.194    # W/m K
+    k_TMI_4 = 0.095 # W/m K
+    t_TMI = 0.0001 # m
     
     HTS_default_d = 0.009
     HTS_channels = 1

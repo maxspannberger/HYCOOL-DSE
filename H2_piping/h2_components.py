@@ -610,10 +610,10 @@ class COOL:
 
                 if cumulative_length >= self.L:
                     remaining_length = self.length - (cumulative_length - self.L)
-                    internal_system.extend([Pipe(length=remaining_length, diameter=self.d, q_set=q_L*remaining_length, segments=10)])
+                    internal_system.extend([Pipe(length=remaining_length, diameter=self.d, q_set=q_L*remaining_length, segments=5)])
                 else:
                     internal_system.extend([
-                        Pipe(length=self.length, diameter=self.d, q_set=q_L*self.length, segments=10),
+                        Pipe(length=self.length, diameter=self.d, q_set=q_L*self.length, segments=5),
                         Corner(curv=curvature, diameter=self.d),
                         Corner(curv=curvature, diameter=self.d)
                     ])
@@ -632,8 +632,10 @@ class COOL:
             else:
                 t = self.d + 2 * config.HEX_extra_thickness
                 w_c = self.width * self.length / self.L # + t/2 # the t/2 is added only if the wing tip contributes
-                m = np.sqrt(config.h_TMI / (config.k_Al * t))
+                h_TMI = (config.k_TMI_4 + (config.k_TMI_293 - config.k_TMI_4)/289 * (T1+T2)/2) / config.t_TMI
+                m = np.sqrt(h_TMI / (config.k_Al * t))
                 HEX_effectiveness = np.tanh(m * w_c) / (m * w_c)
+                # print(HEX_effectiveness)
 
             # print(f"Effectiveness: {HEX_effectiveness}")
 

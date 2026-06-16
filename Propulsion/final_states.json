@@ -1,9 +1,30 @@
 {
     "TO": {
-        "Temperature_K": 136.64,
-        "Pressure_Pa": 2088421.65,
-        "Density_kg_m3": 3.66,
-        "Enthalpy_J_kg": 1722778.87,
+        "Temperature_K": 136.78,
+        "Pressure_Pa": 2223831.41,
+        "Density_kg_m3": 3.9,
+        "Enthalpy_J_kg": 1723751.3,
         "Final_MassFlow_kg_s": 0.0447
+    },
+    "climb": {
+        "Temperature_K": 141.72,
+        "Pressure_Pa": 2230752.93,
+        "Density_kg_m3": 3.77,
+        "Enthalpy_J_kg": 1786220.71,
+        "Final_MassFlow_kg_s": 0.0437
+    },
+    "cruise": {
+        "Temperature_K": 149.45,
+        "Pressure_Pa": 2470538.63,
+        "Density_kg_m3": 3.95,
+        "Enthalpy_J_kg": 1884073.55,
+        "Final_MassFlow_kg_s": 0.0329
+    },
+    "APP": {
+        "Temperature_K": 58.68,
+        "Pressure_Pa": 2766497.13,
+        "Density_kg_m3": 12.98,
+        "Enthalpy_J_kg": 752743.48,
+        "Final_MassFlow_kg_s": 0.0153
     }
 }
