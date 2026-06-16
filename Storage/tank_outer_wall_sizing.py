@@ -121,7 +121,7 @@ class outerSizing:
 
         # Cylinder buckling check (NASA imperfection approach, 9g load case)
         delta    = Rout / 1200
-        Gamma    = np.sqrt(1 - nuxy**2) * (delta / tout)
+        Gamma    = 1 - 0.901 * (1 - np.exp(-np.sqrt(Rout / tout)/16))# np.sqrt(1 - nuxy**2) * (delta / tout)
         sigma_x  = ((9 * g * m_empty) / (2 * np.pi * Rout * tout)) / 1e9
         sigma_cr = Ex / np.sqrt(3 * (1 - nuxy**2)) * (tout / Rout) * Gamma
 
