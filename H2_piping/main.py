@@ -64,48 +64,88 @@ def print_tree(states):
 # Visualizes the pressure, temperature, density, and enthalpy profiles.
 # Background gradient indicates the phase fraction (liquid to gas).
 # =============================================================================
-def plot_states(states, phase_name):
+def plot_states(states, phase_name, system):
   
-    flat_states = {}
-    for prop in ['p', 'T', 'rho', 'h', 'frac']:
-        temp_list = []
+    flat_states = {prop: [] for prop in ['p', 'T', 'rho', 'h', 'frac']}
+    for prop in flat_states.keys():
         for component_data in states[prop]:
-            for value in component_data:
-                temp_list.append(value)
-        flat_states[prop] = temp_list
+            flat_states[prop].extend(component_data)
+
+    # --- MAP INDICES TO COMPONENTS ---
+    state_idx = 0
+    current_step = 0
+    cool_spans = []
+
+    for comp in system:
+        if isinstance(comp, tuple): 
+            continue # Skip pipe splits/merges
+
+        comp_len = len(states['p'][state_idx])
+        
+        if comp.__class__.__name__ == 'COOL':
+            cool_spans.append({
+                'name': comp.name,
+                'start': current_step,
+                'end': current_step + comp_len,
+                'mid': current_step + (comp_len / 2)
+            })
+        
+        current_step += comp_len
+        state_idx += 1
+    # ---------------------------------
 
     # Prepare phase-fraction background gradient
     frac_arr = np.array(flat_states['frac'])
     gradient = np.tile(frac_arr, (100, 1)) 
 
-    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+    fig, axes = plt.subplots(2, 2, figsize=(14, 9))
     axes = axes.flatten()
     
     properties = ['p', 'T', 'rho', 'h']
     titles = ['Pressure (Pa)', 'Temperature (K)', 'Density (kg/m³)', 'Enthalpy (J/kg)']
-    colors = ['tab:blue', 'tab:red', 'tab:green', 'tab:purple']
+    colors = ['#1f77b4', '#d62728', '#2ca02c', '#9467bd'] 
 
     for i, prop in enumerate(properties):
         y_min   = min(flat_states[prop])
         y_max   = max(flat_states[prop])
-        margin  = (y_max - y_min) * 0.05
         
+        margin  = (y_max - y_min) * 0.08 if (y_max - y_min) > 0 else 1.0
+
         # Overlay phase map (Blue = Liquid, Red = Gas)
         axes[i].imshow(gradient, aspect='auto', cmap='RdYlBu_r',
                        vmin=0, vmax=1,
                        extent=[0, len(flat_states[prop]), y_min - margin, y_max + margin],
-                       alpha=0.2)
+                       alpha=0.15) 
         
-        axes[i].plot(flat_states[prop], color=colors[i], marker=None, linestyle='-', linewidth=2)
-        axes[i].set_title(titles[i])
-        axes[i].grid(True, linestyle='--', alpha=0.7)
-        axes[i].set_ylabel(titles[i])
-        axes[i].set_xlabel("Total System Step (Index)")
+        axes[i].plot(flat_states[prop], color=colors[i], marker=None, linestyle='-', linewidth=2.5)
+        
+        # --- DRAW COOL COMPONENT HIGHLIGHTS & NUMBERS ---
+        for idx, span in enumerate(cool_spans):
+            # Subtract 1 to target the exact inlet state BEFORE the thermodynamic jump
+            inlet_idx = span['start'] - 1
+            inlet_idx = max(0, inlet_idx) 
+            
+            # Draw the dashed line
+            axes[i].axvline(x=inlet_idx, color='dimgray', linestyle='--', linewidth=1.2, alpha=0.8, zorder=1)
+            
+            # Place a small sequence number directly above the line (y=1.02 puts it just above the top axis border)
+            axes[i].text(inlet_idx, 1.02, str(idx + 1), transform=axes[i].get_xaxis_transform(),
+                         ha='center', va='bottom', fontsize=10, fontweight='bold', color='#444444', clip_on=False)
+        # ---------------------------------------------------
 
-    fig.suptitle(f'Hydrogen State Profile (Phase: {phase_name.upper()} | Gradient: Blue=Liquid, Red=Gas)', fontsize=16)
-    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+        # Bumped pad to 20 to clear the new numbers
+        axes[i].set_title(titles[i], pad=20, fontsize=14, fontweight='bold', color='#333333')
+        
+        axes[i].grid(True, linestyle=':', alpha=0.7, color='gray') 
+        axes[i].set_ylabel(titles[i], fontsize=12)
+        axes[i].set_ylim(y_min - margin, y_max + margin)
+        axes[i].set_xlim(0, len(flat_states[prop]))
+        axes[i].set_xlabel("Total System Step (Index)", fontsize=12, labelpad=8)
+        axes[i].tick_params(axis='x', labelbottom=True)
+
+    fig.tight_layout(pad=2.0, h_pad=4.0, w_pad=2.0)
+    
     plt.show()
-
 
 if __name__ == "__main__":
        # Load the component cooling requirements from the propulsion json file
@@ -277,7 +317,7 @@ if __name__ == "__main__":
               # Save to JSON
               save_results_to_json(current_phase, final_T, final_p, final_rho, final_h, final_mdot)
 
-              plot_states(states, current_phase)
+              plot_states(states, current_phase, system)
 
        filename_areas = "HEX_areas.json"
        with open(filename_areas, "w") as f:
