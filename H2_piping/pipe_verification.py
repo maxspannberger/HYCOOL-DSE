@@ -81,8 +81,8 @@ if __name__ == "__main__":
 
     # Instantiate the COOL component normally using JSON data
     test_cool = COOL(
-        name='dc_ac', 
-        location=component_position['dc_ac'][0], 
+        name='hts_gen', 
+        location=component_position['hts_gen'][0], 
         phase=ref_phase, 
         areas=None
     )
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     final_rho = states['rho'][-1][-1]
     final_h   = states['h'][-1][-1]
     dp_total  = c.tank_p - final_p
-    cool_L    = HEX_areas['dc_ac'][component_position['dc_ac'][0]]['pipe_length']
+    cool_L    = HEX_areas['hts_gen'][component_position['hts_gen'][0]]['pipe_length']
 
     print("\n" + "="*50)
     print("FINAL FLUID STATE AT SYSTEM OUTLET".center(50))
