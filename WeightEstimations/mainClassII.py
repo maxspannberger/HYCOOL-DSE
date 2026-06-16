@@ -478,7 +478,7 @@ def run_class_ii(
 
 
     aero_parameters=compute_additional_aerodynamic_parameters(cfg_iter, drag_bd, mis_bd, pwr_bd,sweep_half,MAC,MTOW,\
-                                                                  S_ref,b,taper,c_root,sweep_quarter,sweep_LE,verbose=True)
+                                                                  S_ref,b,taper,c_root,sweep_quarter,sweep_LE,verbose=False)
     
     M_landing = aero_parameters["W_landing"]
 
@@ -507,8 +507,8 @@ def run_class_ii(
         print("Tail sizing rechecked with computed T_TO:")
         print(tail_bd_recheck.summary())
 
-    print(pwr_bd.gamma_min_prop)
-    print(pwr_bd.gamma_min_engine)
+        print(pwr_bd.gamma_min_prop)
+        print(pwr_bd.gamma_min_engine)
 
     cgwingpos = b / 2 * 0.35
     turbinewingpos = cfg_updated.b / 2 *0.5       #inner engine position chosen at half of half span
@@ -524,10 +524,11 @@ def run_class_ii(
         if abs(taper_slope) > 1e-9
         else 0.0
     )
-    print(f"MAC chord: {MAC:.3f} m, corresponding spanwise position: {machspanpos:.3f} m")
-    print(f"CG chord position: {chordatcgpos:.3f} m, corresponding spanwise position: {cgwingpos:.3f} m")
-    print(f"Turbine chord position: {turbinechord:.3f} m, corresponding spanwise position: {turbinewingpos:.3f} m")
-    print(f"Length from the tank to the quarter chord of the root: {cfg_updated.FUEL_cg-L_tank/2-cfg_updated.lfn-0.25*c_root:.3f} m")
+    if verbose:
+        print(f"MAC chord: {MAC:.3f} m, corresponding spanwise position: {machspanpos:.3f} m")
+        print(f"CG chord position: {chordatcgpos:.3f} m, corresponding spanwise position: {cgwingpos:.3f} m")
+        print(f"Turbine chord position: {turbinechord:.3f} m, corresponding spanwise position: {turbinewingpos:.3f} m")
+        print(f"Length from the tank to the quarter chord of the root: {cfg_updated.FUEL_cg-L_tank/2-cfg_updated.lfn-0.25*c_root:.3f} m")
 
 
 
@@ -537,7 +538,8 @@ def run_class_ii(
 
     #distance from Root chord leading edge to MAC leading edge
     distance_le_root_to_le_mac = np.tan(sweep_LE)*(cfg_updated.d_f/2-machspanpos)
-    print(f"Distance from Root Chord LE to MAC LE: {distance_le_root_to_le_mac:.3f} m")
+    if verbose:
+        print(f"Distance from Root Chord LE to MAC LE: {distance_le_root_to_le_mac:.3f} m")
 
 
     # Distance from MAC leading edge (front edge) CG location

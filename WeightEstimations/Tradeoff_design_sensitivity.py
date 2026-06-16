@@ -110,16 +110,8 @@ def single_sensitivity_run(
         else:
             raise ValueError("Invalid sensitivity configuration")
 
-        climate_results = get_climate_results(comp=comp)
-        design_names = list(climate_results.keys())
         for config in designs_to_consider:
-            class_II_results = run_class_ii(config=config, comp=comp, verbose=False, cfg=cfg)
-
-            # TMS already has built-in scores
-            TMS_results = design_phase_table(config=config, comp=comp, class_II_results=class_II_results)
-            TMS_ratio = design_score_table(TMS_results)["FinalRatio"].iloc[0]
-
-            TRL_year = TRL_per_design(TRL, config=config)
+            class_II_results = run_class_ii(config=config, comp=comp, verbose=False, cfg=cfg, max_iter=1)
 
             if more_than_tradeoff:
                 max_temps = {}
@@ -138,7 +130,7 @@ def single_sensitivity_run(
                             if class_II_results.weight.H2_results_all["temperatures"][condition][comp][loc] < min_temps[comp][loc]:
                                 min_temps[comp][loc] = class_II_results.weight.H2_results_all["temperatures"][condition][comp][loc]
 
-                results[design_names[config-1]] = {
+                results["Final design"] = {
                     "CL_cruise": class_II_results.CL_cruise,
                     "CD_0": class_II_results.drag.CD0,
                     "CD_cruise": class_II_results.drag.CD_total,
@@ -158,9 +150,10 @@ def single_sensitivity_run(
                     "M_power": class_II_results.W_prop,
 
                     "m_GT": class_II_results.weight.mass_breakdown["gt"],
-                    "m_fan": class_II_results.weight.mass_breakdown["fan"],
-                    "m_TMS": class_II_results.weight.mass_breakdown["TMS"],
                     "m_electrical": class_II_results.weight.mass_breakdown["electrical"],
+                    "m_tank": class_II_results.weight.W_h2_tank,
+                    "m_TMS": class_II_results.weight.mass_breakdown["TMS"],
+                    "m_fan": class_II_results.weight.mass_breakdown["fan"],
 
                     "T_static": class_II_results.power.T_static_total,
                     "P_opt_KW": class_II_results.weight.P_opt,
@@ -233,7 +226,17 @@ def single_sensitivity_run(
                     "P_in_gt_OEI_bus_AVG": 0.5 * (class_II_results.weight.H2_results_all["final_states"]["OEI_bus_Working"]["Pressure_Pa"] +
                                                   class_II_results.weight.H2_results_all["final_states"]["OEI_bus_Failed"]["Pressure_Pa"]),
                 }
+
             else:
+                # TMS already has built-in scores
+                TMS_results = design_phase_table(config=config, comp=comp, class_II_results=class_II_results)
+                TMS_ratio = design_score_table(TMS_results)["FinalRatio"].iloc[0]
+
+                TRL_year = TRL_per_design(TRL, config=config)
+
+                climate_results = get_climate_results(comp=comp)
+                design_names = list(climate_results.keys())
+                
                 results[design_names[config-1]] = {
                     # "OEW": class_II_results.W_empty,
                     "prop_frac": class_II_results.W_prop / class_II_results.W_empty,

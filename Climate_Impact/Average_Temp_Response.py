@@ -49,7 +49,7 @@ eta_jet = 0.35 # jet overall efficiency
 m_h2 = 569 # kg, mass of hydrogen fuel
 E_mission = m_h2 * 120 * 0.5 # J, energy required for the mission
 m_jetfuel = E_mission / (43 * eta_jet) # kg, mass of jet fuel required for the mission, based on energy density of jet fuel and efficiency
-print(m_jetfuel)
+# print(m_jetfuel)
 
 turbine = True
 fc_liquid_venting = False

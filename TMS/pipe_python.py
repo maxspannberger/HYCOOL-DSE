@@ -79,9 +79,9 @@ def run_pipe_analysis(m_dot, length, bends):
     }
 
 results = run_pipe_analysis(m_dot=1, length=50, bends=20)
-print(f"Selected Diameter: {results['diameter_mm']:.2f} mm")
-print(f"Pressure Drop: {results['pressure_drop_kpa']:.2f} kPa")
-print(f"Total Heat Input: {results['total_heat_input_w']:.2f} W")
-print(f"Insulation Thickness: {results['insulation_m']:.3f} m")
-print(f"Outer Diameter of Pipe: {2 * results['r_o_al']:.4f} m")
-print(f"Mass per Meter: {results['m_total']:.2f} kg/m")
+# print(f"Selected Diameter: {results['diameter_mm']:.2f} mm")
+# print(f"Pressure Drop: {results['pressure_drop_kpa']:.2f} kPa")
+# print(f"Total Heat Input: {results['total_heat_input_w']:.2f} W")
+# print(f"Insulation Thickness: {results['insulation_m']:.3f} m")
+# print(f"Outer Diameter of Pipe: {2 * results['r_o_al']:.4f} m")
+# print(f"Mass per Meter: {results['m_total']:.2f} kg/m")
