@@ -1,222 +1,107 @@
 """
-Main LH2 tank sizing module.
-Integrates geometric design (geomDesign), thermal insulation (INSULATE),
-and structural wall sizing (lh2_tank_trade) into a single TankResult.
+Sizes the tank volume, inner lining, baffles, insulation, and outer wall.
 """
 
-from dataclasses import dataclass
+# Import statements
+from tank_dimensions_sizing import dimensionSizing
+from tank_insulation_sizing import insulationSizing
+from tank_outer_wall_sizing import outerSizing
+from tank_baffle_sizing import baffleSizing
 from CoolProp.CoolProp import PropsSI
 
-from geomDesign import GeomDesign, Geometry
-from INSULATE import mli_thickness, MLIResult
-from lh2_tank_trade import t_hoop_stress, material_options
+# =============================================================================
+# DESIGN INPUTS
+# =============================================================================
 
-FLUID = 'parahydrogen'
-BAR   = 1e5   # Pascals per bar
+# Mission / loading
+BAR    = 1e5          # [Pa]  bar-to-Pascal conversion
+mLH2   = 600          # [kg]  mass of LH2
+pfill  = 1.0  * BAR  # [Pa]  fill pressure
+pvent  = 1.75 * BAR  # [Pa]  venting pressure
+pext_SLS   = 101325  # [Pa]  ambient pressure at SLS
+pext_FL250 =  37600  # [Pa]  ambient pressure at FL250
+beta   = 0.55         # [-]   crashed diameter coefficient [Castro et al.]
 
+# Tank geometry
+Lambda = 0.60         # [-]   cylinder-to-total-length ratio
 
-@dataclass(frozen=True)
-class TankResult:
-    # ---- Geometry (from geomDesign) ----
-    geom:              Geometry
+# LH2 thermodynamic state
+rho_LH2 = 70          # [kg/m^3]  saturated LH2 density at fill pressure
+T_fill  = 15          # [K]       LH2 temperature at fill
+T_vent  = 20.3        # [K]       LH2 temperature at vent
+tau_H   = 24          # [h]       hold time
 
-    # ---- Insulation (from INSULATE) ----
-    insulation:        MLIResult
-    m_ins:             float   # insulation mass [kg]
+# MLI insulation
+Ts     = 298          # [K]       warm-side (ambient) temperature
+Tc     = 20.3         # [K]       cold-side (LH2) temperature
+Pvac   = 1e-4         # [torr]    MLI interstitial pressure
+rhoMLI = 20           # [kg/m^3]  MLI bulk density
 
-    # ---- Structural wall ----
-    t_wall:            float   # wall thickness [m]
-    m_wall:            float   # wall mass [kg]
+# Baffles
+s_baffle = 0.5        # [m]   baffle spacing
 
-    # ---- System masses ----
-    m_empty:           float   # empty tank mass: wall + insulation [kg]
-    m_full:            float   # filled tank mass: m_LH2 + m_empty [kg]
+# Material properties — Al-2219-T87 inner liner
+Al2219T87 = {'E': 85.46e9, 'nu': 0.3184, 'S': 526e6, 'S_t': 717e6, 'density': 2825}
 
-    # ---- Figure of merit ----
-    gravimetric_index: float   # m_LH2 / (m_LH2 + m_wall + m_ins) [-]
+# Material properties — Teijin ITS50 CFRP outer wall
+E_ITS50       = {'E1': 168.0, 'E2': 9.0,  'E3': 9.0}
+nu_ITS50      = {'nu12': 0.1,  'nu13': 0.1, 'nu23': 0.3}
+G_ITS50       = {'G12': 5.0,   'G13': 5.0,  'G23': 3.7}
+rhoCFRP_ITS50 = {'fibre': 1800, 'resin': 1195}
+angles        = [0, 45, -45, 90, 90, -45, 45, 0]
 
-    # ---- Stored inputs ----
-    T_fill:            float   # fill temperature [K]
+# =============================================================================
+# TANK SIZING
+# =============================================================================
 
-    # ---- Ullage ----
-    ullage_fraction:   float   # vapor (ullage) volume fraction at fill [-]
+# 1. Tank dimensions and inner liner
+d = dimensionSizing(pfill, pvent)
+yl_0, ullage_factor = d.calculateInitialLiquidMassFraction()
+rho_H2_fill = PropsSI('D', 'P', pfill, 'T', T_fill, 'parahydrogen')
+rho_H2_vent = PropsSI('D', 'P', pvent, 'T', T_vent, 'parahydrogen')
+V_tank = d.calculateTankVolume(rho_H2=rho_H2_vent, m_H2=mLH2, yl_0=yl_0)
+dimensions = d.calculateTankGeometry(Al2219T87, pfill, pext_FL250, V_tank, ullage_factor, Lambda=Lambda)
+dimensions.print_summary()
 
-    # ---- MLI ----
-    N_layers:          int     # number of MLI reflector layers [-]
+# 2. Baffles
+baffleData = baffleSizing(Al2219T87, mLH2).size(R=dimensions.R, ls=dimensions.ls, s=s_baffle, rho_LH2=rho_LH2)
+baffleData.print_summary()
 
-    def print_summary(self):
-        ins = self.insulation
-        self.geom.print_summary()
-        w = 58
-        print("=" * w)
-        print(f"{'  INSULATION SUMMARY (MLI)':^{w}}")
-        print("=" * w)
-        print(f"  {'MLI layers':<30}  {ins.N_layers:>10}  -")
-        print(f"  {'Blanket thickness':<30}  {ins.thickness * 1000:>10.2f}  mm")
-        print(f"  {'Heat flux':<30}  {ins.flux:>10.4f}  W/m2")
-        print(f"  {'Allowable heat leak':<30}  {ins.Q_target:>10.2f}  W")
-        print(f"  {'Actual heat leak':<30}  {ins.Q_leak:>10.2f}  W")
-        print(f"  {'Surface temperature':<30}  {ins.T_s:>10.2f}  K")
-        print(f"  {'Insulation mass':<30}  {self.m_ins:>10.3f}  kg")
-        print("=" * w)
-        print(f"{'  WALL & SYSTEM SUMMARY':^{w}}")
-        print("=" * w)
-        print(f"  {'Fill temperature':<30}  {self.T_fill:>10.2f}  K")
-        print(f"  {'Ullage fraction':<30}  {self.ullage_fraction:>10.4f}  -")
-        print(f"  {'Wall thickness':<30}  {self.t_wall * 1000:>10.3f}  mm")
-        print(f"  {'Wall mass':<30}  {self.m_wall:>10.3f}  kg")
-        print(f"  {'Insulation mass':<30}  {self.m_ins:>10.3f}  kg")
-        print("-" * w)
-        print(f"  {'Empty tank mass':<30}  {self.m_empty:>10.3f}  kg")
-        print(f"  {'Full tank mass':<30}  {self.m_full:>10.3f}  kg")
-        print(f"  {'Gravimetric index':<30}  {self.gravimetric_index:>10.4f}  -")
-        print("=" * w + "\n")
+# 3. MLI insulation
+Ef    = PropsSI('U', 'P', pfill, 'D', rho_LH2, 'parahydrogen')
+Ei    = PropsSI('U', 'P', pvent, 'D', rho_LH2, 'parahydrogen')
+Qleak = mLH2 * (Ei - Ef) / (tau_H * 3600)
+ins   = insulationSizing(Ts=Ts, Tc=Tc, P=Pvac, rhoMLI=rhoMLI)
+insulationData = ins.size(Qleak=Qleak, Atank=dimensions.A_in, Rtank=dimensions.Rin, ls=dimensions.ls)
+insulationData.print_summary()
 
+# 4. Outer CFRP wall
+outerData = outerSizing(E_ITS50, nu_ITS50, G_ITS50, rhoCFRP_ITS50, angles).size(
+    Rin=dimensions.Rin,
+    tMLI=insulationData.tMLI,
+    twall=dimensions.t_in,
+    ls=dimensions.ls,
+)
+outerData.print_summary()
 
-def sizeTank(
-    m_LH2:           float,
-    p_fill:          float,
-    p_vent:          float,
-    p_ext:           float,
-    T_fill:          float,
-    tank_material:   str,
-    tau_H_hours:     float,
-    y_max:    float = 0.97,
-    phi:      float = 1.0,
-    psi:      float = 1.0,
-    Lambda:   float = 0.55,
-    Nbar:     float = 24.0,
-) -> TankResult:
-    """
-    Size the complete LH2 storage tank.
+# =============================================================================
+# FINAL TANK MASSES
+# =============================================================================
+mtank_empty = dimensions.m_in + baffleData.mBaffle + insulationData.mMLI + outerData.mCFRP
+mtank_full  = mtank_empty + mLH2
 
-    Parameters
-    ----------
-    m_LH2           : hydrogen mass to store [kg]
-    p_fill          : fill pressure [bar]
-    p_vent          : vent pressure [bar]
-    p_ext           : external (ambient) pressure for wall sizing [Pa]
-    T_fill          : fill temperature [K]
-    tank_material   : key in material_options, e.g. 'Al-2219-T87'
-    tau_H_hours     : maximum no-vent hold time [hours]
-    y_max           : liquid volume fraction at which venting begins [-]
-    phi             : tank shape ratio a/c [-]
-    psi             : tank shape ratio b/c [-]
-    Lambda          : shell fraction ls / (ls + 2b) [-]
-    Nbar            : MLI layer density [layers/cm]
+RESET  = '\033[0m'
+CYAN   = '\033[96m'
+ORANGE = '\033[38;5;208m'
+BOLD   = '\033[1m'
 
-    Returns
-    -------
-    TankResult
-    """
-    if tank_material not in material_options:
-        raise ValueError(f"Unknown tank_material '{tank_material}'. "
-                         f"Available: {list(material_options)}")
-
-    mat     = material_options[tank_material]
-    tau_H_s = tau_H_hours * 3600.0
-
-    # 1. Geometry ----------------------------------------------------------
-    gd      = GeomDesign(p_vent=p_vent, p_fill=p_fill, y_max=y_max)
-    yl_0    = gd.calculateInitialLiquidMassFraction(yl_vent=y_max)
-    # Saturated liquid density at fill pressure for tank volume sizing.
-    # T_fill may equal T_sat which puts CoolProp on the phase boundary;
-    # Q=0 is the robust way to query saturated liquid properties.
-    rho_lh2 = PropsSI('D', 'P', p_fill * BAR, 'T', T_fill, FLUID)
-    V       = gd.calculateTankVolume(rho_H2=rho_lh2, m_H2=m_LH2, yl_0=yl_0)
-    geom    = gd.calculateTankGeometry(V, phi=phi, psi=psi, Lambda=Lambda)
-
-    # 2 & 3. Insulation sizing (heat-leak budget + MLI) --------------------
-    insulation = mli_thickness(
-        V=V, phi=phi, lam=Lambda,
-        P_vent=p_vent * BAR,
-        y_l0=yl_0,
-        tau_H=tau_H_s,
-        T_c=T_fill,
-        Nbar=Nbar,
-    )
-    _RHO_LAYER_AREAL = 0.20   # kg/m² per MLI layer
-    m_ins = insulation.N_layers * _RHO_LAYER_AREAL * insulation.A
-
-    # 4. Wall thickness (hoop stress)
-    t_wall = t_hoop_stress(
-        P_int     = p_vent * BAR,
-        P_ext     = p_ext,
-        D         = 2.0 * geom.a,
-        S_y       = mat['S_y'],
-        spherical = False,
-    )
-
-    # 5. Masses ------------------------------------------------------------
-    m_wall  = geom.A_tank * t_wall * mat['density']
-    m_empty = m_wall + m_ins
-    m_full  = m_LH2 + m_empty
-
-    # 6. Gravimetric index -------------------------------------------------
-    gravimetric_index = m_LH2 / (m_LH2 + 2 * m_wall + m_ins)
-
-    return TankResult(
-        geom              = geom,
-        insulation        = insulation,
-        m_ins             = m_ins,
-        t_wall            = t_wall,
-        m_wall            = m_wall,
-        m_empty           = m_empty,
-        m_full            = m_full,
-        gravimetric_index = gravimetric_index,
-        T_fill            = T_fill,
-        ullage_fraction   = 1.0 - yl_0,
-        N_layers          = insulation.N_layers,
-    )
-
-
-if __name__ == "__main__":
-    # ------------------------------------------------------------------ #
-    #  USER INPUTS                                                         #
-    # ------------------------------------------------------------------ #
-    m_LH2           = 600        # hydrogen mass [kg]
-    p_fill          = 1.75          # fill pressure [bar]
-    p_vent          = 1.5 * p_fill          # vent pressure [bar]
-    p_ext           = 37600.0        # external pressure for wall sizing [Pa]  (e.g. 101325 = SL, 37600 = FL250)
-    T_fill          = 15          # fill temperature [K]
-    tank_material   = 'Al-2219-T87'  # see material_options in lh2_tank_trade.py
-    tau_H_hours     = 24.0           # no-vent holding time [hours]
-    phi             = 1.0            # tank shape: a/c (major/minor radius ratio) [-]
-    psi             = 1.0            # tank shape: b/c (cap height ratio) [-]
-    Lambda          = 0.55           # tank shape: ls/(ls + 2b) (shell fraction) [-]
-    Nbar            = 30.0           # MLI layer density [layers/cm]
-    
-    # ------------------------------------------------------------------ #
-
-    w = 58
-    print("\n" + "=" * w)
-    print(f"{'  TANK SIZING INPUTS':^{w}}")
-    print("=" * w)
-    print(f"  {'LH2 mass':<30}  {m_LH2:>10.1f}  kg")
-    print(f"  {'Fill pressure':<30}  {p_fill:>10.2f}  bar")
-    print(f"  {'Vent pressure':<30}  {p_vent:>10.2f}  bar")
-    print(f"  {'External pressure':<30}  {p_ext:>10.0f}  Pa")
-    print(f"  {'Fill temperature':<30}  {T_fill:>10.2f}  K")
-    print(f"  {'Tank material':<30}  {tank_material:>10}")
-    print(f"  {'Holding time':<30}  {tau_H_hours:>10.1f}  h")
-    print(f"  {'phi  (a/c)':<30}  {phi:>10.2f}  -")
-    print(f"  {'psi  (b/c)':<30}  {psi:>10.2f}  -")
-    print(f"  {'Lambda (ls/(ls+2b))':<30}  {Lambda:>10.2f}  -")
-    print(f"  {'Nbar (MLI layers/cm)':<30}  {Nbar:>10.2f}  layers/cm")
-    print("=" * w)
-
-    result = sizeTank(
-        m_LH2           = m_LH2,
-        p_fill          = p_fill,
-        p_vent          = p_vent,
-        p_ext           = p_ext,
-        T_fill          = T_fill,
-        tank_material   = tank_material,
-        tau_H_hours     = tau_H_hours,
-        phi             = phi,
-        psi             = psi,
-        Lambda          = Lambda,
-        Nbar            = Nbar,
-    )
-
-    result.print_summary()
+title  = 'FINAL TANK MASSES'
+width  = 40
+border = '+' + '-' * (width - 2) + '+'
+print()
+print(f"{BOLD}{border}{RESET}")
+print(f"{BOLD}|{CYAN}{title:^{width-2}}{RESET}{BOLD}|{RESET}")
+print(f"{BOLD}{border}{RESET}")
+print(f"{BOLD}|{RESET}  {'Empty tank mass':<20}{ORANGE}{mtank_empty:>10.2f} kg{RESET}  {BOLD}|{RESET}")
+print(f"{BOLD}|{RESET}  {'Full tank mass':<20}{ORANGE}{mtank_full:>10.2f} kg{RESET}  {BOLD}|{RESET}")
+print(f"{BOLD}{border}{RESET}")
