@@ -405,8 +405,11 @@ class Pipe:
 
             # --- COMPRESSIBILITY CHECK ---
             # =================================================================
-            a_sound = CP.PropsSI('A', 'P', p1, 'H', h1, self.fluid)
-            mach_pipe = u1 / a_sound
+            try:
+                a_sound = CP.PropsSI('A', 'P', p1, 'H', h1, self.fluid)
+                mach_pipe = u1 / a_sound
+            except ValueError:
+                mach_pipe = 0.0
             
             if mach_pipe >= 1.0:
                 raise ValueError(f"[{self.name}] CHOKED FLOW! Mach number {mach_pipe:.3f} >= 1.0 at seg {seg}")
@@ -565,7 +568,7 @@ class COOL:
         if areas is None:
             self.area_calc_mode = True
             self.area = None
-            self.L = self.length
+            self.L = self.length * config.initial_length_scaling
             self.N_corners = 0
         else:
             self.area_calc_mode = False
@@ -631,6 +634,7 @@ class COOL:
             u2 = solved_internal_system['u'][-1][-1]
             frac2 = solved_internal_system['frac'][-1][-1]
 
+            '''
             if "hts" in self.name:
                 HEX_effectiveness = config.HEX_effectiveness
             else:
@@ -642,6 +646,7 @@ class COOL:
                 # print(HEX_effectiveness)
 
             # print(f"Effectiveness: {HEX_effectiveness}")
+            
 
             # HEX design
             # f is the "film" temperature (boundary layer of H2 next to the pipe walls)
@@ -660,18 +665,51 @@ class COOL:
                     U = heat_transfer_coefficient(T1, T2, self.T, p1, p2, m_dot, self.d, self.fluid)
                     deltaT = self.Q_dot / (U * self.area * HEX_effectiveness)
                     self.T = deltaT + 0.5 * (T1 + T2)
+            '''
+            w_c = self.width * self.length / self.L # + t/2 # the t/2 is added only if the wing tip contributes
+            t_f = self.d + 2 * config.HEX_extra_thickness
+            R_f = w_c / (6 * config.k_Al * t_f * self.length)
+            print(R_f)
+            Tb = 0.5 * (T1 + T2)
 
-            self.L = self.area / (self.N_channels * np.pi * self.d)
-            self.L = config.FPI_relaxation * self.L + (1.0 - config.FPI_relaxation) * L_old
+            if self.area_calc_mode:
+                R_tot = (self.T - Tb) / self.Q_dot
+                print(R_tot)
+                if "hts" not in self.name:
+                    k_TMI = config.k_TMI_4 + (config.k_TMI_293 - config.k_TMI_4)/289 * Tb
+                    R_TMI = config.t_TMI / (k_TMI * self.length * self.width)
+                    print(R_TMI)
+                    R_tot -= R_TMI
+                
+                Tw = max(self.T - self.Q_dot * R_f, Tb)
+                h_H2 = heat_transfer_coefficient(T1, T2, Tw, p1, p2, m_dot, self.d, self.fluid)
+                # if R_tot > R_f:
+                #     self.area = 1 / (h_H2 * (R_tot - R_f))
+                #     self.L = self.area / (self.N_channels * np.pi * self.d)
+                # else:
+                #     self.L = 1 / R_tot * (R_f * self.L + 1 / (np.pi * self.d * h_H2))
+                self.L = (1 / (6 * config.k_Al * t_f) + 1 / (np.pi * self.d * h_H2)) / R_tot
+                self.L = config.FPI_relaxation * self.L + (1.0 - config.FPI_relaxation) * L_old
+                self.area = np.pi * self.d * self.L
 
-            if show:
-                print(f"{1000*self.L:.2f}")
+                if show:
+                    print(f"{1000*self.L:.2f}")
 
-            if not self.L/self.d >= 8:
-                raise Warning("Formulas used are not valid for the required length/diameter ratio\n" +\
-                        "Required L/D range: L/D >= 10\n" +\
-                        f"Used L/D: {self.L/self.d}"
-                    )
+                if not self.L/self.d >= 8:
+                    raise Warning("Formulas used are not valid for the required length/diameter ratio\n" +\
+                            "Required L/D range: L/D >= 10\n" +\
+                            f"Used L/D: {self.L/self.d}"
+                        )
+                    
+            else:
+                T_old = 0.0
+                k = 0
+                while abs(self.T - T_old) > 1e-2 and k < 100:
+                    T_old = self.T
+                    Tw = self.T - self.Q_dot * R_f
+                    h_H2 = heat_transfer_coefficient(T1, T2, Tw, p1, p2, m_dot, self.d, self.fluid)
+                    R_tot = R_f + 1 / (self.area * h_H2)
+                    self.T = self.Q_dot * R + Tb
 
         if show:
             if self.area_calc_mode:
