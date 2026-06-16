@@ -795,7 +795,7 @@ class weightEstimation:
     
     def _h2_tank_weight(self) -> float:
         # return (self.g.W_fuel * (1 / self.g.grav_density - 1)*(1+self.g.frn_tank_support))* self.g.mass_margin
-        m_tank = main_storage(self.g.W_fuel)
+        m_tank, _, _ = main_storage(self.g.W_fuel)
         # print(m_tank)
         return m_tank
 

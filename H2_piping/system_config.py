@@ -8,7 +8,7 @@ from typing import List
 class H2SystemConfig:
     # Global simulation configurations
     fluid: str = 'Hydrogen'                  # FLUID used for simulation
-    max_error: float = 10                    # SOLVER convergence treshhold
+    max_error: float = 100                    # SOLVER convergence treshhold
     tank_p: float = 200000                   # TANK pressure [Pa]
     tank_T: float = 20.3                     # TANK temperature [T]
     tank_d: float = 0.012                    # TANK outlet diameter [m]

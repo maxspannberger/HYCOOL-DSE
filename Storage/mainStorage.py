@@ -1,6 +1,11 @@
 """
 Sizes the tank volume, inner lining, baffles, insulation, and outer wall.
 """
+import sys
+from pathlib import Path
+
+root = Path(__file__).resolve().parent.parent
+sys.path.append(str(root))
 
 # Import statements
 from Storage.tank_dimensions_sizing import dimensionSizing
@@ -27,7 +32,7 @@ def main_storage(mLH2=None, show=False):
     beta   = 0.55         # [-]   crashed diameter coefficient [Castro et al.]
 
     # Tank geometry
-    Lambda = 0.60         # [-]   cylinder-to-total-length ratio
+    Lambda = 0.467         # [-]   cylinder-to-total-length ratio
 
     # LH2 thermodynamic state
     rho_LH2 = 70          # [kg/m^3]  saturated LH2 density at fill pressure
@@ -74,8 +79,8 @@ def main_storage(mLH2=None, show=False):
         baffleData.print_summary()
 
     # 3. MLI insulation
-    Ef    = PropsSI('U', 'P', pfill, 'D', rho_LH2, 'parahydrogen')
-    Ei    = PropsSI('U', 'P', pvent, 'D', rho_LH2, 'parahydrogen')
+    Ef    = PropsSI('U', 'P', pfill, 'D', rho_H2_fill, 'parahydrogen')
+    Ei    = PropsSI('U', 'P', pvent, 'D', rho_H2_fill, 'parahydrogen')
     Qleak = mLH2 * (Ei - Ef) / (tau_H * 3600)
     ins   = insulationSizing(Ts=Ts, Tc=Tc, P=Pvac, rhoMLI=rhoMLI)
     insulationData = ins.size(Qleak=Qleak, Atank=dimensions.A_in, Rtank=dimensions.Rin, ls=dimensions.ls)
@@ -115,8 +120,9 @@ def main_storage(mLH2=None, show=False):
         print(f"{BOLD}|{RESET}  {'Full tank mass':<20}{ORANGE}{mtank_full:>10.2f} kg{RESET}  {BOLD}|{RESET}")
         print(f"{BOLD}{border}{RESET}")
 
-    return mtank_empty
+    return mtank_empty, dimensions.lt, outerData.Rout
 
 
 if __name__ == "__main__":
-    mtank_empty = main_storage(show=True)
+    mtank_empty, l, r = main_storage(show=True)
+    print(mtank_empty, l, r)

@@ -49,6 +49,7 @@ from WeightEstimations.Export_Geometry import (
     print_final_geometry,
     export_final_geometry,
 )
+from Storage.mainStorage import main_storage
 
 
 from rich import print
@@ -179,7 +180,7 @@ def compute_fuselage_geometry(W_fuel: float, cfg: AircraftConfig,hump_back: bool
     """
     from dataclasses import replace as _replace
 
-    V_tank = max(W_fuel, 0.0) / cfg.rho_LH2_eff
+    # V_tank = max(W_fuel, 0.0) / cfg.rho_LH2_eff
     #r_tank = (3.0 * V_tank / (10.0 * np.pi)) ** (1 / 3) if V_tank > 0 else 0.0
     # L_tank = 4.0 * r_tank
     # d_tank = 2.0 * r_tank
@@ -187,10 +188,13 @@ def compute_fuselage_geometry(W_fuel: float, cfg: AircraftConfig,hump_back: bool
     # d_tank = 2.0 * r_tank
     # L_tank = d_tank
 
-    r_tank = (cfg.diameter_margin * cfg.b_f_i - 2*cfg.wall_thickness)/2
-    d_tank = 2*r_tank
-    l_cyl_tank = (V_tank-(4/3)*np.pi*(r_tank**3))/(np.pi*(r_tank**2))
-    L_tank = 2*r_tank + l_cyl_tank
+    # r_tank = (cfg.diameter_margin * cfg.b_f_i - 2*cfg.wall_thickness)/2
+    # d_tank = 2*r_tank
+    # l_cyl_tank = (V_tank-(4/3)*np.pi*(r_tank**3))/(np.pi*(r_tank**2))
+    # L_tank = 2*r_tank + l_cyl_tank
+
+    _, L_tank, r_tank = main_storage(W_fuel)
+    d_tank = 2 * r_tank
 
     # ---------- calculation for cylindrical tank with hemispherical endcaps --------------
 
