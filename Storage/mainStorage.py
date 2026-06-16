@@ -32,7 +32,7 @@ def main_storage(mLH2=None, show=False):
     beta   = 0.55         # [-]   crashed diameter coefficient [Castro et al.]
 
     # Tank geometry
-    Lambda = 0.467         # [-]   cylinder-to-total-length ratio
+    Lambda = 0.32         # [-]   cylinder-to-total-length ratio
 
     # LH2 thermodynamic state
     rho_LH2 = 70          # [kg/m^3]  saturated LH2 density at fill pressure
