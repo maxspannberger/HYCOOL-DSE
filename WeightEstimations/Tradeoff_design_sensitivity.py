@@ -122,9 +122,10 @@ def single_sensitivity_run(
                             max_temps[comp] = {}
                             min_temps[comp] = {}
                         for loc in class_II_results.weight.H2_results_all["temperatures"][condition][comp]:
-                            if loc not in max_temps:
+                            if loc not in max_temps[comp]:
                                 max_temps[comp][loc] = 0.0
                                 min_temps[comp][loc] = np.inf
+                            print(class_II_results.weight.H2_results_all["temperatures"][condition][comp][loc])
                             if class_II_results.weight.H2_results_all["temperatures"][condition][comp][loc] > max_temps[comp][loc]:
                                 max_temps[comp][loc] = class_II_results.weight.H2_results_all["temperatures"][condition][comp][loc]
                             if class_II_results.weight.H2_results_all["temperatures"][condition][comp][loc] < min_temps[comp][loc]:
@@ -172,13 +173,13 @@ def single_sensitivity_run(
                     "m_flow_OEI_mot": class_II_results.weight.mass_breakdown["mass_flows"][5],
                     "m_flow_OEI_bus": class_II_results.weight.mass_breakdown["mass_flows"][6],
 
-                    "eff_TO": class_II_results.weight.mass_breakdown["efficienciess"][0],
-                    "eff_climb": class_II_results.weight.mass_breakdown["efficienciess"][1],
-                    "eff_cruise": class_II_results.weight.mass_breakdown["efficienciess"][2],
-                    "eff_APP": class_II_results.weight.mass_breakdown["efficienciess"][3],
-                    "eff_OEI_gt": class_II_results.weight.mass_breakdown["efficienciess"][4],
-                    "eff_OEI_mot": class_II_results.weight.mass_breakdown["efficienciess"][5],
-                    "eff_OEI_bus": class_II_results.weight.mass_breakdown["efficienciess"][6],
+                    "eff_TO": class_II_results.weight.mass_breakdown["efficiencies"][0],
+                    "eff_climb": class_II_results.weight.mass_breakdown["efficiencies"][1],
+                    "eff_cruise": class_II_results.weight.mass_breakdown["efficiencies"][2],
+                    "eff_APP": class_II_results.weight.mass_breakdown["efficiencies"][3],
+                    "eff_OEI_gt": class_II_results.weight.mass_breakdown["efficiencies"][4],
+                    "eff_OEI_mot": class_II_results.weight.mass_breakdown["efficiencies"][5],
+                    "eff_OEI_bus": class_II_results.weight.mass_breakdown["efficiencies"][6],
 
                     "A_hex_hts_gen": class_II_results.weight.H2_results_all["areas"]["hts_gen"][0.5],
                     "A_hex_hts_pow_1": class_II_results.weight.H2_results_all["areas"]["hts_pow"][0.5],
@@ -226,6 +227,7 @@ def single_sensitivity_run(
                     "P_in_gt_OEI_bus_AVG": 0.5 * (class_II_results.weight.H2_results_all["final_states"]["OEI_bus_Working"]["Pressure_Pa"] +
                                                   class_II_results.weight.H2_results_all["final_states"]["OEI_bus_Failed"]["Pressure_Pa"]),
                 }
+                print(results)
 
             else:
                 # TMS already has built-in scores
@@ -677,7 +679,7 @@ def save_tradeoff(cfg, designs_to_consider=[1,2,3,4,5]):
 
 if __name__ == "__main__":
     cfg = default_q400_hycool()
-    n_repeats = 10
+    n_repeats = 5
     designs_to_consider = [1, 2, 3, 4, 5]
     weights={
         "mass": 0.25,

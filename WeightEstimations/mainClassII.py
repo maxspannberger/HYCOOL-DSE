@@ -299,6 +299,7 @@ def run_class_ii(
     else:
         hump_tank = False
 
+    m_flow = None
     for it in range(1, max_iter + 1):
 
         # Recompute wing planform at the start of each iteration: under
@@ -327,7 +328,7 @@ def run_class_ii(
         drag_bd = DragEstimation(drag_inp).compute()
 
         # Mission power -> LH2 fuel mass
-        mis_bd = MissionPower(cfg_iter, drag_bd, config=config,comp=comp, MTOW=MTOW, S_ref=S_ref,CL_approach=CL_approach).compute()
+        mis_bd = MissionPower(cfg_iter, drag_bd, config=config,comp=comp, MTOW=MTOW, S_ref=S_ref,CL_approach=CL_approach, m_flow=m_flow).compute()
         M_landing = MTOW - (
             mis_bd.m_LH2_cruise
             + mis_bd.m_LH2_climb
@@ -415,6 +416,7 @@ def run_class_ii(
         delta    = abs(MTOW_new - MTOW)
         OEW_kg       = wt_bd.W_empty+W_fixed
         H2_results_all = wt_bd.H2_results_all
+        m_flow = wt_bd.mass_breakdown["mass_flows"]
 
         iteration_log.append(dict(
             iter         = it,

@@ -31,11 +31,14 @@ import csv
 from pathlib import Path
 import json
 import sys
+import contextlib
+import os
 
 root = Path(__file__).resolve().parent.parent
 sys.path.append(str(root))
 
-from rocketcea.cea_obj_w_units import CEA_Obj
+with open(os.devnull, "w") as f, contextlib.redirect_stdout(f):
+    from rocketcea.cea_obj_w_units import CEA_Obj
 
 from Propulsion.config         import Config
 from Propulsion.TurbineSizing  import GasTurbineCycle
@@ -43,7 +46,6 @@ from Propulsion.OffDesign      import OffDesignEvaluator
 from Propulsion.DimSizing      import DimensionalSizing
 from Propulsion.ExpanderSizing import PistonExpander
 from Propulsion.plot_style     import apply_style
-
 
 # ----------------------------------------------------------------------
 # Helpers

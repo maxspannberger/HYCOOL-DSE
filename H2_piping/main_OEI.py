@@ -216,8 +216,8 @@ def main_H2_OEI(comps=None, sizes=None, All_temps=None, HEX_areas=None, prev_sta
         states_F, final_mdot_F, _, Temps_F = solve_OEI_system(system_F, m_dot=current_mdot, T_amb=c.T_amb, branch_name="Failed Wing", show=show)
         
         All_temps[current_phase] = {}
-        All_temps[current_phase]["W"] = Temps_W
-        All_temps[current_phase]["F"] = Temps_F
+        All_temps[f"{current_phase}_Working"] = Temps_W
+        All_temps[f"{current_phase}_Failed"] = Temps_F
 
         # 5. Output and JSON Export
         T_W, p_W, rho_W, h_W = states_W['T'][-1][-1], states_W['p'][-1][-1], states_W['rho'][-1][-1], states_W['h'][-1][-1]
