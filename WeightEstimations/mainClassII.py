@@ -409,7 +409,7 @@ def run_class_ii(
         # print(f"b_v used in weight = {wt_inp.b_v:.3f} m")
         # print(f"tail_bd S_v        = {tail_bd.S_v:.3f} m²")
 
-        wt_bd = weightEstimation(wt_inp, comp).compute()
+        wt_bd = weightEstimation(wt_inp, comp, write).compute()
 
         # Close the loop
         MZFW_new = wt_bd.W_empty + cfg.W_payload + W_fixed

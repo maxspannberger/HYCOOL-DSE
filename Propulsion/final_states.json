@@ -1,65 +1,9 @@
 {
     "TO": {
-        "Temperature_K": 141.82,
-        "Pressure_Pa": 2218298.49,
-        "Density_kg_m3": 3.74,
-        "Enthalpy_J_kg": 1787534.92,
-        "Final_MassFlow_kg_s": 0.0437
-    },
-    "climb": {
-        "Temperature_K": 141.57,
-        "Pressure_Pa": 2207134.22,
-        "Density_kg_m3": 3.73,
-        "Enthalpy_J_kg": 1784472.81,
-        "Final_MassFlow_kg_s": 0.04412
-    },
-    "cruise": {
-        "Temperature_K": 147.56,
-        "Pressure_Pa": 2450302.6,
-        "Density_kg_m3": 3.97,
-        "Enthalpy_J_kg": 1859814.88,
-        "Final_MassFlow_kg_s": 0.03376
-    },
-    "APP": {
-        "Temperature_K": 78.64,
-        "Pressure_Pa": 2779404.55,
-        "Density_kg_m3": 8.86,
-        "Enthalpy_J_kg": 1009160.48,
-        "Final_MassFlow_kg_s": 0.01036
-    },
-    "OEI_gt": {
-        "Temperature_K": 156.28,
-        "Pressure_Pa": 2553394.66,
-        "Density_kg_m3": 3.9,
-        "Enthalpy_J_kg": 1972265.71,
-        "Final_MassFlow_kg_s": 0.04952
-    },
-    "OEI_mot_Working": {
-        "Temperature_K": 156.28,
-        "Pressure_Pa": 2553394.66,
-        "Density_kg_m3": 3.9,
-        "Enthalpy_J_kg": 1972265.71,
-        "Final_MassFlow_kg_s": 0.04952
-    },
-    "OEI_mot_Failed": {
-        "Temperature_K": 156.28,
-        "Pressure_Pa": 2553394.66,
-        "Density_kg_m3": 3.9,
-        "Enthalpy_J_kg": 1972265.71,
-        "Final_MassFlow_kg_s": 0.04952
-    },
-    "OEI_bus_Working": {
-        "Temperature_K": 156.28,
-        "Pressure_Pa": 2553394.66,
-        "Density_kg_m3": 3.9,
-        "Enthalpy_J_kg": 1972265.71,
-        "Final_MassFlow_kg_s": 0.04952
-    },
-    "OEI_bus_Failed": {
-        "Temperature_K": 156.28,
-        "Pressure_Pa": 2553394.66,
-        "Density_kg_m3": 3.9,
-        "Enthalpy_J_kg": 1972265.71,
-        "Final_MassFlow_kg_s": 0.04952
+        "Temperature_K": 141.69,
+        "Pressure_Pa": 2229569.53,
+        "Density_kg_m3": 3.77,
+        "Enthalpy_J_kg": 1785837.96,
+        "Final_MassFlow_kg_s": 0.04356
     }
 }
