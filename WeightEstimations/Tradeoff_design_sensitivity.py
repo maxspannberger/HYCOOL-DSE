@@ -111,7 +111,7 @@ def single_sensitivity_run(
             raise ValueError("Invalid sensitivity configuration")
 
         for config in designs_to_consider:
-            class_II_results = run_class_ii(config=config, comp=comp, verbose=False, cfg=cfg, max_iter=2)
+            class_II_results = run_class_ii(config=config, comp=comp, verbose=False, cfg=cfg)
 
             if more_than_tradeoff:
                 max_temps = {}
@@ -683,7 +683,7 @@ def save_tradeoff(cfg, designs_to_consider=[1,2,3,4,5]):
 
 if __name__ == "__main__":
     cfg = default_q400_hycool()
-    n_repeats = 5
+    n_repeats = 100
     designs_to_consider = [1, 2, 3, 4, 5]
     weights={
         "mass": 0.25,
