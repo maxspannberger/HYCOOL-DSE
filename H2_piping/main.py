@@ -154,8 +154,6 @@ def main_H2_nominal(comps=None, sizes=None, show=False, write=False, normal_phas
               Corner(N_bend   =  1,  
                      curv     =  2.5),
 
-              Pipe(length     =  0.71),
-
               Valve(name      =  'shutoff'),
 
               Corner(N_bend   =  1,  
@@ -177,7 +175,7 @@ def main_H2_nominal(comps=None, sizes=None, show=False, write=False, normal_phas
 
               Valve(name      =  'shutoff'),
               
-              Pipe(length     =  8.45),
+              Pipe(length     =  7.5),
 
               Corner(N_bend   =  1,  
                      curv     =  2.5),
@@ -217,12 +215,7 @@ def main_H2_nominal(comps=None, sizes=None, show=False, write=False, normal_phas
               Corner(N_bend   =  1,  
                      curv     =  2.5),
 
-              Pipe(length     =  5.5),
-
-              Corner(N_bend   =  1,  
-                     curv     =  2.5),
-
-              Pipe(length     =  0.5),
+              Pipe(length     =  7.5),
 
               COOL(name       = 'hts_pow', 
               location   = component_position['hts_pow'][1],
@@ -234,8 +227,7 @@ def main_H2_nominal(comps=None, sizes=None, show=False, write=False, normal_phas
               Corner(N_bend   =  1,  
                      curv     =  2.5),
 
-              Corner(N_bend   =  1, 
-                     curv     =  2.5),
+              Pipe(length     =  0.5),
 
               COOL(name       = 'dc_ac', 
               location   = component_position['dc_ac'][1],
@@ -244,17 +236,10 @@ def main_H2_nominal(comps=None, sizes=None, show=False, write=False, normal_phas
               comps=comps,
               sizes=sizes),
 
-              Pipe(length     =  0.5),
-
               Corner(N_bend   =  1,  
                      curv     =  2.5),
 
-              Pipe(length     =  5.5),
-
-              Corner(N_bend   =  1,  
-                     curv     =  2.5),
-
-              Pipe(length     =  0.5),
+              Pipe(length     =  7.5),
 
               COOL(name       = 'dc_ac', 
               location   = component_position['dc_ac'][0],
@@ -264,9 +249,6 @@ def main_H2_nominal(comps=None, sizes=None, show=False, write=False, normal_phas
               sizes=sizes),
 
               Corner(N_bend   =  1,  
-                     curv     =  2.5),
-
-              Corner(N_bend   =  1, 
                      curv     =  2.5),
 
               Pipe(length     =  1.0),

@@ -1,4 +1,4 @@
-from math import pi, cbrt
+from math import cos, pi, cbrt
 import numpy as np
 
 
@@ -49,7 +49,7 @@ def pipe_calculations(b=29.00, sweep_quarter_chord=10.56, show=False):
     else:
         t_inner = t_inner
 
-    t_outer = cbrt(1 / (3 * 418000)) * (pipe_diameter + 2 * vacuum_thickness)
+t_outer = cbrt(1 / (3 * 418000)) * (pipe_diameter + 2 * vacuum_thickness + 2 * t_inner)
 
     if t_outer < 0.00051:
         t_outer = 0.00051
