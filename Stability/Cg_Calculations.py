@@ -199,6 +199,7 @@ class CgBreakdown:
     x_cg_power_units: float
     x_cg_TMS: float
     cg_location_engines: float
+    l_v:    float
 
 
     def summary(self) -> Table:
@@ -248,8 +249,13 @@ class CgBreakdown:
         )
 
         table.add_row(
-            "[bold]Tail Length Estimate (l_h)[/bold]",
+            "[bold]Hor. Tail Length Estimate (l_h)[/bold]",
             f"[bold]{self.l_h:.1f}[/bold]",
+        )
+
+        table.add_row(
+            "[bold]Ver. Tail Length Estimate (l_v)[/bold]",
+            f"[bold]{self.l_v:.1f}[/bold]",
         )
 
         table.add_row(
@@ -520,6 +526,7 @@ class CgCalculator:
         x_cg_OEW = ((W_fus_group*x_cg_fus_group + W_wing_group*x_cg_wing_group)/(W_fus_group + W_wing_group))
 
         l_h = l_f - (x_LEMAC - 1/4 * MAC) - 0.02*l_f - 3/4 * MAC_h      #TODO here I assumed a 2% of fus length for little cone behind tail considered l_h distance 1/4c wing to 1/4 horizontal tail. 
+        l_v = l_f - (x_LEMAC - 1/4 * MAC) - 0.02*l_f - 3/4 * MAC_v
 
         lfn = x_LEMAC + distance_le_root_to_le_mac
         x_cg_cargo_fwd = l_n + (lfn-l_n)/2
@@ -551,7 +558,8 @@ class CgCalculator:
             l_f = l_f,
             x_cg_power_units = x_cg_power_units,
             x_cg_TMS = x_cg_TMS,
-            cg_location_engines = cg_location_engines
+            cg_location_engines = cg_location_engines,
+            l_v = l_v,
         )
 
 
