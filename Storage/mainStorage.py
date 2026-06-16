@@ -34,7 +34,7 @@ tau_H   = 24          # [h]       hold time
 # MLI insulation
 Ts     = 298          # [K]       warm-side (ambient) temperature
 Tc     = 20.3         # [K]       cold-side (LH2) temperature
-Pvac   = 1e-4         # [torr]    MLI interstitial pressure
+Pvac   = 1e-5         # [torr]    MLI interstitial pressure
 rhoMLI = 20           # [kg/m^3]  MLI bulk density
 
 # Baffles
