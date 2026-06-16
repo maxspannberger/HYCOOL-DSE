@@ -125,7 +125,6 @@ def single_sensitivity_run(
                             if loc not in max_temps[comp]:
                                 max_temps[comp][loc] = 0.0
                                 min_temps[comp][loc] = np.inf
-                            print(class_II_results.weight.H2_results_all["temperatures"][condition][comp][loc])
                             if class_II_results.weight.H2_results_all["temperatures"][condition][comp][loc] > max_temps[comp][loc]:
                                 max_temps[comp][loc] = class_II_results.weight.H2_results_all["temperatures"][condition][comp][loc]
                             if class_II_results.weight.H2_results_all["temperatures"][condition][comp][loc] < min_temps[comp][loc]:
@@ -181,13 +180,13 @@ def single_sensitivity_run(
                     "eff_OEI_mot": class_II_results.weight.mass_breakdown["efficiencies"][5],
                     "eff_OEI_bus": class_II_results.weight.mass_breakdown["efficiencies"][6],
 
-                    "A_hex_hts_gen": class_II_results.weight.H2_results_all["areas"]["hts_gen"][0.5],
-                    "A_hex_hts_pow_1": class_II_results.weight.H2_results_all["areas"]["hts_pow"][0.5],
-                    "A_hex_hts_pow_2": class_II_results.weight.H2_results_all["areas"]["hts_pow"][1.0],
-                    "A_hex_ac_dc": class_II_results.weight.H2_results_all["areas"]["ac_dc"][0.5],
-                    "A_hex_dc_ac_1": class_II_results.weight.H2_results_all["areas"]["dc_ac"][0.5],
-                    "A_hex_dc_ac_2": class_II_results.weight.H2_results_all["areas"]["dc_ac"][1.0],
-                    "A_hex_bus": class_II_results.weight.H2_results_all["areas"]["bus"][0.5],
+                    "A_hex_hts_gen": class_II_results.weight.H2_results_all["areas"]["hts_gen"][0.5]["area"],
+                    "A_hex_hts_pow_1": class_II_results.weight.H2_results_all["areas"]["hts_pow"][0.5]["area"],
+                    "A_hex_hts_pow_2": class_II_results.weight.H2_results_all["areas"]["hts_pow"][1.0]["area"],
+                    "A_hex_ac_dc": class_II_results.weight.H2_results_all["areas"]["ac_dc"][0.5]["area"],
+                    "A_hex_dc_ac_1": class_II_results.weight.H2_results_all["areas"]["dc_ac"][0.5]["area"],
+                    "A_hex_dc_ac_2": class_II_results.weight.H2_results_all["areas"]["dc_ac"][1.0]["area"],
+                    "A_hex_bus": class_II_results.weight.H2_results_all["areas"]["bus"][0.5]["area"],
 
                     "TMAX_hts_gen": max_temps["hts_gen"][0.5],
                     "TMAX_hts_pow_1": max_temps["hts_pow"][0.5],
@@ -209,8 +208,7 @@ def single_sensitivity_run(
                     "T_in_gt_cruise": class_II_results.weight.H2_results_all["final_states"]["cruise"]["Temperature_K"],
                     "T_in_gt_climb": class_II_results.weight.H2_results_all["final_states"]["climb"]["Temperature_K"],
                     "T_in_gt_APP": class_II_results.weight.H2_results_all["final_states"]["APP"]["Temperature_K"],
-                    "T_in_gt_OEI_gt_AVG": 0.5 * (class_II_results.weight.H2_results_all["final_states"]["OEI_gt_Working"]["Temperature_K"] +
-                                                 class_II_results.weight.H2_results_all["final_states"]["OEI_gt_Failed"]["Temperature_K"]),
+                    "T_in_gt_OEI_gt": class_II_results.weight.H2_results_all["final_states"]["OEI_gt"]["Temperature_K"],
                     "T_in_gt_OEI_mot_AVG": 0.5 * (class_II_results.weight.H2_results_all["final_states"]["OEI_mot_Working"]["Temperature_K"] +
                                                   class_II_results.weight.H2_results_all["final_states"]["OEI_mot_Failed"]["Temperature_K"]),
                     "T_in_gt_OEI_bus_AVG": 0.5 * (class_II_results.weight.H2_results_all["final_states"]["OEI_bus_Working"]["Temperature_K"] +
@@ -220,10 +218,9 @@ def single_sensitivity_run(
                     "P_in_gt_cruise": class_II_results.weight.H2_results_all["final_states"]["cruise"]["Pressure_Pa"],
                     "P_in_gt_climb": class_II_results.weight.H2_results_all["final_states"]["climb"]["Pressure_Pa"],
                     "P_in_gt_APP": class_II_results.weight.H2_results_all["final_states"]["APP"]["Pressure_Pa"],
-                    "P_in_gt_OEI_gP_AVG": 0.5 * (class_II_results.weight.H2_results_all["final_states"]["OEI_gP_Working"]["Pressure_Pa"] +
-                                                 class_II_results.weight.H2_results_all["final_states"]["OEI_gP_Failed"]["Pressure_Pa"]),
-                    "P_in_gt_OEI_moP_AVG": 0.5 * (class_II_results.weight.H2_results_all["final_states"]["OEI_moP_Working"]["Pressure_Pa"] +
-                                                  class_II_results.weight.H2_results_all["final_states"]["OEI_moP_Failed"]["Pressure_Pa"]),
+                    "P_in_gt_OEI_gt": class_II_results.weight.H2_results_all["final_states"]["OEI_gt"]["Pressure_Pa"],
+                    "P_in_gt_OEI_mot_AVG": 0.5 * (class_II_results.weight.H2_results_all["final_states"]["OEI_mot_Working"]["Pressure_Pa"] +
+                                                  class_II_results.weight.H2_results_all["final_states"]["OEI_mot_Failed"]["Pressure_Pa"]),
                     "P_in_gt_OEI_bus_AVG": 0.5 * (class_II_results.weight.H2_results_all["final_states"]["OEI_bus_Working"]["Pressure_Pa"] +
                                                   class_II_results.weight.H2_results_all["final_states"]["OEI_bus_Failed"]["Pressure_Pa"]),
                 }
