@@ -146,7 +146,7 @@ def single_sensitivity_run(
                     "MTOW": class_II_results.MTOW,
                     "OEW": class_II_results.W_empty,
                     "M_fuel": class_II_results.W_fuel,
-                    "M_tank": class_II_results.weight.W_h2_tank,
+                    # "M_tank": class_II_results.weight.W_h2_tank,
                     "M_power": class_II_results.W_prop,
 
                     "m_GT": class_II_results.weight.mass_breakdown["gt"],

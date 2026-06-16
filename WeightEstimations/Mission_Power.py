@@ -291,8 +291,8 @@ class MissionPower:
             m_c  = md_c * t_c / cruise_eff
             m_cl = md_cl * t_cl / climb_eff
         else:
-            m_c = self.m_flow[2] * t_c
-            m_cl = self.m_flow[1] * t_cl
+            m_c = 2 * self.m_flow[2] * t_c
+            m_cl = 2 * self.m_flow[1] * t_cl
 
         m_TO_taxi = self.cfg.TO_taxi_frac * (m_c + m_cl)
 
