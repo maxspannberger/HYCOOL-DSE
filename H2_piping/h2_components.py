@@ -631,7 +631,7 @@ class COOL:
             if self.area_calc_mode:
                 U = heat_transfer_coefficient(T1, T2, self.T, p1, p2, m_dot, self.d, self.fluid)
                 deltaT = self.T - 0.5 * (T1 + T2)
-                self.area = self.N_channels * self.Q_dot / (U * deltaT * HEX_effectiveness)
+                self.area = self.Q_dot / (U * deltaT * HEX_effectiveness)
 
             else:
                 T_old = 0.0
@@ -641,12 +641,11 @@ class COOL:
                     k += 1
 
                     U = heat_transfer_coefficient(T1, T2, self.T, p1, p2, m_dot, self.d, self.fluid)
-                
                     deltaT = self.Q_dot / (U * self.area * HEX_effectiveness)
                     self.T = deltaT + 0.5 * (T1 + T2)
 
-            self.L = self.area / (np.pi * self.d)
-            self.L = config.FPI_relaxation * self.L + (1 - config.FPI_relaxation * L_old)
+            self.L = self.area / (self.N_channels * np.pi * self.d)
+            self.L = config.FPI_relaxation * self.L + (1.0 - config.FPI_relaxation) * L_old
             print(f"{1000*self.L:.2f}")
 
             if not self.L/self.d >= 10:
