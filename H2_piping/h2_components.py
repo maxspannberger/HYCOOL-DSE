@@ -666,8 +666,21 @@ class COOL:
 
             Tb = 0.5 * (T1 + T2)
 
+           # --- DYNAMIC ALUMINUM 6061 THERMAL CONDUCTIVITY ---
+            # Approximated linear fit based on NIST cryogenic data for Al-6061-T6
+            # 20K = ~25 W/mK | 300K = ~167 W/mK
+            T_ave = Tb * 1.5
+            if Tb <= 20.0:
+                k_Al_dynamic = 25.0
+            elif Tb >= 300.0:
+                k_Al_dynamic = 167.0
+            else:
+                k_Al_dynamic = 25.0 + ((T_ave- 20.0) / (300.0 - 20.0)) * (167.0 - 25.0)
+            # --------------------------------------------------
+
             t_f = self.d + 2 * config.HEX_extra_thickness
-            R_f = self.width / (6 * config.k_Al * t_f * self.L)
+            # Swap config.k_Al out for the new dynamic variable
+            R_f = self.width / (6 * k_Al_dynamic * t_f * self.L)
 
             # --- BYPASS FOR DEAD COMPONENTS ---
             if self.Q_dot <= 1e-6:
@@ -695,7 +708,7 @@ class COOL:
 
                 a = 2/self.length * (self.T - Tb) / self.Q_dot
                 b = -2 / (np.pi * self.d * self.length * h_H2)
-                c = -self.width / (6 * config.k_Al * t_f * self.length)
+                c = -self.width / (6 * k_Al_dynamic * t_f * self.length)
                 if "hts" not in self.name:
                     a -= 2 * config.t_TMI / (k_TMI * self.width * self.length**2)
 
