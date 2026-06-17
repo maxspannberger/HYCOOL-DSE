@@ -405,11 +405,8 @@ class Pipe:
 
             # --- COMPRESSIBILITY CHECK ---
             # =================================================================
-            try:
-                a_sound = CP.PropsSI('A', 'P', p1, 'H', h1, self.fluid)
-                mach_pipe = u1 / a_sound
-            except ValueError:
-                mach_pipe = 0.0
+            a_sound = CP.PropsSI('A', 'P', p1, 'H', h1, self.fluid)
+            mach_pipe = u1 / a_sound
             
             if mach_pipe >= 1.0:
                 raise ValueError(f"[{self.name}] CHOKED FLOW! Mach number {mach_pipe:.3f} >= 1.0 at seg {seg}")
@@ -681,9 +678,9 @@ class COOL:
                 R_TMI = 2 * config.t_TMI * self.L / (k_TMI * self.length**2 * self.width)
                 # print(R_TMI)
 
-            # TODO: double check the following code
+            # TODO: triple check the following code
             if self.area_calc_mode:                
-                Tw = max(self.T - self.Q_dot * R_f, Tb)
+                Tw = max(self.T - self.Q_dot * self.length/(2 * self.L) * R_f, Tb)
                 h_H2 = heat_transfer_coefficient(T1, T2, Tw, p1, p2, m_dot, self.d, self.fluid)
 
                 a = 2/self.length * (self.T - Tb) / self.Q_dot
@@ -710,10 +707,19 @@ class COOL:
                 k = 0
                 while abs(self.T - T_old) > 1e-2 and k < 100:
                     T_old = self.T
-                    Tw = self.T - self.Q_dot * R_f
+                    Tw = self.T - self.Q_dot * self.length/(2 * self.L) * R_f
+                    if "hts" not in self.name:
+                        Tw -= self.Q_dot * self.length/(2 * self.L) * R_TMI
+                        # print(R_TMI)
+                    # print(Tw)
                     h_H2 = heat_transfer_coefficient(T1, T2, Tw, p1, p2, m_dot, self.d, self.fluid)
                     R_tot = R_f + 2 / (np.pi * self.d * self.length * h_H2)
+                    if "hts" not in self.name:
+                        R_tot += R_TMI
+                    # print(R_f, R_tot)
                     self.T = self.Q_dot * self.length/(2 * self.L) * R_tot + Tb
+                    self.T = config.FPI_relaxation * self.T + (1.0 - config.FPI_relaxation) * T_old
+                    # print(f"AAA {self.T}")
 
         if show:
             if self.area_calc_mode:

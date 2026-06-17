@@ -1,9 +1,16 @@
 {
-    "TO": {
-        "Temperature_K": 142.12,
-        "Pressure_Pa": 1667191.6,
-        "Density_kg_m3": 2.82,
-        "Enthalpy_J_kg": 1794240.37,
-        "Final_MassFlow_kg_s": 0.04325
+    "OEI_bus_Working": {
+        "Temperature_K": 157.16,
+        "Pressure_Pa": 2380784.63,
+        "Density_kg_m3": 3.62,
+        "Enthalpy_J_kg": 1984291.51,
+        "Final_MassFlow_kg_s": 0.049
+    },
+    "OEI_bus_Failed": {
+        "Temperature_K": 157.16,
+        "Pressure_Pa": 2380784.63,
+        "Density_kg_m3": 3.62,
+        "Enthalpy_J_kg": 1984291.51,
+        "Final_MassFlow_kg_s": 0.049
     }
 }
