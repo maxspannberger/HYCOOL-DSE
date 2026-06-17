@@ -695,7 +695,7 @@ class COOL:
 
                 a = 2/self.length * (self.T - Tb) / self.Q_dot
                 b = -2 / (np.pi * self.d * self.length * h_H2)
-                c = -self.width / (6 * config.k_Al * t_f * self.length)
+                c = -self.width / (6 * config.k_Al * t_f)
                 if "hts" not in self.name:
                     a -= 2 * config.t_TMI / (k_TMI * self.width * self.length**2)
 
