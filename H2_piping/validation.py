@@ -64,6 +64,24 @@ def plot_validation(states, phase_name, validation_df=None):
                 temp_list.append(value)
         flat_states[prop] = temp_list
 
+    # --- SPATIAL MAPPING (METERS) ---
+    sim_points = len(flat_states['p'])
+    
+    # Extract the physical start and end lengths from the validation data
+    if validation_df is not None and 'l' in validation_df.columns:
+        l_start = validation_df['l'].iloc[0]
+        l_end = validation_df['l'].iloc[-1]
+        val_x = validation_df['l'] # Exact physical locations of test sensors
+    else:
+        # Fallback if no validation data is provided
+        l_start = 0
+        l_end = sim_points - 1
+        val_x = None
+
+    # Stretch the simulation nodes evenly across the physical pipe length
+    x_sim = np.linspace(l_start, l_end, sim_points)
+    # --------------------------------
+
     # 2. Setup Plotting
     frac_arr = np.array(flat_states['frac'])
     gradient = np.tile(frac_arr, (100, 1)) 
@@ -80,35 +98,38 @@ def plot_validation(states, phase_name, validation_df=None):
     # 3. Plotting Loop
     for i, prop in enumerate(properties):
         y_data = flat_states[prop]
-        x_steps = np.arange(len(y_data))
         
-        y_min, y_max = min(y_data), max(y_data)
-        margin = (y_max - y_min) * 0.1
+        # Plot Simulation first, using the physical meter array (x_sim)
+        axes[i].plot(x_sim, y_data, color=colors[i], label='Simulation', linewidth=2)
         
-        # Overlay Phase Map
-        axes[i].imshow(gradient, aspect='auto', cmap='RdYlBu_r', vmin=0, vmax=1,
-                       extent=[0, len(y_data), y_min - margin, y_max + margin], alpha=0.2)
-        
-        # Plot Simulation
-        axes[i].plot(x_steps, y_data, color=colors[i], label='Simulation', linewidth=2)
-        
-        # 4. Overlay Validation Data with Interpolation
+        # 4. Overlay Validation Data using actual sensor locations (val_x)
         if validation_df is not None and val_map[prop] in validation_df.columns:
-            # Create mapping: scale validation length to simulation index range
-            val_x = np.linspace(0, len(y_data) - 1, len(validation_df))
             axes[i].scatter(val_x, validation_df[val_map[prop]], 
                             color='black', marker='x', label='Validation', s=40, zorder=5)
             axes[i].legend()
 
+        # --- FIX: Get the limits AFTER plotting both line and scatter ---
+        y_min, y_max = axes[i].get_ylim()
+        
+        # Overlay Phase Map using the actual plot limits AND the physical length limits
+        axes[i].imshow(gradient, aspect='auto', cmap='RdYlBu_r', vmin=0, vmax=1,
+                       extent=[l_start, l_end, y_min, y_max], alpha=0.2)
+        
+        # Ensure the image doesn't obscure the plot elements
+        axes[i].set_zorder(1)
+        axes[i].patch.set_visible(False)
+        
         axes[i].set_title(titles[i])
         axes[i].grid(True, linestyle='--', alpha=0.6)
         axes[i].set_ylabel(titles[i])
-        axes[i].set_xlabel("System Step Index")
+        
+        # Lock the X-axis to the physical boundaries and update the label
+        axes[i].set_xlim(l_start, l_end)
+        axes[i].set_xlabel("Distance along Pipe (meters)")
 
     fig.suptitle(f'Hydrogen State Profile ({phase_name.upper()})', fontsize=16)
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.show()
-
 
 if __name__ == "__main__":
        # Load the component cooling requirements from the propulsion json file
@@ -118,9 +139,10 @@ if __name__ == "__main__":
        
 
     # Extract data from test set csv
-    setup_data    = pd.read_csv('validation_set_run_2.csv', skiprows=0, nrows=1)
-    state_data    = pd.read_csv('validation_set_run_2.csv', skiprows=3)
-    
+    # Use the 'folder' variable to construct an absolute path to the CSV
+    setup_data    = pd.read_csv(folder / 'validation_set_run_2.csv', skiprows=0, nrows=1)
+    state_data    = pd.read_csv(folder / 'validation_set_run_2.csv', skiprows=3)
+
     # Remove NaN from state_data
     state_data    = state_data.dropna(axis=1, how='all')
     
