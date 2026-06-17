@@ -108,7 +108,7 @@ class CgCalculationInput:
         W_wing = result.weight.W_wing_accurate
         W_sc = result.weight.W_sc
         W_engine = result.weight.W_engine         #total propulsion system weight, excluding lh2 tank but including piping TODO: perhaps exclude piping & cabling for the cg calc
-        W_TMS = cfg.TMS_mass_N4                   #TODO if nr of engine changes use N2
+        W_TMS = result.weight.mass_breakdown["TMS"]                   #TODO if nr of engine changes use N2
 
         cg_location_TMS = cfg.cg_location_TMS                  #[m] distance from 1/4MAC to TMS cg
         location_wing_cg = result.distance_le_mac_to_cg         #[m] distance from LEMAC to wing cg 
@@ -177,32 +177,57 @@ class CgBreakdown:
     OEW_check: float
     OEW_excl_fixed: float
     x_cg_OEW: float
+
     W_wing_group: float
-    W_fus_group: float
-    x_cg_fus_group: float
+    W_sc: float
+    W_lg_main: float
+    W_wing: float
+    W_propulsion: float
+    W_TMS: float
+
     x_cg_wing_group: float
+    x_cg_wing_group_rel: float
+    x_cg_sc: float
+    x_cg_lg_main: float
+    x_cg_wing: float
+    x_cg_power_units: float
+    x_cg_TMS: float
+    x_cg_lg_main_rel: float
+    location_wing_cg: float
+    cg_location_engines: float
+    cg_location_TMS: float
+
+    W_fus_group: float
+    W_fixed: float
+    W_fus: float
+    W_lg_nose: float
+    W_htail: float
+    W_vtail: float
+    W_h2_tank: float
+
+    x_cg_fus_group: float
+    x_cg_fixed: float
+    x_cg_fus: float
+    x_cg_lg_nose: float
+    x_cg_htail: float
+    x_cg_vtail: float
+    x_cg_tank: float
+
     MAC: float
     X_LEMAC_new: float
-    l_h : float
-    x_cg_tank: float
-    x_cg_wing_group_rel: float
+    l_h: float
     lfn: float
     x_cg_cargo_fwd: float
     x_cg_cargo_aft: float
     x_cg_lg_main: float
     x_TE_wing_root: float
-    x_cg_htail: float
-    x_cg_vtail: float
     MAC_h: float
     MAC_v: float
     l_f: float
-    x_cg_power_units: float
-    x_cg_TMS: float
-    cg_location_engines: float
-    l_v:    float
+    l_v: float
     OEW_cg_check: float
 
-
+    '''
     def summary(self) -> Table:
         table = Table(
             title="CG Calculation Breakdown",
@@ -338,6 +363,80 @@ class CgBreakdown:
             f"[bold]{self.OEW_cg_check:.1f}[/bold]",
         )
 
+        return table '''
+    def summary(self) -> Table:
+        table = Table(
+            title="CG Calculation Breakdown",
+            show_header=True,
+            header_style="bold blue",
+        )
+
+        table.add_column("Variable")
+        table.add_column("Value", justify="right")
+
+        table.add_row("OEW_check", f"{self.OEW_check:.3f}")
+        table.add_row("OEW_excl_fixed", f"{self.OEW_excl_fixed:.3f}")
+        table.add_row("x_cg_OEW", f"{self.x_cg_OEW:.3f}")
+
+        table.add_section()
+
+        table.add_row("W_wing_group", f"{self.W_wing_group:.3f}")
+        table.add_row("W_sc", f"{self.W_sc:.3f}")
+        table.add_row("W_lg_main", f"{self.W_lg_main:.3f}")
+        table.add_row("W_wing", f"{self.W_wing:.3f}")
+        table.add_row("W_propulsion", f"{self.W_propulsion:.3f}")
+        table.add_row("W_TMS", f"{self.W_TMS:.3f}")
+
+        table.add_section()
+
+        table.add_row("x_cg_wing_group", f"{self.x_cg_wing_group:.3f}")
+        table.add_row("x_cg_wing_group_rel", f"{self.x_cg_wing_group_rel:.3f}")
+        table.add_row("x_cg_sc", f"{self.x_cg_sc:.3f}")
+        table.add_row("x_cg_lg_main", f"{self.x_cg_lg_main:.3f}")
+        table.add_row("x_cg_wing", f"{self.x_cg_wing:.3f}")
+        table.add_row("x_cg_power_units", f"{self.x_cg_power_units:.3f}")
+        table.add_row("x_cg_TMS", f"{self.x_cg_TMS:.3f}")
+        table.add_row("x_cg_lg_main_rel", f"{self.x_cg_lg_main_rel:.3f}")
+        table.add_row("location_wing_cg", f"{self.location_wing_cg:.3f}")
+        table.add_row("cg_location_engines", f"{self.cg_location_engines:.3f}")
+        table.add_row("cg_location_TMS", f"{self.cg_location_TMS:.3f}")
+
+        table.add_section()
+
+        table.add_row("W_fus_group", f"{self.W_fus_group:.3f}")
+        table.add_row("W_fixed", f"{self.W_fixed:.3f}")
+        table.add_row("W_fus", f"{self.W_fus:.3f}")
+        table.add_row("W_lg_nose", f"{self.W_lg_nose:.3f}")
+        table.add_row("W_htail", f"{self.W_htail:.3f}")
+        table.add_row("W_vtail", f"{self.W_vtail:.3f}")
+        table.add_row("W_h2_tank", f"{self.W_h2_tank:.3f}")
+
+        table.add_section()
+
+        table.add_row("x_cg_fus_group", f"{self.x_cg_fus_group:.3f}")
+        table.add_row("x_cg_fixed", f"{self.x_cg_fixed:.3f}")
+        table.add_row("x_cg_fus", f"{self.x_cg_fus:.3f}")
+        table.add_row("x_cg_lg_nose", f"{self.x_cg_lg_nose:.3f}")
+        table.add_row("x_cg_htail", f"{self.x_cg_htail:.3f}")
+        table.add_row("x_cg_vtail", f"{self.x_cg_vtail:.3f}")
+        table.add_row("x_cg_tank", f"{self.x_cg_tank:.3f}")
+
+        table.add_section()
+
+        table.add_row("MAC", f"{self.MAC:.3f}")
+        table.add_row("X_LEMAC_new", f"{self.X_LEMAC_new:.3f}")
+        table.add_row("l_h", f"{self.l_h:.3f}")
+        table.add_row("lfn", f"{self.lfn:.3f}")
+        table.add_row("x_cg_cargo_fwd", f"{self.x_cg_cargo_fwd:.3f}")
+        table.add_row("x_cg_cargo_aft", f"{self.x_cg_cargo_aft:.3f}")
+        table.add_row("x_cg_lg_main", f"{self.x_cg_lg_main:.3f}")
+        table.add_row("x_TE_wing_root", f"{self.x_TE_wing_root:.3f}")
+        table.add_row("MAC_h", f"{self.MAC_h:.3f}")
+        table.add_row("MAC_v", f"{self.MAC_v:.3f}")
+        table.add_row("l_f", f"{self.l_f:.3f}")
+        table.add_row("l_v", f"{self.l_v:.3f}")
+        table.add_row("OEW_cg_check", f"{self.OEW_cg_check:.3f}")
+
         return table
 
 
@@ -437,7 +536,7 @@ class CgCalculator:
 
         x_cg_fixed = (cg_location_fus) * l_f                       #assume cg of fixed weight to be equal to fuselage cg, TODO: could be shifted a bit
         x_cg_fus = cg_location_fus * l_f
-        x_cg_lg_nose = 4.017    #old: (2/3) * l_n                                    #this is just an estimate, TODO: can be calculated from required load for steering (SEAD)        
+        x_cg_lg_nose = 3.81    #old: (2/3) * l_n                                    #this is just an estimate, TODO: can be calculated from required load for steering (SEAD)        
         x_cg_htail = 0.98*l_f-MAC_h+(cg_location_tail_c*MAC_h)        #took 2% fus lenght fort the little cone behind tail, then cg is at a torenbeek defined frn behind LE TODO: update when l_h is updated
         x_cg_vtail = 0.98*l_f-MAC_v+(cg_location_tail_c*MAC_v)        #took 2% fus lenght fort the little cone behind tail, then cg is at a torenbeek defined frn behind LE
         x_cg_tank = l_n + l_c + 1/2 * L_tank
@@ -543,28 +642,52 @@ class CgCalculator:
             OEW_check=OEW_check,
             OEW_excl_fixed=OEW_excl_fixed,
             x_cg_OEW=x_cg_OEW,
+
             W_wing_group=W_wing_group,
-            W_fus_group=W_fus_group,
-            x_cg_fus_group=x_cg_fus_group,
+            W_sc = W_sc,
+            W_lg_main = W_lg_main,
+            W_wing = W_wing,
+            W_propulsion = W_propulsion,
+            W_TMS = W_TMS,
+
             x_cg_wing_group=x_cg_wing_group,
+            x_cg_wing_group_rel = x_cg_wing_group_rel,
+            x_cg_sc = x_cg_sc,
+            x_cg_lg_main = x_cg_lg_main,
+            x_cg_wing = x_cg_wing,
+            x_cg_power_units = x_cg_power_units,
+            x_cg_TMS = x_cg_TMS,
+            x_cg_lg_main_rel = x_cg_lg_main_frn * MAC,
+            location_wing_cg = location_wing_cg,
+            cg_location_engines= cg_location_engines,
+            cg_location_TMS = cg_location_TMS,
+
+            W_fus_group=W_fus_group,
+            W_fixed = W_fixed,
+            W_fus = W_fus,
+            W_lg_nose = W_lg_nose,
+            W_htail = W_htail,
+            W_vtail = W_vtail,
+            W_h2_tank = W_h2_tank,
+
+            x_cg_fus_group=x_cg_fus_group,
+            x_cg_fixed = x_cg_fixed,
+            x_cg_fus = x_cg_fus,
+            x_cg_lg_nose = x_cg_lg_nose,
+            x_cg_htail = x_cg_htail,
+            x_cg_vtail = x_cg_vtail,
+            x_cg_tank = x_cg_tank,
+
             MAC = MAC,
             X_LEMAC_new = x_LEMAC,
             l_h = l_h,
-            x_cg_tank = x_cg_tank,
-            x_cg_wing_group_rel = x_cg_wing_group_rel,
             lfn = lfn,
             x_cg_cargo_fwd = x_cg_cargo_fwd,
             x_cg_cargo_aft = x_cg_cargo_aft,
-            x_cg_lg_main =x_cg_lg_main,
             x_TE_wing_root = x_TE_wing_root,
-            x_cg_htail = x_cg_htail,
-            x_cg_vtail = x_cg_vtail,
             MAC_h = MAC_h,
             MAC_v = MAC_v,
             l_f = l_f,
-            x_cg_power_units = x_cg_power_units,
-            x_cg_TMS = x_cg_TMS,
-            cg_location_engines = cg_location_engines,
             l_v = l_v,
             OEW_cg_check = OEW_cg_check
         )
@@ -578,7 +701,7 @@ if __name__ == "__main__":
         comp=comp_params,
         tol=1.0,
         max_iter=100,
-        verbose=False,
+        verbose=True,
         config=3,
     )
 

@@ -2,8 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Constants
-kn = -4                            #nacelle emperical factor (sl. 40), -4 for nacelle fwd of wing LE
-Vh_V = 0.85                             #tail/wing speed ratio (sl.42), 1 for t-tail, 0.95 for fin mtd, 0.85 for fus-mtd stabilizer
+kn = -4                              #nacelle emperical factor (sl. 40), -4 for nacelle fwd of wing LE
+Vh_V = 0.85                          #tail/wing speed ratio (sl.42), 1 for t-tail, 0.95 for fin mtd, 0.85 for fus-mtd stabilizer
 etah = 0.95                          #efficiency of horizontail tail, assumed constant (comments sl.43)
 CLh = -0.8                           #for adjustable horizontal tail (sl.17)
 gamma = 1.4
@@ -40,7 +40,7 @@ Mcruise = 0.84                       #max cruise mach number, easa document
 S_net = S - bf * cr                  #S - central wing area 'inside' fuselage
 lh = 16.944 #[m]                     #tail length, distance between wing ac and stabilizer ac, measured from scaled drawing airport manual
 hh = 4.342 #[m]                      #vertical distance between stabilizer plane and wing plane, measured from scaled drawing airport manual
-CL0 = 1.4                            #CL at 0 angle of attack for flapped wing (landing), Roskam for deltaCL0 + first year adsee book
+CL0 = 1.4                            #CL at 0 angle of attack for flapped wing (landing), only flaps, is for pitching moment calculations
 mu1 = 0.215                          #see slides 20-21, lect 8 for calculation
 mu2 = 0.79                           #see slides 20-21 for calculation
 mu3 = 0.045                          #see slides 20-21 for calculation
@@ -164,6 +164,7 @@ print(f'CLalpha_a_h cruise contribution wing {CLalpha_w_s}, contribution fuselag
 print(f'CLalpha_A_h control {CLalpha_A_h_c}, CLalpha_A_h stab {CLalpha_A_h_s}')
 print(f'downwash gradient {depsilon_dalpha}')
 print(f'wing aspect ratio {A}')
+
 
 
 
