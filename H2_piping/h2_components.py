@@ -668,9 +668,19 @@ class COOL:
 
             t_f = self.d + 2 * config.HEX_extra_thickness
             R_f = self.width / (6 * config.k_Al * t_f * self.L)
-            # print(R_f)
 
-            R_tot = (self.T - Tb) / self.Q_dot * 2*self.L/self.length
+            # --- BYPASS FOR DEAD COMPONENTS ---
+            if self.Q_dot <= 1e-6:
+                # If the component is dead (OEI kill switch), thermal resistance is irrelevant.
+                # Just set R_tot to a safe, small value to avoid division by zero.
+                R_tot = 1e-9 
+                
+                # Force the component wall temperature to just match the bulk fluid temp
+                self.T = Tb
+            else:
+                # Standard calculation for active components
+                R_tot = (self.T - Tb) / self.Q_dot * 2*self.L/self.length
+            # ----------------------------------
             # print(R_tot)
 
             if "hts" not in self.name:

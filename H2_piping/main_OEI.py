@@ -81,12 +81,53 @@ def solve_OEI_system(system, m_dot, T_amb, branch_name="", show=False):
     return states, m_dot, None, Temps
 
 
-def plot_combined_states(states_W, states_F, phase_name):
-    flat_W = {}
-    flat_F = {}
-    for prop in ['p', 'T', 'rho', 'h', 'frac']:
+# =============================================================================
+# Visualizes the pressure, temperature, density, and enthalpy profiles.
+# Compares Working Wing vs Failed Wing.
+# X-Axis is physically scaled (meters), treating COOL components as point locations.
+# =============================================================================
+def plot_combined_states(states_W, states_F, phase_name, system, mixed_state=None):
+    flat_W = {prop: [] for prop in ['p', 'T', 'rho', 'h', 'frac']}
+    flat_F = {prop: [] for prop in ['p', 'T', 'rho', 'h', 'frac']}
+    
+    for prop in flat_W.keys():
         flat_W[prop] = [value for component_data in states_W[prop] for value in component_data]
         flat_F[prop] = [value for component_data in states_F[prop] for value in component_data]
+
+    # --- MAP METERS TO COMPONENTS (Using Working Wing System) ---
+    flat_x = []
+    current_x = 0.0
+    state_idx = 0
+    cool_spans = []
+
+    for comp in system:
+        if isinstance(comp, tuple): 
+            continue # Skip pipe splits/merges
+
+        comp_nodes = len(states_W['p'][state_idx])
+        
+        comp_L = 0.0 
+        if comp.__class__.__name__ == 'Pipe' and hasattr(comp, 'length'):
+            comp_L = float(comp.length)
+
+        if comp_nodes > 1:
+            x_array = np.linspace(current_x, current_x + comp_L, comp_nodes)
+        elif comp_nodes == 1:
+            x_array = np.array([current_x + comp_L])
+        else:
+            x_array = np.array([])
+            
+        flat_x.extend(x_array)
+
+        if comp.__class__.__name__ == 'COOL':
+            cool_spans.append({
+                'name': comp.name,
+                'start': x_array[0] if len(x_array) > 0 else current_x 
+            })
+
+        current_x += comp_L
+        state_idx += 1
+    # ---------------------------------
 
     frac_W_arr = np.array(flat_W['frac'])
     frac_F_arr = np.array(flat_F['frac'])
@@ -100,30 +141,46 @@ def plot_combined_states(states_W, states_F, phase_name):
     for i, prop in enumerate(properties):
         y_min   = min(min(flat_W[prop]), min(flat_F[prop]))
         y_max   = max(max(flat_W[prop]), max(flat_F[prop]))
-        margin  = (y_max - y_min) * 0.05 if (y_max - y_min) > 0 else 1.0
+        margin  = (y_max - y_min) * 0.08 if (y_max - y_min) > 0 else 1.0
         y_mid   = (y_max + y_min) / 2.0
         
         axes[i].imshow(gradient, aspect='auto', cmap='RdYlBu_r', vmin=0, vmax=1,
-                       extent=[0, len(flat_W[prop]), y_min - margin, y_max + margin], alpha=0.25)
+                       extent=[0, flat_x[-1], y_min - margin, y_max + margin], alpha=0.25)
         
         axes[i].axhline(y_mid, color='black', linestyle='-.', linewidth=1.2, alpha=0.4)
-        axes[i].text(len(flat_W[prop])*0.01, y_max, " Working Wing Phase Map", fontsize=8, color='black', alpha=0.7, va='top')
-        axes[i].text(len(flat_W[prop])*0.01, y_min, " Failed Wing Phase Map", fontsize=8, color='black', alpha=0.7, va='bottom')
+        axes[i].text(flat_x[-1]*0.01, y_max, " Working Wing Phase Map", fontsize=8, color='black', alpha=0.7, va='top')
+        axes[i].text(flat_x[-1]*0.01, y_min, " Failed Wing Phase Map", fontsize=8, color='black', alpha=0.7, va='bottom')
 
-        axes[i].plot(flat_W[prop], color='tab:blue', linestyle='-', linewidth=2.5, label='Working Wing')
-        axes[i].plot(flat_F[prop], color='tab:red', linestyle='--', linewidth=2.0, label='Failed Wing')
+        axes[i].plot(flat_x, flat_W[prop], color='tab:blue', linestyle='-', linewidth=2.5, label='Working Wing')
+        axes[i].plot(flat_x, flat_F[prop], color='tab:red', linestyle='--', linewidth=2.0, label='Failed Wing')
         
-        axes[i].set_title(titles[i])
-        axes[i].grid(True, linestyle='--', alpha=0.7)
-        axes[i].set_ylabel(titles[i])
-        axes[i].set_xlabel("Total System Step (Index)")
-        axes[i].legend()
+        # --- DRAW COOL COMPONENT HIGHLIGHTS & NUMBERS ---
+        for idx, span in enumerate(cool_spans):
+            inlet_x = span['start']
+            axes[i].axvline(x=inlet_x, color='dimgray', linestyle='--', linewidth=1.2, alpha=0.8, zorder=1)
+            axes[i].text(inlet_x, 1.02, str(idx + 1), transform=axes[i].get_xaxis_transform(),
+                         ha='center', va='bottom', fontsize=10, fontweight='bold', color='#444444', clip_on=False)
+        # ---------------------------------------------------
 
-    fig.text(0.5, 0.01, "Background Gradient: Top Half = Working Wing Phase | Bottom Half = Failed Wing Phase (Blue=Liquid, Red=Gas)", ha='center', fontsize=10, style='italic')
-    fig.suptitle(f'Hydrogen State Profile Comparison (Phase: {phase_name.upper()})', fontsize=16, fontweight='bold')
-    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+        # --- PLOT THE MERGED FINAL STATE AS A GOLD STAR ---
+        if mixed_state is not None and prop in mixed_state:
+            axes[i].scatter(flat_x[-1], mixed_state[prop], color='gold', marker='*', s=200, zorder=10, edgecolors='black', label='Merged State')
+        # --------------------------------------------------
+
+        axes[i].set_title(titles[i], pad=20, fontsize=14, fontweight='bold', color='#333333')
+        axes[i].grid(True, linestyle=':', alpha=0.7, color='gray')
+        axes[i].set_ylabel(titles[i], fontsize=12)
+        axes[i].set_ylim(y_min - margin, y_max + margin)
+        axes[i].set_xlim(0, flat_x[-1])
+        axes[i].set_xlabel("Distance along Pipeline (meters)", fontsize=12, labelpad=8)
+        axes[i].legend(loc='best')
+        axes[i].tick_params(axis='x', labelbottom=True)
+
+    fig.text(0.5, 0.01, "Background Gradient: Top Half = Working Wing Phase | Bottom Half = Failed Wing Phase (Blue=Liquid, Red=Gas)\nDashed Lines = Cooled Components", ha='center', fontsize=10, style='italic')
+    fig.suptitle(f'Hydrogen State Profile Comparison (Phase: {phase_name.upper()})', fontsize=16, fontweight='bold', color='#222222')
+    
+    fig.tight_layout(rect=[0, 0.03, 1, 0.95], pad=2.0, h_pad=4.0, w_pad=2.0)
     plt.show()
-
 
 def main_H2_OEI(comps=None, sizes=None, All_temps=None, HEX_areas=None, prev_states=None, show=False, write=False, oei_phases=None, oei_m_dots=None):
     if comps is None:
@@ -135,11 +192,14 @@ def main_H2_OEI(comps=None, sizes=None, All_temps=None, HEX_areas=None, prev_sta
             with open(path, 'r') as file:
                     sizes = json.load(file)
     if All_temps is None:
-        filename = "HEX_temps.json"
+        # Use the folder path variable!
+        filename = folder / "HEX_temps.json" 
         with open(filename, 'r') as f:
             All_temps = json.load(f)
+            
     if HEX_areas is None:
-        filename = "HEX_areas.json"
+        # Do the exact same thing for the areas file just to be safe
+        filename = folder / "HEX_areas.json" 
         with open(filename, 'r') as f:
             HEX_areas = json.load(f)
     if oei_phases is None:
@@ -266,7 +326,8 @@ def main_H2_OEI(comps=None, sizes=None, All_temps=None, HEX_areas=None, prev_sta
                 json.dump(data_per_condition, f, indent=4)
 
         if show:
-            plot_combined_states(states_W, states_F, current_phase)
+            # Passing system_W to map the physical pipeline length
+            plot_combined_states(states_W, states_F, current_phase, system_W)
 
     if write:
         filename_temps = os.path.join(root, "H2_piping", "HEX_temps.json")
