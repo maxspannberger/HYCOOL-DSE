@@ -105,7 +105,7 @@ def plot_validation(states, phase_name, validation_df=None):
         # 4. Overlay Validation Data using actual sensor locations (val_x)
         if validation_df is not None and val_map[prop] in validation_df.columns:
             axes[i].scatter(val_x, validation_df[val_map[prop]], 
-                            color='black', marker='x', label='Validation', s=40, zorder=5)
+                            color='black', marker='x', label='Validation Data', s=40, zorder=5)
             axes[i].legend()
 
         # --- FIX: Get the limits AFTER plotting both line and scatter ---
@@ -127,7 +127,7 @@ def plot_validation(states, phase_name, validation_df=None):
         axes[i].set_xlim(l_start, l_end)
         axes[i].set_xlabel("Distance along Pipe (meters)")
 
-    fig.suptitle(f'Hydrogen State Profile ({phase_name.upper()})', fontsize=16)
+    fig.suptitle(f'', fontsize=16)
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.show()
 
