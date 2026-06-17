@@ -846,7 +846,7 @@ if __name__ == "__main__":
     for label, p in paths.items():
         print(f"  {label}: {p}")
 
-    print(f"Mass flows: {result1.weight.mass_breakdown["mass_flows"]}")
+    print(f"Mass flows: {result1.weight.mass_breakdown['mass_flows']}")
 
     # #set price of LH2 per kg
     # cost_per_kg_LH2 = 3.0       #€/kg, which is an estimate for 2050

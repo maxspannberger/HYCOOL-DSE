@@ -16,10 +16,10 @@ class H2SystemConfig:
     
     # ------------------------------
     normal_phases: List[str]   = field(default_factory=lambda: ['TO', 'climb', 'cruise', 'APP'])
-    normal_m_dots: List[float] = field(default_factory=lambda: [0.0865, 0.0895, 0.0669, 0.0206])  
+    normal_m_dots: List[float] = field(default_factory=lambda: [0.093674596537494132, 0.08857458872135978, 0.06741762468511292, 0.020661426143244174])  
     
     oei_phases: List[str]      = field(default_factory=lambda: ['OEI_gt', 'OEI_mot', 'OEI_bus'])
-    oei_m_dots: List[float]    = field(default_factory=lambda:  [0.0490, 0.0484, 0.0542]) 
+    oei_m_dots: List[float]    = field(default_factory=lambda:  [0.0496242887515704, 0.050912906866664504, 0.054701525389720284]) 
     # ------------------------------
 
     # Solver configuration parameters
