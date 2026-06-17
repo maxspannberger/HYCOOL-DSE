@@ -65,18 +65,19 @@ class H2SystemConfig:
     }
 
     HEX_default_d = 0.009
-    HEX_effectiveness = 0.6
+    HEX_effectiveness = 1.0
     HEX_extra_thickness = 0.005
+    initial_length_scaling = 5
 
     k_Al = 167      # W/m K
     k_TMI_293 = 0.194    # W/m K
     k_TMI_4 = 0.095 # W/m K
-    t_TMI = 0.0001 # m
+    t_TMI = 0.0001 # m #TODO: adjust this
     
     HTS_default_d = 0.009
     HTS_channels = 1
 
-    FPI_relaxation = 0.5    # relaxation for fixed point iteration to stabilize convergence
+    FPI_relaxation = 0.3    # relaxation for fixed point iteration to stabilize convergence
 
     # corner loss factor
     corner_loss_factor: float = 1.4         # factor to overestimate pressure losses in corner instead of underestimating

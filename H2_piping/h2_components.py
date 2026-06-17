@@ -565,7 +565,7 @@ class COOL:
         if areas is None:
             self.area_calc_mode = True
             self.area = None
-            self.L = self.length
+            self.L = self.length * config.initial_length_scaling
             self.N_corners = 0
         else:
             self.area_calc_mode = False
@@ -631,6 +631,7 @@ class COOL:
             u2 = solved_internal_system['u'][-1][-1]
             frac2 = solved_internal_system['frac'][-1][-1]
 
+            '''
             if "hts" in self.name:
                 HEX_effectiveness = config.HEX_effectiveness
             else:
@@ -642,6 +643,7 @@ class COOL:
                 # print(HEX_effectiveness)
 
             # print(f"Effectiveness: {HEX_effectiveness}")
+            
 
             # HEX design
             # f is the "film" temperature (boundary layer of H2 next to the pipe walls)
@@ -660,18 +662,64 @@ class COOL:
                     U = heat_transfer_coefficient(T1, T2, self.T, p1, p2, m_dot, self.d, self.fluid)
                     deltaT = self.Q_dot / (U * self.area * HEX_effectiveness)
                     self.T = deltaT + 0.5 * (T1 + T2)
+            '''
 
-            self.L = self.area / (self.N_channels * np.pi * self.d)
-            self.L = config.FPI_relaxation * self.L + (1.0 - config.FPI_relaxation) * L_old
+            Tb = 0.5 * (T1 + T2)
 
-            if show:
-                print(f"{1000*self.L:.2f}")
+            t_f = self.d + 2 * config.HEX_extra_thickness
+            R_f = self.width / (6 * config.k_Al * t_f * self.L)
+            # print(R_f)
 
-            if not self.L/self.d >= 8:
-                raise Warning("Formulas used are not valid for the required length/diameter ratio\n" +\
-                        "Required L/D range: L/D >= 10\n" +\
-                        f"Used L/D: {self.L/self.d}"
-                    )
+            R_tot = (self.T - Tb) / self.Q_dot * 2*self.L/self.length
+            # print(R_tot)
+
+            if "hts" not in self.name:
+                k_TMI = config.k_TMI_4 + (config.k_TMI_293 - config.k_TMI_4)/289 * (Tb - 4)
+                R_TMI = 2 * config.t_TMI * self.L / (k_TMI * self.length**2 * self.width)
+                # print(R_TMI)
+
+            # TODO: triple check the following code
+            if self.area_calc_mode:                
+                Tw = max(self.T - self.Q_dot * self.length/(2 * self.L) * R_f, Tb)
+                h_H2 = heat_transfer_coefficient(T1, T2, Tw, p1, p2, m_dot, self.d, self.fluid)
+
+                a = 2/self.length * (self.T - Tb) / self.Q_dot
+                b = -2 / (np.pi * self.d * self.length * h_H2)
+                c = -self.width / (6 * config.k_Al * t_f * self.length)
+                if "hts" not in self.name:
+                    a -= 2 * config.t_TMI / (k_TMI * self.width * self.length**2)
+
+                self.L = (-b + np.sqrt(b**2 - 4*a*c)) / (2*a)
+                self.L = config.FPI_relaxation * self.L + (1.0 - config.FPI_relaxation) * L_old
+                self.area = np.pi * self.d * self.L
+
+                if show:
+                    print(f"{1000*self.L:.2f}")
+
+                if not self.L/self.d >= 8:
+                    raise Warning("Formulas used are not valid for the required length/diameter ratio\n" +\
+                            "Required L/D range: L/D >= 10\n" +\
+                            f"Used L/D: {self.L/self.d}"
+                        )
+                    
+            else:
+                T_old = 0.0
+                k = 0
+                while abs(self.T - T_old) > 1e-2 and k < 100:
+                    T_old = self.T
+                    Tw = self.T - self.Q_dot * self.length/(2 * self.L) * R_f
+                    if "hts" not in self.name:
+                        Tw -= self.Q_dot * self.length/(2 * self.L) * R_TMI
+                        # print(R_TMI)
+                    # print(Tw)
+                    h_H2 = heat_transfer_coefficient(T1, T2, Tw, p1, p2, m_dot, self.d, self.fluid)
+                    R_tot = R_f + 2 / (np.pi * self.d * self.length * h_H2)
+                    if "hts" not in self.name:
+                        R_tot += R_TMI
+                    # print(R_f, R_tot)
+                    self.T = self.Q_dot * self.length/(2 * self.L) * R_tot + Tb
+                    self.T = config.FPI_relaxation * self.T + (1.0 - config.FPI_relaxation) * T_old
+                    # print(f"AAA {self.T}")
 
         if show:
             if self.area_calc_mode:
