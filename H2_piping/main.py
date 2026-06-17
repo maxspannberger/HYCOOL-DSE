@@ -63,6 +63,7 @@ def print_tree(states):
 # =============================================================================
 # Visualizes the pressure, temperature, density, and enthalpy profiles.
 # Background gradient indicates the phase fraction (liquid to gas).
+# X-Axis is physically scaled (meters), treating COOL components as point locations.
 # =============================================================================
 def plot_states(states, phase_name, system):
   
@@ -71,26 +72,43 @@ def plot_states(states, phase_name, system):
         for component_data in states[prop]:
             flat_states[prop].extend(component_data)
 
-    # --- MAP INDICES TO COMPONENTS ---
+    # --- MAP METERS TO COMPONENTS ---
+    flat_x = []
+    current_x = 0.0
     state_idx = 0
-    current_step = 0
     cool_spans = []
 
     for comp in system:
         if isinstance(comp, tuple): 
             continue # Skip pipe splits/merges
 
-        comp_len = len(states['p'][state_idx])
+        comp_nodes = len(states['p'][state_idx])
         
+        # Default to a "point mass" (zero length) for COOL, Valves, Corners, etc.
+        comp_L = 0.0 
+        
+        # Only extract length if the component is explicitly a Pipe
+        if comp.__class__.__name__ == 'Pipe' and hasattr(comp, 'length'):
+            comp_L = float(comp.length)
+
+        # Distribute the thermodynamic nodes across the physical length
+        # (If comp_L is 0.0, this creates perfectly vertical jumps!)
+        if comp_nodes > 1:
+            x_array = np.linspace(current_x, current_x + comp_L, comp_nodes)
+        elif comp_nodes == 1:
+            x_array = np.array([current_x + comp_L])
+        else:
+            x_array = np.array([])
+            
+        flat_x.extend(x_array)
+
         if comp.__class__.__name__ == 'COOL':
             cool_spans.append({
                 'name': comp.name,
-                'start': current_step,
-                'end': current_step + comp_len,
-                'mid': current_step + (comp_len / 2)
+                'start': x_array[0] if len(x_array) > 0 else current_x 
             })
-        
-        current_step += comp_len
+
+        current_x += comp_L
         state_idx += 1
     # ---------------------------------
 
@@ -114,37 +132,33 @@ def plot_states(states, phase_name, system):
         # Overlay phase map (Blue = Liquid, Red = Gas)
         axes[i].imshow(gradient, aspect='auto', cmap='RdYlBu_r',
                        vmin=0, vmax=1,
-                       extent=[0, len(flat_states[prop]), y_min - margin, y_max + margin],
+                       extent=[0, flat_x[-1], y_min - margin, y_max + margin],
                        alpha=0.15) 
         
-        axes[i].plot(flat_states[prop], color=colors[i], marker=None, linestyle='-', linewidth=2.5)
+        # Plot the thermodynamic states against the physical length
+        axes[i].plot(flat_x, flat_states[prop], color=colors[i], marker=None, linestyle='-', linewidth=2.5)
         
         # --- DRAW COOL COMPONENT HIGHLIGHTS & NUMBERS ---
         for idx, span in enumerate(cool_spans):
-            # Subtract 1 to target the exact inlet state BEFORE the thermodynamic jump
-            inlet_idx = span['start'] - 1
-            inlet_idx = max(0, inlet_idx) 
+            inlet_x = span['start']
             
-            # Draw the dashed line
-            axes[i].axvline(x=inlet_idx, color='dimgray', linestyle='--', linewidth=1.2, alpha=0.8, zorder=1)
+            axes[i].axvline(x=inlet_x, color='dimgray', linestyle='--', linewidth=1.2, alpha=0.8, zorder=1)
             
-            # Place a small sequence number directly above the line (y=1.02 puts it just above the top axis border)
-            axes[i].text(inlet_idx, 1.02, str(idx + 1), transform=axes[i].get_xaxis_transform(),
+            axes[i].text(inlet_x, 1.02, str(idx + 1), transform=axes[i].get_xaxis_transform(),
                          ha='center', va='bottom', fontsize=10, fontweight='bold', color='#444444', clip_on=False)
         # ---------------------------------------------------
 
-        # Bumped pad to 20 to clear the new numbers
         axes[i].set_title(titles[i], pad=20, fontsize=14, fontweight='bold', color='#333333')
         
         axes[i].grid(True, linestyle=':', alpha=0.7, color='gray') 
         axes[i].set_ylabel(titles[i], fontsize=12)
         axes[i].set_ylim(y_min - margin, y_max + margin)
-        axes[i].set_xlim(0, len(flat_states[prop]))
-        axes[i].set_xlabel("Total System Step (Index)", fontsize=12, labelpad=8)
+        axes[i].set_xlim(0, flat_x[-1])
+        
+        axes[i].set_xlabel("Distance along Pipeline (meters)", fontsize=12, labelpad=8)
         axes[i].tick_params(axis='x', labelbottom=True)
 
     fig.tight_layout(pad=2.0, h_pad=4.0, w_pad=2.0)
-    
     plt.show()
 
 if __name__ == "__main__":
