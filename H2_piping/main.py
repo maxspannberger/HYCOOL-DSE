@@ -67,47 +67,103 @@ def print_tree(states):
 # =============================================================================
 # Visualizes the pressure, temperature, density, and enthalpy profiles.
 # Background gradient indicates the phase fraction (liquid to gas).
+# X-Axis is physically scaled (meters), treating COOL components as point locations.
 # =============================================================================
-def plot_states(states, phase_name):
+def plot_states(states, phase_name, system):
   
-    flat_states = {}
-    for prop in ['p', 'T', 'rho', 'h', 'frac']:
-        temp_list = []
+    flat_states = {prop: [] for prop in ['p', 'T', 'rho', 'h', 'frac']}
+    for prop in flat_states.keys():
         for component_data in states[prop]:
-            for value in component_data:
-                temp_list.append(value)
-        flat_states[prop] = temp_list
+            flat_states[prop].extend(component_data)
+
+    # --- MAP METERS TO COMPONENTS ---
+    flat_x = []
+    current_x = 0.0
+    state_idx = 0
+    cool_spans = []
+
+    for comp in system:
+        if isinstance(comp, tuple): 
+            continue # Skip pipe splits/merges
+
+        comp_nodes = len(states['p'][state_idx])
+        
+        # Default to a "point mass" (zero length) for COOL, Valves, Corners, etc.
+        comp_L = 0.0 
+        
+        # Only extract length if the component is explicitly a Pipe
+        if comp.__class__.__name__ == 'Pipe' and hasattr(comp, 'length'):
+            comp_L = float(comp.length)
+
+        # Distribute the thermodynamic nodes across the physical length
+        if comp_nodes > 1:
+            x_array = np.linspace(current_x, current_x + comp_L, comp_nodes)
+        elif comp_nodes == 1:
+            x_array = np.array([current_x + comp_L])
+        else:
+            x_array = np.array([])
+            
+        flat_x.extend(x_array)
+
+        if comp.__class__.__name__ == 'COOL':
+            cool_spans.append({
+                'name': comp.name,
+                'start': x_array[0] if len(x_array) > 0 else current_x 
+            })
+
+        current_x += comp_L
+        state_idx += 1
+    # ---------------------------------
 
     # Prepare phase-fraction background gradient
     frac_arr = np.array(flat_states['frac'])
     gradient = np.tile(frac_arr, (100, 1)) 
 
-    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+    fig, axes = plt.subplots(2, 2, figsize=(14, 9))
     axes = axes.flatten()
     
     properties = ['p', 'T', 'rho', 'h']
     titles = ['Pressure (Pa)', 'Temperature (K)', 'Density (kg/m³)', 'Enthalpy (J/kg)']
-    colors = ['tab:blue', 'tab:red', 'tab:green', 'tab:purple']
+    colors = ['#1f77b4', '#d62728', '#2ca02c', '#9467bd'] 
 
     for i, prop in enumerate(properties):
         y_min   = min(flat_states[prop])
         y_max   = max(flat_states[prop])
-        margin  = (y_max - y_min) * 0.05
         
+        margin  = (y_max - y_min) * 0.08 if (y_max - y_min) > 0 else 1.0
+
         # Overlay phase map (Blue = Liquid, Red = Gas)
         axes[i].imshow(gradient, aspect='auto', cmap='RdYlBu_r',
                        vmin=0, vmax=1,
-                       extent=[0, len(flat_states[prop]), y_min - margin, y_max + margin],
-                       alpha=0.2)
+                       extent=[0, flat_x[-1], y_min - margin, y_max + margin],
+                       alpha=0.15) 
         
-        axes[i].plot(flat_states[prop], color=colors[i], marker=None, linestyle='-', linewidth=2)
-        axes[i].set_title(titles[i])
-        axes[i].grid(True, linestyle='--', alpha=0.7)
-        axes[i].set_ylabel(titles[i])
-        axes[i].set_xlabel("Total System Step (Index)")
+        # Plot the thermodynamic states against the physical length
+        axes[i].plot(flat_x, flat_states[prop], color=colors[i], marker=None, linestyle='-', linewidth=2.5)
+        
+        # --- DRAW COOL COMPONENT HIGHLIGHTS & NUMBERS ---
+        for idx, span in enumerate(cool_spans):
+            inlet_x = span['start']
+            
+            # Draw the dashed line
+            axes[i].axvline(x=inlet_x, color='dimgray', linestyle='--', linewidth=1.2, alpha=0.8, zorder=1)
+            
+            # Place the number
+            axes[i].text(inlet_x, 1.02, str(idx + 1), transform=axes[i].get_xaxis_transform(),
+                         ha='center', va='bottom', fontsize=10, fontweight='bold', color='#444444', clip_on=False)
+        # ---------------------------------------------------
 
-    fig.suptitle(f'Hydrogen State Profile (Phase: {phase_name.upper()} | Gradient: Blue=Liquid, Red=Gas)', fontsize=16)
-    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+        axes[i].set_title(titles[i], pad=20, fontsize=14, fontweight='bold', color='#333333')
+        
+        axes[i].grid(True, linestyle=':', alpha=0.7, color='gray') 
+        axes[i].set_ylabel(titles[i], fontsize=12)
+        axes[i].set_ylim(y_min - margin, y_max + margin)
+        axes[i].set_xlim(0, flat_x[-1])
+        
+        axes[i].set_xlabel("Distance along Pipeline (meters)", fontsize=12, labelpad=8)
+        axes[i].tick_params(axis='x', labelbottom=True)
+
+    fig.tight_layout(pad=2.0, h_pad=4.0, w_pad=2.0)
     plt.show()
 
 
@@ -319,7 +375,7 @@ def main_H2_nominal(comps=None, sizes=None, show=False, write=False, normal_phas
               # save_results_to_json(current_phase, final_T, final_p, final_rho, final_h, final_mdot, write=write)
 
               if show:
-                     plot_states(states, current_phase)
+                     plot_states(states, current_phase, system)
 
        if write:
               filename_areas = os.path.join(root, "H2_piping", "HEX_areas.json")

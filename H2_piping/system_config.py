@@ -16,10 +16,10 @@ class H2SystemConfig:
     
     # ------------------------------
     normal_phases: List[str]   = field(default_factory=lambda: ['TO', 'climb', 'cruise', 'APP'])
-    normal_m_dots: List[float] = field(default_factory=lambda: [0.0865, 0.0895, 0.0669, 0.0206])  
+    normal_m_dots: List[float] = field(default_factory=lambda: [0.093674596537494132, 0.08857458872135978, 0.06741762468511292, 0.020661426143244174])  
     
     oei_phases: List[str]      = field(default_factory=lambda: ['OEI_gt', 'OEI_mot', 'OEI_bus'])
-    oei_m_dots: List[float]    = field(default_factory=lambda:  [0.0490, 0.0484, 0.0542]) 
+    oei_m_dots: List[float]    = field(default_factory=lambda:  [0.0496242887515704, 0.050912906866664504, 0.054701525389720284]) 
     # ------------------------------
 
     # Solver configuration parameters
@@ -64,19 +64,20 @@ class H2SystemConfig:
         "hts_pow": 35.0,
     }
 
-    HEX_default_d = 0.009
-    HEX_effectiveness = 0.6
+    HEX_default_d = 0.0098
+    HEX_effectiveness = 1.0
     HEX_extra_thickness = 0.005
+    initial_length_scaling = 5
 
     k_Al = 167      # W/m K
     k_TMI_293 = 0.194    # W/m K
     k_TMI_4 = 0.095 # W/m K
-    t_TMI = 0.0001 # m
+    t_TMI = 0.0001 # m #TODO: adjust this
     
     HTS_default_d = 0.009
     HTS_channels = 1
 
-    FPI_relaxation = 0.5    # relaxation for fixed point iteration to stabilize convergence
+    FPI_relaxation = 0.3    # relaxation for fixed point iteration to stabilize convergence
 
     # corner loss factor
     corner_loss_factor: float = 1.4         # factor to overestimate pressure losses in corner instead of underestimating

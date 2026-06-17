@@ -214,7 +214,7 @@ class PowerSizing:
             T_static_per_prop_inner = T_static_per_prop
             T_static_per_prop_outer = T_static_per_prop
 
-        P_TO= P_total*0.9 # assume 10% margin for TO power requirement over OEI requirement, to be conservative and account for any additional losses at takeoff power setting
+        P_TO= P_total*0.95 # assume 5% margin for TO power requirement over OEI requirement, to be conservative and account for any additional losses at takeoff power setting
 
         return PowerSizingBreakdown(
             P_takeoff            = P_TO,

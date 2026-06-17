@@ -261,6 +261,7 @@ def run_class_ii(
     max_iter:   int     = 100,
     verbose:    bool    = True,
     config:     int     = None, 
+    write:      bool    = True
 ) -> ClassIIResult:
 
     # -----------------------------------------------------------------
@@ -408,7 +409,7 @@ def run_class_ii(
         # print(f"b_v used in weight = {wt_inp.b_v:.3f} m")
         # print(f"tail_bd S_v        = {tail_bd.S_v:.3f} m²")
 
-        wt_bd = weightEstimation(wt_inp, comp).compute()
+        wt_bd = weightEstimation(wt_inp, comp, write).compute()
 
         # Close the loop
         MZFW_new = wt_bd.W_empty + cfg.W_payload + W_fixed
@@ -845,60 +846,62 @@ if __name__ == "__main__":
     for label, p in paths.items():
         print(f"  {label}: {p}")
 
-    #set price of LH2 per kg
-    cost_per_kg_LH2 = 3.0       #€/kg, which is an estimate for 2050
+    print(f"Mass flows: {result1.weight.mass_breakdown['mass_flows']}")
 
-    cfg_2prop = replace(cfg, N_propellers=2)
-    result2 = run_class_ii(cfg_2prop, comp=comp_params, tol=1.0, max_iter=100, verbose=False)
+    # #set price of LH2 per kg
+    # cost_per_kg_LH2 = 3.0       #€/kg, which is an estimate for 2050
+
+    # cfg_2prop = replace(cfg, N_propellers=2)
+    # result2 = run_class_ii(cfg_2prop, comp=comp_params, tol=1.0, max_iter=100, verbose=False)
     
-    fuelsavings = result2.W_fuel - result1.W_fuel
-    costsavings = fuelsavings * cost_per_kg_LH2
+    # fuelsavings = result2.W_fuel - result1.W_fuel
+    # costsavings = fuelsavings * cost_per_kg_LH2
 
-    # MTOW change due to using 4 props (result1) vs 2 props (result2)
-    mtow_diff_kg = result1.MTOW - result2.MTOW
-    mtow_pct = (mtow_diff_kg / result2.MTOW * 100.0) if result2.MTOW != 0 else 0.0
-    # signed display and human-readable word
-    mtow_word = "increase" if mtow_diff_kg > 0 else ("decrease" if mtow_diff_kg < 0 else "no change")
+    # # MTOW change due to using 4 props (result1) vs 2 props (result2)
+    # mtow_diff_kg = result1.MTOW - result2.MTOW
+    # mtow_pct = (mtow_diff_kg / result2.MTOW * 100.0) if result2.MTOW != 0 else 0.0
+    # # signed display and human-readable word
+    # mtow_word = "increase" if mtow_diff_kg > 0 else ("decrease" if mtow_diff_kg < 0 else "no change")
 
-    # Propulsion system mass change (4-prop - 2-prop)
-    propmass_diff_kg = result1.W_prop - result2.W_prop
-    propmass_pct = (propmass_diff_kg / result2.W_prop * 100.0) if result2.W_prop != 0 else 0.0
+    # # Propulsion system mass change (4-prop - 2-prop)
+    # propmass_diff_kg = result1.W_prop - result2.W_prop
+    # propmass_pct = (propmass_diff_kg / result2.W_prop * 100.0) if result2.W_prop != 0 else 0.0
 
-    # Propulsion system mass change (4-prop - 2-prop)
-    wingmass_diff_kg = result1.W_wing - result2.W_wing
-    wingmass_pct = (wingmass_diff_kg / result2.W_wing * 100.0) if result2.W_wing != 0 else 0.0
+    # # Propulsion system mass change (4-prop - 2-prop)
+    # wingmass_diff_kg = result1.W_wing - result2.W_wing
+    # wingmass_pct = (wingmass_diff_kg / result2.W_wing * 100.0) if result2.W_wing != 0 else 0.0
 
-    # Highlight fuel, cost savings and MTOW impact in a panel to make them stand out
-    savings_text = (
-        f"[bold white]Switching to 4 propellers saves[/bold white]\n"
-        f"[bold green]{fuelsavings:.1f} kg[/bold green]\n"
-        f"[bold white]Estimated cost savings per flight:[/bold white] [bold yellow]€{costsavings:.2f}[/bold yellow]\n"
-        f"[bold white]MTOW change (4 prop - 2 prop):[/bold white] [bold]{mtow_diff_kg:+.1f} kg[/bold] "
-        f"[bold white]({mtow_word}, {mtow_pct:+.2f}% vs 2-prop)[/bold white]\n"
-        f"[bold white]Propulsion mass change (4 prop - 2 prop):[/bold white] [bold]{propmass_diff_kg:+.1f} kg[/bold] "
-        f"[bold white]({propmass_pct:+.2f}% vs 2-prop)[/bold white]\n"
-        f"[bold white]Wing mass change (4 prop - 2 prop):[/bold white] [bold]{wingmass_diff_kg:+.1f} kg[/bold] "
-        f"[bold white]({wingmass_pct:+.2f}% vs 2-prop)[/bold white]"
-    )
-    print(Panel(savings_text, title="[bold cyan]Fuel, Cost & MTOW Impact[/bold cyan]", border_style="cyan", expand=False))
+    # # Highlight fuel, cost savings and MTOW impact in a panel to make them stand out
+    # savings_text = (
+    #     f"[bold white]Switching to 4 propellers saves[/bold white]\n"
+    #     f"[bold green]{fuelsavings:.1f} kg[/bold green]\n"
+    #     f"[bold white]Estimated cost savings per flight:[/bold white] [bold yellow]€{costsavings:.2f}[/bold yellow]\n"
+    #     f"[bold white]MTOW change (4 prop - 2 prop):[/bold white] [bold]{mtow_diff_kg:+.1f} kg[/bold] "
+    #     f"[bold white]({mtow_word}, {mtow_pct:+.2f}% vs 2-prop)[/bold white]\n"
+    #     f"[bold white]Propulsion mass change (4 prop - 2 prop):[/bold white] [bold]{propmass_diff_kg:+.1f} kg[/bold] "
+    #     f"[bold white]({propmass_pct:+.2f}% vs 2-prop)[/bold white]\n"
+    #     f"[bold white]Wing mass change (4 prop - 2 prop):[/bold white] [bold]{wingmass_diff_kg:+.1f} kg[/bold] "
+    #     f"[bold white]({wingmass_pct:+.2f}% vs 2-prop)[/bold white]"
+    # )
+    # print(Panel(savings_text, title="[bold cyan]Fuel, Cost & MTOW Impact[/bold cyan]", border_style="cyan", expand=False))
 
-    print(result1.P_approach_KW)
+    # print(result1.P_approach_KW)
 
-    aileron_span=result1.tail_rechecked.S_aileron/(result1.root_chord*result1.Wing_taper)
+    # aileron_span=result1.tail_rechecked.S_aileron/(result1.root_chord*result1.Wing_taper)
 
 
-    taper_slope = 1.0 - result1.Wing_taper
-    chordataileronpos = result1.root_chord * (1.0 - taper_slope * ((result1.Wing_span / 2-aileron_span) / (result1.Wing_span / 2)))
+    # taper_slope = 1.0 - result1.Wing_taper
+    # chordataileronpos = result1.root_chord * (1.0 - taper_slope * ((result1.Wing_span / 2-aileron_span) / (result1.Wing_span / 2)))
 
-    print(aileron_span*(chordataileronpos)/result1.Wing_Area)
-    print(aileron_span/(result1.Wing_span/2))
+    # print(aileron_span*(chordataileronpos)/result1.Wing_Area)
+    # print(aileron_span/(result1.Wing_span/2))
 
-    print(f"Aileron Area needed for control: {result1.tail_rechecked.Sa_Sref*100:.2f} %")   
+    # print(f"Aileron Area needed for control: {result1.tail_rechecked.Sa_Sref*100:.2f} %")   
 
-    average_chord=(result1.root_chord+cfg.LEMAC)/2
-    area_wing_covered_by_fuselage=average_chord*cfg.d_f
-    print(f"Area of wing covered by fuselage: {area_wing_covered_by_fuselage/result1.Wing_Area*100:.2f} %")
+    # average_chord=(result1.root_chord+cfg.LEMAC)/2
+    # area_wing_covered_by_fuselage=average_chord*cfg.d_f
+    # print(f"Area of wing covered by fuselage: {area_wing_covered_by_fuselage/result1.Wing_Area*100:.2f} %")
 
-    print(f"Cruise Thrust total: {result1.mission.T_cruise:.2f} N")
+    # print(f"Cruise Thrust total: {result1.mission.T_cruise:.2f} N")
 
-    print(f"Takeoff CL needed: {result1.aeroparameters['CL_max_TO_with_new_area']:.2f}")
+    # print(f"Takeoff CL needed: {result1.aeroparameters['CL_max_TO_with_new_area']:.2f}")

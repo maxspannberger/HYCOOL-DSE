@@ -141,9 +141,10 @@ def isentropic_expansion(p1, h1, u1, m_dot, A2, fluid, penalty=config.divergence
     return T2, p2, h2, rho2, u2, frac2
 
 
-def heat_transfer_coefficient(T1, T2, T_comp, p1, p2, m_dot, d, fluid):
+def heat_transfer_coefficient(T1, T2, Tw, p1, p2, m_dot, d, fluid):
     
-    Tf = 0.5 * (0.5 * (T1 + T2) + T_comp)
+    Tb = 0.5 * (T1 + T2)
+    Tf = 0.5 * (Tb + Tw)
     pf = 0.5 * (p1 + p2)
 
     muf = CP.PropsSI('V', 'P', pf, 'T', Tf, fluid)
@@ -153,7 +154,10 @@ def heat_transfer_coefficient(T1, T2, T_comp, p1, p2, m_dot, d, fluid):
     # kf = 9.248 + 0.01571 * Tf # thermal conductivity of stainless steel 613L - NOT this one should be used!!!
     kf = CP.PropsSI('L', 'P', pf, 'T', Tf, fluid)
 
-    U = 0.021 * Ref**0.8 * Prf**0.4 * kf / d
+    nu_w = CP.PropsSI('V', 'P', pf, 'T', Tw, fluid) / CP.PropsSI('D', 'P', pf, 'T', Tw, fluid)
+    nu_b = CP.PropsSI('V', 'P', pf, 'T', Tb, fluid) / CP.PropsSI('D', 'P', pf, 'T', Tb, fluid)
+
+    h = 0.0176 * Ref**0.8 * Prf**0.4 * kf / d * (1 + 0.01457 * nu_w / nu_b)
 
     if not Ref >= 10000:
         raise Warning("Formulas used are not valid for the required Reynolds number\n" +\
@@ -166,7 +170,29 @@ def heat_transfer_coefficient(T1, T2, T_comp, p1, p2, m_dot, d, fluid):
                 f"Used Pr: {Prf}"
             )
 
-    return U
+    return h
+
+
+def k_Al(T_avg):
+    if T_avg < 4.0:
+        T_calc = 4.0
+    elif T_avg > 300.0:
+        T_calc = 300.0
+    else:
+        T_calc = T_avg
+        
+    logT = np.log10(T_calc)
+    
+    # NIST Polynomial Coefficients
+    a, b, c, d = 0.07918, 1.0957, -0.07277, 0.08084
+    e, f, g, h = 0.02803, -0.09464, 0.04179, -0.00571
+    
+    exponent = (a + b*logT + c*(logT**2) + d*(logT**3) + 
+                e*(logT**4) + f*(logT**5) + g*(logT**6) + h*(logT**7))
+                
+    k_Al_dynamic = 10**exponent
+
+    return k_Al_dynamic
 
 
 # =============================================================================
@@ -561,7 +587,7 @@ class COOL:
         if areas is None:
             self.area_calc_mode = True
             self.area = None
-            self.L = self.length
+            self.L = self.length * config.initial_length_scaling
             self.N_corners = 0
         else:
             self.area_calc_mode = False
@@ -588,6 +614,8 @@ class COOL:
 
         L_old = np.inf
         j = 0
+        T_Al_avg = None
+        Tw = None
         while abs((self.L - L_old)/self.L) > 1e-3 and j < 100:
             L_old = self.L
             j += 1
@@ -627,6 +655,7 @@ class COOL:
             u2 = solved_internal_system['u'][-1][-1]
             frac2 = solved_internal_system['frac'][-1][-1]
 
+            '''
             if "hts" in self.name:
                 HEX_effectiveness = config.HEX_effectiveness
             else:
@@ -638,6 +667,7 @@ class COOL:
                 # print(HEX_effectiveness)
 
             # print(f"Effectiveness: {HEX_effectiveness}")
+            
 
             # HEX design
             # f is the "film" temperature (boundary layer of H2 next to the pipe walls)
@@ -656,18 +686,92 @@ class COOL:
                     U = heat_transfer_coefficient(T1, T2, self.T, p1, p2, m_dot, self.d, self.fluid)
                     deltaT = self.Q_dot / (U * self.area * HEX_effectiveness)
                     self.T = deltaT + 0.5 * (T1 + T2)
+            '''
+            # --------------------------------------------------
 
-            self.L = self.area / (self.N_channels * np.pi * self.d)
-            self.L = config.FPI_relaxation * self.L + (1.0 - config.FPI_relaxation) * L_old
+           # --- DYNAMIC ALUMINUM 6061 THERMAL CONDUCTIVITY ---
+            # Approximated linear fit based on NIST cryogenic data for Al-6061-T6
+            # 20K = ~25 W/mK | 300K = ~167 W/mK
+            t_f = self.d + 2 * config.HEX_extra_thickness
 
-            if show:
-                print(f"{1000*self.L:.2f}")
+            Tb = 0.5 * (T1 + T2)
+            if Tw is None:
+                Tw = 0.5 * (Tb + self.T)
 
-            if not self.L/self.d >= 8:
-                raise Warning("Formulas used are not valid for the required length/diameter ratio\n" +\
-                        "Required L/D range: L/D >= 10\n" +\
-                        f"Used L/D: {self.L/self.d}"
-                    )
+            # --- BYPASS FOR DEAD COMPONENTS ---
+            if self.Q_dot <= 1e-6:
+                # If the component is dead (OEI kill switch), thermal resistance is irrelevant.
+                # Just set R_tot to a safe, small value to avoid division by zero.
+                R_tot = 1e-9 
+                
+                # Force the component wall temperature to just match the bulk fluid temp
+                self.T = Tb
+            else:
+                # Standard calculation for active components
+                R_tot = (self.T - Tb) / self.Q_dot * 2*self.L/self.length
+            # ----------------------------------
+            # print(R_tot)
+
+            if "hts" not in self.name:
+                k_TMI = config.k_TMI_4 + (config.k_TMI_293 - config.k_TMI_4)/289 * (Tb - 4)
+                R_TMI = 2 * config.t_TMI * self.L / (k_TMI * self.length**2 * self.width)
+                # print(R_TMI)
+
+            # TODO: triple check the following code
+            if self.area_calc_mode:                
+                if T_Al_avg is None:
+                    T_Al_avg = (Tw + self.T) / 2
+                k_Al_dynamic = k_Al(T_Al_avg)
+                R_f = self.width / (6 * k_Al_dynamic * t_f * self.L)
+                T_Al_avg = Tw + self.Q_dot * self.width / (3 * self.length * k_Al_dynamic * t_f) * (self.length / (2 * self.L))**2
+
+                Tw = max(self.T - self.Q_dot * self.length/(2 * self.L) * R_f, Tb)
+                h_H2 = heat_transfer_coefficient(T1, T2, Tw, p1, p2, m_dot, self.d, self.fluid)
+
+                a = 2/self.length * (self.T - Tb) / self.Q_dot
+                b = -2 / (np.pi * self.d * self.length * h_H2)
+                c = -self.width / (6 * k_Al_dynamic * t_f)
+                if "hts" not in self.name:
+                    a -= 2 * config.t_TMI / (k_TMI * self.width * self.length**2)
+
+                self.L = (-b + np.sqrt(b**2 - 4*a*c)) / (2*a)
+                self.L = config.FPI_relaxation * self.L + (1.0 - config.FPI_relaxation) * L_old
+                self.area = np.pi * self.d * self.L
+
+                if show:
+                    print(f"{1000*self.L:.2f}")
+
+                if not self.L/self.d >= 8:
+                    raise Warning("Formulas used are not valid for the required length/diameter ratio\n" +\
+                            "Required L/D range: L/D >= 10\n" +\
+                            f"Used L/D: {self.L/self.d}"
+                        )
+                    
+            else:
+                T_old = 0.0
+                k = 0
+                while abs(self.T - T_old) > 1e-2 and k < 100:
+                    T_old = self.T
+
+                    if T_Al_avg is None:
+                        T_Al_avg = (Tw + self.T) / 2
+                    k_Al_dynamic = k_Al(T_Al_avg)
+                    R_f = self.width / (6 * k_Al_dynamic * t_f * self.L)
+                    T_Al_avg = Tw + self.Q_dot * self.width / (3 * self.length * k_Al_dynamic * t_f) * (self.length / (2 * self.L))**2
+                    
+                    Tw = self.T - self.Q_dot * self.length/(2 * self.L) * R_f
+                    if "hts" not in self.name:
+                        Tw -= self.Q_dot * self.length/(2 * self.L) * R_TMI
+                        # print(R_TMI)
+                    # print(Tw)
+                    h_H2 = heat_transfer_coefficient(T1, T2, Tw, p1, p2, m_dot, self.d, self.fluid)
+                    R_tot = R_f + 2 / (np.pi * self.d * self.length * h_H2)
+                    if "hts" not in self.name:
+                        R_tot += R_TMI
+                    # print(R_f, R_tot)
+                    self.T = self.Q_dot * self.length/(2 * self.L) * R_tot + Tb
+                    self.T = config.FPI_relaxation * self.T + (1.0 - config.FPI_relaxation) * T_old
+                    # print(f"AAA {self.T}")
 
         if show:
             if self.area_calc_mode:
