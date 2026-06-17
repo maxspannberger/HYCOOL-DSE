@@ -64,7 +64,7 @@ class H2SystemConfig:
         "hts_pow": 35.0,
     }
 
-    HEX_default_d = 0.009
+    HEX_default_d = 0.0098
     HEX_effectiveness = 1.0
     HEX_extra_thickness = 0.005
     initial_length_scaling = 5

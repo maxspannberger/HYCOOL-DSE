@@ -675,12 +675,23 @@ class COOL:
             if T_Al_avg is None:
                 T_Al_avg = (Tb + self.T) / 2
 
-            if Tb <= 20.0:
-                k_Al_dynamic = 25.0
-            elif Tb >= 300.0:
-                k_Al_dynamic = 167.0
+            if Tb < 4.0:
+                T_calc = 4.0
+            elif Tb > 300.0:
+                T_calc = 300.0
             else:
-                k_Al_dynamic = 25.0 + ((T_Al_avg - 20.0) / (300.0 - 20.0)) * (167.0 - 25.0)
+                T_calc = Tb
+                
+            logT = np.log10(T_calc)
+            
+            # NIST Polynomial Coefficients
+            a, b, c, d = 0.07918, 1.0957, -0.07277, 0.08084
+            e, f, g, h = 0.02803, -0.09464, 0.04179, -0.00571
+            
+            exponent = (a + b*logT + c*(logT**2) + d*(logT**3) + 
+                        e*(logT**4) + f*(logT**5) + g*(logT**6) + h*(logT**7))
+                        
+            k_Al_dynamic = 10**exponent
             # --------------------------------------------------
             # Swap config.k_Al out for the new dynamic variable
             R_f = self.width / (6 * k_Al_dynamic * t_f * self.L)
