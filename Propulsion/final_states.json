@@ -1,9 +1,9 @@
 {
     "TO": {
-        "Temperature_K": 104.79,
-        "Pressure_Pa": 492308.83,
-        "Density_kg_m3": 1.14,
-        "Enthalpy_J_kg": 1353532.58,
+        "Temperature_K": 142.12,
+        "Pressure_Pa": 1667191.6,
+        "Density_kg_m3": 2.82,
+        "Enthalpy_J_kg": 1794240.37,
         "Final_MassFlow_kg_s": 0.04325
     }
 }

@@ -65,9 +65,9 @@ class H2SystemConfig:
     }
 
     HEX_default_d = 0.009
-    HEX_effectiveness = 0.6
+    HEX_effectiveness = 1.0
     HEX_extra_thickness = 0.005
-    initial_length_scaling = 30
+    initial_length_scaling = 5
 
     k_Al = 167      # W/m K
     k_TMI_293 = 0.194    # W/m K
