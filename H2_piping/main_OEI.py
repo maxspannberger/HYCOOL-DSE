@@ -239,24 +239,67 @@ def main_H2_OEI(comps=None, sizes=None, All_temps=None, HEX_areas=None, prev_sta
         # 2. Build Branches (Instantiated with current phase)
         def create_oei_branch(frac):
             return [
-                Tank(), ('Split', frac, 1.0), Valve(name='check'), Pipe(length=0.5), Corner(N_bend=1, curv=2.5),
-                Pipe(length=0.71), Valve(name='shutoff'), Corner(N_bend=1, curv=2.5), Valve(name='shutoff'),
-                Pipe(length=0.5), Pump(target_p=28*100000, diameter=0.012), Pipe(length=12.62), Valve(name='shutoff'),
-                Corner(N_bend=1, curv=2.5), Valve(name='shutoff'), Pipe(length=8.45), Corner(N_bend=1, curv=2.5), Pipe(length=0.5), 
+                Tank(),
+                
+                ('Split', frac, 1.0),
+                
+                Valve(name='check'),
+                Pipe(length=0.5),
+                Corner(N_bend=1, curv=2.5),
+                Valve(name='shutoff'),
+                Corner(N_bend=1, curv=2.5),
+                Valve(name='shutoff'),
+                Pipe(length=0.5),
+                
+                Pump(target_p=28*100000, diameter=0.012),
+                
+                Pipe(length=12.62),
+                Valve(name='shutoff'),
+                Corner(N_bend=1, curv=2.5),
+                Valve(name='shutoff'),
+                Pipe(length=7.5),
+                Corner(N_bend=1, curv=2.5),
+                Pipe(length=0.5),
+                
                 COOL(name='hts_gen', location=component_position['hts_gen'][0], phase=current_phase, areas=HEX_areas, comps=comps, sizes=sizes),
-                Corner(N_bend=1, curv=2.5), Corner(N_bend=1, curv=2.5), Pipe(length=1.0), 
+                
+                Corner(N_bend=1, curv=2.5),
+                Corner(N_bend=1, curv=2.5),
+                Pipe(length=1.0),
+                
                 COOL(name='hts_pow', location=component_position['hts_pow'][0], phase=current_phase, areas=HEX_areas, comps=comps, sizes=sizes),
-                Corner(N_bend=1, curv=2.5), Corner(N_bend=1, curv=2.5), Pipe(length=0.5), Corner(N_bend=1, curv=2.5), Pipe(length=5.5), Corner(N_bend=1, curv=2.5), Pipe(length=0.5),
+                
+                Corner(N_bend=1, curv=2.5),
+                Corner(N_bend=1, curv=2.5),
+                Pipe(length=0.5),
+                Corner(N_bend=1, curv=2.5),
+                Pipe(length=7.5),
+                
                 COOL(name='hts_pow', location=component_position['hts_pow'][1], phase=current_phase, areas=HEX_areas, comps=comps, sizes=sizes),
-                Corner(N_bend=1, curv=2.5), Corner(N_bend=1, curv=2.5),
+                
+                Corner(N_bend=1, curv=2.5),
+                Pipe(length=0.5),
+                
                 COOL(name='dc_ac', location=component_position['dc_ac'][1], phase=current_phase, areas=HEX_areas, comps=comps, sizes=sizes),
-                Pipe(length=0.5), Corner(N_bend=1, curv=2.5), Pipe(length=5.5), Corner(N_bend=1, curv=2.5), Pipe(length=0.5),
+                
+                Corner(N_bend=1, curv=2.5),
+                Pipe(length=7.5),
+                
                 COOL(name='dc_ac', location=component_position['dc_ac'][0], phase=current_phase, areas=HEX_areas, comps=comps, sizes=sizes),
-                Corner(N_bend=1, curv=2.5), Corner(N_bend=1, curv=2.5), Pipe(length=1.0),
+                
+                Corner(N_bend=1, curv=2.5),
+                Pipe(length=1.0),
+                
                 COOL(name='ac_dc', location=component_position['ac_dc'][0], phase=current_phase, areas=HEX_areas, comps=comps, sizes=sizes),
-                Corner(N_bend=1, curv=2.5), Pipe(length=1.0),
+                
+                Corner(N_bend=1, curv=2.5),
+                Pipe(length=1.0),
+                
                 COOL(name='bus', location=component_position['bus'][0], phase=current_phase, areas=HEX_areas, comps=comps, sizes=sizes),
-                Corner(N_bend=1, curv=2.5), Corner(N_bend=1, curv=2.5), Pipe(length=1.0)
+                
+                Corner(N_bend=1, curv=2.5),
+                Corner(N_bend=1, curv=2.5),
+                Pipe(length=1.0)
             ]
 
         system_W = create_oei_branch(frac_W)
