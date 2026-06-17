@@ -173,6 +173,28 @@ def heat_transfer_coefficient(T1, T2, Tw, p1, p2, m_dot, d, fluid):
     return h
 
 
+def k_Al(T_avg):
+    if T_avg < 4.0:
+        T_calc = 4.0
+    elif T_avg > 300.0:
+        T_calc = 300.0
+    else:
+        T_calc = T_avg
+        
+    logT = np.log10(T_calc)
+    
+    # NIST Polynomial Coefficients
+    a, b, c, d = 0.07918, 1.0957, -0.07277, 0.08084
+    e, f, g, h = 0.02803, -0.09464, 0.04179, -0.00571
+    
+    exponent = (a + b*logT + c*(logT**2) + d*(logT**3) + 
+                e*(logT**4) + f*(logT**5) + g*(logT**6) + h*(logT**7))
+                
+    k_Al_dynamic = 10**exponent
+
+    return k_Al_dynamic
+
+
 # =============================================================================
 # Iterates through the defined system components to calculate fluid states.
 # Updates mass flow rate when splits or merges occur.
@@ -593,6 +615,7 @@ class COOL:
         L_old = np.inf
         j = 0
         T_Al_avg = None
+        Tw = None
         while abs((self.L - L_old)/self.L) > 1e-3 and j < 100:
             L_old = self.L
             j += 1
@@ -672,32 +695,8 @@ class COOL:
             t_f = self.d + 2 * config.HEX_extra_thickness
 
             Tb = 0.5 * (T1 + T2)
-            if T_Al_avg is None:
-                T_Al_avg = (Tb + self.T) / 2
-
-            if Tb < 4.0:
-                T_calc = 4.0
-            elif Tb > 300.0:
-                T_calc = 300.0
-            else:
-                T_calc = Tb
-                
-            logT = np.log10(T_calc)
-            
-            # NIST Polynomial Coefficients
-            a, b, c, d = 0.07918, 1.0957, -0.07277, 0.08084
-            e, f, g, h = 0.02803, -0.09464, 0.04179, -0.00571
-            
-            exponent = (a + b*logT + c*(logT**2) + d*(logT**3) + 
-                        e*(logT**4) + f*(logT**5) + g*(logT**6) + h*(logT**7))
-                        
-            k_Al_dynamic = 10**exponent
-            # --------------------------------------------------
-            # Swap config.k_Al out for the new dynamic variable
-            R_f = self.width / (6 * k_Al_dynamic * t_f * self.L)
-
-            T_Al_avg = Tb + self.Q_dot * self.width / (3 * self.length * k_Al_dynamic * t_f) * (self.length / (2 * self.L))**2
-            # print(Tb, T_Al_avg, self.T)
+            if Tw is None:
+                Tw = 0.5 * (Tb + self.T)
 
             # --- BYPASS FOR DEAD COMPONENTS ---
             if self.Q_dot <= 1e-6:
@@ -720,6 +719,12 @@ class COOL:
 
             # TODO: triple check the following code
             if self.area_calc_mode:                
+                if T_Al_avg is None:
+                    T_Al_avg = (Tw + self.T) / 2
+                k_Al_dynamic = k_Al(T_Al_avg)
+                R_f = self.width / (6 * k_Al_dynamic * t_f * self.L)
+                T_Al_avg = Tw + self.Q_dot * self.width / (3 * self.length * k_Al_dynamic * t_f) * (self.length / (2 * self.L))**2
+
                 Tw = max(self.T - self.Q_dot * self.length/(2 * self.L) * R_f, Tb)
                 h_H2 = heat_transfer_coefficient(T1, T2, Tw, p1, p2, m_dot, self.d, self.fluid)
 
@@ -747,6 +752,13 @@ class COOL:
                 k = 0
                 while abs(self.T - T_old) > 1e-2 and k < 100:
                     T_old = self.T
+
+                    if T_Al_avg is None:
+                        T_Al_avg = (Tw + self.T) / 2
+                    k_Al_dynamic = k_Al(T_Al_avg)
+                    R_f = self.width / (6 * k_Al_dynamic * t_f * self.L)
+                    T_Al_avg = Tw + self.Q_dot * self.width / (3 * self.length * k_Al_dynamic * t_f) * (self.length / (2 * self.L))**2
+                    
                     Tw = self.T - self.Q_dot * self.length/(2 * self.L) * R_f
                     if "hts" not in self.name:
                         Tw -= self.Q_dot * self.length/(2 * self.L) * R_TMI
