@@ -1,8 +1,8 @@
 Section,Parameter,Value
-Summary,MTOW [kg],32191.5
-Summary,MZFW [kg],31751.2
-Summary,W_empty (OEW) [kg],17309
-Summary,W_fuel (LH2) [kg],440.27
+Summary,MTOW [kg],32191.6
+Summary,MZFW [kg],31751.3
+Summary,W_empty (OEW) [kg],17309.1
+Summary,W_fuel (LH2) [kg],440.293
 Summary,W_payload [kg],10000
 Summary,W_fixed [kg],4442.19
 Summary,Cruise L/D [-],15.0512
@@ -10,51 +10,51 @@ Summary,CL_cruise [-],0.280647
 Summary,iterations [-],7
 Summary,converged [-],True
 Tail Sizing (initial),S_h,20.714
-Tail Sizing (initial),S_v,35.2656
-Tail Sizing (initial),b_h,9.65469
-Tail Sizing (initial),b_v,7.74284
+Tail Sizing (initial),S_v,35.2657
+Tail Sizing (initial),b_h,9.6547
+Tail Sizing (initial),b_v,7.74285
 Tail Sizing (initial),S_h_stability,12.3265
-Tail Sizing (initial),S_h_control,2.03352
+Tail Sizing (initial),S_h_control,2.03353
 Tail Sizing (initial),S_h_driver,scissor plot
-Tail Sizing (initial),S_v_stability,12.7539
-Tail Sizing (initial),S_v_control,35.2656
+Tail Sizing (initial),S_v_stability,12.754
+Tail Sizing (initial),S_v_control,35.2657
 Tail Sizing (initial),S_v_driver,control (OEI rudder)
 Tail Sizing (initial),V_h,1.59642
-Tail Sizing (initial),V_v,0.276508
+Tail Sizing (initial),V_v,0.276507
 Tail Sizing (initial),V_h_ok,True
 Tail Sizing (initial),V_v_ok,True
-Tail Sizing (initial),S_elevator,6.42134
+Tail Sizing (initial),S_elevator,6.42135
 Tail Sizing (initial),Se_Sh,0.31
-Tail Sizing (initial),S_rudder,9.07861
+Tail Sizing (initial),S_rudder,9.07863
 Tail Sizing (initial),Sr_Sv,0.257435
-Tail Sizing (initial),M_engine,4.023105e+05
-Tail Sizing (initial),M_rudder,4.023105e+05
+Tail Sizing (initial),M_engine,4.023113e+05
+Tail Sizing (initial),M_rudder,4.023113e+05
 Tail Sizing (initial),OEI_ok,True
-Tail Sizing (initial),S_aileron,2.23711
+Tail Sizing (initial),S_aileron,2.23712
 Tail Sizing (initial),Sa_Sref,0.027
 Tail Sizing (initial),p_achieved,0.176266
 Tail Sizing (initial),p_required,0.0747998
 Tail Sizing (initial),roll_ok,True
-Tail Sizing (rechecked w/ T_TO),S_h,20.7146
-Tail Sizing (rechecked w/ T_TO),S_v,35.2667
-Tail Sizing (rechecked w/ T_TO),b_h,9.65483
-Tail Sizing (rechecked w/ T_TO),b_v,7.74296
+Tail Sizing (rechecked w/ T_TO),S_h,20.7147
+Tail Sizing (rechecked w/ T_TO),S_v,35.2668
+Tail Sizing (rechecked w/ T_TO),b_h,9.65484
+Tail Sizing (rechecked w/ T_TO),b_v,7.74297
 Tail Sizing (rechecked w/ T_TO),S_h_stability,12.3271
 Tail Sizing (rechecked w/ T_TO),S_h_control,2.03362
 Tail Sizing (rechecked w/ T_TO),S_h_driver,scissor plot
 Tail Sizing (rechecked w/ T_TO),S_v_stability,12.7545
-Tail Sizing (rechecked w/ T_TO),S_v_control,35.2667
+Tail Sizing (rechecked w/ T_TO),S_v_control,35.2668
 Tail Sizing (rechecked w/ T_TO),S_v_driver,control (OEI rudder)
 Tail Sizing (rechecked w/ T_TO),V_h,1.5964
 Tail Sizing (rechecked w/ T_TO),V_v,0.276504
 Tail Sizing (rechecked w/ T_TO),V_h_ok,True
 Tail Sizing (rechecked w/ T_TO),V_v_ok,True
-Tail Sizing (rechecked w/ T_TO),S_elevator,6.42153
+Tail Sizing (rechecked w/ T_TO),S_elevator,6.42154
 Tail Sizing (rechecked w/ T_TO),Se_Sh,0.31
-Tail Sizing (rechecked w/ T_TO),S_rudder,9.07893
+Tail Sizing (rechecked w/ T_TO),S_rudder,9.07895
 Tail Sizing (rechecked w/ T_TO),Sr_Sv,0.257436
-Tail Sizing (rechecked w/ T_TO),M_engine,4.023244e+05
-Tail Sizing (rechecked w/ T_TO),M_rudder,4.023244e+05
+Tail Sizing (rechecked w/ T_TO),M_engine,4.023252e+05
+Tail Sizing (rechecked w/ T_TO),M_rudder,4.023252e+05
 Tail Sizing (rechecked w/ T_TO),OEI_ok,True
 Tail Sizing (rechecked w/ T_TO),S_aileron,2.23718
 Tail Sizing (rechecked w/ T_TO),Sa_Sref,0.027
@@ -64,7 +64,7 @@ Tail Sizing (rechecked w/ T_TO),roll_ok,True
 Drag Breakdown (cruise),CD0_wing,0.00529733
 Drag Breakdown (cruise),CD0_htail,0.00136705
 Drag Breakdown (cruise),CD0_vtail,0.00221096
-Drag Breakdown (cruise),CD0_fus,0.00577861
+Drag Breakdown (cruise),CD0_fus,0.0057786
 Drag Breakdown (cruise),CD0_total,0.0155332
 Drag Breakdown (cruise),CD_misc,1.06
 Drag Breakdown (cruise),CD_i,0.00311304
@@ -80,19 +80,19 @@ Drag Breakdown (cruise),"CD0 (total, with misc factor) [-]",0.0155332
 Drag Breakdown (cruise),CD_lift_dep [-],0.00311304
 Drag Breakdown (cruise),CD_total [-],0.0186462
 Drag Breakdown (cruise),L_over_D [-],15.0512
-Weight Breakdown,W_wing_initial,3988.12
+Weight Breakdown,W_wing_initial,3988.13
 Weight Breakdown,W_wing_accurate,3610.22
 Weight Breakdown,W_wing_hld,1471.01
-Weight Breakdown,W_wing_basic,1774.21
-Weight Breakdown,W_htail,412.223
-Weight Breakdown,W_vtail,834.369
-Weight Breakdown,W_fus,6293.36
-Weight Breakdown,W_lg,1426.32
+Weight Breakdown,W_wing_basic,1774.22
+Weight Breakdown,W_htail,412.224
+Weight Breakdown,W_vtail,834.37
+Weight Breakdown,W_fus,6293.37
+Weight Breakdown,W_lg,1426.33
 Weight Breakdown,W_lg_nose,245.651
 Weight Breakdown,W_lg_main,1180.67
-Weight Breakdown,W_sc,757.372
-Weight Breakdown,W_engine,3749.94
-Weight Breakdown,W_total_prop,3975.18
+Weight Breakdown,W_sc,757.373
+Weight Breakdown,W_engine,3749.95
+Weight Breakdown,W_total_prop,3975.19
 Weight Breakdown,W_turbine,0
 Weight Breakdown,W_battery,0
 Weight Breakdown,W_fc,0
@@ -103,7 +103,7 @@ Weight Breakdown,W_generator,0
 Weight Breakdown,W_motor,0
 Weight Breakdown,W_cable,0
 Weight Breakdown,W_pipe,0
-Weight Breakdown,W_h2_tank,225.239
+Weight Breakdown,W_h2_tank,225.247
 Weight Breakdown,rho_turb,0
 Weight Breakdown,rho_bat,0
 Weight Breakdown,rho_fc,0
@@ -114,18 +114,18 @@ Weight Breakdown,rho_dc_dc,0
 Weight Breakdown,rho_dc_ac,0
 Weight Breakdown,rho_cable,0
 Weight Breakdown,rho_pipe,0
-Weight Breakdown,P_TO_KW,6044.4
-Weight Breakdown,P_max_KW,6044.4
-Weight Breakdown,P_cruise_KW,4368.18
+Weight Breakdown,P_TO_KW,6044.41
+Weight Breakdown,P_max_KW,6044.41
+Weight Breakdown,P_cruise_KW,4368.19
 Weight Breakdown,P_TO_OEI_KW,3022.2
-Weight Breakdown,P_climb_KW,5482.51
+Weight Breakdown,P_climb_KW,5482.52
 Weight Breakdown,P_reserve_KW,0
 Weight Breakdown,P_primary_KW,3022.2
 Weight Breakdown,P_secondary_KW,3022.2
 Weight Breakdown,max_Thrust_prop_inner,0
 Weight Breakdown,max_Thrust_prop_outer,0
-Weight Breakdown,W_fuel,440.27
-Weight Breakdown,mass_breakdown,"{'gt': np.float64(461.5046093134479), 'mass_flows': [np.float64(0.043762755656876276), np.float64(0.04417759041905338), np.float64(0.03368610342029833), np.float64(0.010326030182397306), np.float64(0.04956937548033125), np.float64(0.025439904536778215), np.float64(0.02733379351414786)], 'expander_powers': [np.float64(319.036681324952), np.float64(323.89646255958473), np.float64(208.41361000839692), np.float64(26.87524011551629), np.float64(391.98770264295166), np.float64(116.71555884504238), np.float64(135.37046583369994)], 'efficiencies': [np.float64(0.5323963885088863), np.float64(0.5315224647377125), np.float64(0.5553855249188381), np.float64(0.2879363702587845), np.float64(0.5222564410910585), np.float64(0.5088054789678607), np.float64(0.5223175981714577)], 'TMS': np.float64(427.3361394944329), 'pipe_length': np.float64(139.5795560364299), 'electrical': np.float64(663.2393600604211), 'fan': np.float64(1395.4540004119256)}"
+Weight Breakdown,W_fuel,440.293
+Weight Breakdown,mass_breakdown,"{'gt': np.float64(461.50524334347944), 'mass_flows': [np.float64(0.04376961330331945), np.float64(0.04418469631227979), np.float64(0.033687018544386216), np.float64(0.010326067642185285), np.float64(0.04957191976099781), np.float64(0.02544036026628191), np.float64(0.027334284015936603)], 'expander_powers': [np.float64(318.75542398107524), np.float64(323.6046457718798), np.float64(208.28183023231492), np.float64(26.873889854811694), np.float64(391.886475569138), np.float64(116.65273648106185), np.float64(135.3034337233684)], 'efficiencies': [np.float64(0.53231383533955), np.float64(0.5314377774069042), np.float64(0.5553711880639701), np.float64(0.287935437667533), np.float64(0.5222304805075081), np.float64(0.5087971869403294), np.float64(0.5223089909507459)], 'TMS': np.float64(427.33620769306486), 'pipe_length': np.float64(139.57962583791965), 'electrical': np.float64(663.240421598068), 'fan': np.float64(1395.4555043596822)}"
 Weight Breakdown,grav_density,0.64
 Weight Breakdown,configuration,1
 Weight Breakdown,total_prop_efficiency,0.383744
@@ -139,25 +139,25 @@ Weight Breakdown,t_reserve,"(0.0,)"
 Weight Breakdown,bt_charging_ratio,0
 Weight Breakdown,P_opt,2321.49
 Weight Breakdown,N_propellers,1
-Weight Breakdown,H2_results_all,"{'final_states': {'TO': {'Temperature_K': 141.56, 'Pressure_Pa': 2218062.64, 'Density_kg_m3': 3.75, 'Enthalpy_J_kg': 1784351.96, 'Final_MassFlow_kg_s': 0.04376}, 'climb': {'Temperature_K': 141.32, 'Pressure_Pa': 2206821.82, 'Density_kg_m3': 3.74, 'Enthalpy_J_kg': 1781324.79, 'Final_MassFlow_kg_s': 0.04418}, 'cruise': {'Temperature_K': 147.82, 'Pressure_Pa': 2451502.17, 'Density_kg_m3': 3.96, 'Enthalpy_J_kg': 1863255.67, 'Final_MassFlow_kg_s': 0.03369}, 'APP': {'Temperature_K': 78.84, 'Pressure_Pa': 2779487.3, 'Density_kg_m3': 8.83, 'Enthalpy_J_kg': 1011567.24, 'Final_MassFlow_kg_s': 0.01033}, 'OEI_gt': {'Temperature_K': 156.07, 'Pressure_Pa': 2553404.8, 'Density_kg_m3': 3.9, 'Enthalpy_J_kg': 1969546.18, 'Final_MassFlow_kg_s': 0.04957}, 'OEI_mot_Working': {'Temperature_K': 156.07, 'Pressure_Pa': 2553404.8, 'Density_kg_m3': 3.9, 'Enthalpy_J_kg': 1969546.18, 'Final_MassFlow_kg_s': 0.04957}, 'OEI_mot_Failed': {'Temperature_K': 156.07, 'Pressure_Pa': 2553404.8, 'Density_kg_m3': 3.9, 'Enthalpy_J_kg': 1969546.18, 'Final_MassFlow_kg_s': 0.04957}, 'OEI_bus_Working': {'Temperature_K': 156.07, 'Pressure_Pa': 2553404.8, 'Density_kg_m3': 3.9, 'Enthalpy_J_kg': 1969546.18, 'Final_MassFlow_kg_s': 0.04957}, 'OEI_bus_Failed': {'Temperature_K': 156.07, 'Pressure_Pa': 2553404.8, 'Density_kg_m3': 3.9, 'Enthalpy_J_kg': 1969546.18, 'Final_MassFlow_kg_s': 0.04957}}, 'areas': {'hts_gen': {0.5: {'area': np.float64(0.038435416588402486), 'pipe_length': np.float64(1.359274083424804), 'N_corners': 2}}, 'hts_pow': {0.5: {'area': np.float64(0.05225337773541084), 'pipe_length': np.float64(1.8479126893626137), 'N_corners': 4}, 1.0: {'area': np.float64(0.021743821152629975), 'pipe_length': np.float64(0.7689662719731523), 'N_corners': 3}}, 'dc_ac': {1.0: {'area': np.float64(0.007949595121914236), 'pipe_length': np.float64(0.2811616011440625), 'N_corners': 0}, 0.5: {'area': np.float64(0.026426176261648955), 'pipe_length': np.float64(0.9346776723961374), 'N_corners': 1}}, 'ac_dc': {0.5: {'area': np.float64(0.03804986771917164), 'pipe_length': np.float64(1.3457482463798653), 'N_corners': 2}}, 'bus': {0.5: {'area': np.float64(0.024114531905015356), 'pipe_length': np.float64(0.8528778959487773), 'N_corners': 1}}}, 'temperatures': {'TO': {'hts_gen': {0.5: 35.0}, 'hts_pow': {0.5: 35.0, 1.0: 35.0}, 'dc_ac': {1.0: 250.0, 0.5: 250.0}, 'ac_dc': {0.5: 250.0}, 'bus': {0.5: 250.0}}, 'climb': {'hts_gen': {0.5: np.float64(34.99901858470626)}, 'hts_pow': {0.5: np.float64(34.991845727337534), 1.0: np.float64(34.98931527783913)}, 'dc_ac': {1.0: np.float64(250.04362455970244), 0.5: np.float64(250.04274693102258)}, 'ac_dc': {0.5: np.float64(249.8886264479486)}, 'bus': {0.5: np.float64(249.7998933074004)}}, 'cruise': {'hts_gen': {0.5: np.float64(34.994916481162164)}, 'hts_pow': {0.5: np.float64(35.17794417576621), 1.0: np.float64(35.27466241546589)}, 'dc_ac': {1.0: np.float64(248.56868283693956), 0.5: np.float64(249.91254807814653)}, 'ac_dc': {0.5: np.float64(252.60736826845508)}, 'bus': {0.5: np.float64(254.73522118855476)}}, 'APP': {'hts_gen': {0.5: np.float64(29.000360410332913)}, 'hts_pow': {0.5: np.float64(29.888194511348054), 1.0: np.float64(30.49106854146453)}, 'dc_ac': {1.0: np.float64(131.13255173446296), 0.5: np.float64(130.98470762017456)}, 'ac_dc': {0.5: np.float64(128.67643231549255)}, 'bus': {0.5: np.float64(128.26993170071404)}}, 'OEI_gt': {}, 'OEI_gt_Working': {'hts_gen': {0.5: np.float64(41.09537516672874)}, 'hts_pow': {0.5: np.float64(37.391921097032885), 1.0: np.float64(37.39868079228036)}, 'dc_ac': {1.0: np.float64(230.4625196088885), 0.5: np.float64(232.3664885858191)}, 'ac_dc': {0.5: np.float64(376.4757770552107)}, 'bus': {0.5: np.float64(392.88262763672685)}}, 'OEI_gt_Failed': {'hts_gen': {0.5: np.float64(22.86357855403267)}, 'hts_pow': {0.5: np.float64(30.43542362890212), 1.0: np.float64(30.932134442898676)}, 'dc_ac': {1.0: np.float64(225.85450245257033), 0.5: np.float64(226.65281112507145)}, 'ac_dc': {0.5: np.float64(61.72270090081722)}, 'bus': {0.5: np.float64(275.4032741520003)}}, 'OEI_mot': {}, 'OEI_mot_Working': {'hts_gen': {0.5: np.float64(33.81007699490577)}, 'hts_pow': {0.5: np.float64(37.26306316084741), 1.0: np.float64(37.44626029569078)}, 'dc_ac': {1.0: np.float64(321.58038301073566), 0.5: np.float64(335.01200416329834)}, 'ac_dc': {0.5: np.float64(262.94667386892434)}, 'bus': {0.5: np.float64(265.87136275442805)}}, 'OEI_mot_Failed': {'hts_gen': {0.5: np.float64(33.81007699490577)}, 'hts_pow': {0.5: np.float64(28.360868889784097), 1.0: np.float64(33.57883281482147)}, 'dc_ac': {1.0: np.float64(318.4111468777963), 0.5: np.float64(39.35455719150709)}, 'ac_dc': {0.5: np.float64(199.33360344531997)}, 'bus': {0.5: np.float64(194.38575179862067)}}, 'OEI_bus': {}, 'OEI_bus_Working': {'hts_gen': {0.5: np.float64(34.13772351400319)}, 'hts_pow': {0.5: np.float64(34.01000584745437), 1.0: np.float64(34.215091048495026)}, 'dc_ac': {1.0: np.float64(216.3227998344757), 0.5: np.float64(216.03886859375024)}, 'ac_dc': {0.5: np.float64(229.70046514398803)}, 'bus': {0.5: np.float64(331.683128773043)}}, 'OEI_bus_Failed': {'hts_gen': {0.5: np.float64(34.13772351400319)}, 'hts_pow': {0.5: np.float64(34.01000584745437), 1.0: np.float64(34.215091048495026)}, 'dc_ac': {1.0: np.float64(216.3227998344757), 0.5: np.float64(216.03886859375024)}, 'ac_dc': {0.5: np.float64(229.70046514398803)}, 'bus': {0.5: np.float64(117.10921319866938)}}}}"
-Weight Breakdown,electrical_results,"{'mass': np.float64(663.2393600604211), 'cooling': {'TO': {'hts_gen': {0.5: np.float64(2.7958959675498236)}, 'ac_dc': {0.5: np.float64(30.724100787408116)}, 'bus': {0.5: np.float64(9.392078300703782)}, 'dc_ac': {0.5: np.float64(24.226258253951112), 1.0: np.float64(6.056564563487778)}, 'hts_pow': {0.5: np.float64(2.178160855741385), 1.0: np.float64(0.5445402139353462)}, 'total': np.float64(151.8351978855547)}, 'climb': {'hts_gen': {0.5: np.float64(2.817765809484698)}, 'ac_dc': {0.5: np.float64(30.964428480430477)}, 'bus': {0.5: np.float64(9.465544291663512)}, 'dc_ac': {0.5: np.float64(24.415759023949956), 1.0: np.float64(6.103939755987489)}, 'hts_pow': {0.5: np.float64(2.195198697698552), 1.0: np.float64(0.548799674424638)}, 'total': np.float64(153.02287146727866)}, 'cruise': {'hts_gen': {0.5: np.float64(2.2450529076660715)}, 'ac_dc': {0.5: np.float64(24.670886402344955)}, 'bus': {0.5: np.float64(7.541665692411602)}, 'dc_ac': {0.5: np.float64(19.45323866344211), 1.0: np.float64(4.863309665860528)}, 'hts_pow': {0.5: np.float64(1.7490230034674825), 1.0: np.float64(0.43725575086687063)}, 'total': np.float64(121.92086417211922)}, 'APP': {'hts_gen': {0.5: np.float64(0.35678875798821685)}, 'ac_dc': {0.5: np.float64(3.9207516615329108)}, 'bus': {0.5: np.float64(1.1985381397337236)}, 'dc_ac': {0.5: np.float64(3.091551578975183), 1.0: np.float64(0.7728878947437957)}, 'hts_pow': {0.5: np.float64(0.27795859196419526), 1.0: np.float64(0.06948964799104881)}, 'total': np.float64(19.375932545858145)}, 'OEI_gt': {'hts_gen': {0.5: np.float64(3.1065510750553598)}, 'ac_dc': {0.5: np.float64(34.137889763786795)}, 'bus': {0.5: np.float64(10.435642556337536)}, 'dc_ac': {0.5: np.float64(13.459032363306173), 1.0: np.float64(3.3647580908265433)}, 'hts_pow': {0.5: np.float64(1.2100893643007693), 1.0: np.float64(0.3025223410751923)}, 'total': np.float64(94.78853027053457)}, 'OEI_mot': {'hts_gen': {0.5: np.float64(1.5532755375276799)}, 'ac_dc': {0.5: np.float64(17.068944881893398)}, 'bus': {0.5: np.float64(5.217821278168768)}, 'dc_ac': {0.5: np.float64(22.43172060551029), 1.0: np.float64(5.607930151377572)}, 'hts_pow': {0.5: np.float64(2.016815607167949), 1.0: np.float64(0.5042039017919873)}, 'total': np.float64(84.35288771419705)}, 'OEI_bus': {'hts_gen': {0.5: np.float64(1.7132305652667248)}, 'ac_dc': {0.5: np.float64(18.826690681717942)}, 'bus': {0.5: np.float64(11.510296379335752)}, 'dc_ac': {0.5: np.float64(13.459032363306173), 1.0: np.float64(3.3647580908265433)}, 'hts_pow': {0.5: np.float64(1.2100893643007693), 1.0: np.float64(0.3025223410751923)}, 'total': np.float64(89.26294319232242)}}, 'powers': {'out': {0.5: {'TO': np.float64(2175.9826948858836), 'climb': np.float64(2193.003499001095), 'cruise': np.float64(1747.2739804642076), 'APP': np.float64(277.6806333722617), 'OEI_gt': np.float64(1208.8792749366019), 'OEI_mot': np.float64(2014.7987915610033), 'OEI_bus': np.float64(1208.8792749366019)}, 1.0: {'TO': np.float64(543.9956737214709), 'climb': np.float64(548.2508747502737), 'cruise': np.float64(436.8184951160519), 'APP': np.float64(69.42015834306542), 'OEI_gt': np.float64(302.21981873415046), 'OEI_mot': np.float64(503.69969789025083), 'OEI_bus': np.float64(302.21981873415046)}}, 'hts_pow': {0.5: {'TO': np.float64(2178.160855741625), 'climb': np.float64(2195.1986976987937), 'cruise': np.float64(1749.0230034676752), 'APP': np.float64(277.9585919642259), 'OEI_gt': np.float64(1210.0893643009026), 'OEI_mot': np.float64(2016.8156071681713), 'OEI_bus': np.float64(1210.0893643009026)}, 1.0: {'TO': np.float64(544.5402139354062), 'climb': np.float64(548.7996744246984), 'cruise': np.float64(437.2557508669188), 'APP': np.float64(69.48964799105647), 'OEI_gt': np.float64(302.52234107522565), 'OEI_mot': np.float64(504.2039017920428), 'OEI_bus': np.float64(302.52234107522565)}}, 'dc_ac': {0.5: {'TO': np.float64(2202.387113995576), 'climb': np.float64(2219.614456722744), 'cruise': np.float64(1768.4762421311173), 'APP': np.float64(281.05014354320105), 'OEI_gt': np.float64(1223.548396664209), 'OEI_mot': np.float64(2039.2473277736815), 'OEI_bus': np.float64(1223.548396664209)}, 1.0: {'TO': np.float64(550.596778498894), 'climb': np.float64(554.903614180686), 'cruise': np.float64(442.1190605327793), 'APP': np.float64(70.26253588580026), 'OEI_gt': np.float64(305.8870991660522), 'OEI_mot': np.float64(509.8118319434204), 'OEI_bus': np.float64(305.8870991660522)}}, 'cable_out': {0.5: {'length': np.float64(0.0), 'TO': np.float64(2202.387113995576), 'climb': np.float64(2219.614456722744), 'cruise': np.float64(1768.4762421311173), 'APP': np.float64(281.05014354320105), 'OEI_gt': np.float64(1223.548396664209), 'OEI_mot': np.float64(1019.6236638868407), 'OEI_bus': np.float64(1223.548396664209)}, 1.0: {'length': np.float64(7.1961806832934405), 'TO': np.float64(550.596778498894), 'climb': np.float64(554.903614180686), 'cruise': np.float64(442.1190605327793), 'APP': np.float64(70.26253588580026), 'OEI_gt': np.float64(305.8870991660522), 'OEI_mot': np.float64(254.9059159717102), 'OEI_bus': np.float64(305.8870991660522)}, -0.5: {'length': np.float64(14.392361366586881), 'TO': 0.0, 'climb': 0.0, 'cruise': 0.0, 'APP': 0.0, 'OEI_gt': 0.0, 'OEI_mot': np.float64(1019.6236638868407), 'OEI_bus': np.float64(1223.548396664209)}, -1.0: {'length': np.float64(21.58854204988032), 'TO': 0.0, 'climb': 0.0, 'cruise': 0.0, 'APP': 0.0, 'OEI_gt': 0.0, 'OEI_mot': np.float64(254.9059159717102), 'OEI_bus': np.float64(305.8870991660522)}}, 'bus': {0.5: {'TO': np.float64(2762.3759707951735), 'climb': np.float64(2783.9836151950935), 'cruise': np.float64(2218.136968356308), 'APP': np.float64(352.511217568735), 'OEI_gt': np.float64(3069.3066342168595), 'OEI_mot': np.float64(1534.6533171084297), 'OEI_bus': np.float64(3385.3812880398577)}}, 'cable_in': {0.5: {'length': np.float64(0.0), 'TO': np.float64(2762.3759707951735), 'climb': np.float64(2783.9836151950935), 'cruise': np.float64(2218.136968356308), 'APP': np.float64(352.511217568735), 'OEI_gt': np.float64(3069.3066342168595), 'OEI_mot': np.float64(1534.6533171084297), 'OEI_bus': np.float64(1692.6906440199289)}, -0.5: {'length': np.float64(14.392361366586881), 'TO': 0.0, 'climb': 0.0, 'cruise': 0.0, 'APP': 0.0, 'OEI_gt': np.float64(3069.3066342168595), 'OEI_mot': 0.0, 'OEI_bus': np.float64(1692.6906440199289)}}, 'ac_dc': {0.5: {'TO': np.float64(2793.1000715825817), 'climb': np.float64(2814.948043675524), 'cruise': np.float64(2242.807854758653), 'APP': np.float64(356.4319692302679), 'OEI_gt': np.float64(3103.4445239806464), 'OEI_mot': np.float64(1551.7222619903232), 'OEI_bus': np.float64(1711.5173347016469)}}, 'hts_gen': {0.5: {'TO': np.float64(2795.8959675501314), 'climb': np.float64(2817.7658094850085), 'cruise': np.float64(2245.052907666319), 'APP': np.float64(356.7887579882561), 'OEI_gt': np.float64(3106.551075055702), 'OEI_mot': np.float64(1553.275537527851), 'OEI_bus': np.float64(1713.2305652669136)}}, 'gt_hex': {0.5: {'TO': np.float64(7078.217639367421), 'climb': np.float64(7133.584327810147), 'cruise': np.float64(5683.678247256503), 'APP': np.float64(903.2626784512813), 'OEI_gt': np.float64(7864.686265963802), 'OEI_mot': np.float64(3932.343132981901), 'OEI_bus': np.float64(4337.292570295984)}}}, 'sizes': {'hts_gen': {0.5: (0.5333, 0.3)}, 'ac_dc': {0.5: (np.float64(0.3417140365587688), np.float64(0.5695233942646147), np.float64(0.22780935770584587))}, 'bus': {0.5: (np.float64(0.3404564626530509), np.float64(0.5674274377550849), np.float64(0.22697097510203396))}, 'dc_ac': {0.5: (np.float64(0.30479841826878135), np.float64(0.5079973637813022), np.float64(0.20319894551252093)), 1.0: (np.float64(0.19201097157574987), np.float64(0.32001828595958315), np.float64(0.12800731438383325))}, 'hts_pow': {0.5: (0.4244, 0.3), 1.0: (0.24, 0.2)}}}"
+Weight Breakdown,H2_results_all,"{'final_states': {'TO': {'Temperature_K': 141.53, 'Pressure_Pa': 2201412.22, 'Density_kg_m3': 3.72, 'Enthalpy_J_kg': 1783995.6, 'Final_MassFlow_kg_s': 0.04377}, 'climb': {'Temperature_K': 141.29, 'Pressure_Pa': 2189787.01, 'Density_kg_m3': 3.71, 'Enthalpy_J_kg': 1780957.05, 'Final_MassFlow_kg_s': 0.04418}, 'cruise': {'Temperature_K': 147.82, 'Pressure_Pa': 2442267.66, 'Density_kg_m3': 3.95, 'Enthalpy_J_kg': 1863182.96, 'Final_MassFlow_kg_s': 0.03369}, 'APP': {'Temperature_K': 78.84, 'Pressure_Pa': 2778895.59, 'Density_kg_m3': 8.83, 'Enthalpy_J_kg': 1011563.89, 'Final_MassFlow_kg_s': 0.01033}, 'OEI_gt': {'Temperature_K': 156.06, 'Pressure_Pa': 2547519.41, 'Density_kg_m3': 3.89, 'Enthalpy_J_kg': 1969438.59, 'Final_MassFlow_kg_s': 0.04957}, 'OEI_mot_Working': {'Temperature_K': 156.06, 'Pressure_Pa': 2547519.41, 'Density_kg_m3': 3.89, 'Enthalpy_J_kg': 1969438.59, 'Final_MassFlow_kg_s': 0.04957}, 'OEI_mot_Failed': {'Temperature_K': 156.06, 'Pressure_Pa': 2547519.41, 'Density_kg_m3': 3.89, 'Enthalpy_J_kg': 1969438.59, 'Final_MassFlow_kg_s': 0.04957}, 'OEI_bus_Working': {'Temperature_K': 156.06, 'Pressure_Pa': 2547519.41, 'Density_kg_m3': 3.89, 'Enthalpy_J_kg': 1969438.59, 'Final_MassFlow_kg_s': 0.04957}, 'OEI_bus_Failed': {'Temperature_K': 156.06, 'Pressure_Pa': 2547519.41, 'Density_kg_m3': 3.89, 'Enthalpy_J_kg': 1969438.59, 'Final_MassFlow_kg_s': 0.04957}}, 'areas': {'hts_gen': {0.5: {'area': np.float64(0.04537727679120479), 'pipe_length': np.float64(1.604763036987829), 'N_corners': 3}}, 'hts_pow': {0.5: {'area': np.float64(0.06153686831405431), 'pipe_length': np.float64(2.176209606416559), 'N_corners': 5}, 1.0: {'area': np.float64(0.025560175269863507), 'pipe_length': np.float64(0.9039257665001059), 'N_corners': 3}}, 'dc_ac': {1.0: {'area': np.float64(0.007357156154061744), 'pipe_length': np.float64(0.2602149211274857), 'N_corners': 0}, 0.5: {'area': np.float64(0.026101005269373805), 'pipe_length': np.float64(0.923170436148357), 'N_corners': 1}}, 'ac_dc': {0.5: {'area': np.float64(0.040136636554109796), 'pipe_length': np.float64(1.4195636883506366), 'N_corners': 2}}, 'bus': {0.5: {'area': np.float64(0.025794307928042177), 'pipe_length': np.float64(0.9122898611326522), 'N_corners': 1}}}, 'temperatures': {'TO': {'hts_gen': {0.5: 35.0}, 'hts_pow': {0.5: 35.0, 1.0: 35.0}, 'dc_ac': {1.0: 250.0, 0.5: 250.0}, 'ac_dc': {0.5: 250.0}, 'bus': {0.5: 250.0}}, 'climb': {'hts_gen': {0.5: np.float64(34.99899053966)}, 'hts_pow': {0.5: np.float64(34.991804975992714), 1.0: np.float64(34.98924626711989)}, 'dc_ac': {1.0: np.float64(250.03287262261443), 0.5: np.float64(249.96114957668755)}, 'ac_dc': {0.5: np.float64(249.8720916753918)}, 'bus': {0.5: np.float64(249.79183357269133)}}, 'cruise': {'hts_gen': {0.5: np.float64(34.995763588181816)}, 'hts_pow': {0.5: np.float64(35.17914142428758), 1.0: np.float64(35.27638480435834)}, 'dc_ac': {1.0: np.float64(249.37610999613833), 0.5: np.float64(251.6260088799861)}, 'ac_dc': {0.5: np.float64(253.17810291977244)}, 'bus': {0.5: np.float64(254.9723255531901)}}, 'APP': {'hts_gen': {0.5: np.float64(28.994724351040087)}, 'hts_pow': {0.5: np.float64(29.88791946703413), 1.0: np.float64(30.49260920730799)}, 'dc_ac': {1.0: np.float64(151.0451343327246), 0.5: np.float64(137.0766324773962)}, 'ac_dc': {0.5: np.float64(129.47785357794498)}, 'bus': {0.5: np.float64(128.52576829120085)}}, 'OEI_gt': {}, 'OEI_gt_Working': {'hts_gen': {0.5: np.float64(41.0867256747174)}, 'hts_pow': {0.5: np.float64(37.389167853702965), 1.0: np.float64(37.39755529241031)}, 'dc_ac': {1.0: np.float64(234.61318347098728), 0.5: np.float64(237.44889731082247)}, 'ac_dc': {0.5: np.float64(373.20378473401365)}, 'bus': {0.5: np.float64(392.213476690449)}}, 'OEI_gt_Failed': {'hts_gen': {0.5: np.float64(22.86394620632901)}, 'hts_pow': {0.5: np.float64(30.441954459575392), 1.0: np.float64(30.937573178810144)}, 'dc_ac': {1.0: np.float64(235.19665244048235), 0.5: np.float64(227.1429232093754)}, 'ac_dc': {0.5: np.float64(61.71376011013531)}, 'bus': {0.5: np.float64(264.8122522201421)}}, 'OEI_mot': {}, 'OEI_mot_Working': {'hts_gen': {0.5: np.float64(33.809057691835186)}, 'hts_pow': {0.5: np.float64(37.266756238076866), 1.0: np.float64(37.44871065644148)}, 'dc_ac': {1.0: np.float64(300.20088115313183), 0.5: np.float64(339.3751858545553)}, 'ac_dc': {0.5: np.float64(265.91894751033374)}, 'bus': {0.5: np.float64(266.81331892415085)}}, 'OEI_mot_Failed': {'hts_gen': {0.5: np.float64(33.809057691835186)}, 'hts_pow': {0.5: np.float64(28.361382778002522), 1.0: np.float64(33.588188819920454)}, 'dc_ac': {1.0: np.float64(301.3878557550377), 0.5: np.float64(39.348994972657344)}, 'ac_dc': {0.5: np.float64(195.23261735120542)}, 'bus': {0.5: np.float64(193.34282698888305)}}, 'OEI_bus': {}, 'OEI_bus_Working': {'hts_gen': {0.5: np.float64(34.13718162628566)}, 'hts_pow': {0.5: np.float64(34.009967243486486), 1.0: np.float64(34.217343470489524)}, 'dc_ac': {1.0: np.float64(224.94234368820682), 0.5: np.float64(218.50450667445992)}, 'ac_dc': {0.5: np.float64(229.94113077443336)}, 'bus': {0.5: np.float64(327.9076469747264)}}, 'OEI_bus_Failed': {'hts_gen': {0.5: np.float64(34.13718162628566)}, 'hts_pow': {0.5: np.float64(34.009967243486486), 1.0: np.float64(34.217343470489524)}, 'dc_ac': {1.0: np.float64(224.94234368820682), 0.5: np.float64(218.50450667445992)}, 'ac_dc': {0.5: np.float64(229.94113077443336)}, 'bus': {0.5: np.float64(117.10291932310307)}}}}"
+Weight Breakdown,electrical_results,"{'mass': np.float64(663.240421598068), 'cooling': {'TO': {'hts_gen': {0.5: np.float64(2.7959004874579683)}, 'ac_dc': {0.5: np.float64(30.724150456678718)}, 'bus': {0.5: np.float64(9.392093484148267)}, 'dc_ac': {0.5: np.float64(24.226297418663705), 1.0: np.float64(6.056574354665926)}, 'hts_pow': {0.5: np.float64(2.17816437700509), 1.0: np.float64(0.5445410942512725)}, 'total': np.float64(151.8354433457419)}, 'climb': {'hts_gen': {0.5: np.float64(2.817770016431331)}, 'ac_dc': {0.5: np.float64(30.96447471056702)}, 'bus': {0.5: np.float64(9.465558423795978)}, 'dc_ac': {0.5: np.float64(24.415795476871228), 1.0: np.float64(6.103948869217807)}, 'hts_pow': {0.5: np.float64(2.195201975147565), 1.0: np.float64(0.5488004937868912)}, 'total': np.float64(153.0230999316356)}, 'cruise': {'hts_gen': {0.5: np.float64(2.2450559413592046)}, 'ac_dc': {0.5: np.float64(24.670919739598794)}, 'bus': {0.5: np.float64(7.541675883307033)}, 'dc_ac': {0.5: np.float64(19.453264950197465), 1.0: np.float64(4.863316237549366)}, 'hts_pow': {0.5: np.float64(1.7490253668857592), 1.0: np.float64(0.4372563417214398)}, 'total': np.float64(121.92102892123813)}, 'APP': {'hts_gen': {0.5: np.float64(0.3567888967124212)}, 'ac_dc': {0.5: np.float64(3.9207531859731923)}, 'bus': {0.5: np.float64(1.198538605741259)}, 'dc_ac': {0.5: np.float64(3.0915527810114676), 1.0: np.float64(0.7728881952528669)}, 'hts_pow': {0.5: np.float64(0.27795870003818485), 1.0: np.float64(0.06948967500954621)}, 'total': np.float64(19.375940079477875)}, 'OEI_gt': {'hts_gen': {0.5: np.float64(3.106556097175521)}, 'ac_dc': {0.5: np.float64(34.137944951865244)}, 'bus': {0.5: np.float64(10.435659426831407)}, 'dc_ac': {0.5: np.float64(13.459054121479834), 1.0: np.float64(3.3647635303699586)}, 'hts_pow': {0.5: np.float64(1.2100913205583832), 1.0: np.float64(0.3025228301395958)}, 'total': np.float64(94.78868350779912)}, 'OEI_mot': {'hts_gen': {0.5: np.float64(1.5532780485877606)}, 'ac_dc': {0.5: np.float64(17.068972475932625)}, 'bus': {0.5: np.float64(5.217829713415704)}, 'dc_ac': {0.5: np.float64(22.43175686913306), 1.0: np.float64(5.607939217283265)}, 'hts_pow': {0.5: np.float64(2.0168188675973053), 1.0: np.float64(0.5042047168993263)}, 'total': np.float64(84.35302408096773)}, 'OEI_bus': {'hts_gen': {0.5: np.float64(1.7132330763268053)}, 'ac_dc': {0.5: np.float64(18.826718275757166)}, 'bus': {0.5: np.float64(11.510313249829624)}, 'dc_ac': {0.5: np.float64(13.459054121479834), 1.0: np.float64(3.3647635303699586)}, 'hts_pow': {0.5: np.float64(1.2100913205583832), 1.0: np.float64(0.3025228301395958)}, 'total': np.float64(89.2630795590931)}}, 'powers': {'out': {0.5: {'TO': np.float64(2175.9862126283247), 'climb': np.float64(2193.006773172659), 'cruise': np.float64(1747.2763415190661), 'APP': np.float64(277.68074133817726), 'OEI_gt': np.float64(1208.881229237958), 'OEI_mot': np.float64(2014.8020487299302), 'OEI_bus': np.float64(1208.881229237958)}, 1.0: {'TO': np.float64(543.9965531570812), 'climb': np.float64(548.2516932931647), 'cruise': np.float64(436.81908537976653), 'APP': np.float64(69.42018533454431), 'OEI_gt': np.float64(302.2203073094895), 'OEI_mot': np.float64(503.70051218248256), 'OEI_bus': np.float64(302.2203073094895)}}, 'hts_pow': {0.5: {'TO': np.float64(2178.1643770053297), 'climb': np.float64(2195.2019751478065), 'cruise': np.float64(1749.0253668859518), 'APP': np.float64(277.95870003821545), 'OEI_gt': np.float64(1210.0913205585164), 'OEI_mot': np.float64(2016.8188675975275), 'OEI_bus': np.float64(1210.0913205585164)}, 1.0: {'TO': np.float64(544.5410942513324), 'climb': np.float64(548.8004937869516), 'cruise': np.float64(437.25634172148796), 'APP': np.float64(69.48967500955386), 'OEI_gt': np.float64(302.5228301396291), 'OEI_mot': np.float64(504.2047168993819), 'OEI_bus': np.float64(302.5228301396291)}}, 'dc_ac': {0.5: {'TO': np.float64(2202.3906744239935), 'climb': np.float64(2219.6177706246776), 'cruise': np.float64(1768.4786318361494), 'APP': np.float64(281.0502528192269), 'OEI_gt': np.float64(1223.5503746799961), 'OEI_mot': np.float64(2039.2506244666606), 'OEI_bus': np.float64(1223.5503746799961)}, 1.0: {'TO': np.float64(550.5976686059984), 'climb': np.float64(554.9044426561694), 'cruise': np.float64(442.11965795903734), 'APP': np.float64(70.26256320480672), 'OEI_gt': np.float64(305.88759366999903), 'OEI_mot': np.float64(509.81265611666515), 'OEI_bus': np.float64(305.88759366999903)}}, 'cable_out': {0.5: {'length': np.float64(0.0), 'TO': np.float64(2202.3906744239935), 'climb': np.float64(2219.6177706246776), 'cruise': np.float64(1768.4786318361494), 'APP': np.float64(281.0502528192269), 'OEI_gt': np.float64(1223.5503746799961), 'OEI_mot': np.float64(1019.6253122333303), 'OEI_bus': np.float64(1223.5503746799961)}, 1.0: {'length': np.float64(7.196186500044656), 'TO': np.float64(550.5976686059984), 'climb': np.float64(554.9044426561694), 'cruise': np.float64(442.11965795903734), 'APP': np.float64(70.26256320480672), 'OEI_gt': np.float64(305.88759366999903), 'OEI_mot': np.float64(254.90632805833258), 'OEI_bus': np.float64(305.88759366999903)}, -0.5: {'length': np.float64(14.392373000089313), 'TO': 0.0, 'climb': 0.0, 'cruise': 0.0, 'APP': 0.0, 'OEI_gt': 0.0, 'OEI_mot': np.float64(1019.6253122333303), 'OEI_bus': np.float64(1223.5503746799961)}, -1.0: {'length': np.float64(21.588559500133968), 'TO': 0.0, 'climb': 0.0, 'cruise': 0.0, 'APP': 0.0, 'OEI_gt': 0.0, 'OEI_mot': np.float64(254.90632805833258), 'OEI_bus': np.float64(305.88759366999903)}}, 'bus': {0.5: {'TO': np.float64(2762.3804365141395), 'climb': np.float64(2783.9877717046425), 'cruise': np.float64(2218.139965678494), 'APP': np.float64(352.51135462977487), 'OEI_gt': np.float64(3069.3115961268218), 'OEI_mot': np.float64(1534.655798063411), 'OEI_bus': np.float64(3385.38624994982)}}, 'cable_in': {0.5: {'length': np.float64(0.0), 'TO': np.float64(2762.3804365141395), 'climb': np.float64(2783.9877717046425), 'cruise': np.float64(2218.139965678494), 'APP': np.float64(352.51135462977487), 'OEI_gt': np.float64(3069.3115961268218), 'OEI_mot': np.float64(1534.655798063411), 'OEI_bus': np.float64(1692.69312497491)}, -0.5: {'length': np.float64(14.392373000089313), 'TO': 0.0, 'climb': 0.0, 'cruise': 0.0, 'APP': 0.0, 'OEI_gt': np.float64(3069.3115961268218), 'OEI_mot': 0.0, 'OEI_bus': np.float64(1692.69312497491)}}, 'ac_dc': {0.5: {'TO': np.float64(2793.104586970818), 'climb': np.float64(2814.9522464152096), 'cruise': np.float64(2242.8108854180928), 'APP': np.float64(356.43210781574805), 'OEI_gt': np.float64(3103.449541078687), 'OEI_mot': np.float64(1551.7247705393438), 'OEI_bus': np.float64(1711.5198432506672)}}, 'hts_gen': {0.5: {'TO': np.float64(2795.900487458276), 'climb': np.float64(2817.770016431641), 'cruise': np.float64(2245.055941359452), 'APP': np.float64(356.7888967124605), 'OEI_gt': np.float64(3106.5560971758628), 'OEI_mot': np.float64(1553.2780485879316), 'OEI_bus': np.float64(1713.233076326994)}}, 'gt_hex': {0.5: {'TO': np.float64(7078.22908217285), 'climb': np.float64(7133.594978307952), 'cruise': np.float64(5683.685927492284), 'APP': np.float64(903.2630296517987), 'OEI_gt': np.float64(7864.698980192057), 'OEI_mot': np.float64(3932.349490096029), 'OEI_bus': np.float64(4337.298927410111)}}}, 'sizes': {'hts_gen': {0.5: (0.5333, 0.3)}, 'ac_dc': {0.5: (np.float64(0.3417142206995288), np.float64(0.5695237011658812), np.float64(0.2278094804663525))}, 'bus': {0.5: (np.float64(0.34045664611613713), np.float64(0.5674277435268953), np.float64(0.2269710974107581))}, 'dc_ac': {0.5: (np.float64(0.3047985825166798), np.float64(0.5079976375277997), np.float64(0.20319905501111987)), 1.0: (np.float64(0.19201107504544218), np.float64(0.32001845840907034), np.float64(0.12800738336362816))}, 'hts_pow': {0.5: (0.4244, 0.3), 1.0: (0.24, 0.2)}}}"
 Weight Breakdown,W_structure [kg],13333.9
-Weight Breakdown,W_empty (OEW) [kg],17309
-Mission Power & Fuel,P_cruise_shaft,4.368185e+06
-Mission Power & Fuel,P_reserve_shaft,1.475279e+06
-Mission Power & Fuel,P_climb_shaft,5.482509e+06
+Weight Breakdown,W_empty (OEW) [kg],17309.1
+Mission Power & Fuel,P_cruise_shaft,4.368191e+06
+Mission Power & Fuel,P_reserve_shaft,1.475281e+06
+Mission Power & Fuel,P_climb_shaft,5.482517e+06
 Mission Power & Fuel,P_TO_shaft,2.592000e+06
-Mission Power & Fuel,P_app_shaft,6.942016e+05
-Mission Power & Fuel,mdot_cruise,0.0364015
+Mission Power & Fuel,P_app_shaft,6.942019e+05
+Mission Power & Fuel,mdot_cruise,0.0364016
 Mission Power & Fuel,mdot_reserve,0.012294
 Mission Power & Fuel,mdot_climb,0.0456876
 Mission Power & Fuel,t_cruise,4612.76
 Mission Power & Fuel,t_reserve,2700
 Mission Power & Fuel,t_climb,1000
-Mission Power & Fuel,m_LH2_cruise,310.746
+Mission Power & Fuel,m_LH2_cruise,310.754
 Mission Power & Fuel,m_LH2_reserve,33.1938
-Mission Power & Fuel,m_LH2_climb,88.348
-Mission Power & Fuel,m_LH2_TO_taxi,7.98188
+Mission Power & Fuel,m_LH2_climb,88.3622
+Mission Power & Fuel,m_LH2_TO_taxi,7.98233
 Mission Power & Fuel,CL_cruise,0.280589
 Mission Power & Fuel,CL_reserve,1.55833
 Mission Power & Fuel,CL_climb,0.364391
@@ -166,26 +166,26 @@ Mission Power & Fuel,LD_reserve,15.3564
 Mission Power & Fuel,LD_climb,19.2688
 Mission Power & Fuel,V_reserve_TAS,64.5889
 Mission Power & Fuel,V_climb_TAS,157.395
-Mission Power & Fuel,T_cruise,18134.4
-Mission Power & Fuel,m_LH2_total [kg],440.27
-Mission Power & Fuel,"P_max (shaft, across phases) [W]",5.482509e+06
-Power & Thrust Sizing,P_TO_total,6.044576e+06
-Power & Thrust Sizing,P_takeoff,5.440118e+06
-Power & Thrust Sizing,P_TO_per_engine,3.022288e+06
-Power & Thrust Sizing,P_from_climb,5.482509e+06
-Power & Thrust Sizing,P_from_CS25_121,6.044576e+06
+Mission Power & Fuel,T_cruise,18134.5
+Mission Power & Fuel,m_LH2_total [kg],440.293
+Mission Power & Fuel,"P_max (shaft, across phases) [W]",5.482517e+06
+Power & Thrust Sizing,P_TO_total,6.044586e+06
+Power & Thrust Sizing,P_takeoff,5.440127e+06
+Power & Thrust Sizing,P_TO_per_engine,3.022293e+06
+Power & Thrust Sizing,P_from_climb,5.482517e+06
+Power & Thrust Sizing,P_from_CS25_121,6.044586e+06
 Power & Thrust Sizing,driving_case,CS-25.121 second segment
-Power & Thrust Sizing,T_per_engine_V2,36275.7
+Power & Thrust Sizing,T_per_engine_V2,36275.8
 Power & Thrust Sizing,T_per_prop_V2,12723.3
 Power & Thrust Sizing,V_2,58.32
 Power & Thrust Sizing,CL_max_TO,1.82893
 Power & Thrust Sizing,LD_takeoff,11
 Power & Thrust Sizing,gamma_min_engine,0.024
 Power & Thrust Sizing,gamma_min_prop,0.03
-Power & Thrust Sizing,P_total_OEI,3.022288e+06
-Power & Thrust Sizing,P_total_OEI_propeller,2.226068e+06
+Power & Thrust Sizing,P_total_OEI,3.022293e+06
+Power & Thrust Sizing,P_total_OEI_propeller,2.226072e+06
 Power & Thrust Sizing,driving_case_2,2
-Power & Thrust Sizing,T_static_total,1.048260e+05
-Power & Thrust Sizing,T_static_per_engine,52413
-Power & Thrust Sizing,T_static_per_prop_inner,41930.4
+Power & Thrust Sizing,T_static_total,1.048262e+05
+Power & Thrust Sizing,T_static_per_engine,52413.1
+Power & Thrust Sizing,T_static_per_prop_inner,41930.5
 Power & Thrust Sizing,T_static_per_prop_outer,10482.6

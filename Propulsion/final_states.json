@@ -1,9 +1,65 @@
 {
     "TO": {
-        "Temperature_K": 141.69,
-        "Pressure_Pa": 2229569.53,
-        "Density_kg_m3": 3.77,
-        "Enthalpy_J_kg": 1785837.96,
-        "Final_MassFlow_kg_s": 0.04356
+        "Temperature_K": 144.51,
+        "Pressure_Pa": 2236027.86,
+        "Density_kg_m3": 3.7,
+        "Enthalpy_J_kg": 1821781.9,
+        "Final_MassFlow_kg_s": 0.04208
+    },
+    "climb": {
+        "Temperature_K": 142.29,
+        "Pressure_Pa": 2142357.4,
+        "Density_kg_m3": 3.61,
+        "Enthalpy_J_kg": 1793996.58,
+        "Final_MassFlow_kg_s": 0.04541
+    },
+    "cruise": {
+        "Temperature_K": 147.88,
+        "Pressure_Pa": 2372999.31,
+        "Density_kg_m3": 3.84,
+        "Enthalpy_J_kg": 1864238.04,
+        "Final_MassFlow_kg_s": 0.03657
+    },
+    "APP": {
+        "Temperature_K": 79.34,
+        "Pressure_Pa": 2774204.67,
+        "Density_kg_m3": 8.75,
+        "Enthalpy_J_kg": 1017733.12,
+        "Final_MassFlow_kg_s": 0.01142
+    },
+    "OEI_gt": {
+        "Temperature_K": 158.53,
+        "Pressure_Pa": 2559756.53,
+        "Density_kg_m3": 3.85,
+        "Enthalpy_J_kg": 2001620.28,
+        "Final_MassFlow_kg_s": 0.04788
+    },
+    "OEI_mot_Working": {
+        "Temperature_K": 158.53,
+        "Pressure_Pa": 2559756.53,
+        "Density_kg_m3": 3.85,
+        "Enthalpy_J_kg": 2001620.28,
+        "Final_MassFlow_kg_s": 0.04788
+    },
+    "OEI_mot_Failed": {
+        "Temperature_K": 158.53,
+        "Pressure_Pa": 2559756.53,
+        "Density_kg_m3": 3.85,
+        "Enthalpy_J_kg": 2001620.28,
+        "Final_MassFlow_kg_s": 0.04788
+    },
+    "OEI_bus_Working": {
+        "Temperature_K": 158.53,
+        "Pressure_Pa": 2559756.53,
+        "Density_kg_m3": 3.85,
+        "Enthalpy_J_kg": 2001620.28,
+        "Final_MassFlow_kg_s": 0.04788
+    },
+    "OEI_bus_Failed": {
+        "Temperature_K": 158.53,
+        "Pressure_Pa": 2559756.53,
+        "Density_kg_m3": 3.85,
+        "Enthalpy_J_kg": 2001620.28,
+        "Final_MassFlow_kg_s": 0.04788
     }
 }
