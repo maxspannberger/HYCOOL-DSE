@@ -592,6 +592,7 @@ class COOL:
 
         L_old = np.inf
         j = 0
+        T_Al_avg = None
         while abs((self.L - L_old)/self.L) > 1e-3 and j < 100:
             L_old = self.L
             j += 1
@@ -663,24 +664,29 @@ class COOL:
                     deltaT = self.Q_dot / (U * self.area * HEX_effectiveness)
                     self.T = deltaT + 0.5 * (T1 + T2)
             '''
-
-            Tb = 0.5 * (T1 + T2)
+            # --------------------------------------------------
 
            # --- DYNAMIC ALUMINUM 6061 THERMAL CONDUCTIVITY ---
             # Approximated linear fit based on NIST cryogenic data for Al-6061-T6
             # 20K = ~25 W/mK | 300K = ~167 W/mK
-            T_ave = Tb * 1.5
+            t_f = self.d + 2 * config.HEX_extra_thickness
+
+            Tb = 0.5 * (T1 + T2)
+            if T_Al_avg is None:
+                T_Al_avg = (Tb + self.T) / 2
+
             if Tb <= 20.0:
                 k_Al_dynamic = 25.0
             elif Tb >= 300.0:
                 k_Al_dynamic = 167.0
             else:
-                k_Al_dynamic = 25.0 + ((T_ave- 20.0) / (300.0 - 20.0)) * (167.0 - 25.0)
+                k_Al_dynamic = 25.0 + ((T_Al_avg - 20.0) / (300.0 - 20.0)) * (167.0 - 25.0)
             # --------------------------------------------------
-
-            t_f = self.d + 2 * config.HEX_extra_thickness
             # Swap config.k_Al out for the new dynamic variable
             R_f = self.width / (6 * k_Al_dynamic * t_f * self.L)
+
+            T_Al_avg = Tb + self.Q_dot * self.width / (3 * self.length * k_Al_dynamic * t_f) * (self.length / (2 * self.L))**2
+            # print(Tb, T_Al_avg, self.T)
 
             # --- BYPASS FOR DEAD COMPONENTS ---
             if self.Q_dot <= 1e-6:
