@@ -2,10 +2,10 @@ from math import cos, pi, cbrt
 
 N_check_valves = 3
 N_ball_valves = 18
-N_prvs = 6
+N_prvs = 8
 pipe_diameter = 0.012
-# m_dot = 0.09
-# rho = 70.8
+m_dot = 0.09
+rho = 70.8
 
 # full bore valves - inner diameter is same as pipe diameter
 
@@ -16,15 +16,16 @@ W_prv = 0.0086 * pipe_diameter ** 2 + 0.1701 * pipe_diameter + 1.4174
 # print(f"Weight of PRV: {W_prv:.2f} kg")
 W_valves = N_check_valves * W_check_valve + N_ball_valves * W_ball_valve + N_prvs * W_prv
 
-# Cv_check_valve = 22413 * pipe_diameter ** 2.0817
-# Cv_shutoff_valve = 1173.6 * pipe_diameter - 10.19
+Cv_check_valve = 22413 * pipe_diameter ** 2.0817
+Cv_shutoff_valve = 1173.6 * pipe_diameter - 10.19
 
-# Q = (m_dot / rho) * 15850.3  # volumetric flow rate in GPM (gallons per minute)
-# S_g = rho / 999  # specific gravity (dimensionless)
+Q = (m_dot / rho) * 15850.3  # volumetric flow rate in GPM (gallons per minute)
+S_g = rho / 999  # specific gravity (dimensionless)
 
-# pressure_drop_check = (S_g / ((Cv_check_valve / Q) ** 2)) / 14.504  # convert from psi to bar
-# pressure_drop_shutoff = (S_g / ((Cv_shutoff_valve / Q) ** 2)) / 14.504  # convert from psi to bar
-
+pressure_drop_check = (S_g / ((Cv_check_valve / Q) ** 2)) * 6894.76  # convert from psi to pa
+pressure_drop_shutoff = (S_g / ((Cv_shutoff_valve / Q) ** 2)) * 6894.76  # convert from psi to pa
+# print(f"Pressure drop across check valve: {pressure_drop_check:.2f} pa")
+# print(f"Pressure drop across shutoff valve: {pressure_drop_shutoff:.2f} pa")
 # total_pressure_drop = N_check_valves * pressure_drop_check + N_shutoff_valves * pressure_drop_shutoff
 
 print(f"Total weight of valves: {W_valves:.2f} kg")
@@ -79,7 +80,7 @@ mass_MLI = V_MLI * rho_MLI
 
 mass_pipe_per_meter = mass_pipe_inner + mass_pipe_outer + mass_MLI
 total_mass_pipe = mass_pipe_per_meter * pipe_length
-# print(f"Weight of pipe per meter: {mass_pipe_per_meter:.2f} kg")
+print(f"Weight of pipe per meter: {mass_pipe_per_meter:.2f} kg")
 print(f"Total weight of pipe: {total_mass_pipe:.2f} kg")
 
 # PUMPS
@@ -100,7 +101,7 @@ print(f"Total weight of fittings: {total_fitting_weight:.2f} kg")
 
 # PRESSURE RELIEF PIPE
 
-length_relief_pipes = 7
+length_relief_pipes = 9
 
 V_pipe_relief = pi * (((pipe_diameter / 2) + t_inner) ** 2 - (pipe_diameter / 2) **2)
 mass_pipe_relief = V_pipe_relief * rho_stainless_steel
