@@ -934,7 +934,7 @@ class GasTurbineCycle:
         # Station markers
         stations = {
             "1": (s1, T1), "2": (s2, T2), "2'": (s2p, T2p),
-            "4": (s4, T4), "5": (s5, T5), "Exh": (s_exh, T_exh),
+            "3": (s4, T4), "4": (s5, T5), "Exh": (s_exh, T_exh),
         }
         for name, (s, t) in stations.items():
             if name == "2'" and T2p == T2:

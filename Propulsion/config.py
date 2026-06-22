@@ -65,7 +65,7 @@ from typing import List, Optional
 @dataclass
 class CycleConfig:
     # Sizing target
-    P_target:       float = 2.179e6           # W, net shaft power target
+    P_target:       float = 2.215e6           # W, net shaft power target
 
     # Ambient / flight conditions
     P_ambient:      float = 0.38            # bar, ambient static pressure
@@ -81,7 +81,7 @@ class CycleConfig:
     eta_HEX:        float = 0.92
     eta_mech:       float = 0.99
     eta_diff:       float = 0.97
-    mdot_boiloff:   float = 0.02
+    mdot_boiloff:   float = 8 / 1000
 
     # Recuperator
     eta_regen:      float = 0.775
@@ -112,7 +112,7 @@ class CycleConfig:
 # =====================================================================
 @dataclass
 class OffDesignConfig:
-    TIT_limit:   float = 1900.0             # K, material limit
+    TIT_limit:   float = 1800.0             # K, material limit
     TIT_min:     float = 550.0              # K, lower solver bracket
     TIT_tol:     float = 1e-4
     max_iter:    int   = 100
@@ -122,14 +122,14 @@ class OffDesignConfig:
 
     # H2 feed temperature at off-design (cryogenic feed to the H2 compressor).
     # If None, falls back to the design-point T_pre_comp.
-    T_pre_comp:  List[float] = field(default_factory=lambda: [180])     # K
+    T_pre_comp:  List[float] = field(default_factory=lambda: [156])     # K
 
     # H2 feed pressure at off-design (cryogenic feed to the H2 compressor).
     # If None, falls back to the design-point P_pre_comp.
-    P_pre_comp:  List[float] = field(default_factory=lambda: [25])      # bar
+    P_pre_comp:  List[float] = field(default_factory=lambda: [25.6])      # bar
 
-    P_shaft_cases: List[float] = field(default_factory=lambda: [3.075e6])
-    P_sweep_min:   float = 0.6e6
+    P_shaft_cases: List[float] = field(default_factory=lambda: [2.989e6])
+    P_sweep_min:   float = 0.2e6
     P_sweep_max:   float = 3.0e6
     P_sweep_n:     int   = 30
 

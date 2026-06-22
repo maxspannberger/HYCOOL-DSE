@@ -536,23 +536,23 @@ class DimensionalSizing:
         ax.plot([x_inlet, x_end], [-r_shaft, -r_shaft], color=COL_SHAFT_EDGE, lw=0.8, zorder=4)
         ax.axhline(0, color=NEUTRAL_GREY, lw=0.6, linestyle='--', zorder=1, alpha=0.6)
 
-        y_top      = max(HPT_outlet_tip, D_lean/2)
-        y_dim_base = y_top + 0.04
-        dim_arrow(x_HPC_start, x_HPC_end, y_dim_base,        f'HPC  {L_HPC*100:.0f} cm')
-        dim_arrow(x_CC_start,  x_CC_end,  y_dim_base + 0.05, f'CC  {CC_L*100:.0f} cm')
-        dim_arrow(x_HPT_start, x_HPT_end, y_dim_base,        f'HPT  {L_HPT*100:.0f} cm')
-        dim_arrow(x_inlet,     x_end,     y_dim_base + 0.10, f'Total  {(x_end-x_inlet)*100:.0f} cm')
+        #y_top      = max(HPT_outlet_tip, D_lean/2)
+        #y_dim_base = y_top + 0.04
+        #dim_arrow(x_HPC_start, x_HPC_end, y_dim_base,        f'HPC  {L_HPC*100:.0f} cm')
+        #dim_arrow(x_CC_start,  x_CC_end,  y_dim_base + 0.05, f'CC  {CC_L*100:.0f} cm')
+        #dim_arrow(x_HPT_start, x_HPT_end, y_dim_base,        f'HPT  {L_HPT*100:.0f} cm')
+        #dim_arrow(x_inlet,     x_end,     y_dim_base + 0.10, f'Total  {(x_end-x_inlet)*100:.0f} cm')
 
-        legend_items = [
-            mpatches.Patch(color=COL_HPC,       label=f'HPC  ({L_HPC*100:.0f} cm, {int(Stages_HPC)} stages)'),
-            mpatches.Patch(color=COL_CC_RICH,   label=f'Rich zone  (D={D_rich*100:.0f} cm, L={L_rich*100:.0f} cm)'),
-            mpatches.Patch(color=COL_CC_QUENCH, label=f'Quench zone  (L={L_quench*100:.0f} cm)'),
-            mpatches.Patch(color=COL_CC_LEAN,   label=f'Lean zone  (D={D_lean*100:.0f} cm, L={L_lean*100:.0f} cm)'),
-            mpatches.Patch(color=COL_HPT,       label=f'HPT  ({L_HPT*100:.0f} cm, {int(Stages_HPT)} stages)'),
-            mpatches.Patch(color=COL_SHAFT_FILL,label=f'Shaft  (r={r_shaft*100:.1f} cm)'),
-        ]
-        ax.legend(handles=legend_items, loc='upper right', fontsize=8.5,
-                  frameon=False, labelcolor=TEXT_GREY)
+        # legend_items = [
+        #     mpatches.Patch(color=COL_HPC,       label=f'HPC  ({L_HPC*100:.0f} cm, {int(Stages_HPC)} stages)'),
+        #     mpatches.Patch(color=COL_CC_RICH,   label=f'Rich zone  (D={D_rich*100:.0f} cm, L={L_rich*100:.0f} cm)'),
+        #     mpatches.Patch(color=COL_CC_QUENCH, label=f'Quench zone  (L={L_quench*100:.0f} cm)'),
+        #     mpatches.Patch(color=COL_CC_LEAN,   label=f'Lean zone  (D={D_lean*100:.0f} cm, L={L_lean*100:.0f} cm)'),
+        #     mpatches.Patch(color=COL_HPT,       label=f'HPT  ({L_HPT*100:.0f} cm, {int(Stages_HPT)} stages)'),
+        #     mpatches.Patch(color=COL_SHAFT_FILL,label=f'Shaft  (r={r_shaft*100:.1f} cm)'),
+        # ]
+        # ax.legend(handles=legend_items, loc='upper right', fontsize=8.5,
+        #           frameon=False, labelcolor=TEXT_GREY)
 
         ax.set_xlabel('Axial position  [m]')
         ax.set_ylabel('Radius  [m]')
