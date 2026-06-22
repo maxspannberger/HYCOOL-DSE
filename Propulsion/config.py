@@ -30,12 +30,8 @@ override values without subclassing.
 
 
 POWERS:
-    - OEI:      3038    kW
-    - Cruise:   2179    kW
-    - Climb:    2747    kW
-    - Reserve:  
-    - Approach: 690     kW
-    - Takeoff:  2800    kW
+    - OEI:      2989    kW
+    - Cruise:   2215    kW
 
 
 Off-Design Inputs

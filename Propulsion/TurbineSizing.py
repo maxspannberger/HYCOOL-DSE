@@ -908,30 +908,62 @@ class GasTurbineCycle:
         # 4 -> 5: HPT expansion (tie-line)
         ax.plot([s4, s5], [T4, T5], '-', color=c_hpt, lw=2.0, label="HPT expansion")
 
-        # 5 -> T_exh: exhaust cooling through recuperator + H2 HEX (real isobar)
-        Se, Te = self._isobar(P5, T5, T_exh, 'Air')
-        ax.plot(Se, Te, color=c_exh, lw=2.0, label="Exhaust (regen + HEX sink)")
+        # 5 -> T_exh: exhaust cooling through the recuperator and the H2 HEX.
+        # The two sinks are drawn as separate real-fluid isobars, in the order
+        # set by REGEN_FIRST in config.py, so each component is individually
+        # visible. An intermediate station marks the hand-off between them.
+        T_hex_in  = res['T_hex_hot_in']    # H2 HEX hot-side inlet
+        T_hex_out = res['T_hot_out']       # H2 HEX hot-side outlet
+
+        def _exh_segment(label, color, T_hi, T_lo):
+            S, T = self._isobar(P5, T_hi, T_lo, 'Air')
+            if S.size:
+                ax.plot(S, T, color=color, lw=2.0, label=label)
+
+        reg_hi = reg_lo = None     # recuperator hot-side temps (for the arrow)
+        extra_stations = {}        # intermediate exhaust hand-off station(s)
+        if self.USE_REGEN and self.REGEN_FIRST:
+            # Exhaust -> recuperator -> H2 HEX
+            T_mid = T_hex_in
+            reg_hi, reg_lo = T5, T_mid
+            _exh_segment("Exhaust: recuperator (hot side)", c_regen, T5,    T_mid)
+            _exh_segment("Exhaust: H2 HEX (hot side)",      c_exh,   T_mid, T_exh)
+            s_mid = PropsSI('S', 'P', P5*1e5, 'T', T_mid, 'Air')
+            extra_stations["Reg→HEX"] = (s_mid, T_mid)
+        elif self.USE_REGEN:
+            # Exhaust -> H2 HEX -> recuperator
+            T_mid = T_hex_out
+            reg_hi, reg_lo = T_mid, T_exh
+            _exh_segment("Exhaust: H2 HEX (hot side)",      c_exh,   T5,    T_mid)
+            _exh_segment("Exhaust: recuperator (hot side)", c_regen, T_mid, T_exh)
+            s_mid = PropsSI('S', 'P', P5*1e5, 'T', T_mid, 'Air')
+            extra_stations["HEX→Reg"] = (s_mid, T_mid)
+        else:
+            # No recuperator: exhaust cooled by the H2 HEX only
+            _exh_segment("Exhaust: H2 HEX (hot side)", c_exh, T5, T_exh)
 
         # T_exh -> 1: atmospheric rejection (tie-line, dashed grey)
         ax.plot([s_exh, s1], [T_exh, T1], color=NEUTRAL_GREY, linestyle='--',
                 lw=1.2, label="Atmospheric rejection")
 
-        # Recuperator heat-transfer arrow (visual coupling, not to scale)
-        if T2p > T2:
-            T_cold_mid = (T2 + T2p) / 2
-            s_cold_mid = PropsSI('S', 'P', P2*1e5, 'T', T_cold_mid, 'Air')
-            T_hot_mid  = T5 - (T2p - T2) / 2
-            s_hot_mid  = PropsSI('S', 'P', P5*1e5, 'T', T_hot_mid, 'Air')
-            ax.annotate('', xy=(s_cold_mid, T_cold_mid),
-                        xytext=(s_hot_mid, T_hot_mid),
+        # Recuperator heat-transfer line (visual coupling, not to scale).
+        # The recuperator delivers heat to the post-HPC air at the cold-side
+        # outlet level: the air converges to station 2' (T2p), while the hot
+        # exhaust at that same temperature sits at higher entropy (it is at the
+        # low exhaust pressure). The coupling is therefore drawn as a horizontal,
+        # constant-temperature line from the hot exhaust isobar across to 2',
+        # with the arrow indicating heat flowing into the air.
+        if reg_hi is not None and T2p > T2:
+            s_hot_at_2p = PropsSI('S', 'P', P5*1e5, 'T', T2p, 'Air')
+            ax.annotate('', xy=(s2p, T2p),
+                        xytext=(s_hot_at_2p, T2p),
                         arrowprops=dict(arrowstyle='->', color=c_regen, lw=1.4))
-            ax.text((s_cold_mid + s_hot_mid)/2,
-                    (T_cold_mid + T_hot_mid)/2 + 25,
+            ax.text((s2p + s_hot_at_2p)/2, T2p + 25,
                     'Regen heat transfer',
                     color=c_regen, ha='center', fontsize=8.5, fontweight='semibold',
                     bbox=dict(facecolor='white', edgecolor='none', alpha=0.75))
 
-        # Station markers
+        # Station markers (numbering unchanged: 1, 2, 2', 3, 4, Exh)
         stations = {
             "1": (s1, T1), "2": (s2, T2), "2'": (s2p, T2p),
             "3": (s4, T4), "4": (s5, T5), "Exh": (s_exh, T_exh),
@@ -943,7 +975,19 @@ class GasTurbineCycle:
             ax.annotate(f" {name}", (s, t), fontsize=9.5, color=TEXT_GREY,
                         xytext=(5, 2), textcoords="offset points")
 
-        ax.set_title("Gas-path T–S diagram")
+        # Intermediate recuperator/HEX hand-off station(s): drawn as diamonds
+        # so the added exhaust sinks stand out from the numbered cycle stations.
+        for name, (s, t) in extra_stations.items():
+            ax.plot(s, t, 'D', color=c_exh, markersize=5.5, zorder=6)
+            ax.annotate(f" {name}", (s, t), fontsize=9.0, color=c_exh,
+                        fontweight='semibold',
+                        xytext=(5, -10), textcoords="offset points")
+
+        route = ("recuperator → H2 HEX"
+                 if (self.USE_REGEN and self.REGEN_FIRST)
+                 else "H2 HEX → recuperator" if self.USE_REGEN
+                 else "H2 HEX only (no recuperator)")
+        ax.set_title(f"Gas-path T–S diagram   (exhaust routing: {route})")
         ax.set_xlabel("Specific entropy, s  [J/(kg·K)]")
         ax.set_ylabel("Temperature, T  [K]")
         ax.legend(loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0.)
